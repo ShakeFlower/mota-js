@@ -2967,6 +2967,6 @@ interface Main {
     log(e: string | Error, error: boolean): void
 }
 
-declare var core: CoreMixin
+declare let core: CoreMixin
 declare let flags: { [x: string]: any }
 declare let hero : CoreMixin['status']['hero']
