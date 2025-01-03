@@ -21,12 +21,6 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_range": "typeof(thiseval)=='string'",
 				"_data": "全局商店"
 			},
-			"drawLight": {
-				"_leaf": true,
-				"_type": "textarea",
-				"_range": "typeof(thiseval)=='string' || thiseval==null",
-				"_data": "灯光效果"
-			},
 			"removeMap": {
 				"_leaf": true,
 				"_type": "textarea",
@@ -51,23 +45,11 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "手册显示怪物境界"
 			},
-			"dynamicHp": {
-				"_leaf": true,
-				"_type": "textarea",
-				"_range": "typeof(thiseval)=='string' || thiseval==null",
-				"_data": "动态血量变化"
-			},
 			"multiHeros": {
 				"_leaf": true,
 				"_type": "textarea",
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "多角色"
-			},
-			"itemCategory": {
-				"_leaf": true,
-				"_type": "textarea",
-				"_range": "typeof(thiseval)=='string' || thiseval==null",
-				"_data": "物品分类插件"
 			},
 			"heroFourFrames": {
 				"_leaf": true,
@@ -80,7 +62,37 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_type": "textarea",
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "自绘标题界面居中"
-			}
+			},
+			"advancedAnimation": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "高级动画"
+			},
+			"drawItemDetail": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "物品数据显示"
+			},
+			"autoGet": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "自动拾取&清怪"
+			},
+			"newBackpackLook": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "新版道具栏"
+			},
+			"scrollingText": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "接收&发送弹幕"
+			},
 		}
 		if (obj[key]) return obj[key];
 		return {
