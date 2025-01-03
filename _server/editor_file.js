@@ -1047,7 +1047,7 @@ editor_file = function (editor, callback) {
             for (var id_ in fmap) {
                 fraw = fraw.replace('"' + id_ + '"', fmap[id_])
             }
-            var datastr = 'var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a = \n';
+            var datastr = '/// <reference path="../runtime.d.ts" />\nvar functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a = \n';
             datastr += fraw;
             fs.writeFile('project/functions.js', encode(datastr), 'base64', function (err, data) {
                 callback(err);
@@ -1101,7 +1101,7 @@ editor_file = function (editor, callback) {
             for (var id_ in plmap) {
                 plraw = plraw.replace('"' + id_ + '"', plmap[id_])
             }
-            var datastr = 'var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = \n';
+            var datastr = '/// <reference path="../runtime.d.ts" />\nvar plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = \n';
             datastr += plraw;
             fs.writeFile('project/plugins.js', encode(datastr), 'base64', function (err, data) {
                 callback(err);
