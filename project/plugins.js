@@ -1,7 +1,7 @@
 /// <reference path="../runtime.d.ts" />
-var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
+var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = 
 {
-	"init": function () {
+    "init": function () {
 
 		console.log("插件编写测试");
 
@@ -19,7 +19,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为 core.plugin.xxx();
 		// 从V2.6开始，插件中用this.XXX方式定义的函数也会被转发到core中，详见文档-脚本-函数的转发。
 	},
-	"shop": function () {
+    "shop": function () {
 		// 【全局商店】相关的功能
 		// 
 		// 打开一个全局商店
@@ -214,7 +214,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}, 60);
 	},
-	"removeMap": function () {
+    "removeMap": function () {
 		// 高层塔砍层插件，删除后不会存入存档，不可浏览地图也不可飞到。
 		// 推荐用法：
 		// 对于超高层或分区域塔，当在1区时将2区以后的地图删除；1区结束时恢复2区，进二区时删除1区地图，以此类推
@@ -301,7 +301,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 	},
-	"fiveLayers": function () {
+    "fiveLayers": function () {
 		// 是否启用五图层（增加背景2层和前景2层） 将__enable置为true即会启用；启用后请保存后刷新编辑器
 		// 背景层2将会覆盖背景层 被事件层覆盖 前景层2将会覆盖前景层
 		// 另外 请注意加入两个新图层 会让大地图的性能降低一些
@@ -455,7 +455,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 		}
 	},
-	"itemShop": function () {
+    "itemShop": function () {
 		// 道具商店相关的插件
 		// 可在全塔属性-全局商店中使用「道具商店」事件块进行编辑（如果找不到可以在入口方块中找）
 
@@ -761,7 +761,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-	"enemyLevel": function () {
+    "enemyLevel": function () {
 		// 此插件将提供怪物手册中的怪物境界显示
 		// 使用此插件需要先给每个怪物定义境界，方法如下：
 		// 点击怪物的【配置表格】，找到“【怪物】相关的表格配置”，然后在【名称】仿照增加境界定义：
@@ -849,7 +849,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 
 	},
-	"multiHeros": function () {
+    "multiHeros": function () {
 		// 多角色插件
 		// Step 1: 启用本插件
 		// Step 2: 定义每个新的角色各项初始数据（参见下方注释）
@@ -995,7 +995,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag("heroId", toHeroId); // 保存切换到的角色ID
 		}
 	},
-	"heroFourFrames": function () {
+    "heroFourFrames": function () {
 		// 样板的勇士/跟随者移动时只使用2、4两帧，观感较差。本插件可以将四帧全用上。
 
 		// 是否启用本插件
@@ -1048,7 +1048,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}
 	},
-	"startCanvas": function () {
+    "startCanvas": function () {
 		// 使用本插件可以将自绘的标题界面居中。仅在【标题开启事件化】后才有效。
 		// 由于一些技术性的原因，标题界面事件化无法应用到覆盖状态栏的整个界面。
 		// 这是一个较为妥协的插件，会在自绘标题界面时隐藏状态栏、工具栏和边框，并将画布进行居中。
@@ -1134,11 +1134,537 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_loadData.call(core.control, data, callback);
 		}
 	},
-	"advancedAnimation": function () {
-		// 在此增加新插件
+    "advancedAnimation": function () {
+	// -------------------- 插件说明 -------------------- //
+	// github仓库：https://github.com/unanmed/animate
+	// npm包名：mutate-animate
+	// npm地址：https://www.npmjs.com/package/mutate-animate
+	var M = Object.defineProperty;
+	var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
+	var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
+	let w = [];
+	const k = (n) => {
+		for (const i of w)
+			if (i.status === "running")
+				try {
+					for (const t of i.funcs)
+						t(n - i.startTime);
+				} catch (t) {
+					i.destroy(), console.error(t);
+				}
+		requestAnimationFrame(k);
+	};
+	requestAnimationFrame(k);
+	class I {
+		constructor() {
+			o(this, "funcs", /* @__PURE__ */ new Set());
+			o(this, "status", "stop");
+			o(this, "startTime", 0);
+			this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
+		}
+		add(i) {
+			return this.funcs.add(i), this;
+		}
+		remove(i) {
+			return this.funcs.delete(i), this;
+		}
+		clear() {
+			this.funcs.clear();
+		}
+		destroy() {
+			this.clear(), this.stop();
+		}
+		stop() {
+			this.status = "stop", w = w.filter((i) => i !== this);
+		}
+	}
+	class F {
+		constructor() {
+			o(this, "timing");
+			o(this, "relation", "absolute");
+			o(this, "easeTime", 0);
+			o(this, "applying", {});
+			o(this, "getTime", Date.now);
+			o(this, "ticker", new I());
+			o(this, "value", {});
+			o(this, "listener", {});
+			this.timing = (i) => i;
+		}
+		async all() {
+			if (Object.values(this.applying).every((i) => i === !0))
+				throw new ReferenceError("There is no animates to be waited.");
+			await new Promise((i) => {
+				const t = () => {
+					Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
+				};
+				this.listen("end", t);
+			});
+		}
+		async n(i) {
+			const t = Object.values(this.applying).filter((s) => s === !0).length;
+			if (t < i)
+				throw new ReferenceError(
+					`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
+				);
+			let e = 0;
+			await new Promise((s) => {
+				const r = () => {
+					e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
+				};
+				this.listen("end", r);
+			});
+		}
+		async w(i) {
+			if (this.applying[i] === !1)
+				throw new ReferenceError(`The ${i} animate is not animating.`);
+			await new Promise((t) => {
+				const e = () => {
+					this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
+				};
+				this.listen("end", e);
+			});
+		}
+		listen(i, t) {
+			var e, s;
+			(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
+		}
+		unlisten(i, t) {
+			const e = this.listener[i].findIndex((s) => s === t);
+			if (e === -1)
+				throw new ReferenceError(
+					"You are trying to remove a nonexistent listener."
+				);
+			this.listener[i].splice(e, 1);
+		}
+		hook(...i) {
+			const t = Object.entries(this.listener).filter(
+				(e) => i.includes(e[0])
+			);
+			for (const [e, s] of t)
+				for (const r of s)
+					r(this, e);
+		}
+	}
 
-	},
-	"drawItemDetail": function () {
+	function y(n) {
+		return n != null;
+	}
+	async function R(n) {
+		return new Promise((i) => setTimeout(i, n));
+	}
+	class j extends F {
+		constructor() {
+			super();
+			o(this, "shakeTiming");
+			o(this, "path");
+			o(this, "multiTiming");
+			o(this, "value", {});
+			o(this, "size", 1);
+			o(this, "angle", 0);
+			o(this, "targetValue", {
+				system: {
+					move: [0, 0],
+					moveAs: [0, 0],
+					resize: 0,
+					rotate: 0,
+					shake: 0,
+					"@@bind": []
+				},
+				custom: {}
+			});
+			o(this, "animateFn", {
+				system: {
+					move: [() => 0, () => 0],
+					moveAs: () => 0,
+					resize: () => 0,
+					rotate: () => 0,
+					shake: () => 0,
+					"@@bind": () => 0
+				},
+				custom: {}
+			});
+			o(this, "ox", 0);
+			o(this, "oy", 0);
+			o(this, "sx", 0);
+			o(this, "sy", 0);
+			o(this, "bindInfo", []);
+			this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
+				move: !1,
+				scale: !1,
+				rotate: !1,
+				shake: !1
+			}, this.ticker.add(() => {
+				const { running: t } = this.listener;
+				if (y(t))
+					for (const e of t)
+						e(this, "running");
+			});
+		}
+		get x() {
+			return this.ox + this.sx;
+		}
+		get y() {
+			return this.oy + this.sy;
+		}
+		mode(t, e = !1) {
+			return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
+		}
+		time(t) {
+			return this.easeTime = t, this;
+		}
+		relative() {
+			return this.relation = "relative", this;
+		}
+		absolute() {
+			return this.relation = "absolute", this;
+		}
+		bind(...t) {
+			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
+		}
+		unbind() {
+			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
+		}
+		move(t, e) {
+			return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
+		}
+		rotate(t) {
+			return this.applySys("angle", t, "rotate"), this;
+		}
+		scale(t) {
+			return this.applySys("size", t, "resize"), this;
+		}
+		shake(t, e) {
+			this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
+			const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
+			if (this.hook("start", "shakestart"), s <= 0)
+				return this.end(!1, "shake"), this;
+			const a = () => {
+				const c = this.getTime() - l;
+				if (c > s) {
+					this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
+					return;
+				}
+				const h = c / s,
+					m = r(h);
+				this.sx = m * t, this.sy = m * e;
+			};
+			return this.ticker.add(a), this.animateFn.system.shake = a, this;
+		}
+		moveAs(t) {
+			this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
+			const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
+				if (s === "absolute")
+					return t(1); {
+					const [d, f] = t(1);
+					return [a + d, u + f];
+				}
+			})();
+			if (this.hook("start", "movestart"), e <= 0)
+				return this.end(!1, "moveAs"), this;
+			const m = () => {
+				const f = this.getTime() - l;
+				if (f > e) {
+					this.end(!0, "moveAs");
+					return;
+				}
+				const g = f / e,
+					[v, x] = t(r(g));
+				s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
+			};
+			return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
+		}
+		register(t, e) {
+			if (typeof this.value[t] == "number")
+				return this.error(
+					`Property ${t} has been regietered twice.`,
+					"reregister"
+				);
+			this.value[t] = e, this.applying[t] = !1;
+		}
+		apply(t, e) {
+			this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
+				`You are trying to execute nonexistent property ${t}.`
+			), this.applying[t] = !0;
+			const s = this.value[t],
+				r = this.getTime(),
+				{ timing: l, relation: a, easeTime: u } = this,
+				c = a === "absolute" ? e - s : e;
+			if (this.hook("start"), u <= 0)
+				return this.end(!1, t), this;
+			const h = () => {
+				const d = this.getTime() - r;
+				if (d > u) {
+					this.end(!1, t);
+					return;
+				}
+				const f = d / u,
+					g = l(f);
+				this.value[t] = s + g * c;
+			};
+			return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
+		}
+		applyMulti() {
+			this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
+			const t = this.bindInfo,
+				e = t.map((h) => this.value[h]),
+				s = this.getTime(),
+				{ multiTiming: r, relation: l, easeTime: a } = this,
+				u = r(1);
+			if (u.length !== e.length)
+				throw new TypeError(
+					`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
+				);
+			if (this.hook("start"), a <= 0)
+				return this.end(!1, "@@bind"), this;
+			const c = () => {
+				const m = this.getTime() - s;
+				if (m > a) {
+					this.end(!1, "@@bind");
+					return;
+				}
+				const d = m / a,
+					f = r(d);
+				t.forEach((g, v) => {
+					l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
+				});
+			};
+			return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+		}
+		applySys(t, e, s) {
+			s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
+			const r = this[t],
+				l = this.getTime(),
+				a = this.timing,
+				u = this.relation,
+				c = this.easeTime,
+				h = u === "absolute" ? e - r : e;
+			if (this.hook("start", `${s}start`), c <= 0)
+				return this.end(!0, s);
+			const m = () => {
+				const f = this.getTime() - l;
+				if (f > c) {
+					this.end(!0, s);
+					return;
+				}
+				const g = f / c,
+					v = a(g);
+				this[t] = r + h * v, t !== "oy" && this.hook(s);
+			};
+			this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+		}
+		error(t, e) {
+			throw e === "repeat" ? new Error(
+				`Cannot execute the same animation twice. Info: ${t}`
+			) : e === "reregister" ? new Error(
+				`Cannot register an animated property twice. Info: ${t}`
+			) : new Error(t);
+		}
+		end(t, e) {
+			if (t === !0)
+				if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
+						this.animateFn.system[e]
+					), e === "move") {
+					const [s, r] = this.targetValue.system.move;
+					this.ox = s, this.oy = r, this.hook("moveend", "end");
+				} else if (e === "moveAs") {
+				const [s, r] = this.targetValue.system.moveAs;
+				this.ox = s, this.oy = r, this.hook("moveend", "end");
+			} else
+				e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
+					this.value[r] = this.targetValue.system["@@bind"][l];
+				}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
+			else
+				this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
+		}
+	}
+	class O extends F {
+		constructor() {
+			super();
+			o(this, "now", {});
+			o(this, "target", {});
+			o(this, "transitionFn", {});
+			o(this, "value");
+			o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
+			o(this, "handleGet", (t, e) => this.now[e]);
+			this.timing = (t) => t, this.value = new Proxy(this.target, {
+				set: this.handleSet,
+				get: this.handleGet
+			});
+		}
+		mode(t) {
+			return this.timing = t, this;
+		}
+		time(t) {
+			return this.easeTime = t, this;
+		}
+		relative() {
+			return this.relation = "relative", this;
+		}
+		absolute() {
+			return this.relation = "absolute", this;
+		}
+		transition(t, e) {
+			if (e === this.target[t])
+				return this;
+			if (!y(this.now[t]))
+				return this.now[t] = e, this;
+			this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
+			const s = this.getTime(),
+				r = this.easeTime,
+				l = this.timing,
+				a = this.now[t],
+				u = e + (this.relation === "absolute" ? 0 : a),
+				c = u - a;
+			this.target[t] = u;
+			const h = () => {
+				const d = this.getTime() - s;
+				if (d >= r) {
+					this.end(t);
+					return;
+				}
+				const f = d / r;
+				this.now[t] = l(f) * c + a, this.hook("running");
+			};
+			return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
+		}
+		end(t, e = !1) {
+			const s = this.transitionFn[t];
+			if (!y(s))
+				throw new ReferenceError(
+					`You are trying to end an ended transition: ${t}`
+				);
+			this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
+		}
+	}
+	const T = (...n) => n.reduce((i, t) => i + t, 0),
+		b = (n) => {
+			if (n === 0)
+				return 1;
+			let i = n;
+			for (; n > 1;)
+				n--, i *= n;
+			return i;
+		},
+		A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
+		p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
+		$ = Math.cosh(2),
+		z = Math.acosh(2),
+		V = Math.tanh(3),
+		P = Math.atan(5);
+
+	function Y() {
+		return (n) => n;
+	}
+
+	function q(...n) {
+		const i = [0].concat(n);
+		i.push(1);
+		const t = i.length,
+			e = Array(t).fill(0).map((s, r) => A(r, t - 1));
+		return (s) => {
+			const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
+			return T(...r);
+		};
+	}
+
+	function U(n, i) {
+		if (n === "sin") {
+			const t = (s) => Math.sin(s * Math.PI / 2);
+			return p(i, (s) => 1 - t(1 - s), t);
+		}
+		if (n === "sec") {
+			const t = (s) => 1 / Math.cos(s);
+			return p(i, (s) => t(s * Math.PI / 3) - 1);
+		}
+		throw new TypeError(
+			"Unexpected parameters are delivered in trigo timing function."
+		);
+	}
+
+	function C(n, i) {
+		if (!Number.isInteger(n))
+			throw new TypeError(
+				"The first parameter of power timing function only allow integer."
+			);
+		return p(i, (e) => e ** n);
+	}
+
+	function G(n, i) {
+		if (n === "sin")
+			return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
+		if (n === "tan") {
+			const t = (s) => Math.tanh(s * 3) * 1 / V;
+			return p(i, (s) => 1 - t(1 - s), t);
+		}
+		if (n === "sec") {
+			const t = (s) => 1 / Math.cosh(s);
+			return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
+		}
+		throw new TypeError(
+			"Unexpected parameters are delivered in hyper timing function."
+		);
+	}
+
+	function N(n, i) {
+		if (n === "sin") {
+			const t = (s) => Math.asin(s) / Math.PI * 2;
+			return p(i, (s) => 1 - t(1 - s), t);
+		}
+		if (n === "tan") {
+			const t = (s) => Math.atan(s * 5) / P;
+			return p(i, (s) => 1 - t(1 - s), t);
+		}
+		throw new TypeError(
+			"Unexpected parameters are delivered in inverse trigo timing function."
+		);
+	}
+
+	function B(n, i = () => 1) {
+		let t = -1;
+		return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
+	}
+
+	function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
+		return (l) => {
+			const a = i * l * Math.PI * 2 + e * Math.PI / 180,
+				u = Math.cos(a),
+				c = Math.sin(a),
+				h = n * s(s(r ? 1 - l : l));
+			return [h * u + t[0], h * c + t[1]];
+		};
+	}
+
+	function H(n, i, ...t) {
+		const e = [n].concat(t);
+		e.push(i);
+		const s = e.length,
+			r = Array(s).fill(0).map((l, a) => A(a, s - 1));
+		return (l) => {
+			const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
+				u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
+			return [T(...a), T(...u)];
+		};
+	}
+
+	core.plugin.animate = {
+		Animation: j,
+		AnimationBase: F,
+		Ticker: O,
+		Transition: j,
+		bezier: q,
+		bezierPath: H,
+		circle: D,
+		hyper: G,
+		inverseTrigo: N,
+		linear: Y,
+		power: C,
+		shake: B,
+		sleep: R,
+		trigo: U,
+	}
+
+},
+    "drawItemDetail": function () {
 		/* 宝石血瓶左下角显示数值
  		 * 需要将 变量：itemDetail改为true才可正常运行
  		 * 请尽量减少勇士的属性数量，否则可能会出现严重卡顿（划掉，现在你放一万个属性也不会卡）
@@ -1293,11 +1819,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 	},
-	"autoGet": function () {
+    "autoGet": function () {
 		// 在此增加新插件
 
 	},
-	"newBackPackLook": function () {
+    "newBackPackLook": function () {
 		// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
 		// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
 
@@ -2286,7 +2812,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.registerReplayAction("equip", core.control._replayAction_equip);
 		core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
 	},
-	"MenuBase": function () {
+    "MenuBase": function () {
 		// 本插件定义了一些用于绘制的基类
 		class ButtonBase {
 			constructor(x, y, w, h) {
@@ -2377,11 +2903,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		this.MenuBase = { ButtonBase, MenuBase, MenuPage };
 	},
-	"scrollingText": function () {
+    "scrollingText": function () {
 		// 本插件用于绘制在线留言
 
 	},
-	"setting": function () {
+    "setting": function () {
 		// 设置界面绘制
 		// core.openSettings = ...
 
