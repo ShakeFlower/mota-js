@@ -1845,9 +1845,365 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 	},
     "autoGet": function () {
-		// 在此增加新插件
+	// 在此增加新插件
+	/**
+	 * --------------- 安装说明 ---------------
+	 *
+	 * 首先安装高级动画插件
+	 * 然后将该插件复制到插件编写里面即可
+	 * 注意高级动画插件要在本插件之前
+	 *
+	 * --------------- 使用说明 ---------------
+	 *
+	 * 变量__auto__控制功能，为一个数字。它需要由一下几个变量构成：
+	 * 1. core.plugin.AUTO_BATTLE
+	 * 2. core.plugin.AUTO_ITEM
+	 * 具体使用方法如下：
+	 * flags.__auto__ = core.plugin.AUTO_BATTLE; // 开启自动清怪，关闭自动拾取
+	 * flags.__auto__ = core.plugin.AUTO_BATTLE | core.plugin.AUTO_ITEM; // 二者都开启
+	 * flags.__auto__ = core.plugin.AUTO_ITEM; // 开启自动拾取，关闭自动清怪
+	 * flags.__auto__ = 0; 关闭所有功能
+	 * 更多内容可以在插件注释中查看
+	 */
 
-	},
+	const { Transition, hyper, Ticker } = core.plugin.animate ?? {};
+
+	// 磁吸特效的时长，单位毫秒
+	const transitionTime = 600;
+
+	this.AUTO_BATTLE = 1;
+	this.AUTO_ITEM = 2;
+
+	const transitionList = [];
+
+	if (!main.replayChecking) {
+		const ticker = new Ticker();
+		ticker.add(() => {
+			if (!core.isPlaying()) return;
+			const ctx = core.getContextByName('_autoItem_');
+			if (!has(ctx)) return;
+			core.clearMap(ctx);
+		});
+	}
+
+	control.prototype.moveOneStep = function (callback) {
+		const res = this.controldata.moveOneStep(callback);
+		update();
+		return res;
+	};
+
+	control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
+		const res = this.controldata.moveDirectly(
+			destX,
+			destY,
+			ignoreSteps
+		);
+		update();
+		return res;
+	};
+
+	function update() {
+		core.auto();
+		if (main.replayChecking) return;
+		for (let i = 0; i < transitionList.length; i++) {
+			const t = transitionList[i];
+			let { x, y } = core.status.hero.loc;
+			t.value.x = x * 32 - core.bigmap.offsetX;
+			t.value.y = y * 32 - core.bigmap.offsetY;
+		}
+	}
+
+	/**
+	 * 是否清这个怪，可以修改这里来实现对不同怪的不同操作
+	 * @param {string} enemy
+	 * @param {number} x
+	 * @param {number} y
+	 */
+	function canBattle(enemy, x, y) {
+		const loc = `${x},${y}`;
+		const floor = core.floors[core.status.floorId];
+		const e = core.material.enemys[enemy];
+		const hasEvent =
+			has(floor.afterBattle[loc]) ||
+			has(floor.beforeBattle[loc]) ||
+			has(e.beforeBattle) ||
+			has(e.afterBattle) ||
+			has(floor.events[loc]);
+		// 有事件，不清
+		if (hasEvent) return false;
+		const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
+		// 0伤或负伤，清
+		if (has(damage) && damage <= 0) return true;
+		return false;
+	}
+
+	/**
+	 * 判断一个点是否能遍历
+	 */
+	function judge(block, nx, ny, tx, ty, dir, floorId) {
+		if (!has(block)) return {};
+		const cls = block.event.cls;
+		const loc = `${tx},${ty}`;
+		const floor = core.floors[floorId];
+		const changeFloor = floor.changeFloor[loc];
+		const isEnemy =
+			flags.__auto__ & core.plugin.AUTO_BATTLE &&
+			cls.startsWith('enemy');
+		const isItem =
+			flags.__auto__ & core.plugin.AUTO_ITEM && cls === 'items';
+
+		if (has(changeFloor)) {
+			if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
+				return false;
+			}
+			if (changeFloor.ignoreChangeFloor ?? core.flags.ignoreChangeFloor) {
+				return true;
+			}
+			return false
+		}
+
+		if (has(core.floors[floorId].events[loc])) return false;
+
+		if (isEnemy || isItem)
+			return {
+				isEnemy,
+				isItem
+			};
+
+		return false;
+	}
+
+	/**
+	 * 是否捡拾这个物品
+	 */
+	function canGetItem(item, loc, floorId) {
+		// 可以用于检测道具是否应该被捡起，例如如果捡起后血量超过80%则不捡起可以这么写：
+		// if (item.cls === 'items') {
+		//     let diff = {};
+		//     const before = core.status.hero;
+		//     const hero = core.clone(core.status.hero);
+		//     const handler = {
+		//         set(target, key, v) {
+		//             diff[key] = v - (target[key] || 0);
+		//             if (!diff[key]) diff[key] = void 0;
+		//             return true;
+		//         }
+		//     };
+		//     core.status.hero = new Proxy(hero, handler);
+
+		//     eval(item.itemEffect);
+
+		//     core.status.hero = before;
+		//     window.hero = before;
+		//     window.flags = before.flags;
+		//     if (
+		//         diff.hp &&
+		//         diff.hp + core.status.hero.hp > core.status.hero.hpmax * 0.8
+		//     )
+		//         return false;
+		// }
+		return true;
+	}
+
+	/**
+	 * @template T
+	 * @param {T} v
+	 * @returns {v is NonNullable<T>}
+	 */
+	function has(v) {
+		return v !== null && v !== undefined;
+	}
+
+	/**
+	 * 广搜，搜索可以到达的需要清的怪
+	 * @param {string} floorId
+	 */
+	function bfs(floorId, deep = Infinity) {
+		core.extractBlocks(floorId);
+		const objs = core.getMapBlocksObj(floorId);
+		const { x, y } = core.status.hero.loc;
+		/** @type {[direction, number, number][]} */
+		const dir = Object.entries(core.utils.scan).map(v => [
+			v[0],
+			v[1].x,
+			v[1].y
+		]);
+		const floor = core.status.maps[floorId];
+
+		/** @type {[number, number][]} */
+		const queue = [
+			[x, y]
+		];
+		const mapped = {
+			[`${x},${y}`]: true
+		};
+		while (queue.length > 0 && deep > 0) {
+			const [nx, ny] = queue.shift();
+			dir.forEach(v => {
+				const [tx, ty] = [nx + v[1], ny + v[2]];
+				if (
+					tx < 0 ||
+					ty < 0 ||
+					tx >= floor.width ||
+					ty >= floor.height
+				) {
+					return;
+				}
+				const loc = `${tx},${ty}`;
+				if (mapped[loc]) return;
+				const block = objs[loc];
+				mapped[loc] = true;
+				const type = judge(block, nx, ny, tx, ty, v[0], floorId);
+				if (type === false) return;
+				const { isEnemy, isItem } = type;
+
+				if (isEnemy) {
+					if (
+						canBattle(block.event.id, tx, ty) &&
+						!block.disable
+					) {
+						core.battle(block.event.id, tx, ty);
+						core.updateCheckBlock();
+					} else {
+						return;
+					}
+				} else if (isItem) {
+					const item = core.material.items[block.event.id];
+					if (canGetItem(item, loc, floorId)) {
+						core.getItem(item.id, 1, tx, ty);
+						if (!main.replayChecking) {
+							let px = tx * 32 - core.bigmap.offsetX;
+							let py = ty * 32 - core.bigmap.offsetY;
+							const t = new Transition();
+							t.mode(hyper('sin', 'out'))
+								.time(transitionTime)
+								.absolute()
+								.transition('x', px)
+								.transition('y', py);
+							let { x, y } = core.status.hero.loc;
+							t.value.x = x * 32 - core.bigmap.offsetX;
+							t.value.y = y * 32 - core.bigmap.offsetY;
+							transitionList.push(t);
+							t.ticker.add(() => {
+								core.drawIcon(
+									'_autoItem_',
+									item.id,
+									t.value.x,
+									t.value.y,
+									32,
+									32
+								);
+								let { x, y } = core.status.hero.loc;
+								if (
+									Math.abs(
+										t.value.x -
+										x * 32 +
+										core.bigmap.offsetX
+									) < 0.05 &&
+									Math.abs(
+										t.value.y -
+										y * 32 +
+										core.bigmap.offsetY
+									) < 0.05
+								) {
+									t.ticker.destroy();
+									const index = transitionList.findIndex(
+										v => v === t
+									);
+									transitionList.splice(index, 1);
+								}
+							});
+						}
+					} else {
+						return;
+					}
+				}
+				// 然后判断目标点是否有地图伤害等，没有就直接添加到队列
+				const damage = core.status.checkBlock.damage[loc];
+				const ambush = core.status.checkBlock.ambush[loc];
+				const repulse = core.status.checkBlock.repulse[loc];
+
+				if (
+					(has(damage) && damage > 0) ||
+					has(ambush) ||
+					has(repulse)
+				) {
+					return;
+				}
+				queue.push([tx, ty]);
+			});
+			deep--;
+		}
+	}
+
+	this.auto = function () {
+		const before = flags.__forbidSave__;
+		// 如果勇士当前点有地图伤害，只清周围，如果有时间，直接不清了
+		const { x, y } = core.status.hero.loc;
+		const floor = core.floors[core.status.floorId];
+		const loc = `${x},${y}`;
+		const hasEvent = has(floor.events[loc]);
+		if (hasEvent) return;
+		const damage = core.status.checkBlock.damage[loc];
+		const ambush = core.status.checkBlock.ambush[loc];
+		const repulse = core.status.checkBlock.repulse[loc];
+		let deep = Infinity;
+		if ((has(damage) && damage > 0) || has(ambush) || has(repulse)) {
+			deep = 1;
+		}
+		flags.__forbidSave__ = true;
+		flags.__statistics__ = true;
+		const ctx = core.getContextByName('_autoItem_');
+		if (!ctx)
+			core.createCanvas(
+				'_autoItem_',
+				0,
+				0,
+				core._PX_ ?? core.__PIXELS__,
+				core._PY_ ?? core.__PIXELS__,
+				75
+			);
+		bfs(core.status.floorId, deep);
+		flags.__statistics__ = false;
+		flags.__forbidSave__ = before;
+		core.updateStatusBar();
+	};
+
+	control.prototype._replayAction_moveDirectly = function (action) {
+		if (action.indexOf("move:") != 0) return false;
+		// 忽略连续的瞬移事件；如果大地图某一边超过计算范围则不合并
+		// if (!core.hasFlag('poison') && core.status.thisMap.width < 2 * core.bigmap.extend + core.__SIZE__
+		//     && core.status.thisMap.height < 2 * core.bigmap.extend + core.__SIZE__) {
+		//     while (core.status.replay.toReplay.length>0 &&
+		//         core.status.replay.toReplay[0].indexOf('move:')==0) {
+		//             core.status.route.push(action);
+		//             action = core.status.replay.toReplay.shift();
+		//     }
+		// }
+
+		var pos = action.substring(5).split(":");
+		var x = parseInt(pos[0]),
+			y = parseInt(pos[1]);
+		var nowx = core.getHeroLoc('x'),
+			nowy = core.getHeroLoc('y');
+		var ignoreSteps = core.canMoveDirectly(x, y);
+		if (!core.moveDirectly(x, y, ignoreSteps)) return false;
+		if (core.status.replay.speed == 24) {
+			core.replay();
+			return true;
+		}
+
+		core.ui.drawArrow('ui', 32 * nowx + 16 - core.bigmap.offsetX, 32 * nowy + 16 - core.bigmap.offsetY,
+			32 * x + 16 - core.bigmap.offsetX, 32 * y + 16 - core.bigmap.offsetY, '#FF0000', 3);
+		var timeout = this.__replay_getTimeout();
+		if (ignoreSteps < 10) timeout = timeout * ignoreSteps / 10;
+		setTimeout(function () {
+			core.clearMap('ui');
+			core.replay();
+		}, timeout);
+		return true;
+	}
+},
     "newBackPackLook": function () {
 		// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
 		// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
