@@ -1,7 +1,6 @@
-/// <reference path="../runtime.d.ts" />
-var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
+var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = 
 {
-	"init": function () {
+    "init": function () {
 
 		console.log("插件编写测试");
 
@@ -19,68 +18,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为 core.plugin.xxx();
 		// 从V2.6开始，插件中用this.XXX方式定义的函数也会被转发到core中，详见文档-脚本-函数的转发。
 	},
-	"drawLight": function () {
-
-		// 绘制灯光/漆黑层效果。调用方式 core.plugin.drawLight(...)
-		// 【参数说明】
-		// name：必填，要绘制到的画布名；可以是一个系统画布，或者是个自定义画布；如果不存在则创建
-		// color：可选，只能是一个0~1之间的数，为不透明度的值。不填则默认为0.9。
-		// lights：可选，一个数组，定义了每个独立的灯光。
-		//        其中每一项是三元组 [x,y,r] x和y分别为该灯光的横纵坐标，r为该灯光的半径。
-		// lightDec：可选，0到1之间，光从多少百分比才开始衰减（在此范围内保持全亮），不设置默认为0。
-		//        比如lightDec为0.5代表，每个灯光部分内圈50%的范围全亮，50%以后才开始快速衰减。
-		// 【调用样例】
-		// core.plugin.drawLight('curtain'); // 在curtain层绘制全图不透明度0.9，等价于更改画面色调为[0,0,0,0.9]。
-		// core.plugin.drawLight('ui', 0.95, [[25,11,46]]); // 在ui层绘制全图不透明度0.95，其中在(25,11)点存在一个半径为46的灯光效果。
-		// core.plugin.drawLight('test', 0.2, [[25,11,46,0.1]]); // 创建一个test图层，不透明度0.2，其中在(25,11)点存在一个半径为46的灯光效果，灯光中心不透明度0.1。
-		// core.plugin.drawLight('test2', 0.9, [[25,11,46],[105,121,88],[301,221,106]]); // 创建test2图层，且存在三个灯光效果，分别是中心(25,11)半径46，中心(105,121)半径88，中心(301,221)半径106。
-		// core.plugin.drawLight('xxx', 0.3, [[25,11,46],[105,121,88,0.2]], 0.4); // 存在两个灯光效果，它们在内圈40%范围内保持全亮，40%后才开始衰减。
-		this.drawLight = function (name, color, lights, lightDec) {
-
-			// 清空色调层；也可以修改成其它层比如animate/weather层，或者用自己创建的canvas
-			var ctx = core.getContextByName(name);
-			if (ctx == null) {
-				if (typeof name == 'string')
-					ctx = core.createCanvas(name, 0, 0, core.__PIXELS__, core.__PIXELS__, 98);
-				else return;
-			}
-
-			ctx.mozImageSmoothingEnabled = false;
-			ctx.webkitImageSmoothingEnabled = false;
-			ctx.msImageSmoothingEnabled = false;
-			ctx.imageSmoothingEnabled = false;
-
-			core.clearMap(name);
-			// 绘制色调层，默认不透明度
-			if (color == null) color = 0.9;
-			ctx.fillStyle = "rgba(0,0,0," + color + ")";
-			ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-			lightDec = core.clamp(lightDec, 0, 1);
-
-			// 绘制每个灯光效果
-			ctx.globalCompositeOperation = 'destination-out';
-			lights.forEach(function (light) {
-				// 坐标，半径，中心不透明度
-				var x = light[0],
-					y = light[1],
-					r = light[2];
-				// 计算衰减距离
-				var decDistance = parseInt(r * lightDec);
-				// 正方形区域的直径和左上角坐标
-				var grd = ctx.createRadialGradient(x, y, decDistance, x, y, r);
-				grd.addColorStop(0, "rgba(0,0,0,1)");
-				grd.addColorStop(1, "rgba(0,0,0,0)");
-				ctx.beginPath();
-				ctx.fillStyle = grd;
-				ctx.arc(x, y, r, 0, 2 * Math.PI);
-				ctx.fill();
-			});
-			ctx.globalCompositeOperation = 'source-over';
-			// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为  core.plugin.xxx();
-		}
-	},
-	"shop": function () {
+    "shop": function () {
 		// 【全局商店】相关的功能
 		// 
 		// 打开一个全局商店
@@ -275,7 +213,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}, 60);
 	},
-	"removeMap": function () {
+    "removeMap": function () {
 		// 高层塔砍层插件，删除后不会存入存档，不可浏览地图也不可飞到。
 		// 推荐用法：
 		// 对于超高层或分区域塔，当在1区时将2区以后的地图删除；1区结束时恢复2区，进二区时删除1区地图，以此类推
@@ -362,7 +300,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 	},
-	"fiveLayers": function () {
+    "fiveLayers": function () {
 		// 是否启用五图层（增加背景2层和前景2层） 将__enable置为true即会启用；启用后请保存后刷新编辑器
 		// 背景层2将会覆盖背景层 被事件层覆盖 前景层2将会覆盖前景层
 		// 另外 请注意加入两个新图层 会让大地图的性能降低一些
@@ -516,7 +454,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 		}
 	},
-	"itemShop": function () {
+    "itemShop": function () {
 		// 道具商店相关的插件
 		// 可在全塔属性-全局商店中使用「道具商店」事件块进行编辑（如果找不到可以在入口方块中找）
 
@@ -822,7 +760,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-	"enemyLevel": function () {
+    "enemyLevel": function () {
 		// 此插件将提供怪物手册中的怪物境界显示
 		// 使用此插件需要先给每个怪物定义境界，方法如下：
 		// 点击怪物的【配置表格】，找到“【怪物】相关的表格配置”，然后在【名称】仿照增加境界定义：
@@ -910,39 +848,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 
 	},
-	"dynamicHp": function () {
-		// 此插件允许人物血量动态进行变化
-		// 原作：Fux2（老黄鸡）
-
-		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
-		var __enable = false;
-		if (!__enable) return;
-
-		var speed = 0.05; // 动态血量变化速度，越大越快。
-
-		var _currentHp = null;
-		var _lastStatus = null;
-		var _check = function () {
-			if (_lastStatus != core.status.hero) {
-				_lastStatus = core.status.hero;
-				_currentHp = core.status.hero.hp;
-			}
-		}
-
-		core.registerAnimationFrame('dynamicHp', true, function () {
-			_check();
-			if (core.status.hero.hp != _currentHp) {
-				var dis = (_currentHp - core.status.hero.hp) * speed;
-				if (Math.abs(dis) < 2) {
-					_currentHp = core.status.hero.hp;
-				} else {
-					_currentHp -= dis;
-				}
-				core.setStatusBarInnerHTML('hp', _currentHp);
-			}
-		});
-	},
-	"multiHeros": function () {
+    "multiHeros": function () {
 		// 多角色插件
 		// Step 1: 启用本插件
 		// Step 2: 定义每个新的角色各项初始数据（参见下方注释）
@@ -1088,145 +994,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag("heroId", toHeroId); // 保存切换到的角色ID
 		}
 	},
-	"itemCategory": function () {
-		// 物品分类插件。此插件允许你对消耗道具和永久道具进行分类，比如标记「宝物类」「剧情道具」「药品」等等。
-		// 使用方法：
-		// 1. 启用本插件
-		// 2. 在下方数组中定义全部的物品分类类型
-		// 3. 点击道具的【配置表格】，找到“【道具】相关的表格配置”，然后在【道具描述】之后仿照增加道具的分类：
-		/*
-		 "category": {
-			  "_leaf": true,
-			  "_type": "textarea",
-			  "_string": true,
-			  "_data": "道具分类"
-		 },
-		 */
-		// （你也可以选择使用下拉框的方式定义每个道具的分类，写法参见上面的cls）
-		// 然后刷新编辑器，就可以对每个物品进行分类了
-
-		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
-		var __enable = false;
-		if (!__enable) return;
-
-		// 在这里定义所有的道具分类类型，一行一个
-		var categories = [
-			"宝物类",
-			"辅助类",
-			"技能类",
-			"剧情道具",
-			"增益道具",
-		];
-		// 当前选中的道具类别
-		var currentCategory = null;
-
-		// 重写 core.ui._drawToolbox 以绘制分类类别
-		var _drawToolbox = core.ui._drawToolbox;
-		core.ui._drawToolbox = function (index) {
-			_drawToolbox.call(this, index);
-			core.setTextAlign('ui', 'left');
-			core.fillText('ui', '类别[E]：' + (currentCategory || "全部"), 15, this.PIXEL - 13);
-		}
-
-		// 获得所有应该在道具栏显示的某个类型道具
-		core.ui.getToolboxItems = function (cls) {
-			// 检查类别
-			return Object.keys(core.status.hero.items[cls])
-				.filter(function (id) {
-					return !core.material.items[id].hideInToolbox &&
-						(currentCategory == null || core.material.items[id].category == currentCategory);
-				}).sort();
-		}
-
-		// 注入道具栏的点击事件（点击类别）
-		var _clickToolbox = core.actions._clickToolbox;
-		core.actions._clickToolbox = function (x, y) {
-			if (x >= 0 && x <= this.HSIZE - 4 && y == this.LAST) {
-				drawToolboxCategory();
-				return;
-			}
-			return _clickToolbox.call(core.actions, x, y);
-		}
-
-		// 注入道具栏的按键事件（E键）
-		var _keyUpToolbox = core.actions._keyUpToolbox;
-		core.actions._keyUpToolbox = function (keyCode) {
-			if (keyCode == 69) {
-				// 按E键则打开分类类别选择
-				drawToolboxCategory();
-				return;
-			}
-			return _keyUpToolbox.call(core.actions, keyCode);
-		}
-
-		// ------ 以下为选择道具分类的相关代码 ------ //
-
-		// 关闭窗口时清除分类选择项
-		var _closePanel = core.ui.closePanel;
-		core.ui.closePanel = function () {
-			currentCategory = null;
-			_closePanel.call(core.ui);
-		}
-
-		// 弹出菜单以选择具体哪个分类
-		// 直接使用 core.drawChoices 进行绘制
-		var drawToolboxCategory = function () {
-			if (core.status.event.id != 'toolbox') return;
-			var selection = categories.indexOf(currentCategory) + 1;
-			core.ui.closePanel();
-			core.status.event.id = 'toolbox-category';
-			core.status.event.selection = selection;
-			core.lockControl();
-			// 给第一项插入「全部」
-			core.drawChoices('请选择道具类别', ["全部"].concat(categories));
-		}
-
-		// 选择某一项
-		var _selectCategory = function (index) {
-			core.ui.closePanel();
-			if (index <= 0 || index > categories.length) currentCategory = null;
-			else currentCategory = categories[index - 1];
-			core.openToolbox();
-		}
-
-		var _clickToolBoxCategory = function (x, y) {
-			if (!core.status.lockControl || core.status.event.id != 'toolbox-category') return false;
-
-			if (x < core.actions.CHOICES_LEFT || x > core.actions.CHOICES_RIGHT) return false;
-			var choices = core.status.event.ui.choices;
-			var topIndex = core.actions._getChoicesTopIndex(choices.length);
-			if (y >= topIndex && y < topIndex + choices.length) {
-				_selectCategory(y - topIndex);
-			}
-			return true;
-		}
-
-		// 注入点击事件
-		core.registerAction('onclick', 'toolbox-category', _clickToolBoxCategory, 100);
-
-		// 注入光标跟随事件
-		core.registerAction('onmove', 'toolbox-category', function (x, y) {
-			if (!core.status.lockControl || core.status.event.id != 'toolbox-category') return false;
-			core.actions._onMoveChoices(x, y);
-			return true;
-		}, 100);
-
-		// 注入键盘光标事件
-		core.registerAction('keyDown', 'toolbox-category', function (keyCode) {
-			if (!core.status.lockControl || core.status.event.id != 'toolbox-category') return false;
-			core.actions._keyDownChoices(keyCode);
-			return true;
-		}, 100);
-
-		// 注入键盘按键事件
-		core.registerAction('keyUp', 'toolbox-category', function (keyCode) {
-			if (!core.status.lockControl || core.status.event.id != 'toolbox-category') return false;
-			core.actions._selectChoices(core.status.event.ui.choices.length, keyCode, _clickToolBoxCategory);
-			return true;
-		}, 100);
-
-	},
-	"heroFourFrames": function () {
+    "heroFourFrames": function () {
 		// 样板的勇士/跟随者移动时只使用2、4两帧，观感较差。本插件可以将四帧全用上。
 
 		// 是否启用本插件
@@ -1279,7 +1047,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}
 	},
-	"startCanvas": function () {
+    "startCanvas": function () {
 		// 使用本插件可以将自绘的标题界面居中。仅在【标题开启事件化】后才有效。
 		// 由于一些技术性的原因，标题界面事件化无法应用到覆盖状态栏的整个界面。
 		// 这是一个较为妥协的插件，会在自绘标题界面时隐藏状态栏、工具栏和边框，并将画布进行居中。
@@ -1364,5 +1132,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.plugin._resetTitleCanvas();
 			_loadData.call(core.control, data, callback);
 		}
-	}
+	},
+    "advancedAnimation": function () {
+	// 在此增加新插件
+
+},
+    "drawItemDetail": function () {
+	// 在此增加新插件
+
+},
+    "autoGet": function () {
+	// 在此增加新插件
+
+}
 }
