@@ -881,7 +881,8 @@ maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y) {
     if (core.status.checkBlock.repulse[index]) return false;
     // 是否存在捕捉
     if (core.status.checkBlock.ambush[index]) return false;
-
+    // 是否在追猎的视野中
+    if (core.status.checkBlock.chase[index]) return false;
     return true;
 }
 
