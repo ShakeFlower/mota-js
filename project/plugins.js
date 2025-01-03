@@ -1139,6 +1139,29 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	// github仓库：https://github.com/unanmed/animate
 	// npm包名：mutate-animate
 	// npm地址：https://www.npmjs.com/package/mutate-animate
+
+	// 保存所有Ticker的引用
+	const tickersMap = new Map();
+
+	/** 摧毁指定名字的ticker */
+	this.deleteTicker = function (name) {
+		const ticker = tickersMap.get(name);
+		if (!ticker) return;
+		ticker.destroy();
+		tickersMap.delete(name);
+	}
+
+	/** 摧毁所有有名字的ticker */
+	this.deleteAllTickers = function () {
+		tickersMap.forEach((ticker) => {
+			if (!ticker) return;
+			ticker.destroy();
+		})
+		tickersMap.clear();
+	}
+
+	this.getAllTickers = () => tickersMap;
+
 	var M = Object.defineProperty;
 	var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
 	var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
@@ -1179,16 +1202,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 	}
 	class F {
-		constructor() {
+		constructor(name) {
 			o(this, "timing");
 			o(this, "relation", "absolute");
 			o(this, "easeTime", 0);
 			o(this, "applying", {});
 			o(this, "getTime", Date.now);
-			o(this, "ticker", new I());
+			const ticker = new I();
+			o(this, "ticker", ticker);
 			o(this, "value", {});
 			o(this, "listener", {});
 			this.timing = (i) => i;
+			if (typeof name === 'string') tickersMap.set(name, ticker);
 		}
 		async all() {
 			if (Object.values(this.applying).every((i) => i === !0))
