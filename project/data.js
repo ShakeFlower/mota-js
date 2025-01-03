@@ -138,7 +138,9 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"exp": 0,
 			"equipment": [],
 			"items": {
-				"constants": {},
+				"constants": {
+					"book": 1
+				},
 				"tools": {},
 				"equips": {}
 			},
@@ -688,7 +690,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"animateSpeed": 300,
 		"moveSpeed": 100,
 		"statusCanvasRowsOnMobile": 3,
-		"floorChangeTime": 500
+		"floorChangeTime": 200
 	},
 	"flags": {
 		"statusBarItems": [
