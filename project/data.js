@@ -1,10 +1,7 @@
-var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
+var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d = 
 {
 	"main": {
 		"floorIds": [
-			"sample0",
-			"sample1",
-			"sample2",
 			"MT0"
 		],
 		"floorPartitions": [],
@@ -76,49 +73,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"商店": "shop.mp3",
 			"领域": "zone"
 		},
-		"levelChoose": [
-			{
-				"title": "简单",
-				"name": "Easy",
-				"hard": 1,
-				"color": [
-					64,
-					255,
-					85,
-					1
-				],
-				"action": [
-					{
-						"type": "comment",
-						"text": "在这里写该难度需执行的事件"
-					}
-				]
-			},
-			{
-				"title": "普通",
-				"name": "Normal",
-				"hard": 2,
-				"color": [
-					255,
-					221,
-					32,
-					1
-				],
-				"action": []
-			},
-			{
-				"title": "困难",
-				"name": "Hard",
-				"hard": 3,
-				"color": [
-					255,
-					68,
-					64,
-					1
-				],
-				"action": []
-			}
-		],
+		"levelChoose": null,
 		"equipName": [
 			"武器",
 			"盾牌"
@@ -166,7 +121,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"title": "魔塔样板",
 		"name": "template",
 		"version": "Ver 2.8.2",
-		"floorId": "sample0",
+		"floorId": "MT0",
 		"hero": {
 			"image": "hero.png",
 			"animate": false,
@@ -190,7 +145,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"loc": {
 				"direction": "up",
 				"x": 6,
-				"y": 10
+				"y": 6
 			},
 			"flags": {},
 			"followers": [],
@@ -552,9 +507,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			{
 				"type": "comment",
 				"text": "初始剧情"
-			},
-			"Hi，欢迎来到 HTML5 魔塔样板！\n\n本样板由艾之葵制作，可以让你在不会写任何代码\n的情况下也能做出属于自己的H5魔塔！",
-			"这里游戏开始时的剧情。\n\n你可以在这里写上自己的内容。\n赶快来试一试吧！"
+			}
 		],
 		"shops": [
 			{
