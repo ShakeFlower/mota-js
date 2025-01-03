@@ -820,6 +820,14 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				return;
 			}
 
+			function tryUseItem(item) {
+				if (core.hasItem(item)) core.useItem(item);
+				else {
+					core.playSound('error.mp3');
+					core.drawTip('当前未持有对应道具！');
+				}
+			}
+
 			// 根据keyCode值来执行对应操作
 			switch (keyCode) {
 				case 27: // ESC：打开菜单栏
@@ -887,20 +895,18 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					core.actions._clickGameInfo_openComments();
 					break;
 				case 49: // 快捷键1: 破
-					if (core.hasItem('pickaxe')) {
-						core.status.route.push("key:49"); // 将按键记在录像中
-						core.useItem('pickaxe', true); // 第二个参数true代表该次使用道具是被按键触发的，使用过程不计入录像
-					}
+					tryUseItem('pickaxe');
 					break;
 				case 50: // 快捷键2: 炸
-					if (core.hasItem('bomb')) {
-						core.status.route.push("key:50"); // 将按键记在录像中
-						core.useItem('bomb', true); // 第二个参数true代表该次使用道具是被按键触发的，使用过程不计入录像
-					}
+					tryUseItem('bomb');
 					break;
 				case 51: // 快捷键3: 飞
 					if (core.hasItem('centerFly')) {
 						core.ui._drawCenterFly();
+					}
+					else {
+						core.playSound('error.mp3');
+						core.drawTip('当前未持有对应道具！');
 					}
 					break;
 				case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
@@ -908,11 +914,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 						var list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
 						for (var i = 0; i < list.length; i++) {
 							var itemId = list[i];
-							if (core.canUseItem(itemId)) {
-								core.status.route.push("key:52");
-								core.useItem(itemId, true);
-								break;
-							}
+							tryUseItem(itemId);
 						}
 					}
 					break;
@@ -929,12 +931,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				case 119: // F8：由于F7与部分浏览器有冲突，故新增F8
 					core.debug();
 					break;
-				case 70: // F：开启技能“二倍斩”
-					// 检测是否拥有“二倍斩”这个技能道具
-					if (core.hasItem('skill1')) {
-						core.status.route.push("key:70");
-						core.useItem('skill1', true);
-					}
+				case 70: // F
 					break;
 				// 在这里可以任意新增或编辑已有的快捷键内容
 				/*
