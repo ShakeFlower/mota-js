@@ -2714,8 +2714,10 @@ interface utils {
      * @param formData 如果是POST请求则为表单数据
      * @param success 成功后的回调
      * @param error 失败后的回调
+     * @param timeout 超时时间
      */
-    http(type: 'GET' | 'POST', url: string, formData: FormData, success: () => void, error: () => void): void
+    http(type: 'GET' | 'POST', url: string, formData: FormData, success: () => void, error: () => void,
+        mimeType: string, responseType: XMLHttpRequestResponseType, onprogress: boolean, timeout: number): void
 
     /** 获得浏览器唯一的guid */
     getGuid(): string

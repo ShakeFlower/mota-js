@@ -3193,6 +3193,38 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.registerReplayAction("equip", core.control._replayAction_equip);
 		core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
 	},
+	"FloatingText": function () {
+		// 本插件定义了一些字符绘制相关效果
+
+		const { Animation, linear } = core.plugin.animate;
+		const ctx = 'scrollingText';
+
+		new Animation().ticker.add(() => {
+			core.createCanvas(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 200); //每帧重绘该画布
+		});
+
+		/**
+		 * 绘制弹幕 
+		 * @example  
+		 * core.plugin.drawCommentStr('OK', 450, 200, 0.1);
+		 * @param {string} content 弹幕的内容
+		 * @param {number} x 弹幕的初始x坐标
+		 * @param {number} y 弹幕的初始y坐标
+		 * @param {number} vx 弹幕的横向滚动速度
+		 */
+		this.drawCommentStr = function (content, x, y, vx) {
+			if (core.isReplaying()) return;
+			const ani = new Animation();
+			ani.ticker.add(() => {
+				core.fillText(ctx, content, x + ani.x, y, 'white', '16px Verdana');
+			})
+			ani.mode(linear())
+				.time(600 / vx)
+				.absolute()
+				.move(-600, 0)
+			ani.all().then(() => { ani.ticker.destroy(); });
+		}
+	},
     "MenuBase": function () {
 		// 本插件定义了一些用于绘制的基类
 		class ButtonBase {
@@ -3289,57 +3321,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 	/** 塔的英文名 */
 	const towerName = core.firstData.name;
-	let W, H, WIDTH, HEIGHT;
-	if (core._WIDTH_ && core._HEIGHT_) {
-		[W, H] = [core._WIDTH_, core._HEIGHT_];
-	} else if (core.__SIZE__) {
-		[W, H] = [core.__SIZE__, core.__SIZE__];
-	} else {
-		[W, H] = [13, 13];
-	}
-	if (core._PX_ && core._PY_) {
-		[WIDTH, HEIGHT] = [core._PX_, core._PY_];
-	} else if (core.__SIZE__) {
-		[WIDTH, HEIGHT] = [core.__PIXELS__, core.__PIXELS__];
-	} else {
-		[WIDTH, HEIGHT] = [416, 416];
-	}
 
+	let [W, H] = [core.__SIZE__, core.__SIZE__];
+	let [WIDTH, HEIGHT] = [core.__PIXELS__, core.__PIXELS__];
 
-	utils.prototype.http = function (type, url, formData, success, error, mimeType, responseType, onprogress, timeout) {
-		let xhr = new XMLHttpRequest();
-		xhr.open(type, url, true);
-
-		xhr.timeout = timeout;
-		if (mimeType) xhr.overrideMimeType(mimeType);
-		if (responseType) xhr.responseType = responseType;
-		xhr.onload = function (e) {
-			if (xhr.status == 200) {
-				if (success) success(xhr.response);
-			} else {
-				if (error) error("HTTP " + xhr.status);
-			}
-		};
-		xhr.onprogress = function (e) {
-			if (e.lengthComputable) {
-				if (onprogress) onprogress(e.loaded, e.total);
-			}
-		}
-		xhr.onabort = function () {
-			if (error) error("Abort");
-		}
-		xhr.ontimeout = function () {
-			if (error) error("Timeout");
-		}
-		xhr.onerror = function () {
-			if (error) error("Error on Connection");
-		}
-		if (formData)
-			xhr.send(formData);
-		else xhr.send();
-	}
-
+	//#region 弹幕的收发
 	this.getComment = function () {
+		if (core.isReplaying()) return;
 		let form = new FormData();
 		form.append('type', 1);
 		form.append('towername', towerName);
@@ -3348,56 +3336,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			'https://h5mota.com/backend/tower/barrage.php',
 			form,
 			function (res) {
-				res = JSON.parse(res);
-				console.log(res);
-				core.drawTip('接收成功！')
-				core.playSound('item.mp3');
-				let commentCollection = {};
-				const commentList = res?.list;
-				for (let i = 0, l = commentList.length; i <= l - 1; i++) {
-					if (commentList[i]?.comment?.length === 0 || commentList[i]?.comment.match(/^[ ]*$/)) continue;
-					const commentTags = commentList[i].tags;
-					const cFloorId = commentTags.split(',')[0],
-						cX = parseInt(commentTags.split(',')[1]),
-						cY = parseInt(commentTags.split(',')[2]);
-					if (0 <= cX && cX <= W - 1 && 0 <= cY &&
-						cY <= H - 1 && core.floorIds.includes(cFloorId)) {
-						if (!commentCollection.hasOwnProperty(cFloorId)) { commentCollection[cFloorId] = {}; }
-						const str = cX + ',' + cY;
-						if (!commentCollection[cFloorId].hasOwnProperty(str)) { commentCollection[cFloorId][str] = []; }
-						commentCollection[cFloorId][str].push(commentList[i]?.comment);
-					}
-				}
-				core.setFlag('commentCollection', commentCollection);
-			},
-			function (err) {
-				err = JSON.parse(err);
-				console.error(err);
-				core.drawTip('接收失败' + err?.message);
-				core.playSound('error.mp3');
-			},
-			null, null, null, 1000
-		);
-	}
-
-	this.postComment = function (comment, tags) {
-		let form = new FormData();
-		form.append('type', 2);
-		form.append('towername', towerName);
-		form.append('comment', comment);
-		form.append('tags', tags);
-		utils.prototype.http(
-			'POST',
-			'https://h5mota.com/backend/tower/barrage.php',
-			form,
-			function (res) {
-				res = JSON.parse(res);
-				console.log(res);
-				if (res?.code === 0) {
-					core.drawTip('提交成功！')
+				try {
+					res = JSON.parse(res);
+					console.log(res);
+					core.drawTip('接收成功！')
 					core.playSound('item.mp3');
-				} else {
-					core.drawTip('提交失败！' + res?.message);
+					let commentCollection = {};
+					const commentList = res?.list;
+					const isEmpty = /^\s*$/;
+					for (let i = 0, l = commentList.length; i <= l - 1; i++) {
+						if (isEmpty.test(commentList[i]?.comment)) continue;
+						const commentTagsList = commentList[i].tags.split(',');
+						const [cFloorId, cX, cY] = commentTagsList;
+						if (0 <= cX && cX <= W - 1 && 0 <= cY && cY <= H - 1 && core.floorIds.includes(cFloorId)) {
+							if (!commentCollection.hasOwnProperty(cFloorId)) { commentCollection[cFloorId] = {}; }
+							const str = cX + ',' + cY;
+							if (!commentCollection[cFloorId].hasOwnProperty(str)) { commentCollection[cFloorId][str] = []; }
+							commentCollection[cFloorId][str].push(commentList[i]?.comment);
+						}
+					}
+					core.setFlag('commentCollection', commentCollection);
+				} catch (err) {
+					core.drawTip('接收消息失败！' + err.message);
 					core.playSound('error.mp3');
 				}
 			},
@@ -3411,6 +3371,51 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		);
 	}
 
+	this.postComment = function (comment, tags) {
+		if (core.isReplaying()) return;
+		const isEmpty = /^\s*$/;
+		if (isEmpty.test(comment)){
+			core.drawTip('您输入的消息为空，请重发！');
+			core.playSound('error.mp3');
+			return;
+		}
+		let form = new FormData();
+		form.append('type', 2);
+		form.append('towername', towerName);
+		form.append('comment', comment);
+		form.append('tags', tags);
+		utils.prototype.http(
+			'POST',
+			'https://h5mota.com/backend/tower/barrage.php',
+			form,
+			function (res) {
+				try {
+					res = JSON.parse(res);
+					console.log(res);
+					if (res?.code === 0) {
+						core.drawTip('提交成功！')
+						core.playSound('item.mp3');
+					} else {
+						core.drawTip('提交失败！' + res?.message);
+						core.playSound('error.mp3');
+					}
+				}
+				catch (err) {
+					core.drawTip('接收消息失败！' + err.message);
+					core.playSound('error.mp3');
+				}
+			},
+			function (err) {
+				err = JSON.parse(err);
+				console.error(err);
+				core.drawTip('接收失败' + err?.message);
+				core.playSound('error.mp3');
+			},
+			null, null, null, 1000
+		);
+	}
+	//#endregion
+
 	this.drawCommentSign = function () {
 		if (!core.getFlag('comment') || core.isReplaying()) return;
 		let commentCollection = core.getFlag('commentCollection', {}),
@@ -3419,15 +3424,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.setOpacity('sign', 0.6);
 		if (commentCollection.hasOwnProperty(floorId)) {
 			for (let pos in commentCollection[floorId]) {
-				if (commentCollection[floorId][pos].length > 0) {
-					for (let i = 0, l = commentCollection[floorId][pos].length; i <= l - 1; i++) {
-						if (!(commentCollection[floorId][pos][i].match(/^[ ]*$/))) {
-							const x = pos.split(',')[0],
-								y = pos.split(',')[1];
-							core.drawImage('sign', 'sign.png', 32 * x, 32 * y);
-							break;
-						}
-					}
+				const l = commentCollection[floorId][pos].length;
+				for (let i = 0; i <= l - 1; i++) {
+					const [x, y] = pos.split(',');
+					core.drawImage('sign', 'sign.png', 32 * x, 32 * y);
+					break;
 				}
 			}
 		}
@@ -3437,11 +3438,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.deleteCanvas('sign');
 	}
 
-	const showNum = 5;
-
-	function pickComment(commentArr, showNum = 5) {
+	/** 返回从commentArr中挑选showNum个comment组成的数组*/
+	function pickComment(commentArr, showNum) {
 		let showList = [];
-		if (commentArr.length <= showNum) { showList = commentArr; } else {
+		if (commentArr.length <= showNum) {
+			showList = commentArr;
+		} else {
 			for (let i = 0; i <= showNum - 1; i++) {
 				const l = commentArr.length,
 					n = core.plugin.dice(l - 1);
@@ -3452,6 +3454,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		return showList;
 	}
 
+	/** 生成count个随机数，范围从min到max，作为弹幕的y坐标*/
 	function generateCommentYList(min, max, count) {
 		let yList = Array(count).fill(0);
 		const distance = (max - min) / (count + 1);
@@ -3473,6 +3476,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		return result.slice(len - count);
 	}
+
+	/** 默认一次显示的弹幕数 */
+	const showNum = 5;
 
 	function drawComment(commentArr) {
 		const l = commentArr.length;
