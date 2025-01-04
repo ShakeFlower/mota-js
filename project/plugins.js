@@ -1140,6 +1140,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	// npm包名：mutate-animate
 	// npm地址：https://www.npmjs.com/package/mutate-animate
 
+	if (main.replayChecking) return core.plugin.animate = {}
+
 	// 保存所有Ticker的引用
 	const tickersMap = new Map();
 
@@ -1886,11 +1888,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		});
 	}
 
-	control.prototype.moveOneStep = function (callback) {
-		const res = this.controldata.moveOneStep(callback);
-		update();
-		return res;
-	};
+	// 每走一步后自动拾取的判定要放在阻击结算之后
 
 	control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
 		const res = this.controldata.moveDirectly(
@@ -1904,13 +1902,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 	function update() {
 		core.auto();
-		if (main.replayChecking) return;
+		if (core.isReplaying()) return;
 		for (let i = 0; i < transitionList.length; i++) {
 			const t = transitionList[i];
 			let { x, y } = core.status.hero.loc;
 			t.value.x = x * 32 - core.bigmap.offsetX;
 			t.value.y = y * 32 - core.bigmap.offsetY;
 		}
+	}
+
+	function willLvUp(exp){
+		const nextExp = core.getNextLvUpNeed();
+		if (typeof exp === 'number' && typeof nextExp === 'number' && exp >= nextExp) return true;
+		return false;
 	}
 
 	/**
@@ -1928,7 +1932,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			has(floor.beforeBattle[loc]) ||
 			has(e.beforeBattle) ||
 			has(e.afterBattle) ||
-			has(floor.events[loc]);
+			has(floor.events[loc] ||
+			willLvUp(e.exp) // 防止有升级后事件
+			);
 		// 有事件，不清
 		if (hasEvent) return false;
 		const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
@@ -2168,41 +2174,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		flags.__forbidSave__ = before;
 		core.updateStatusBar();
 	};
-
-	control.prototype._replayAction_moveDirectly = function (action) {
-		if (action.indexOf("move:") != 0) return false;
-		// 忽略连续的瞬移事件；如果大地图某一边超过计算范围则不合并
-		// if (!core.hasFlag('poison') && core.status.thisMap.width < 2 * core.bigmap.extend + core.__SIZE__
-		//     && core.status.thisMap.height < 2 * core.bigmap.extend + core.__SIZE__) {
-		//     while (core.status.replay.toReplay.length>0 &&
-		//         core.status.replay.toReplay[0].indexOf('move:')==0) {
-		//             core.status.route.push(action);
-		//             action = core.status.replay.toReplay.shift();
-		//     }
-		// }
-
-		var pos = action.substring(5).split(":");
-		var x = parseInt(pos[0]),
-			y = parseInt(pos[1]);
-		var nowx = core.getHeroLoc('x'),
-			nowy = core.getHeroLoc('y');
-		var ignoreSteps = core.canMoveDirectly(x, y);
-		if (!core.moveDirectly(x, y, ignoreSteps)) return false;
-		if (core.status.replay.speed == 24) {
-			core.replay();
-			return true;
-		}
-
-		core.ui.drawArrow('ui', 32 * nowx + 16 - core.bigmap.offsetX, 32 * nowy + 16 - core.bigmap.offsetY,
-			32 * x + 16 - core.bigmap.offsetX, 32 * y + 16 - core.bigmap.offsetY, '#FF0000', 3);
-		var timeout = this.__replay_getTimeout();
-		if (ignoreSteps < 10) timeout = timeout * ignoreSteps / 10;
-		setTimeout(function () {
-			core.clearMap('ui');
-			core.replay();
-		}, timeout);
-		return true;
-	}
 },
     "newBackpackLook": function () {
 		// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
@@ -3199,9 +3170,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const { Animation, linear } = core.plugin.animate;
 		const ctx = 'scrollingText';
 
-		new Animation().ticker.add(() => {
-			core.createCanvas(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 200); //每帧重绘该画布
-		});
+		if (!main.replayChecking) {
+			new Animation().ticker.add(() => {
+				core.createCanvas(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 200); //每帧重绘该画布
+			});
+		}
 
 		/**
 		 * 绘制弹幕 
