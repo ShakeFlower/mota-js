@@ -1167,13 +1167,14 @@ control.prototype.checkBlock = function () {
     const repulseAction =this._checkBlock_repulse(core.status.checkBlock.repulse[loc]);
     if (repulseAction.length > 0) core.push(actions, repulseAction);
 
+    // 追猎需要等待阻击完成，避免发生碰撞导致怪物消失
     const chaseAction = this._checkBlock_chase(core.status.checkBlock.chase[loc]); 
-    if (chaseAction.length > 0) core.push(actions, chaseAction);
-
-    if (repulseAction.length > 0 || chaseAction.length > 0) core.push(actions, { "type": "waitAsync" });
-    if (chaseAction.length > 0)  core.push(actions, 
-        { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" }
-    );
+    if (chaseAction.length > 0) {
+        core.push(actions, chaseAction);
+        core.push(actions,
+            { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" }
+        );
+    }
     if (actions.length > 0) core.insertAction(actions);
 }
 
@@ -1193,6 +1194,7 @@ control.prototype._checkBlock_repulse = function (repulse) {
     repulse.forEach(function (t) {
         actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": true, "async": true });
     });
+    if (actions.length>0) actions.push({ "type": "waitAsync" });
     return actions;
 }
 
@@ -1204,7 +1206,7 @@ control.prototype._checkBlock_ambush = function (ambush) {
     ambush.forEach(function (t) {
         actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": false, "async": true });
     });
-    actions.push({ "type": "waitAsync" });
+    if (actions.length>0) actions.push({ "type": "waitAsync" });
     // 强制战斗
     ambush.forEach(function (t) {
         actions.push({
@@ -1220,10 +1222,33 @@ control.prototype._checkBlock_ambush = function (ambush) {
 control.prototype._checkBlock_chase = function (chase) {
     if (!chase || chase.length == 0) return [];
     var actions = [];
+    const reverseDir = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+    console.log(chase);
+
     chase.forEach(function (info) {
         const { x, y, dir } = info;
-        actions.push({ "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] });
+        const [aimx, aimy] = [x + core.utils.scan[dir].x, y + core.utils.scan[dir].y];
+        console.log(aimx,aimy);
+        // 可与敌人，物品换位
+        actions.push({
+            "type": "if", "condition": "!core.getBlock(" + aimx + "," + aimy + ")",
+            "true": [
+                { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
+                { "type": "waitAsync", "excludeAnimates": true },
+            ],
+            "false": [
+                {
+                    "type": "if", "condition": "[\"items\",\"enemys\",\"enemy48\"].includes(core.getBlockCls("+ aimx + "," + aimy + "))",
+                    "true": [
+                        { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
+                        { "type": "move", "loc": [aimx, aimy], "time": 100, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
+                        { "type": "waitAsync", "excludeAnimates": true },
+                    ]
+                },
+            ]
+        });
     });
+    if (actions.length > 0) actions.push({ "type": "waitAsync" });
     return actions;
 }
 
