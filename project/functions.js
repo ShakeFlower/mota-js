@@ -1270,7 +1270,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	// 计算血网和领域、阻击、激光的伤害，计算捕捉信息
 	for (var loc in blocks) {
-		var block = blocks[loc],
+		const block = blocks[loc],
 			x = block.x,
 			y = block.y,
 			id = block.event.id,
@@ -1375,113 +1375,32 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 		}
 
-		// 追猎
-		if (enemy && core.hasSpecial(enemy.special, 41)) {
-			for (var nx = x; nx >= 0; nx++) {
-				if (nx == x) continue
-				if (nx >= core.bigmap.width) break;
-				if (core.noPass(nx, y)) break
-				var currloc = nx + "," + y;
-				if (nx != x) {
-					var dir;
-					if (nx < x) {
-						//if (x - nx == 1) continue;
-						dir = "left";
-					} else {
-						//if (nx - x == 1) continue;
-						dir = "right";
-					}
-					// 检查下一个点是否存在事件（从而判定是否移动）
-					var rnx = x + core.utils.scan[dir].x;
-					var rny = y + core.utils.scan[dir].y;
-					if (rnx >= 0 && rnx < width && rny >= 0 && rny < height &&
-						(core.getBlock(rnx, rny, floorId) == null || core.getBlockCls(rnx, rny, floorId) == "items")) {
-						chase[currloc] = (chase[currloc] || []).concat([
-							[x, y, id, dir]
-						]);
-					}
-				}
-			}
-			for (var nx = x; nx < width; nx--) {
-				if (nx == x) continue
-				if (nx < 0) break;
-				if (core.noPass(nx, y)) break
-				var currloc = nx + "," + y;
-				if (nx != x) {
-					var dir;
-					if (nx < x) {
-						//if (x - nx == 1) continue;
-						dir = "left";
-					} else {
-						//if (nx - x == 1) continue;
-						dir = "right";
-					}
-					// 检查下一个点是否存在事件（从而判定是否移动）
-					var rnx = x + core.utils.scan[dir].x;
-					var rny = y + core.utils.scan[dir].y;
-					if (rnx >= 0 && rnx < width && rny >= 0 && rny < height &&
-						(core.getBlock(rnx, rny, floorId) == null || core.getBlockCls(rnx, rny, floorId) == "items")) {
-						chase[currloc] = (chase[currloc] || []).concat([
-							[x, y, id, dir]
-						]);
-					}
-				}
-			}
-			for (var ny = y; ny >= 0; ny++) {
-				if (ny == y) continue
-				if (ny >= core.bigmap.width) break;
-				if (core.noPass(x, ny)) break
-				//console.log(x, ny)
-				var currloc = x + "," + ny;
-				if (ny != y) {
-					var dir;
-					if (ny < y) {
-						//if (y - ny == 1) continue;
-						dir = "up";
-					} else {
-						//if (ny - y == 1) continue;
-						dir = "down";
-					}
-					//检查下一个点是否存在事件（从而判定是否移动）
-					var rnx = x + core.utils.scan[dir].x;
-					var rny = y + core.utils.scan[dir].y;
-					if (rnx >= 0 && rnx < width && rny >= 0 && rny < height &&
-						(core.getBlock(rnx, rny, floorId) == null || core.getBlockCls(rnx, rny, floorId) == "items")) {
-						chase[currloc] = (chase[currloc] || []).concat([
-							[x, y, id, dir]
-						]);
-					}
-				}
-			}
-			for (var ny = y; ny < height; ny--) {
-				if (ny == y) continue
-				if (ny < 0) break;
-				if (core.noPass(x, ny)) break;
-				//console.log(x, ny)
-				var currloc = x + "," + ny;
-				if (ny != y) {
-					var dir;
-					if (ny < y) {
-						//if (y - ny == 1) continue;
-						dir = "up";
-					} else {
-						//if (ny - y == 1) continue;
-						dir = "down";
-					}
-					//检查下一个点是否存在事件（从而判定是否移动）
-					var rnx = x + core.utils.scan[dir].x;
-					var rny = y + core.utils.scan[dir].y;
-					if (rnx >= 0 && rnx < width && rny >= 0 && rny < height &&
-						(core.getBlock(rnx, rny, floorId) == null || core.getBlockCls(rnx, rny, floorId) == "items")) {
-						chase[currloc] = (chase[currloc] || []).concat([
-							[x, y, id, dir]
-						]);
-					}
-				}
-			}
-
+		/**
+		 * 追猎的视野能否通过该格子
+		 */
+		function canSeeThrough(x, y) {
+			const block = core.getBlock(x, y);
+			// 空地和道具，敌人（不含普通事件）可被穿过
+			if (block === null ||
+				(['items', 'enemys', 'enemy48'].includes(block.event.cls) && !block.event.data)) return true;
+			return false;
 		}
 
+		// 追猎
+		if (enemy && core.hasSpecial(enemy.special, 28)) {
+			let scan = core.utils.scan;
+			for (const dir in scan) {
+				for (let i = 1; ; i++) {
+					const [nx, ny] = [x + i * scan[dir].x, y + i * scan[dir].y];
+					const currloc = nx + "," + ny;
+					if (nx < 0 || nx > core.__SIZE__ - 1 || ny < 0 || ny > core.__SIZE__ - 1) break;
+					if (!canSeeThrough(nx, ny)) break;
+					if (i === 1) continue; // 离勇士一格以内的追猎怪不需要移动
+					if (!chase[currloc]) chase[currloc] = [];
+					chase[currloc].push({ x, y, dir });
+				}
+			}
+		}
 
 		// 夹击；在这里提前计算所有可能的夹击点，具体计算逻辑在下面
 		// 如果要防止夹击伤害，可以简单的将 flag:no_betweenAttack 设为true
@@ -1504,7 +1423,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 	// 对每个可能的夹击点计算夹击伤害
 	for (var loc in betweenAttackLocs) {
-		var xy = loc.split(","),
+		let xy = loc.split(","),
 			x = parseInt(xy[0]),
 			y = parseInt(xy[1]);
 		// 夹击怪物的ID
@@ -1565,6 +1484,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		type: type,
 		repulse: repulse,
 		ambush: ambush,
+		chase: chase,
 		needCache: needCache,
 		cache: {} // clear cache
 	};

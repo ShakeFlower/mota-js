@@ -1120,6 +1120,26 @@ control.prototype.updateCheckBlock = function (floorId) {
 }
 
 ////// 检查并执行领域、夹击、阻击事件 //////
+
+control.prototype.battleWithChase = function () {
+    const [hx, hy] = [core.getHeroLoc('x'), core.getHeroLoc('y')];
+    const scan = core.utils.scan;
+    const actions = [];
+    for (const dir in scan) {
+        const [nx, ny] = [hx + scan[dir].x, hy + scan[dir].y];
+        const blockId = core.getBlockId(nx, ny);
+        if (core.hasSpecial(blockId, 28)) {
+            actions.push({
+                "type": "function", "function": "function() { " +
+                    "core.battle('" + blockId + "', " + nx + "," + ny + ", true, core.doAction); " +
+                    "}", "async": true
+            });
+        }
+    }
+    if (actions.length > 0) core.insertAction(actions);
+    core.doAction();
+}
+
 control.prototype.checkBlock = function () {
     var x = core.getHeroLoc('x'), y = core.getHeroLoc('y'), loc = x + "," + y;
     var damage = core.status.checkBlock.damage[loc];
@@ -1139,8 +1159,22 @@ control.prototype.checkBlock = function () {
             core.updateStatusBar(false, true);
         }
     }
-    this._checkBlock_ambush(core.status.checkBlock.ambush[loc]);
-    this._checkBlock_repulse(core.status.checkBlock.repulse[loc]);
+    let actions = [];
+
+    const ambushAction = this._checkBlock_ambush(core.status.checkBlock.ambush[loc]);
+    if (ambushAction.length > 0) core.push(actions, ambushAction);
+
+    const repulseAction =this._checkBlock_repulse(core.status.checkBlock.repulse[loc]);
+    if (repulseAction.length > 0) core.push(actions, repulseAction);
+
+    const chaseAction = this._checkBlock_chase(core.status.checkBlock.chase[loc]); 
+    if (chaseAction.length > 0) core.push(actions, chaseAction);
+
+    if (repulseAction.length > 0 || chaseAction.length > 0) core.push(actions, { "type": "waitAsync" });
+    if (chaseAction.length > 0)  core.push(actions, 
+        { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" }
+    );
+    if (actions.length > 0) core.insertAction(actions);
 }
 
 control.prototype._checkBlock_disableQuickShop = function () {
@@ -1154,22 +1188,21 @@ control.prototype._checkBlock_disableQuickShop = function () {
 
 ////// 阻击 //////
 control.prototype._checkBlock_repulse = function (repulse) {
-    if (!repulse || repulse.length == 0) return;
+    if (!repulse || repulse.length == 0) return [];
     var actions = [];
     repulse.forEach(function (t) {
-        actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 250, "keep": true, "async": true });
+        actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": true, "async": true });
     });
-    actions.push({ "type": "waitAsync" });
-    core.insertAction(actions);
+    return actions;
 }
 
 ////// 捕捉 //////
 control.prototype._checkBlock_ambush = function (ambush) {
-    if (!ambush || ambush.length == 0) return;
+    if (!ambush || ambush.length == 0) return [];
     // 捕捉效果
-    var actions = [];
+    let actions = [];
     ambush.forEach(function (t) {
-        actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 250, "keep": false, "async": true });
+        actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": false, "async": true });
     });
     actions.push({ "type": "waitAsync" });
     // 强制战斗
@@ -1180,7 +1213,18 @@ control.prototype._checkBlock_ambush = function (ambush) {
                 "}", "async": true
         });
     });
-    core.insertAction(actions);
+    return actions;
+}
+
+////// 追猎 //////
+control.prototype._checkBlock_chase = function (chase) {
+    if (!chase || chase.length == 0) return [];
+    var actions = [];
+    chase.forEach(function (info) {
+        const { x, y, dir } = info;
+        actions.push({ "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] });
+    });
+    return actions;
 }
 
 ////// 更新全地图显伤 //////
