@@ -8,7 +8,7 @@
 
 (function () {
     // 将这一行改成 false 可以禁用本拓展
-    var __enabled = true;
+    var __enabled = false;
 
     if (window.jsinterface || !window.fs || !__enabled) return;  
 

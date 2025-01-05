@@ -1122,9 +1122,10 @@ control.prototype.updateCheckBlock = function (floorId) {
 ////// 检查并执行领域、夹击、阻击事件 //////
 
 control.prototype.battleWithChase = function () {
-    const [hx, hy] = [core.getHeroLoc('x'), core.getHeroLoc('y')];
+    const { x: hx, y: hy } = core.status.hero.loc;
     const scan = core.utils.scan;
     const actions = [];
+
     for (const dir in scan) {
         const [nx, ny] = [hx + scan[dir].x, hy + scan[dir].y];
         const blockId = core.getBlockId(nx, ny);
@@ -1164,16 +1165,18 @@ control.prototype.checkBlock = function () {
     const ambushAction = this._checkBlock_ambush(core.status.checkBlock.ambush[loc]);
     if (ambushAction.length > 0) core.push(actions, ambushAction);
 
-    const repulseAction =this._checkBlock_repulse(core.status.checkBlock.repulse[loc]);
+    const repulseAction = this._checkBlock_repulse(core.status.checkBlock.repulse[loc]);
     if (repulseAction.length > 0) core.push(actions, repulseAction);
 
-    // 追猎需要等待阻击完成，避免发生碰撞导致怪物消失
-    const chaseAction = this._checkBlock_chase(core.status.checkBlock.chase[loc]); 
-    if (chaseAction.length > 0) {
-        core.push(actions, chaseAction);
-        core.push(actions,
-            { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" }
-        );
+    // 追猎需要等待阻击完成，避免发生碰撞导致怪物消失 先清理四周追猎，追猎移动，再清理一轮四周的追猎
+    const currChase = core.status.checkBlock.chase[loc];
+    if (currChase && currChase.length > 0) {
+        core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" });
+    }
+    const chaseAction = this._checkBlock_chase(currChase);
+    if (chaseAction.length > 0) core.push(actions, chaseAction);
+    if (currChase && currChase.length > 0) {
+        core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" });
     }
     if (actions.length > 0) core.insertAction(actions);
 }
@@ -1220,34 +1223,39 @@ control.prototype._checkBlock_ambush = function (ambush) {
 
 ////// 追猎 //////
 control.prototype._checkBlock_chase = function (chase) {
-    if (!chase || chase.length == 0) return [];
+    if (!chase || chase.length === 0) return [];
     var actions = [];
+    const { x: hx, y: hy } = core.status.hero.loc;
     const reverseDir = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
-    console.log(chase);
-
-    chase.forEach(function (info) {
-        const { x, y, dir } = info;
+    chase = chase.sort((a, b) => {
+        const { x: ax, y: ay } = a;
+        const { x: bx, y: by } = b;
+        return Math.abs(ax - hx) + Math.abs(ay - hy) - Math.abs(bx - hx) - Math.abs(by - hy);
+    })
+    chase.forEach((currChaseInfo) => {
+        const { x, y, dir } = currChaseInfo;
         const [aimx, aimy] = [x + core.utils.scan[dir].x, y + core.utils.scan[dir].y];
-        console.log(aimx,aimy);
         // 可与敌人，物品换位
-        actions.push({
-            "type": "if", "condition": "!core.getBlock(" + aimx + "," + aimy + ")",
-            "true": [
-                { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
-                { "type": "waitAsync", "excludeAnimates": true },
-            ],
-            "false": [
-                {
-                    "type": "if", "condition": "[\"items\",\"enemys\",\"enemy48\"].includes(core.getBlockCls("+ aimx + "," + aimy + "))",
-                    "true": [
-                        { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
-                        { "type": "move", "loc": [aimx, aimy], "time": 100, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
-                        { "type": "waitAsync", "excludeAnimates": true },
-                    ]
-                },
-            ]
-        });
-    });
+        if (!(aimx === hx && aimy === hy)) {
+            actions.push({
+                "type": "if", "condition": "!core.getBlock(" + aimx + "," + aimy + ")",
+                "true": [
+                    { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
+                ],
+                "false": [
+                    {
+                        "type": "if", "condition": "[\"items\",\"enemys\",\"enemy48\"].includes(core.getBlockCls(" + aimx + "," + aimy + "))",
+                        "true": [
+                            { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
+                            { "type": "move", "loc": [aimx, aimy], "time": 100, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
+                            { "type": "waitAsync", "excludeAnimates": true },
+                        ]
+                    },
+                ]
+            });
+        }
+    })
+
     if (actions.length > 0) actions.push({ "type": "waitAsync" });
     return actions;
 }
