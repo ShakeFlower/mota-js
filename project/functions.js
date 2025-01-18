@@ -309,12 +309,28 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.removeFlag("__guards__" + x + "_" + y);
 			}
 
+			const { x: hx, y: hy, direction } = core.status.hero.loc;
+
+			/** 败移 */
+			let failMove = false;
+			if (core.hasSpecial(special, 29)) {
+				for (let i = 2; i < core.__SIZE__ - 1; i++) {
+					const aimx = hx + core.utils.scan[direction] * i,
+						aimy = hy + core.utils.scan[direction] * i;
+					if (aimx < 0 || aimx > core.__SIZE__ - 1 || aimy < 0 || aimy > core.__SIZE__ - 1) break;
+					if (['enemys','enemy48'].includes(core.getBlockCls(aimx,aimy))){
+						
+					}
+				}
+			}
+
 			// 获得金币
 			var money = guards.reduce(function (curr, g) {
 				return curr + core.material.enemys[g[2]].money;
 			}, core.getEnemyValue(enemy, "money", x, y));
 			if (core.hasItem('coin')) money *= 2; // 幸运金币：双倍
 			if (core.hasFlag('curse')) money = 0; // 诅咒效果
+			if (failMove) money = 0; // 败移效果
 			core.status.hero.money += money;
 			core.status.hero.statistics.money += money;
 
