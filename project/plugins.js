@@ -1849,23 +1849,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
     "autoGet": function () {
 	// 在此增加新插件
 	/**
-	 * --------------- 安装说明 ---------------
-	 *
-	 * 首先安装高级动画插件
-	 * 然后将该插件复制到插件编写里面即可
-	 * 注意高级动画插件要在本插件之前
-	 *
 	 * --------------- 使用说明 ---------------
-	 *
-	 * 变量__auto__控制功能，为一个数字。它需要由一下几个变量构成：
-	 * 1. core.plugin.AUTO_BATTLE
-	 * 2. core.plugin.AUTO_ITEM
-	 * 具体使用方法如下：
-	 * flags.__auto__ = core.plugin.AUTO_BATTLE; // 开启自动清怪，关闭自动拾取
-	 * flags.__auto__ = core.plugin.AUTO_BATTLE | core.plugin.AUTO_ITEM; // 二者都开启
-	 * flags.__auto__ = core.plugin.AUTO_ITEM; // 开启自动拾取，关闭自动清怪
-	 * flags.__auto__ = 0; 关闭所有功能
-	 * 更多内容可以在插件注释中查看
+	 * 变量autoGet控制自动拾取开关
+	 * 变量autoBattle控制自动清怪开关
 	 */
 
 	const { Transition, hyper, Ticker } = core.plugin.animate ?? {};
@@ -1873,16 +1859,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	// 磁吸特效的时长，单位毫秒
 	const transitionTime = 600;
 
-	this.AUTO_BATTLE = 1;
-	this.AUTO_ITEM = 2;
-
 	const transitionList = [];
+
+	const ctxName = 'globalAnimate';
 
 	if (!main.replayChecking) {
 		const ticker = new Ticker();
 		ticker.add(() => {
 			if (!core.isPlaying()) return;
-			const ctx = core.getContextByName('_autoItem_');
+			const ctx = core.getContextByName(ctxName);
 			if (!has(ctx)) return;
 			core.clearMap(ctx);
 		});
@@ -1896,13 +1881,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			destY,
 			ignoreSteps
 		);
-		update();
+		core.plugin.autoClear();
 		return res;
 	};
 
-	function update() {
-		core.auto();
+	this.autoClear = function () {
 		if (core.isReplaying()) return;
+		auto();
 		for (let i = 0; i < transitionList.length; i++) {
 			const t = transitionList[i];
 			let { x, y } = core.status.hero.loc;
@@ -1928,15 +1913,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const floor = core.floors[core.status.floorId];
 		const e = core.material.enemys[enemy];
 		const hasEvent =
-			has(floor.afterBattle[loc]) ||
-			has(floor.beforeBattle[loc]) ||
-			has(e.beforeBattle) ||
-			has(e.afterBattle) ||
-			has(floor.events[loc] ||
-			willLvUp(e.exp) // 防止有升级后事件
+			has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc])
+			|| has(e.beforeBattle) || has(e.afterBattle)
+			|| has(floor.events[loc] || willLvUp(e.exp) // 防止有升级后事件
 			);
 		// 有事件，不清
 		if (hasEvent) return false;
+		if (core.hasSpecial(e.special, 19) || core.hasSpecial(e.special, 21)
+			|| core.hasSpecial(e.special, 29)) return false; // 有特定特殊属性的怪不清
 		const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
 		// 0伤或负伤，清
 		if (has(damage) && damage <= 0) return true;
@@ -1946,17 +1930,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	/**
 	 * 判断一个点是否能遍历
 	 */
-	function judge(block, nx, ny, tx, ty, dir, floorId) {
+	function judge(block, nx, ny, tx, ty, dir, floorId, autoBattle, autoGet) {
 		if (!has(block)) return {};
 		const cls = block.event.cls;
 		const loc = `${tx},${ty}`;
 		const floor = core.floors[floorId];
 		const changeFloor = floor.changeFloor[loc];
-		const isEnemy =
-			flags.__auto__ & core.plugin.AUTO_BATTLE &&
-			cls.startsWith('enemy');
-		const isItem =
-			flags.__auto__ & core.plugin.AUTO_ITEM && cls === 'items';
+		const isEnemy = autoBattle && cls.startsWith('enemy'),
+			isItem = autoGet && cls === 'items';
 
 		if (has(changeFloor)) {
 			if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
@@ -1965,7 +1946,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (changeFloor.ignoreChangeFloor ?? core.flags.ignoreChangeFloor) {
 				return true;
 			}
-			return false
+			return false;
 		}
 
 		if (has(core.floors[floorId].events[loc])) return false;
@@ -1973,7 +1954,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (isEnemy || isItem)
 			return {
 				isEnemy,
-				isItem
+				isItem,
 			};
 
 		return false;
@@ -2020,6 +2001,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		return v !== null && v !== undefined;
 	}
 
+	function hasBlockDamage(loc) {
+		const checkblockInfo = core.status.checkBlock;
+		const damage = checkblockInfo.damage[loc];
+		const ambush = checkblockInfo.ambush[loc];
+		const repulse = checkblockInfo.repulse[loc];
+		const chase = checkblockInfo.chase[loc];
+		return (has(damage) && damage > 0) || has(ambush) || has(repulse) || has(chase);
+	}
+
 	/**
 	 * 广搜，搜索可以到达的需要清的怪
 	 * @param {string} floorId
@@ -2029,45 +2019,36 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const objs = core.getMapBlocksObj(floorId);
 		const { x, y } = core.status.hero.loc;
 		/** @type {[direction, number, number][]} */
-		const dir = Object.entries(core.utils.scan).map(v => [
-			v[0],
-			v[1].x,
-			v[1].y
-		]);
+		const dir = Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
 		const floor = core.status.maps[floorId];
 
 		/** @type {[number, number][]} */
-		const queue = [
-			[x, y]
-		];
+		const queue = [[x, y]];
 		const mapped = {
 			[`${x},${y}`]: true
 		};
+
+		const autoBattle = core.getFlag('autoBattle', false),
+			autoGet = core.getFlag('autoGet', false);
+		if (!autoGet && !autoBattle) return;
+
 		while (queue.length > 0 && deep > 0) {
 			const [nx, ny] = queue.shift();
 			dir.forEach(v => {
 				const [tx, ty] = [nx + v[1], ny + v[2]];
-				if (
-					tx < 0 ||
-					ty < 0 ||
-					tx >= floor.width ||
-					ty >= floor.height
-				) {
+				if (tx < 0 || ty < 0 || tx >= floor.width || ty >= floor.height) {
 					return;
 				}
 				const loc = `${tx},${ty}`;
 				if (mapped[loc]) return;
 				const block = objs[loc];
 				mapped[loc] = true;
-				const type = judge(block, nx, ny, tx, ty, v[0], floorId);
+				const type = judge(block, nx, ny, tx, ty, v[0], floorId, autoBattle, autoGet);
 				if (type === false) return;
 				const { isEnemy, isItem } = type;
 
 				if (isEnemy) {
-					if (
-						canBattle(block.event.id, tx, ty) &&
-						!block.disable
-					) {
+					if (canBattle(block.event.id, tx, ty) && !block.disable) {
 						core.battle(block.event.id, tx, ty);
 						core.updateCheckBlock();
 					} else {
@@ -2077,7 +2058,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const item = core.material.items[block.event.id];
 					if (canGetItem(item, loc, floorId)) {
 						core.getItem(item.id, 1, tx, ty);
-						if (!main.replayChecking) {
+						if (!core.isReplaying()) {
 							let px = tx * 32 - core.bigmap.offsetX;
 							let py = ty * 32 - core.bigmap.offsetY;
 							const t = new Transition();
@@ -2091,31 +2072,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							t.value.y = y * 32 - core.bigmap.offsetY;
 							transitionList.push(t);
 							t.ticker.add(() => {
-								core.drawIcon(
-									'_autoItem_',
-									item.id,
-									t.value.x,
-									t.value.y,
-									32,
-									32
-								);
+								core.drawIcon(ctxName, item.id, t.value.x, t.value.y, 32, 32);
 								let { x, y } = core.status.hero.loc;
-								if (
-									Math.abs(
-										t.value.x -
-										x * 32 +
-										core.bigmap.offsetX
-									) < 0.05 &&
-									Math.abs(
-										t.value.y -
-										y * 32 +
-										core.bigmap.offsetY
-									) < 0.05
+								if (Math.abs(t.value.x - x * 32 + core.bigmap.offsetX) < 0.05 &&
+									Math.abs(t.value.y - y * 32 + core.bigmap.offsetY) < 0.05
 								) {
 									t.ticker.destroy();
-									const index = transitionList.findIndex(
-										v => v === t
-									);
+									const index = transitionList.findIndex(v => v === t);
 									transitionList.splice(index, 1);
 								}
 							});
@@ -2124,51 +2087,29 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						return;
 					}
 				}
-				// 然后判断目标点是否有地图伤害等，没有就直接添加到队列
-				const damage = core.status.checkBlock.damage[loc];
-				const ambush = core.status.checkBlock.ambush[loc];
-				const repulse = core.status.checkBlock.repulse[loc];
-
-				if (
-					(has(damage) && damage > 0) ||
-					has(ambush) ||
-					has(repulse)
-				) {
-					return;
-				}
+				if (hasBlockDamage(loc)) return;
 				queue.push([tx, ty]);
 			});
 			deep--;
 		}
 	}
 
-	this.auto = function () {
+	function auto() {
 		const before = flags.__forbidSave__;
-		// 如果勇士当前点有地图伤害，只清周围，如果有时间，直接不清了
+		// 如果勇士当前点有地图伤害，只清周围，如果有事件，直接不清了
 		const { x, y } = core.status.hero.loc;
 		const floor = core.floors[core.status.floorId];
 		const loc = `${x},${y}`;
 		const hasEvent = has(floor.events[loc]);
 		if (hasEvent) return;
-		const damage = core.status.checkBlock.damage[loc];
-		const ambush = core.status.checkBlock.ambush[loc];
-		const repulse = core.status.checkBlock.repulse[loc];
 		let deep = Infinity;
-		if ((has(damage) && damage > 0) || has(ambush) || has(repulse)) {
+		if (hasBlockDamage(loc) && core.flags.enableGentleClick) { // 有地图伤害允许轻点附近1格
 			deep = 1;
 		}
 		flags.__forbidSave__ = true;
 		flags.__statistics__ = true;
-		const ctx = core.getContextByName('_autoItem_');
-		if (!ctx)
-			core.createCanvas(
-				'_autoItem_',
-				0,
-				0,
-				core._PX_ ?? core.__PIXELS__,
-				core._PY_ ?? core.__PIXELS__,
-				75
-			);
+		const ctx = core.getContextByName(ctxName);
+		if (!ctx) core.createCanvas(ctxName, 0, 0, core.__PIXELS__, core.__PIXELS__, 75);
 		bfs(core.status.floorId, deep);
 		flags.__statistics__ = false;
 		flags.__forbidSave__ = before;
@@ -3330,7 +3271,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					core.setFlag('commentCollection', commentCollection);
 				} catch (err) {
-					core.drawTip('接收消息失败！' + err.message);
+					core.drawTip('接收失败！' + err.message);
 					core.playSound('error.mp3');
 				}
 			},
@@ -3374,14 +3315,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 				}
 				catch (err) {
-					core.drawTip('接收消息失败！' + err.message);
+					core.drawTip('提交失败！' + err.message);
 					core.playSound('error.mp3');
 				}
 			},
 			function (err) {
 				err = JSON.parse(err);
 				console.error(err);
-				core.drawTip('接收失败' + err?.message);
+				core.drawTip('提交失败！' + err?.message);
 				core.playSound('error.mp3');
 			},
 			null, null, null, 1000
