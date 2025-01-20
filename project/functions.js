@@ -454,12 +454,13 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			else {
 				if (core.getBlockId(x, y) === enemyId && failMoveInfo
 					&& core.getBlockId(failMoveInfo.aimx, failMoveInfo.aimy) === failMoveInfo.aimId) {
-					// to be tested: 怪物残血能否正确迁移数据
 					const doFailMove =
 						[{ "type": "setBlock", "number": enemyId, "loc": [[failMoveInfo.aimx, failMoveInfo.aimy]], "time": 50 },
 						{ "type": "setBlock", "number": failMoveInfo.aimId, "loc": [[x, y]], "time": 50 },
 						]
 					core.insertAction(doFailMove);
+					// to be tested: 怪物残血能否正确迁移数据
+					switchEnemyOnPoint(x, y, failMoveInfo.aimx, failMoveInfo.aimy);
 				}
 			}
 
