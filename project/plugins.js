@@ -3057,10 +3057,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var itemId = action.substring(6);
 			var items = core.getToolboxItems('equips');
 			var index = items.indexOf(itemId) + 1;
-			if (index < 1) return false;
+			if (index < 1) {
+				core.removeFlag('__doNotCheckAutoEvents__');
+				return false;
+			}
+
+			var cb = function () {
+				var next = core.status.replay.toReplay[0] || "";
+				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+					core.removeFlag('__doNotCheckAutoEvents__');
+					core.checkAutoEvents();
+				}
+				core.replay();
+			}
+			core.setFlag('__doNotCheckAutoEvents__', true);
+
 			core.status.route.push(action);
 			if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
-				core.loadEquip(itemId, core.replay);
+				core.loadEquip(itemId, cb);
 				return true;
 			}
 			core.status.event.id = "equipbox";
@@ -3074,7 +3088,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.drawEquipbox();
 			setTimeout(function () {
 				core.ui.closePanel();
-				core.loadEquip(itemId, core.replay);
+				core.loadEquip(itemId, cb);
 			}, core.control.__replay_getTimeout());
 			return true;
 		}
@@ -3082,10 +3096,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.control._replayAction_unEquip = function (action) {
 			if (action.indexOf("unEquip:") != 0) return false;
 			var equipType = parseInt(action.substring(8));
-			if (!core.isset(equipType)) return false;
+			if (!core.isset(equipType)) {
+				core.removeFlag('__doNotCheckAutoEvents__');
+				return false;
+			}
+
+			var cb = function () {
+				var next = core.status.replay.toReplay[0] || "";
+				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+					core.removeFlag('__doNotCheckAutoEvents__');
+					core.checkAutoEvents();
+				}
+				core.replay();
+			}
+			core.setFlag('__doNotCheckAutoEvents__', true);
+
 			core.status.route.push(action);
 			if (core.status.replay.speed == 24) {
-				core.unloadEquip(equipType, core.replay);
+				core.unloadEquip(equipType, cb);
 				return true;
 			}
 			core.status.event.id = "equipbox";
@@ -3097,7 +3125,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.drawEquipbox();
 			setTimeout(function () {
 				core.ui.closePanel();
-				core.unloadEquip(equipType, core.replay);
+				core.unloadEquip(equipType, cb);
 			}, core.control.__replay_getTimeout());
 			return true;
 		}
