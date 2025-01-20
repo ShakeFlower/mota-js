@@ -2899,6 +2899,7 @@ type CoreMixin = {
     readonly dom: { [key: string]: HTMLElement }
     /** dom样式 */
     readonly domStyle: {
+        ratio: number,
         scale: number,
         isVertical: boolean,
         showStatusBar: boolean,
