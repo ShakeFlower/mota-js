@@ -313,13 +313,16 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			/** 败移 */
 			let failMove = false;
-			if (core.hasSpecial(special, 29)) {
+			let failMoveInfo;
+			if (core.enemys.hasSpecial(special, 29)) {
 				for (let i = 2; i < core.__SIZE__ - 1; i++) {
 					const aimx = hx + core.utils.scan[direction] * i,
 						aimy = hy + core.utils.scan[direction] * i;
 					if (aimx < 0 || aimx > core.__SIZE__ - 1 || aimy < 0 || aimy > core.__SIZE__ - 1) break;
-					if (['enemys','enemy48'].includes(core.getBlockCls(aimx,aimy))){
-						
+					if (['enemys', 'enemy48'].includes(core.getBlockCls(aimx, aimy))) {
+						failMoveInfo = { aimx, aimy, aimId: core.getBlockId(aimx, aimy) };
+						failMove = true;
+						break;
 					}
 				}
 			}
@@ -339,6 +342,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				return curr + core.material.enemys[g[2]].exp;
 			}, core.getEnemyValue(enemy, "exp", x, y));
 			if (core.hasFlag('curse')) exp = 0;
+			if (failMove) exp = 0; // 败移效果
 			core.status.hero.exp += exp;
 			core.status.hero.statistics.exp += exp;
 
@@ -347,6 +351,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				hint += ',' + core.getStatusLabel('money') + '+' + money; // hint += "，金币+" + money;
 			if (core.flags.statusBarItems.indexOf('enableExp') >= 0)
 				hint += ',' + core.getStatusLabel('exp') + '+' + exp; // hint += "，经验+" + exp;
+			if (failMove) hint = '敌人触发败移。';
 			core.drawTip(hint, enemy.id);
 
 			// 中毒
@@ -381,17 +386,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.setFlag('hatred', core.getFlag('hatred', 0) + core.values.hatred);
 
 			// 战后的技能处理，比如扣除魔力值
-			if (core.flags.statusBarItems.indexOf('enableSkill') >= 0) {
-				// 检测当前开启的技能类型
-				var skill = core.getFlag('skill', 0);
-				if (skill == 1) { // 技能1：二倍斩
-					core.status.hero.mana -= 5; // 扣除5点魔力值
-				}
-				// 关闭技能
-				core.setFlag('skill', 0);
-				core.setFlag('skillName', '无');
-			}
-
 
 			// 事件的处理
 			var todo = [];
@@ -419,22 +413,54 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 			*/
 
-			// 如果事件不为空，将其插入
-			if (todo.length > 0) core.insertAction(todo, x, y);
-
-			// 删除该点设置的怪物信息
-			delete ((flags.enemyOnPoint || {})[core.status.floorId] || {})[x + "," + y];
-
-			// 因为removeBlock和hideBlock都会刷新状态栏，因此将删除部分移动到这里并保证刷新只执行一次，以提升效率
-			if (core.getBlock(x, y) != null) {
-				// 检查是否是重生怪物；如果是则仅隐藏不删除
-				if (core.hasSpecial(enemy.special, 23)) {
-					core.hideBlock(x, y);
-				} else {
-					core.removeBlock(x, y);
+			function switchEnemyOnPoint(sx, sy, aimx, aimy) {
+				const spos = sx + "," + sy,
+					aimpos = aimx + "," + aimy;
+				if (!flags.enemyOnPoint) return;
+				if (!flags.enemyOnPoint.hasOwnProperty(core.status.floorId)) return;
+				const enemyOnFloor = flags.enemyOnPoint[core.status.floorId];
+				let sinfo, aiminfo;
+				if (enemyOnFloor.hasOwnProperty(spos)) sinfo = core.clone(enemyOnFloor[spos]);
+				if (enemyOnFloor.hasOwnProperty(aimpos)) aiminfo = core.clone(enemyOnFloor[aimpos]);
+				if (sinfo) {
+					delete enemyOnFloor[spos];
+					enemyOnFloor[aimpos] = sinfo;
 				}
-			} else {
-				core.updateStatusBar();
+				if (aiminfo) {
+					delete enemyOnFloor[aimpos];
+					enemyOnFloor[spos] = aiminfo;
+				}
+			}
+
+			if (!failMove) {
+				// 如果事件不为空，将其插入
+				if (todo.length > 0) core.insertAction(todo, x, y);
+
+				// 删除该点设置的怪物信息
+				delete ((flags.enemyOnPoint || {})[core.status.floorId] || {})[x + "," + y];
+
+				// 因为removeBlock和hideBlock都会刷新状态栏，因此将删除部分移动到这里并保证刷新只执行一次，以提升效率
+				if (core.getBlock(x, y) != null) {
+					// 检查是否是重生怪物；如果是则仅隐藏不删除
+					if (core.hasSpecial(enemy.special, 23)) {
+						core.hideBlock(x, y);
+					} else {
+						core.removeBlock(x, y);
+					}
+				} else {
+					core.updateStatusBar();
+				}
+			}
+			else {
+				if (core.getBlockId(x, y) === enemyId && failMoveInfo
+					&& core.getBlockId(failMoveInfo.aimx, failMoveInfo.aimy) === failMoveInfo.aimId) {
+					// to be tested: 怪物残血能否正确迁移数据
+					const doFailMove =
+						[{ "type": "setBlock", "number": enemyId, "loc": [[failMoveInfo.aimx, failMoveInfo.aimy]], "time": 50 },
+						{ "type": "setBlock", "number": failMoveInfo.aimId, "loc": [[x, y]], "time": 50 },
+						]
+					core.insertAction(doFailMove);
+				}
 			}
 
 			// 如果已有事件正在处理中
