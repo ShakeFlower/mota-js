@@ -7,7 +7,7 @@ utils.js 工具类
 
 "use strict";
 
-function utils () {
+function utils() {
     this._init();
     this.scan = {
         'up': { 'x': 0, 'y': -1 },
@@ -1351,7 +1351,7 @@ utils.prototype.http = function (type, url, formData, success, error, mimeType, 
 
 // LZW-compress
 // https://gist.github.com/revolunet/843889
-function lzw_encode (s) {
+function lzw_encode(s) {
     var dict = {};
     var data = (s + "").split("");
     var out = [];
@@ -1378,7 +1378,7 @@ function lzw_encode (s) {
 }
 
 // Decompress an LZW-encoded string
-function lzw_decode (s) {
+function lzw_decode(s) {
     var dict = {};
     var data = (s + "").split("");
     var currChar = data[0];

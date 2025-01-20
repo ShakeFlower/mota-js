@@ -2,7 +2,7 @@
 
 "use strict";
 
-function maps () {
+function maps() {
     this._init();
 }
 

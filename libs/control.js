@@ -8,7 +8,7 @@ control.js：游戏主要逻辑控制
 
 "use strict";
 
-function control () {
+function control() {
     this._init();
 }
 
@@ -1197,7 +1197,7 @@ control.prototype._checkBlock_repulse = function (repulse) {
     repulse.forEach(function (t) {
         actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": true, "async": true });
     });
-    if (actions.length>0) actions.push({ "type": "waitAsync" });
+    if (actions.length > 0) actions.push({ "type": "waitAsync" });
     return actions;
 }
 
@@ -1209,7 +1209,7 @@ control.prototype._checkBlock_ambush = function (ambush) {
     ambush.forEach(function (t) {
         actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": false, "async": true });
     });
-    if (actions.length>0) actions.push({ "type": "waitAsync" });
+    if (actions.length > 0) actions.push({ "type": "waitAsync" });
     // 强制战斗
     ambush.forEach(function (t) {
         actions.push({

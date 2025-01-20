@@ -2,7 +2,7 @@
 
 "use strict";
 
-function events () {
+function events() {
     this._init();
 }
 

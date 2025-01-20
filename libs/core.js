@@ -6,7 +6,7 @@
 
 "use strict";
 
-function core () {
+function core() {
     this.__SIZE__ = 13;
     this.__PIXELS__ = this.__SIZE__ * 32;
     this.__HALF_SIZE__ = Math.floor(this.__SIZE__ / 2);

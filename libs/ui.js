@@ -8,7 +8,7 @@
 
 "use strict";
 
-function ui () {
+function ui() {
     this._init();
     // for convenience
     this.SIZE = core.__SIZE__;

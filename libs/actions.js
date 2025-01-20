@@ -7,7 +7,7 @@ actions.js：用户交互的事件的处理
 
 "use strict";
 
-function actions () {
+function actions() {
     this._init();
     this.SIZE = core.__SIZE__;
     this.HSIZE = core.__HALF_SIZE__;
