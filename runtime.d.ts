@@ -1800,6 +1800,15 @@ interface maps {
     setBlock(number: number | string, x: number, y: number, floorId?: string): void
 
     /**
+     * 设置某个点的不透明度
+     * @param opacity 不透明度，范围0~1
+     * @param x  横坐标
+     * @param y 纵坐标
+     * @param floorId 地图id，不填视为当前地图
+     */
+    setBlockOpacity(opacity: number, x: number, y: number, floorId: string): void
+
+    /**
      * 批量替换图块
      * @example core.replaceBlock(21, 22, core.floorIds); // 把游戏中地上当前所有的黄钥匙都变成蓝钥匙
      * @param fromNumber 旧图块的数字
