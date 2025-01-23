@@ -3167,7 +3167,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			ani.all().then(() => { ani.ticker.destroy(); });
 		}
 	},
-    "MenuBase": function () {
+    "Menu": function () {
 		// 本插件定义了一些用于绘制的基类
 		class ButtonBase {
 			constructor(x, y, w, h) {
@@ -3229,6 +3229,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		class MenuPage extends MenuBase {
 			constructor(pageMax, currPage) {
+				super();
 				this.pageMax = pageMax;
 				this.currPage = currPage | 0;
 				this.pageList = [];
@@ -3450,6 +3451,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 设置界面绘制
 		// core.openSettings = ...
 
+
+		
 		this.t = function () {
 			const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
 
@@ -3462,19 +3465,40 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "#fff", 2);
 				core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
 				core.setAlpha(ctx, 1);
-				core.strokeRoundRect(ctx, 20, 40, core.__PIXELS__ - 40, 70, 3, "white");
-				core.fillRoundRect(ctx, 21, 41, core.__PIXELS__ - 42, 68, 3, "#555555");
+				// 绘制设置说明的文本框
+				core.strokeRoundRect(ctx, 20, 60, core.__PIXELS__ - 40, 70, 3, "white");
+				core.fillRoundRect(ctx, 21, 61, core.__PIXELS__ - 42, 68, 3, "#555555");
 				core.setTextAlign(ctx, 'center');
 				core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
 			}
 
-			class SettingMenu extends MenuBase {
-				drawContent() {
-					drawSetting(ctx);
+			class TextButton extends ButtonBase {
+				constructor(x, y, w, h, text, color, ctx) {
+					super(x, y, w, h);
+					this.draw = function () {
+						if (!text || !ctx) return;
+						//core.fillRect(ctx, x, y, w, h, '#D3D3D3');
+						core.fillRoundRect(ctx, x, y, w, h, 3, '#D3D3D3');
+						core.strokeRoundRect(ctx, x, y, w, h, 3, '#888888');
+						//core.strokeRect(ctx, x, y, w, h, '#888888');
+						core.setTextAlign(ctx, 'center');
+						core.fillText(ctx, text, x + w / 2, y + h / 2 + 4, color || 'white', '16px Verdana');
+					};
 				}
 			}
 
-			const settingMenu = new SettingMenu();
+			class SettingMenu extends MenuPage {
+
+				drawContent() {
+					drawSetting(ctx);
+					this.btnList.forEach((button) => { if (!button.disable) button.draw(); })
+				}
+			}
+
+			const settingMenu = new SettingMenu(1,0);
+			settingMenu.pageList = [new MenuBase('aaa')]
+			const btn1 = new TextButton(32, 32, 46, 24, '测试', '#555555', ctx);
+			settingMenu.btnList = new Map([['btn1', btn1]]);
 
 			settingMenu.init();
 
