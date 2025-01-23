@@ -2319,7 +2319,7 @@ ui.prototype._drawBook_drawRow3 = function (index, enemy, top, left, width, posi
     core.fillText('ui', core.formatBigNumber(enemy.critical || 0), col1 + 30, position, null, b13);
     core.fillText('ui', '减伤', col2, position, null, f13);
     core.fillText('ui', core.formatBigNumber(enemy.criticalDamage || 0), col2 + 30, position, null, b13);
-    core.fillText('ui', '加防', col3, position, null, f13);
+    core.fillText('ui', '1防', col3, position, null, f13);
     core.fillText('ui', core.formatBigNumber(enemy.defDamage || 0), col3 + 30, position, null, b13);
 }
 

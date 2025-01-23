@@ -485,8 +485,7 @@ enemys.prototype._getCurrentEnemys_addEnemy = function (enemyId, enemys, used, x
 }
 
 enemys.prototype._getCurrentEnemys_addEnemy_defDamage = function (enemy, x, y, floorId) {
-    var ratio = core.status.maps[floorId || core.status.floorId].ratio || 1;
-    return this.getDefDamage(enemy, ratio, x, y, floorId);
+    return this.getDefDamage(enemy, 1, x, y, floorId);
 }
 
 enemys.prototype._getCurrentEnemys_sort = function (enemys) {
