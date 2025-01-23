@@ -1178,7 +1178,8 @@ control.prototype.checkBlock = function () {
     if (currChase && currChase.length > 0) {
         core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" });
     }
-    if (actions.length > 0) core.insertAction(actions);
+    if (actions.length > 0) core.insertAction(actions, x, y, core.plugin.autoClear);
+    else core.plugin.autoClear(); // 阻击结算后执行自动清怪
 }
 
 control.prototype._checkBlock_disableQuickShop = function () {
