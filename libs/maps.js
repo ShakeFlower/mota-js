@@ -766,11 +766,20 @@ maps.prototype.canMoveDirectly = function (destX, destY) {
     return this.canMoveDirectlyArray([[destX, destY]])[0];
 }
 
-maps.prototype.canMoveDirectlyArray = function (locs, canMoveArray) {
+maps.prototype.canMoveDirectlyArray = function (locs, canMoveArray, fromObj) {
     var ans = [], number = locs.length;
 
-    var fromX = core.getHeroLoc('x'), fromY = core.getHeroLoc('y');
-    if (!this._canMoveDirectly_checkGlobal()) {
+    let fromX, fromY, floorId;
+    if (fromObj) {
+        if (fromObj.hasOwnProperty('fromX')) fromX = fromObj.fromX;
+        if (fromObj.hasOwnProperty('fromY')) fromY = fromObj.fromY;
+        if (fromObj.hasOwnProperty('floorId')) floorId = fromObj.floorId;
+    }
+    if (!core.isset(fromX)) fromX = core.getHeroLoc('x');
+    if (!core.isset(fromY)) fromY = core.getHeroLoc('y');
+    if (!floorId) floorId = core.status.floorId;
+
+    if (!this._canMoveDirectly_checkGlobal(floorId)) {
         for (var i = 0; i < number; ++i) ans.push(-1);
         return ans;
     }
@@ -788,30 +797,32 @@ maps.prototype.canMoveDirectlyArray = function (locs, canMoveArray) {
     if (number == 0) return ans;
 
     // 检查起点事件
-    if (!this._canMoveDirectly_checkStartPoint(fromX, fromY)) {
+    if (!this._canMoveDirectly_checkStartPoint(fromX, fromY, floorId)) {
         for (var i in ans) {
             if (ans[i] == null) ans[i] = -1;
         }
         return ans;
     }
 
-    return this._canMoveDirectly_bfs(fromX, fromY, locs, number, ans, canMoveArray);
+    return this._canMoveDirectly_bfs(fromX, fromY, locs, number, ans, canMoveArray, floorId);
 }
 
-maps.prototype._canMoveDirectly_checkGlobal = function () {
+maps.prototype._canMoveDirectly_checkGlobal = function (floorId) {
+    if (!floorId) floorId = core.status.floorId;
     // 检查全塔是否禁止瞬间移动
     if (!core.flags.enableMoveDirectly) return false;
     // 检查该楼层是否不可瞬间移动
-    if (core.status.thisMap.cannotMoveDirectly) return false;
+    if (core.status.maps[floorId].cannotMoveDirectly) return false;
     // flag:cannotMoveDirectly为true：不能
     if (core.hasFlag('cannotMoveDirectly')) return false;
 
     return true;
 }
 
-maps.prototype._canMoveDirectly_checkStartPoint = function (sx, sy) {
-    if (core.status.checkBlock.damage[sx + "," + sy]) return false;
-    var block = core.getBlock(sx, sy);
+maps.prototype._canMoveDirectly_checkStartPoint = function (sx, sy, floorId) {
+    let checkBlockInfo = core.getCheckBlock(floorId);
+    if (checkBlockInfo && checkBlockInfo.damage[sx + "," + sy]) return false;
+    var block = core.getBlock(sx, sy, floorId);
     if (block != null) {
         // 只有起点是传送点才是能无视
         return block.event.trigger == 'changeFloor';
@@ -819,11 +830,11 @@ maps.prototype._canMoveDirectly_checkStartPoint = function (sx, sy) {
     return true;
 }
 
-maps.prototype._canMoveDirectly_bfs = function (sx, sy, locs, number, ans, canMoveArray) {
-    canMoveArray = canMoveArray || this.generateMovableArray();
-    var blocksObj = this.getMapBlocksObj();
+maps.prototype._canMoveDirectly_bfs = function (sx, sy, locs, number, ans, canMoveArray, floorId) {
+    canMoveArray = canMoveArray || this.generateMovableArray(floorId);
+    var blocksObj = this.getMapBlocksObj(floorId);
     // 滑冰
-    var bgMap = this.getBgMapArray();
+    var bgMap = this.getBgMapArray(floorId);
 
     var visited = [], queue = [];
     visited[sx + "," + sy] = 0;
@@ -836,7 +847,7 @@ maps.prototype._canMoveDirectly_bfs = function (sx, sy, locs, number, ans, canMo
             var nx = x + core.utils.scan[direction].x, ny = y + core.utils.scan[direction].y, nindex = nx + "," + ny;
             if (visited[nindex]) continue;
             if (core.onSki(bgMap[ny][nx])) continue;
-            if (!this._canMoveDirectly_checkNextPoint(blocksObj, nx, ny)) continue;
+            if (!this._canMoveDirectly_checkNextPoint(blocksObj, nx, ny, floorId)) continue;
             visited[nindex] = visited[now] + 1;
             // if (nx == ex && ny == ey) return visited[nindex];
             for (var i in ans) {
@@ -862,7 +873,7 @@ maps.prototype._canMoveDirectly_bfs = function (sx, sy, locs, number, ans, canMo
     return ans;
 }
 
-maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y) {
+maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y, floorId) {
     var index = x + "," + y;
     var block = blocksObj[index];
     // 该点是否不可通行或有脚本
@@ -876,13 +887,17 @@ maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y) {
             ignore = block.event.data.ignoreChangeFloor;
         if (!ignore) return false;
     }
+
+    const checkBlockInfo = core.control.getCheckBlock(floorId);
     // 是否存在阻激夹域伤害
-    if (core.status.checkBlock.damage[index]) return false;
-    if (core.status.checkBlock.repulse[index]) return false;
-    // 是否存在捕捉
-    if (core.status.checkBlock.ambush[index]) return false;
-    // 是否在追猎的视野中
-    if (core.status.checkBlock.chase[index]) return false;
+    if (checkBlockInfo) {
+        if (checkBlockInfo.damage[index]) return false;
+        if (checkBlockInfo.repulse[index]) return false;
+        // 是否存在捕捉
+        if (checkBlockInfo.ambush[index]) return false;
+        // 是否在追猎的视野中
+        if (checkBlockInfo.chase[index]) return false;
+    }
     return true;
 }
 

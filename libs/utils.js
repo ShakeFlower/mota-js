@@ -805,7 +805,7 @@ utils.prototype._decodeRoute_decodeOne = function (decodeObj, c) {
     }
 }
 
-////// 判断某对象是否不为null也不为NaN //////
+////// 判断某对象是否不为undefined, 不为null也不为NaN //////
 utils.prototype.isset = function (val) {
     return val != null && !(typeof val == 'number' && isNaN(val));
 }

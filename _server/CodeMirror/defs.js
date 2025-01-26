@@ -2499,9 +2499,13 @@ var terndefs_f6783a0a_522d_417e_8407_94c67b692e50 = [
           "!doc": "锁定用户控制，常常用于事件处理",
           "!type": "fn()"
         },
+        "getCheckBlock": {
+          "!doc": "获取某层的阻激夹域伤害信息",
+          "!type": "fn(floorId?: string)"
+        },
         "updateCheckBlock": {
           "!doc": "更新领域、夹击、阻击的伤害地图",
-          "!type": "fn(floorId?: string)"
+          "!type": "fn(floorId?: string) -> bool"
         },
         "checkBlock": {
           "!doc": "检查并执行领域、夹击、阻击事件",

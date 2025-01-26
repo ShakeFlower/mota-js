@@ -1292,7 +1292,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// updateDamage只能在此处执行！！更新全地图显伤
 			core.updateDamage();
 		},
-        "updateCheckBlock": function (floorId) {
+		"getCheckBlock": function (floorId) {
 	// 领域、夹击、阻击等的伤害值计算
 	floorId = floorId || core.status.floorId;
 	if (!floorId || !core.status.maps) return;
@@ -1522,7 +1522,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 	*/
 
 	core.flags.canGoDeadZone = canGoDeadZone;
-	core.status.checkBlock = {
+			return {
 		damage: damage,
 		type: type,
 		repulse: repulse,

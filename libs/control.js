@@ -1114,9 +1114,19 @@ control.prototype._moveDirectyFollowers = function (x, y) {
     }
 }
 
+////// 获取某层的阻激夹域信息 //////
+control.prototype.getCheckBlock = function (floorId){
+    return this.controldata.getCheckBlock(floorId);
+}
+
 ////// 更新领域、夹击、阻击的伤害地图 //////
 control.prototype.updateCheckBlock = function (floorId) {
-    return this.controldata.updateCheckBlock(floorId);
+    const checkBlockInfo = this.controldata.getCheckBlock(floorId);
+    if (checkBlockInfo) {
+        core.status.checkBlock = checkBlockInfo;
+        return true;
+    }
+    return false;
 }
 
 ////// 检查并执行领域、夹击、阻击事件 //////

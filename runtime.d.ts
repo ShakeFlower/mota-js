@@ -202,6 +202,7 @@ type gameStatus = {
     checkBlock: {
         ambush: { [x: string]: [number, number, string, direction] }
         repulse: { [x: string]: [number, number, string, direction] }
+        chase: { [x: string]: [number, number, string, direction] }
         damage: { [x: string]: number }
         needCache: boolean
         type: { [x: string]: { [x: string]: boolean } }
@@ -716,8 +717,11 @@ interface control {
     /** 更新跟随者坐标 */
     updateFollowers(): void
 
+    /** 获取某一层的checkBlock信息 */
+    getCheckBlock(floorId?: string): gameStatus['checkBlock'] | undefined;
+
     /** 更新领域、夹击、阻击的伤害地图 */
-    updateCheckBlock(floorId?: string): void
+    updateCheckBlock(floorId?: string): boolean
 
     /** 检查并执行领域、夹击、阻击事件 */
     checkBlock(): void
