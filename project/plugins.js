@@ -3176,6 +3176,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.w = w;
 				this.h = h;
 				this.disable = false;
+				/** 按下此按钮后是否重绘所在Menu */
+				this.redraw = true;
 
 				this.draw = (ctx) => { };
 				this.event = (x, y, px, py) => { };
@@ -3194,7 +3196,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						if (btn.disable) return;
 						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
 							btn.event(x, y, px, py);
-							hasClick = true;
+							if (btn.redraw) hasClick = true;
 						}
 						if (hasClick) this.drawContent();
 					});
@@ -3222,7 +3224,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			clear() {
-				console.log(this.name);
 				this.endListen();
 				core.deleteCanvas(this.name);
 			}
@@ -3239,8 +3240,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.currPage = currPage | 0;
 			}
 
-			initOnePage() {
-				this.pageList[this.currPage].init();
+			initOnePage(index) {
+				if (!core.isset(index)) index = this.currPage;
+				this.pageList[index].init();
 			}
 
 			changePage(num) {
@@ -3248,8 +3250,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const beforeMenu = this.pageList[this.currPage];
 					beforeMenu.clear();
 				}
-				this.initOnePage(this.pageList[num]);
 				this.currPage = num;
+				this.initOnePage();
 			}
 
 			pageDown() {
@@ -3257,7 +3259,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			pageUp() {
-				if (this.currPage < this.pageMax - 1) this.changePage(this.currPage + 1);
+				if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
+			}
+
+			clear() {
+				this.pageList.forEach((page) => page.clear());
+				super.clear();
 			}
 		}
 
@@ -3502,7 +3509,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['clickMove', new Setting('单击瞬移',
 					() => core.getFlag('__noClickMove__', false) ? '开' : '关',
 					() => invertFlag('__noClickMove__'),
-					'系统设置。单击屏幕上的可到达点将瞬移到该点。',
+					'系统设置。单击即可触发瞬移。',
 					true,
 				)],
 				['leftHand', new Setting('左手模式',
@@ -3529,7 +3536,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					this.setting = settingMap.get(name);
 					this.draw = (ctx) => {
 						if (this.disable) return;
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
+						//core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
 						core.ui.fillText(ctx, this.setting.name + '：' + this.setting.status(),
 							this.x , this.y + this.h / 2 + 5, 'white', '16px Verdana');
 					}
@@ -3562,23 +3569,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillRoundRect(ctx, 21, 71, core.__PIXELS__ - 42, 68, 3, " #555555");
 
 				// 绘制设置的框体
-				core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 220, 3, "white");
-				core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 218, 3, " #999999");
+				core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 240, 3, "white");
+				core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 238, 3, " #999999");
 
 				core.setTextAlign(ctx, 'center');
 				core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
 			}
 
 			class ChoiceButton extends ButtonBase {
-				constructor(x, y, w, h, text) {
+				constructor(x, y, w, h, text, index) {
 					super(x, y, w, h);
+					this.index = index;
 					this.draw = (ctx) => {
 						core.setTextAlign(ctx, 'center');
 						if (this.status === 'clicked') {
 							core.fillRoundRect(ctx, x, y, w, h, 3, ' #ADD8E6');
 							core.strokeRoundRect(ctx, x, y, w, h, 3, ' #FFFF00');
 							core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #555555', '16px Verdana');
-						}else{
+						} else {
 							core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
 							core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
 							core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #333333', '16px Verdana');
@@ -3591,12 +3599,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				constructor(name) {
 					super(name);
 					this.text = ''
+					this.selectedBtn;
 					this.clickEvent = (x, y, px, py) => {
 						let hasClick = false;
 						this.btnList.forEach((btn) => {
 							if (btn.disable) return;
 							if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
 								hasClick = true;
+								this.selectedBtn = btn;
 								btn.event(x, y, px, py);
 								this.text = btn.setting.text;
 							}
@@ -3615,6 +3625,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							align: "left", fontSize: 14, maxWidth: 350
 						});
 					}
+					if (core.isset(this.selectedBtn)) {
+						core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
+							this.selectedBtn.w, this.selectedBtn.h, 137);
+					}
+					switch (this.name) {
+						case 'gamePlay':
+							core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
+							core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
+							break;
+					}
+				}
+
+				clear() {
+					core.clearUIEventSelector(0);
+					super.clear();
 				}
 			}
 
@@ -3631,46 +3656,66 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 
+			class TextButton extends ButtonBase {
+				constructor(x, y, w, h, text) {
+					super(x, y, w, h);
+					this.draw = (ctx) => {
+						if (this.disable) return;
+						core.ui.fillText(ctx, text,
+							this.x + this.w / 2, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+					}
+				}
+			}
 
-		this.t = function () {
+		this.openSetting = function () {
+			if (core.isReplaying()) return;
+			core.lockControl();
 			const ctx = 'setting';
 
 			const gamePlayMenu = new SettingOnePage('gamePlay');
 			gamePlayMenu.btnList = new Map([
-				['autoGet', new SettingButton(40, 160, 120, 30, 'autoGet')],
-				['autoBattle', new SettingButton(40, 190, 120, 30, 'autoBattle')],
-				['clickMove', new SettingButton(220, 160, 120, 30, 'clickMove')]
+				['autoGet', new SettingButton(40, 180, 150, 30, 'autoGet')],
+				['autoBattle', new SettingButton(220, 180, 150, 30, 'autoBattle')],
+				['clickMove', new SettingButton(40, 230, 150, 30, 'clickMove')]
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');
 			gameViewMenu.btnList = new Map([
-				['itemDetail', new SettingButton(40, 160, 120, 30, 'itemDetail')],
+				['itemDetail', new SettingButton(40, 160, 150, 30, 'itemDetail')],
 			]);
-
+			
 			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu], 0, ctx);
-			const btn1 = new ChoiceButton(32, 40, 46, 24, '功能'),
-				btn2 = new ChoiceButton(92, 40, 46, 24, '显示'),
-				btn3 = new ChoiceButton(152, 40, 46, 24, '音频');
-			function changeBtn(num, aimBtn) {
+			const gamePlayBtn = new ChoiceButton(32, 40, 46, 24, '功能', 0),
+				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1);
+			const quit = new TextButton(360, 10, 45, 25, '[退出]');
+			quit.redraw = false;
+			quit.event = () => {
+				settingMenu.clear();
+				setTimeout(core.unlockControl, 0); // 消抖，防止触发瞬移。
+			}
+
+			settingMenu.btnList = new Map([['gamePlayBtn', gamePlayBtn], ['gameViewBtn', gameViewBtn],
+			['quit', quit]]);
+			function changeBtn(aimBtn) {
 				settingMenu.btnList.forEach((btn) => {
-					btn.status = aimBtn === btn ? 'clicked' : 'pending';
-					settingMenu.changePage(num);
+					if (btn instanceof ChoiceButton) {
+						btn.status = aimBtn === btn ? 'clicked' : 'pending';
+					}
 				})
 			}
-			btn1.status = 'clicked';
-			btn2.event = function(){
-				console.log(this);
-				this.status = 'clicked';
-				settingMenu.changePage(1);
-			}
-			settingMenu.btnList = new Map([['btn1', btn1], ['btn2', btn2], ['btn3', btn3]]);
+			settingMenu.btnList.forEach((btn) => {
+				if (btn instanceof ChoiceButton) {
+					btn.event = function () {
+						changeBtn(this);
+						settingMenu.changePage(this.index);
+					}
+				}
+			});
+			// 设置初始时选中的按键为第一个按键
+			changeBtn(gamePlayBtn);
 
 			settingMenu.init();
-
-			core.registerAction('onclick', 'aaa', (x, y, px, py) => {
-				console.log([px, py]);
-			})
-
 		}
+
 	}
 }
