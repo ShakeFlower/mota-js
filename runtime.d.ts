@@ -2344,6 +2344,14 @@ interface ui {
      */
     drawTip(text: string, id?: string, frame?: number): void
 
+    /** 
+     * 左上角绘制一段提示同时播放错误音效
+     * @param text 要提示的文字内容，支持 ${} 语法
+     * @param id 要绘制的图标ID
+     * @param frame 要绘制图标的第几帧
+     */
+    drawFailTip(text: string, id?: string, frame?: number): void
+
     /** 地图中间绘制一段文字 */
     drawText(contents: string, callback?: () => any): void
 
@@ -2960,6 +2968,7 @@ type CoreMixin = {
     readonly icons: icons
     readonly actions: actions
     readonly plugin: Record<string, Function>
+    readonly statusBar: Main['statusBar']
 
 } & control & events & loader & enemys & items & maps & ui & utils & icons & actions
 
@@ -2973,7 +2982,7 @@ interface Main {
     readonly mode: 'play' | 'editor'
     readonly statusBar: {
         images: { [x: string]: HTMLElement }
-        icons: { [x: string]: number | null | undefined }
+        icons: { [x: string]: string | HTMLImageElement }
         [x: string]: HTMLElement | object
     }
     readonly __VERSION__: string
