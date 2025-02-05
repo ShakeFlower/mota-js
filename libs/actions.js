@@ -2226,14 +2226,14 @@ actions.prototype._clickSwitchs_sounds = function (x, y) {
 actions.prototype._clickSwitchs_sounds_bgm = function () {
     core.triggerBgm();
     core.playSound('确定');
-    core.ui._drawSwitchs_sounds();
+    // core.ui._drawSwitchs_sounds();
 }
 
 actions.prototype._clickSwitchs_sounds_se = function () {
     core.musicStatus.soundStatus = !core.musicStatus.soundStatus;
     core.setLocalStorage('soundStatus', core.musicStatus.soundStatus);
     core.playSound('确定');
-    core.ui._drawSwitchs_sounds();
+    // core.ui._drawSwitchs_sounds();
 }
 
 actions.prototype._clickSwitchs_sounds_userVolume = function (delta) {
@@ -2245,7 +2245,7 @@ actions.prototype._clickSwitchs_sounds_userVolume = function (delta) {
     if (core.musicStatus.playingBgm) core.material.bgms[core.musicStatus.playingBgm].volume = core.musicStatus.userVolume * core.musicStatus.designVolume;
     core.setLocalStorage('userVolume', core.musicStatus.userVolume);
     core.playSound('确定');
-    core.ui._drawSwitchs_sounds();
+    //core.ui._drawSwitchs_sounds();
 }
 
 actions.prototype._keyUpSwitchs_sounds = function (keycode) {
@@ -2322,48 +2322,48 @@ actions.prototype._clickSwitchs_display_setSize = function (delta) {
     if (currentRatio > core.domStyle.ratio) {
         core.drawTip("需刷新页面以调整UI清晰度");
     }
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._clickSwitchs_display_enableHDCanvas = function () {
     core.flags.enableHDCanvas = !core.flags.enableHDCanvas;
     core.setLocalStorage('enableHDCanvas', core.flags.enableHDCanvas);
     core.drawTip("开关高清UI，需刷新页面方可生效");
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._clickSwitchs_display_enableEnemyPoint = function () {
     core.flags.enableEnemyPoint = !core.flags.enableEnemyPoint;
     core.setLocalStorage('enableEnemyPoint', core.flags.enableEnemyPoint);
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._clickSwitchs_display_enemyDamage = function () {
     core.flags.displayEnemyDamage = !core.flags.displayEnemyDamage;
     core.updateDamage();
     core.setLocalStorage('enemyDamage', core.flags.displayEnemyDamage);
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._clickSwitchs_display_critical = function () {
     core.flags.displayCritical = !core.flags.displayCritical;
     core.updateDamage();
     core.setLocalStorage('critical', core.flags.displayCritical);
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._clickSwitchs_display_extraDamage = function () {
     core.flags.displayExtraDamage = !core.flags.displayExtraDamage;
     core.updateDamage();
     core.setLocalStorage('extraDamage', core.flags.displayExtraDamage);
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._clickSwitchs_display_extraDamageType = function () {
     core.flags.extraDamageType = (core.flags.extraDamageType + 1) % 3;
     core.updateDamage();
     core.setLocalStorage('extraDamageType', core.flags.extraDamageType);
-    core.ui._drawSwitchs_display();
+    // core.ui._drawSwitchs_display();
 }
 
 actions.prototype._keyUpSwitchs_display = function (keycode) {

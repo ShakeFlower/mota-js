@@ -3465,11 +3465,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
 
 			class Setting {
-				constructor(name, status, effect, text, replay, icon) {
-					/** 选项界面显示的名称 */
-					this.name = name;
-					/** 该选项所处的状态 */
-					this.status = status;
+				constructor(name, effect, text, replay, draw) {
+					/** 获取选项界面显示的名称 */
+					this.getName = name;
 					/** 执行该选项的效果 */
 					this.effect = effect;
 					/** 该选项在框中的说明文字 */
@@ -3478,8 +3476,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					 * @type {boolean}
 					 */
 					this.replay = replay;
-					/** 该选项的图标（可为空） */
-					this.icon = icon;
+					/** 除名称外的绘制内容
+					 * @type {Function}
+					 */
+					this.draw = draw;
 				}
 			}
 
@@ -3488,57 +3488,136 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			const settingMap = new Map([
-				['autoGet', new Setting('自动拾取',
-					() => core.getFlag('autoGet', false) ? '开' : '关',
+				['autoGet', new Setting(
+					() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),
 					() => invertFlag('autoGet'),
 					'每走一步，自动拾取当前层可获得的道具。',
 					true,
 				)],
-				['autoBattle', new Setting('自动清怪',
-					() => core.getFlag('autoBattle', false) ? '开' : '关',
+				['autoBattle', new Setting(
+					() => '自动清怪:' + (core.getFlag('autoBattle', false) ? '开' : '关'),
 					() => invertFlag('autoBattle'),
 					'每走一步，自动和当前层可到达位置伤害为0的敌人战斗。对部分特殊敌人无效。',
 					true,
 				)],
-				['potionRouting', new Setting('血瓶绕路',
-					() => core.getFlag('__potionNoRouting__', false) ? '开' : '关',
+				['potionRouting', new Setting(
+					() => '血瓶绕路:' + core.getFlag('__potionNoRouting__', false) ? '开' : '关',
 					() => invertFlag('__potionNoRouting__'),
 					'系统设置。开启后自动寻路时将绕过血瓶和绿宝石。',
 					true,
 				)],
-				['clickMove', new Setting('单击瞬移',
-					() => core.getFlag('__noClickMove__', false) ? '开' : '关',
+				['clickMove', new Setting(
+					() => '单击瞬移:' + (core.getFlag('__noClickMove__', false) ? '开' : '关'),
 					() => invertFlag('__noClickMove__'),
 					'系统设置。单击即可触发瞬移。',
 					true,
 				)],
-				['leftHand', new Setting('左手模式',
-					() => core.flags.leftHandPrefer ? '开' : '关',
+				['leftHand', new Setting(
+					() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
 					() => core.flags.leftHandPrefer = !core.flags.leftHandPrefer,
 					'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
 					true,
 				)],
-				['itemDetail', new Setting('物品显示数据',
-					() => core.getFlag('itemDetail', false) ? '开' : '关',
+				['itemDetail', new Setting(
+					() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
 					() => invertFlag('itemDetail'),
 					'在地图上显示即捡即用道具和装备增加的属性值。',
 					true,
+				)],
+				['zoomIn', new Setting(
+					() => ' <   放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
+					() => core.actions._clickSwitchs_display_setSize(-1),
+					'放缩',
+					false, // 录像中不可录入任何DOM操作
+				)],
+				['zoomOut', new Setting(
+					() => ' > ',
+					() => core.actions._clickSwitchs_display_setSize(1),
+					'放缩',
+					false,
+				)],
+				['HDCanvas', new Setting(
+					() => '高清画面:' + (core.flags.enableHDCanvas ? '开' : '关'),
+					core.actions._clickSwitchs_display_enableHDCanvas,
+					'高清画面',
+					false,
+				)],
+				['enableEnemyPoint', new Setting(
+					() => '定点怪显:' + (core.flags.enableEnemyPoint ? '开' : '关'),
+					core.actions._clickSwitchs_display_enableEnemyPoint,
+					'怪物属性定点显示功能，即属性不同的怪物会在怪物手册单列。',
+					false,
+				)],
+				['displayEnemyDamage', new Setting(
+					() => '怪物显伤:' + (core.flags.displayEnemyDamage ? '开' : '关'),
+					core.actions._clickSwitchs_display_enemyDamage,
+					'怪物显伤',
+					false,
+				)],
+				['displayCritical', new Setting(
+					() => '临界显伤:' + (core.flags.displayCritical ? '开' : '关'),
+					core.actions._clickSwitchs_display_critical,
+					'临界显伤',
+					false,
+				)],
+				['displayExtraDamage', new Setting(
+					() => '领域显伤:' + (core.flags.displayExtraDamage ? '开' : '关'),
+					core.actions._clickSwitchs_display_extraDamage,
+					'领域显伤',
+					false,
+				)],
+				['extraDamageType', new Setting(
+					() => '领域模式:' + (core.flags.extraDamageType == 2 ? '[最简]' : core.flags.extraDamageType == 1 ? '[半透明]' : '[完整]'),
+					core.actions._clickSwitchs_display_extraDamageType,
+					'领域模式',
+					false,
+				)],
+				['autoScale', new Setting(
+					() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
+					() => core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true),
+					'自动放缩',
+					false,
+				)],
+				['bgm', new Setting(
+					() => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
+					core.actions._clickSwitchs_sounds_bgm,
+					'播放背景音乐',
+					false,
+				)],
+				['se', new Setting(
+					() => '音效:' + (core.musicStatus.soundStatus ? '开' : '关'),
+					core.actions._clickSwitchs_sounds_se,
+					'播放音效',
+					false,
+				)],
+				['decreaseVolume', new Setting(
+					() => " <   音量:" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)),
+					() => core.actions._clickSwitchs_sounds_userVolume(-1),
+					'减小音量',
+					false,
+				)],
+				['increaseVolume', new Setting(
+					() => ' > ',
+					() => core.actions._clickSwitchs_sounds_userVolume(1),
+					'增大音量',
+					false,
 				)],
 			])
 
 			class SettingButton extends ButtonBase {
 				constructor(x, y, w, h, name) {
 					super(x, y, w, h);
+					this.name = name;
 					/**
 					 * @type {Setting}
 					 */
-					this.name = name;
 					this.setting = settingMap.get(name);
 					this.draw = (ctx) => {
 						if (this.disable) return;
 						//core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
-						core.ui.fillText(ctx, this.setting.name + '：' + this.setting.status(),
+						core.ui.fillText(ctx, this.setting.getName(),
 							this.x , this.y + this.h / 2 + 5, 'white', '16px Verdana');
+						
 					}
 					this.event = () => {
 						if (this.disable) return;
@@ -3598,7 +3677,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			class SettingOnePage extends MenuBase {
 				constructor(name) {
 					super(name);
-					this.text = ''
+					this.text = '';
 					this.selectedBtn;
 					this.clickEvent = (x, y, px, py) => {
 						let hasClick = false;
@@ -3606,11 +3685,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							if (btn.disable) return;
 							if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
 								hasClick = true;
-								this.selectedBtn = btn;
-								btn.event(x, y, px, py);
-								this.text = btn.setting.text;
+								if (this.selectedBtn === btn) btn.event(x, y, px, py);
+								else {
+									this.selectedBtn = btn;
+									this.text = btn.setting.text;
+								}
 							}
-						})
+						});
 						if (hasClick) {
 							this.drawContent();
 						}
@@ -3633,6 +3714,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						case 'gamePlay':
 							core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
 							core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
+							break;
+						case 'gameView':
+							core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
+							core.fillText(this.name, '-- 音效 --', 40, 295, ' #FFE4B5', '18px Verdana');
 							break;
 					}
 				}
@@ -3672,6 +3757,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.lockControl();
 			const ctx = 'setting';
 
+			// 每个页面的按钮
 			const gamePlayMenu = new SettingOnePage('gamePlay');
 			gamePlayMenu.btnList = new Map([
 				['autoGet', new SettingButton(40, 180, 150, 30, 'autoGet')],
@@ -3681,21 +3767,46 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			const gameViewMenu = new SettingOnePage('gameView');
 			gameViewMenu.btnList = new Map([
-				['itemDetail', new SettingButton(40, 160, 150, 30, 'itemDetail')],
+				['itemDetail', new SettingButton(40, 180, 150, 25, 'itemDetail')],
+				['HDCanvas', new SettingButton(40, 205, 150, 25, 'HDCanvas')],
+				['displayEnemyDamage', new SettingButton(40, 230, 150, 25, 'displayEnemyDamage')],
+				['displayExtraDamage', new SettingButton(40, 255, 150, 25, 'displayExtraDamage')],
+				['bgm', new SettingButton(40, 300, 150, 25, 'bgm')],
+				['decreaseVolume', new SettingButton(40, 325, 25, 25, 'decreaseVolume')],
+				['increaseVolume', new SettingButton(140, 325, 25, 25, 'increaseVolume')],
+
+				['zoomIn', new SettingButton(220, 180, 25, 25, 'zoomIn')],
+				['zoomOut', new SettingButton(320, 180, 25, 25, 'zoomOut')],
+				['enableEnemyPoint', new SettingButton(220, 205, 150, 25, 'enableEnemyPoint')],		
+				['displayCritical', new SettingButton(220, 230, 150, 25, 'displayCritical')],
+				['se', new SettingButton(220, 300, 150, 25, 'se')],
 			]);
 			
-			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu], 0, ctx);
+			const keyMenu = new SettingOnePage('key');
+			keyMenu.btnList = new Map();
+
+			const consoleMenu = new SettingOnePage('console');
+			consoleMenu.btnList = new Map();
+
+			// 在此处添加新的菜单页面
+			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu], 0, ctx);
+
+			// 主页面的按钮列表
 			const gamePlayBtn = new ChoiceButton(32, 40, 46, 24, '功能', 0),
-				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1);
+				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1),
+				keyBtn = new ChoiceButton(152, 40, 46, 24, '按键', 2),
+				consoleBtn = new ChoiceButton(212, 40, 66, 24, '控制台', 3);
 			const quit = new TextButton(360, 10, 45, 25, '[退出]');
 			quit.redraw = false;
 			quit.event = () => {
 				settingMenu.clear();
-				setTimeout(core.unlockControl, 0); // 消抖，防止触发瞬移。
+				setTimeout(core.unlockControl, 0); // 消抖，防止点击关闭按钮的一瞬间触发瞬移。
 			}
 
 			settingMenu.btnList = new Map([['gamePlayBtn', gamePlayBtn], ['gameViewBtn', gameViewBtn],
+			['keyBtn', keyBtn], ['consoleBtn', consoleBtn],
 			['quit', quit]]);
+
 			function changeBtn(aimBtn) {
 				settingMenu.btnList.forEach((btn) => {
 					if (btn instanceof ChoiceButton) {
