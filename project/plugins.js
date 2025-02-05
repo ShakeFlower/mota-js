@@ -3179,6 +3179,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				/** 按下此按钮后是否重绘所在Menu */
 				this.redraw = true;
 
+				/** 所在的Menu，用于触发重绘等事件 */
+				this.menu;
+
 				this.draw = (ctx) => { };
 				this.event = (x, y, px, py) => { };
 				this.status;
@@ -3203,8 +3206,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 
+			initBtnList(arr) {
+				this.btnList = new Map(arr);
+				this.btnList.forEach((button) => {
+					button.menu = this;
+				})
+			}
+
 			drawButtonContent() {
-				this.btnList.forEach((button) => { if (!button.disable) button.draw(this.name); })
+				this.btnList.forEach((button) => {
+					if (!button.disable) button.draw(this.name);
+				})
 			}
 
 			drawContent() {
@@ -3602,6 +3614,196 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					'增大音量',
 					false,
 				)],
+				['wallHacking', new Setting(
+					() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
+					() => {
+						core.setFlag('debug', true);
+						invertFlag('debug_wallHacking');
+					},
+					'开启时将始终穿墙并无视各种事件，无论是否按下Ctrl。',
+					false,
+				)],
+				['debug_statusName', new Setting(
+					() => core.getFlag('debug_statusName', '??'),
+					function () {
+						const dictionary = {
+							'体力': 'hp', '血量': 'hp', '生命': 'hp', '血': 'hp',
+							'体力上限': 'hpmax', '血量上限': 'hpmax', '生命上限': 'hpmax', '血限': 'hpmax',
+							'攻击': 'atk', '攻': 'atk', '防御': 'def', '防': 'def',
+							'魔防': 'mdef', '护盾': 'mdef', 'mf': 'mdef',
+							'金币': 'money', '钱': 'money', '经验': 'exp',
+							'魔力': 'mana', '蓝': 'mana',
+						}
+						core.utils.myprompt('输入要修改的属性名称', null, (value) => {
+							const heroStatus = core.status.hero;
+							if (dictionary.hasOwnProperty(value)) {
+								value = dictionary[value];
+							}
+							if (heroStatus && heroStatus.hasOwnProperty(value)
+								&& ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'max'].includes(value)) {
+								core.setFlag('debug_statusName', value);
+								this.menu.drawContent();
+							}
+							else {
+								core.drawTip('错误：不合法的名称!');
+								core.playSound('error.mp3');
+							}
+						});
+					},
+					'',
+					false,
+					function (ctx, x, y, w, h) {
+						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					},
+				)],
+				['debug_statusValue', new Setting(
+					() => {
+						let value = core.getFlag('debug_statusValue', '??');
+						if (typeof value === 'number') return core.formatBigNumber(value, 5);
+						else return value;
+					},
+					function () {
+						core.utils.myprompt('输入要修改到的值', null, (value) => {
+							value = parseInt(value);
+							if (!Number.isNaN(value)) {
+								core.setFlag('debug_statusValue', value);
+								this.menu.drawContent();
+							}
+							else {
+								core.drawFailTip('错误：不合法的值!');
+							}
+						});
+					},
+					'',
+					false,
+					function (ctx, x, y, w, h) {
+						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					},
+				)],
+				['debug_setStatus', new Setting(
+					() => '',
+					() => {
+						core.setFlag('debug', true);
+						const name = core.getFlag('debug_statusName'),
+							value = core.getFlag('debug_statusValue');
+						if (!(name && core.status.hero && core.status.hero.hasOwnProperty(name))) {
+							core.drawFailTip('错误：不合法的名称!');
+							return;
+						}
+						if (!Number.isInteger(value)) {
+							core.drawFailTip('错误：不合法的值!');
+							return;
+						}
+						core.setFlag(name, value);
+						core.drawTip('设置成功!');
+					},
+					'',
+					false,
+				)],
+				['debug_itemName', new Setting(
+					() => core.getFlag('debug_itemName', '??'),
+					function () {
+						core.setFlag('debug', true);
+						core.utils.myprompt('输入要修改的物品名称', null, (value) => {
+							const itemInfo = core.material.items;
+							if (itemInfo) {
+								const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+								if (aimItem) {
+									core.setFlag('debug_itemName', aimItem.id);
+									this.menu.drawContent();
+									return;
+								}
+							}
+							core.drawTip('错误：不合法的名称!');
+							core.playSound('error.mp3');
+						});
+					},
+					'',
+					false,
+					function (ctx, x, y, w, h) {
+						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					},
+				)],
+				['debug_itemValue', new Setting(
+					() => core.getFlag('debug_itemValue', '??'),
+					function () {
+						core.setFlag('debug', true);
+						core.utils.myprompt('输入要修改到的值', null, (value) => {
+							value = parseInt(value);
+							if (!Number.isNaN(value)) {
+								core.setFlag('debug_itemValue', value);
+								this.menu.drawContent();
+							}
+							else {
+								core.drawTip('错误：不合法的值!');
+								core.playSound('error.mp3');
+							}
+						});
+					},
+					'',
+					false,
+					function (ctx, x, y, w, h) {
+						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					},
+				)],
+				['debug_setItem', new Setting(
+					() => '111',
+					() => {
+						core.setFlag('debug', true);
+						if (core.hasFlag('debug_itemName')) {
+							core.setStatus(core.getFlag('debug_itemName'), core.getFlag('debug_itemValue'))
+						}
+					},
+					'',
+					false,
+				)],
+				['debug_flagName', new Setting(
+					() => core.getFlag('debug_flagName', '??'),
+					function () {
+						core.setFlag('debug', true);
+						core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+							if (!value.startsWith('debug')) {
+								core.setFlag('debug_flagName', value);
+								this.menu.drawContent();
+							}
+							else {
+								core.drawTip('错误：不合法的名称!');
+								core.playSound('error.mp3');
+							}
+						});
+					},
+					'',
+					false,
+					function (ctx, x, y, w, h) {
+						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					},
+				)],
+				['debug_flagValue', new Setting(
+					() => core.getFlag('debug_flagValue', '-'),
+					function () {
+						core.setFlag('debug', true);
+						core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+							core.setFlag('debug_flagValue', value); // todo:似乎值不止可能是字符串 待尝试
+							this.menu.drawContent();
+						});
+					},
+					'',
+					false,
+					function (ctx, x, y, w, h) {
+						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					},
+				)],
+				['debug_setFlag', new Setting(
+					() => '111',
+					() => {
+						core.setFlag('debug', true);
+						if (core.hasFlag('debug_flagName')) {
+							core.setStatus(core.getFlag('debug_flagName'), core.getFlag('debug_flagValue'))
+						}
+					},
+					'',
+					false,
+				)],
 			])
 
 			class SettingButton extends ButtonBase {
@@ -3617,11 +3819,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						//core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
 						core.ui.fillText(ctx, this.setting.getName(),
 							this.x , this.y + this.h / 2 + 5, 'white', '16px Verdana');
-						
+						const drawFunc = this.setting.draw;
+						if (drawFunc) drawFunc.apply(this, [ctx, this.x, this.y, this.w, this.h]);
 					}
 					this.event = () => {
 						if (this.disable) return;
-						this.setting.effect();
+						this.setting.effect.apply(this, []);
+						this.menu.drawContent();
 						if (this.setting.replay) core.status.route.push('cSet:' + name);
 					}
 				}
@@ -3684,7 +3888,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						this.btnList.forEach((btn) => {
 							if (btn.disable) return;
 							if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-								hasClick = true;
 								if (this.selectedBtn === btn) btn.event(x, y, px, py);
 								else {
 									this.selectedBtn = btn;
@@ -3692,9 +3895,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								}
 							}
 						});
-						if (hasClick) {
-							this.drawContent();
-						}
 					}
 				}
 
@@ -3718,6 +3918,26 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						case 'gameView':
 							core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
 							core.fillText(this.name, '-- 音效 --', 40, 295, ' #FFE4B5', '18px Verdana');
+							break;
+						case 'console':
+							const consoleWarnText = 								
+							"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
+							core.ui.drawTextContent(this.name, consoleWarnText, {
+								left: 30, top: 158, bold: false, color: " #FFC0CB",
+								align: "left", fontSize: 14, maxWidth: 350
+							});
+							core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
+							core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
+							core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
+							core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
+							core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
+							core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
+							// core.fillText(this.name, "变量", 45, 264, 'white', '16px Verdana');
+							// core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
+							// core.ui.drawTextContent(this.name, "属性                 设为", {
+							// 	left: 40, top: 250, bold: false, color: "white",
+							// 	align: "left", fontSize: 16, maxWidth: 350
+							// });
 							break;
 					}
 				}
@@ -3759,14 +3979,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			// 每个页面的按钮
 			const gamePlayMenu = new SettingOnePage('gamePlay');
-			gamePlayMenu.btnList = new Map([
+			gamePlayMenu.initBtnList([
 				['autoGet', new SettingButton(40, 180, 150, 30, 'autoGet')],
 				['autoBattle', new SettingButton(220, 180, 150, 30, 'autoBattle')],
 				['clickMove', new SettingButton(40, 230, 150, 30, 'clickMove')]
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');
-			gameViewMenu.btnList = new Map([
+			gameViewMenu.initBtnList([
 				['itemDetail', new SettingButton(40, 180, 150, 25, 'itemDetail')],
 				['HDCanvas', new SettingButton(40, 205, 150, 25, 'HDCanvas')],
 				['displayEnemyDamage', new SettingButton(40, 230, 150, 25, 'displayEnemyDamage')],
@@ -3783,10 +4003,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			]);
 			
 			const keyMenu = new SettingOnePage('key');
-			keyMenu.btnList = new Map();
+			
 
 			const consoleMenu = new SettingOnePage('console');
-			consoleMenu.btnList = new Map();
+			consoleMenu.initBtnList([
+				['wallHacking', new SettingButton(40, 220, 150, 25, 'wallHacking')],
+				['debug_statusName', new SettingButton(80, 250, 80, 20, 'debug_statusName')],
+				['debug_statusValue', new SettingButton(210, 250, 80, 20, 'debug_statusValue')],
+				['debug_itemName', new SettingButton(80, 276, 80, 20, 'debug_itemName')],
+				['debug_itemValue', new SettingButton(240, 276, 80, 20, 'debug_itemValue')],
+				['debug_flagName', new SettingButton(80, 302, 80, 20, 'debug_flagName')],
+				['debug_flagValue', new SettingButton(210, 302, 80, 20, 'debug_flagValue')],
+			]);
 
 			// 在此处添加新的菜单页面
 			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu], 0, ctx);
