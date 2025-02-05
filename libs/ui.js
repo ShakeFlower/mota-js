@@ -735,6 +735,12 @@ ui.prototype._drawTip_drawOne = function (tip) {
     core.setAlpha('data', 1);
 }
 
+////// 绘制提示同时播放错误音效 //////
+ui.prototype.drawFailTip = function (text, id, frame) {
+    this.drawTip(text, id, frame);
+    core.playSound('error.mp3');
+}
+
 ////// 地图中间绘制一段文字 //////
 ui.prototype.drawText = function (contents, callback) {
     if (contents != null) return this._drawText_setContent(contents, callback);
