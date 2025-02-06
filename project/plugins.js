@@ -3527,12 +3527,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					'系统设置。单击即可触发瞬移。',
 					true,
 				)],
-				['leftHand', new Setting(
-					() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
-					() => core.flags.leftHandPrefer = !core.flags.leftHandPrefer,
-					'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
-					true,
-				)],
 				['itemDetail', new Setting(
 					() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
 					() => invertFlag('itemDetail'),
@@ -3617,6 +3611,85 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					'增大音量',
 					false,
 				)],
+				['leftHand', new Setting(
+					() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
+					() => core.flags.leftHandPrefer = !core.flags.leftHandPrefer,
+					'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
+					true,
+				)],
+				['setHotKey', new Setting(
+					() => '',
+					(num) => {
+						core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', null, (value) => {
+							const itemInfo = core.material.items;
+							if (itemInfo) {
+								const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+								if (aimItem) {
+									if (aimItem.cls === 'constants' || aimItem.cls === 'tools') {
+										core.setFlag('hotkey' + num, aimItem.id);
+										this.menu.drawContent();
+									}
+									else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
+								}
+								else core.drawFailTip('错误：找不到该名称的物品!');
+							}
+							else core.drawFailTip('未知错误：core.material.items不存在!');
+						});
+					},
+					'给选定的数字键绑定一个可快捷使用的物品。',
+					true,
+					function (ctx, x, y, w, h) {
+						const num = this.EventArgs[0];
+						const item = core.getFlag('hotkey' + num, null);
+						let icon, itemName;
+						if (item && core.material.items.hasOwnProperty(item)) {
+							icon = item;
+							itemName = core.material.items.item.name;
+						}
+						else {
+							switch (num) {
+								case 1:
+									icon = 'pickaxe';
+									itemName = '破墙镐';
+									break;
+								case 2:
+									icon = 'bomb';
+									itemName = '炸弹';
+									break;
+								case 3:
+									icon = 'centerFly';
+									itemName = '中心飞';
+									break;
+								case 4:
+									itemName = '杂物';
+									break;
+								case 5:
+									itemName = '回退一步';
+									break;
+								case 6:
+									itemName = '撤销回退';
+									break;
+								case 7:
+									itemName = '轻按';
+									break;
+							}
+						}
+
+						core.ui.drawTextContent(ctx, '快捷键' + num);
+					}
+				)],
+				['clearHotKeys', new Setting(
+					() => '',
+					() => {
+						for (let i = 1; i <= 7; i++) {
+							core.setFlag('hotkey' + i, null);
+						}
+						this.menu.drawContent();
+						core.drawSuccessTip('快捷键已重置到默认状态。')
+					},
+					'重置本页面所有快捷键到默认状态。',
+					true,
+				)],
 				['wallHacking', new Setting(
 					() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
 					() => {
@@ -3648,8 +3721,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								this.menu.drawContent();
 							}
 							else {
-								core.drawTip('错误：不合法的名称!');
-								core.playSound('error.mp3');
+								core.drawFailTip('错误：不合法的名称!');
 							}
 						});
 					},
@@ -3699,7 +3771,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.setFlag('debug', true);
 						core.setStatus(name, value);
 						core.updateStatusBar();
-						core.drawTip('设置成功!');
+						core.drawSuccessTip('设置成功!');
 					},
 					'将角色状态设为相应值。',
 					false,
@@ -3722,8 +3794,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 									return;
 								}
 							}
-							core.drawTip('错误：不合法的名称!');
-							core.playSound('error.mp3');
+							core.drawFailTip('错误：不合法的名称!');
 						});
 					},
 					'',
@@ -3743,8 +3814,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								this.menu.drawContent();
 							}
 							else {
-								core.drawTip('错误：不合法的值!');
-								core.playSound('error.mp3');
+								core.drawFailTip('错误：不合法的值!');
 							}
 						});
 					},
@@ -3800,8 +3870,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								this.menu.drawContent();
 							}
 							else {
-								core.drawTip('错误：不合法的名称!');
-								core.playSound('error.mp3');
+								core.drawFailTip('错误：不合法的名称!');
 							}
 						});
 					},
@@ -3859,9 +3928,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			])
 
 			class SettingButton extends ButtonBase {
-				constructor(x, y, w, h, name) {
+				/**
+				 * @param {unknown[]} eventArgs 
+				 */
+				constructor(x, y, w, h, name, eventArgs) {
 					super(x, y, w, h);
 					this.name = name;
+					/**
+					 * @type {Array<unknown>}
+					 */
+					this.eventArgs = eventArgs || [];
 					/**
 					 * @type {Setting}
 					 */
@@ -3876,7 +3952,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					this.event = () => {
 						if (this.disable) return;
-						this.setting.effect.apply(this, []);
+						this.setting.effect.apply(this, eventArgs);
 						this.menu.drawContent();
 						if (this.setting.replay) core.status.route.push('cSet:' + name);
 					}
@@ -3943,9 +4019,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								else {
 									this.selectedBtn = btn;
 									this.text = btn.setting.text;
+									this.drawEventSelector();
 								}
 							}
 						});
+					}
+				}
+
+				drawEventSelector() {
+					if (core.isset(this.selectedBtn)) {
+						core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
+							this.selectedBtn.w, this.selectedBtn.h, 137);
 					}
 				}
 
@@ -3956,10 +4040,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							left: 30, top: 78, bold: false, color: "white",
 							align: "left", fontSize: 14, maxWidth: 350
 						});
-					}
-					if (core.isset(this.selectedBtn)) {
-						core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
-							this.selectedBtn.w, this.selectedBtn.h, 137);
 					}
 					switch (this.name) {
 						case 'gamePlay':
@@ -3985,6 +4065,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
 							break;
 					}
+					this.drawEventSelector();
 				}
 
 				clear() {
@@ -4048,7 +4129,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			]);
 			
 			const keyMenu = new SettingOnePage('key');
-			
+			keyMenu.initBtnList([
+				['leftHand', new SettingButton(40, 160, 150, 25, 'leftHand')],
+				['hotKey1', new SettingButton(40, 200, 100, 25, 'setHotKey', [1])],
+			])
 
 			const consoleMenu = new SettingOnePage('console');
 			consoleMenu.initBtnList([
@@ -4104,5 +4188,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			settingMenu.init();
 		}
 
+		// todolist 批量使用：您当前选定了：xxx。请勿选定不适合批量使用的道具，请勿输入过大的数字。
 	}
 }

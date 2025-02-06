@@ -851,138 +851,167 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
     },
     "actions": {
         "onKeyUp": function (keyCode, altKey) {
-			// 键盘按键处理，可以在这里自定义快捷键列表
-			// keyCode：当前按键的keyCode（每个键的keyCode自行百度）
-			// altKey：Alt键是否被按下，为true代表同时按下了Alt键
-			// 可以在这里任意增加或编辑每个按键的行为
+	// 键盘按键处理，可以在这里自定义快捷键列表
+	// keyCode：当前按键的keyCode（每个键的keyCode自行百度）
+	// altKey：Alt键是否被按下，为true代表同时按下了Alt键
+	// 可以在这里任意增加或编辑每个按键的行为
 
-			// 如果处于正在行走状态，则不处理
-			if (core.isMoving()) return;
+	// 如果处于正在行走状态，则不处理
+	if (core.isMoving()) return;
 
-			// 商店长按时忽略
-			if (core.status.onShopLongDown) return core.status.onShopLongDown = false;
+	// 商店长按时忽略
+	if (core.status.onShopLongDown) return core.status.onShopLongDown = false;
 
-			// Alt+0~9，快捷换上套装
-			if (altKey && keyCode >= 48 && keyCode <= 57) {
-				core.items.quickLoadEquip(keyCode - 48);
-				return;
+	// Alt+0~9，快捷换上套装
+	if (altKey && keyCode >= 48 && keyCode <= 57) {
+		core.items.quickLoadEquip(keyCode - 48);
+		return;
+	}
+
+	function tryUseItem(item) {
+		if (core.hasItem(item)) {
+			switch (item) {
+			case 'centerFly':
+				core.ui._drawCenterFly(); // 中心对称飞行器需要特殊判断
+				break;
+			default:
+				core.useItem(item);
+				break;
 			}
+		} else {
+			core.drawFailTip('当前未持有对应道具！');
+		}
+	}
 
-			function tryUseItem(item) {
-				if (core.hasItem(item)) core.useItem(item);
-				else {
-					core.playSound('error.mp3');
-					core.drawTip('当前未持有对应道具！');
-				}
+	// 根据keyCode值来执行对应操作
+	switch (keyCode) {
+	case 27: // ESC：打开菜单栏
+		core.openSettings(true);
+		break;
+	case 88: // X：使用怪物手册
+		core.openBook(true);
+		break;
+	case 71: // G：使用楼传器
+		core.useFly(true);
+		break;
+	case 65: // A：读取自动存档（回退）
+		core.doSL("autoSave", "load");
+		break;
+	case 87: // W：撤销回退
+		core.doSL("autoSave", "reload");
+		break;
+	case 83: // S：存档
+		core.save(true);
+		break;
+	case 68: // D：读档
+		core.load(true);
+		break;
+	case 69: // E：打开光标
+		core.ui._drawCursor();
+		break;
+	case 84: // T：打开道具栏
+		core.openToolbox(true);
+		break;
+	case 81: // Q：打开装备栏
+		core.openEquipbox(true);
+		break;
+	case 90: // Z：转向
+		core.turnHero();
+		break;
+	case 86: // V：打开快捷商店列表
+		core.openQuickShop(true);
+		break;
+	case 32: // SPACE：轻按
+		core.getNextItem();
+		break;
+	case 82: // R：回放录像
+		core.ui._drawReplay();
+		break;
+	case 33:
+	case 34: // PgUp/PgDn：浏览地图
+		core.ui._drawViewMaps();
+		break;
+	case 66: // B：打开数据统计
+		core.ui._drawStatistics();
+		break;
+	case 72: // H：打开帮助页面
+		core.ui._drawHelp();
+		break;
+	case 77: // M：打开存档笔记
+		core.actions._clickNotes_show();
+		break;
+	case 78: // N：重新开始
+		core.confirmRestart();
+		break;
+	case 79: // O：查看工程
+		core.actions._clickGameInfo_openProject();
+		break;
+	case 80: // P：游戏主页
+		core.actions._clickGameInfo_openComments();
+		break;
+	case 49: // 快捷键1: 破
+	{
+		const item = core.getFlag('hotkey1');
+		if (item) tryUseItem(item);
+		else tryUseItem('pickaxe');
+	}
+	break;
+	case 50: // 快捷键2: 炸
+	{
+		const item = core.getFlag('hotkey2');
+		if (item) tryUseItem(item);
+		else tryUseItem('bomb');
+	}
+	break;
+	case 51: // 快捷键3: 飞
+	{
+		const item = core.getFlag('hotkey3');
+		if (item) tryUseItem(item);
+		else tryUseItem('centerFly');
+	}
+	break;
+	case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
+	{
+		const item = core.getFlag('hotkey4');
+		if (item) tryUseItem(item);
+		else {
+			const list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
+			for (var i = 0; i < list.length; i++) {
+				var itemId = list[i];
+				tryUseItem(itemId);
 			}
-
-			// 根据keyCode值来执行对应操作
-			switch (keyCode) {
-				case 27: // ESC：打开菜单栏
-					core.openSettings(true);
-					break;
-				case 88: // X：使用怪物手册
-					core.openBook(true);
-					break;
-				case 71: // G：使用楼传器
-					core.useFly(true);
-					break;
-				case 65: // A：读取自动存档（回退）
-					core.doSL("autoSave", "load");
-					break;
-				case 87: // W：撤销回退
-					core.doSL("autoSave", "reload");
-					break;
-				case 83: // S：存档
-					core.save(true);
-					break;
-				case 68: // D：读档
-					core.load(true);
-					break;
-				case 69: // E：打开光标
-					core.ui._drawCursor();
-					break;
-				case 84: // T：打开道具栏
-					core.openToolbox(true);
-					break;
-				case 81: // Q：打开装备栏
-					core.openEquipbox(true);
-					break;
-				case 90: // Z：转向
-					core.turnHero();
-					break;
-				case 86: // V：打开快捷商店列表
-					core.openQuickShop(true);
-					break;
-				case 32: // SPACE：轻按
-					core.getNextItem();
-					break;
-				case 82: // R：回放录像
-					core.ui._drawReplay();
-					break;
-				case 33:
-				case 34: // PgUp/PgDn：浏览地图
-					core.ui._drawViewMaps();
-					break;
-				case 66: // B：打开数据统计
-					core.ui._drawStatistics();
-					break;
-				case 72: // H：打开帮助页面
-					core.ui._drawHelp();
-					break;
-				case 77: // M：打开存档笔记
-					core.actions._clickNotes_show();
-					break;
-				case 78: // N：重新开始
-					core.confirmRestart();
-					break;
-				case 79: // O：查看工程
-					core.actions._clickGameInfo_openProject();
-					break;
-				case 80: // P：游戏主页
-					core.actions._clickGameInfo_openComments();
-					break;
-				case 49: // 快捷键1: 破
-					tryUseItem('pickaxe');
-					break;
-				case 50: // 快捷键2: 炸
-					tryUseItem('bomb');
-					break;
-				case 51: // 快捷键3: 飞
-					if (core.hasItem('centerFly')) {
-						core.ui._drawCenterFly();
-					}
-					else {
-						core.playSound('error.mp3');
-						core.drawTip('当前未持有对应道具！');
-					}
-					break;
-				case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
-					{
-						var list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
-						for (var i = 0; i < list.length; i++) {
-							var itemId = list[i];
-							tryUseItem(itemId);
-						}
-					}
-					break;
-				case 53: // 5：读取自动存档（回退），方便手机版操作
-					core.doSL("autoSave", "load");
-					break;
-				case 54: // 6：撤销回退，方便手机版操作
-					core.doSL("autoSave", "reload");
-					break;
-				case 55: // 快捷键7：绑定为轻按，方便手机版操作
-					core.getNextItem();
-					break;
-				case 118: // F7：开启debug模式
-				case 119: // F8：由于F7与部分浏览器有冲突，故新增F8
-					core.debug();
-					break;
-				case 70: // F
-					break;
-				// 在这里可以任意新增或编辑已有的快捷键内容
-				/*
+		}
+	}
+	break;
+	case 53: // 5：读取自动存档（回退），方便手机版操作
+	{
+		const item = core.getFlag('hotkey5');
+		if (item) tryUseItem(item);
+		else core.doSL("autoSave", "load");
+	}
+	break;
+	case 54: // 6：撤销回退，方便手机版操作
+	{
+		const item = core.getFlag('hotkey6');
+		if (item) tryUseItem(item);
+		else core.doSL("autoSave", "reload");
+	}
+	break;
+	case 55: // 快捷键7：绑定为轻按，方便手机版操作
+	{
+		const item = core.getFlag('hotkey71');
+		if (item) tryUseItem(item);
+		else core.getNextItem();
+	}
+	break;
+	case 118: // F7：开启debug模式
+	case 119: // F8：由于F7与部分浏览器有冲突，故新增F8
+		core.debug();
+		break;
+	case 70: // F
+		break;
+		// 在这里可以任意新增或编辑已有的快捷键内容
+		/*
 				case 0: // 使用该按键的keyCode
 					// 还可以再判定altKey是否被按下，即 if (altKey) { ...
 		
@@ -995,9 +1024,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		
 					break;
 				*/
-			}
+	}
 
-		},
+},
         "onStatusBarClick": function (px, py, vertical) {
 			// 点击状态栏时触发的事件，仅在自绘状态栏开启时生效
 			// px和py为点击的像素坐标
@@ -1292,7 +1321,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// updateDamage只能在此处执行！！更新全地图显伤
 			core.updateDamage();
 		},
-		"getCheckBlock": function (floorId) {
+        "getCheckBlock": function (floorId) {
 	// 领域、夹击、阻击等的伤害值计算
 	floorId = floorId || core.status.floorId;
 	if (!floorId || !core.status.maps) return;
