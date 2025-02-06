@@ -729,7 +729,14 @@ control.prototype._moveHero_moving = function () {
     core.status.automaticRoute.moveDirectly = false;
     var move = function () {
         if (!core.status.heroStop) {
-            if ((core.hasFlag('debug') && core.status.ctrlDown) || core.hasFlag('debug_wallHacking')) {
+            if (core.hasFlag('debug') && core.status.ctrlDown) {
+                if (core.status.heroMoving != 0) return;
+                // 检测是否穿出去
+                var nx = core.nextX(), ny = core.nextY();
+                if (nx < 0 || nx >= core.bigmap.width || ny < 0 || ny >= core.bigmap.height) return;
+                core.eventMoveHero([core.getHeroLoc('direction')], core.values.moveSpeed, move);
+            }
+            else if (core.hasFlag('debug_wallHacking')) {
                 if (core.status.heroMoving != 0) return;
                 // 检测是否穿出去
                 var nx = core.nextX(), ny = core.nextY();
