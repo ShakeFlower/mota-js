@@ -3477,6 +3477,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
 
 			class Setting {
+				/**
+				 * @param {(ctx:string, x:number, y:number, w:number, h:number)=>void} draw 
+				 */
 				constructor(name, effect, text, replay, draw) {
 					/** 获取选项界面显示的名称 */
 					this.getName = name;
@@ -3489,7 +3492,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					 */
 					this.replay = replay;
 					/** 除名称外的绘制内容
-					 * @type {Function}
+					 * @type {(ctx:string, x:number, y:number, w:number, h:number)=>void}
 					 */
 					this.draw = draw;
 				}
@@ -3631,7 +3634,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							'体力上限': 'hpmax', '血量上限': 'hpmax', '生命上限': 'hpmax', '血限': 'hpmax',
 							'攻击': 'atk', '攻': 'atk', '防御': 'def', '防': 'def',
 							'魔防': 'mdef', '护盾': 'mdef', 'mf': 'mdef',
-							'金币': 'money', '钱': 'money', '经验': 'exp',
+							'金币': 'money', '金钱': 'money', '钱': 'money', '经验': 'exp',
 							'魔力': 'mana', '蓝': 'mana',
 						}
 						core.utils.myprompt('输入要修改的属性名称', null, (value) => {
@@ -3640,7 +3643,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								value = dictionary[value];
 							}
 							if (heroStatus && heroStatus.hasOwnProperty(value)
-								&& ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'max'].includes(value)) {
+								&& ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'].includes(value)) {
 								core.setFlag('debug_statusName', value);
 								this.menu.drawContent();
 							}
@@ -3683,7 +3686,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['debug_setStatus', new Setting(
 					() => '',
 					() => {
-						core.setFlag('debug', true);
 						const name = core.getFlag('debug_statusName'),
 							value = core.getFlag('debug_statusValue');
 						if (!(name && core.status.hero && core.status.hero.hasOwnProperty(name))) {
@@ -3694,16 +3696,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							core.drawFailTip('错误：不合法的值!');
 							return;
 						}
-						core.setFlag(name, value);
+						core.setFlag('debug', true);
+						core.setStatus(name, value);
+						core.updateStatusBar();
 						core.drawTip('设置成功!');
 					},
-					'',
+					'将角色状态设为相应值。',
 					false,
+					function (ctx, x, y, w, h) {
+						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
+						core.fillText(ctx, '执行', x + 5, y + h / 2 + 5, ' #333333', '16px Verdana');
+					}
 				)],
 				['debug_itemName', new Setting(
 					() => core.getFlag('debug_itemName', '??'),
 					function () {
-						core.setFlag('debug', true);
 						core.utils.myprompt('输入要修改的物品名称', null, (value) => {
 							const itemInfo = core.material.items;
 							if (itemInfo) {
@@ -3747,15 +3755,40 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 				)],
 				['debug_setItem', new Setting(
-					() => '111',
+					() => '',
 					() => {
-						core.setFlag('debug', true);
-						if (core.hasFlag('debug_itemName')) {
-							core.setStatus(core.getFlag('debug_itemName'), core.getFlag('debug_itemValue'))
+						const name = core.getFlag('debug_itemName'),
+							value = core.getFlag('debug_itemValue');
+						const itemInfo = core.material.items;
+						
+						if (name && itemInfo) {
+							let itemExist = Object.values(itemInfo).some((item) => item.id === name);
+							if (!itemExist) {
+								core.drawFailTip('错误：不合法的名称!');
+								return;
+							}
 						}
+						else {
+							core.drawFailTip('错误：不合法的名称!');
+							return;
+						}
+
+						if (!Number.isInteger(value)) {
+							core.drawFailTip('错误：不合法的值!');
+							return;
+						}
+						core.setFlag('debug', true);
+						core.setItem(name, value);
+						core.updateStatusBar();
+						core.drawSuccessTip('设置成功!');
 					},
-					'',
+					'将道具数设为相应值。',
 					false,
+					function (ctx, x, y, w, h) {
+						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
+						core.fillText(ctx, '执行', x + 5, y + h / 2 + 5, ' #333333', '16px Verdana');
+					}
 				)],
 				['debug_flagName', new Setting(
 					() => core.getFlag('debug_flagName', '??'),
@@ -3779,11 +3812,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 				)],
 				['debug_flagValue', new Setting(
-					() => core.getFlag('debug_flagValue', '-'),
+					() => core.getFlag('debug_flagValue', '??'),
 					function () {
 						core.setFlag('debug', true);
 						core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
-							core.setFlag('debug_flagValue', value); // todo:似乎值不止可能是字符串 待尝试
+							let newValue;
+							try {
+								newValue = JSON.parse(value.trim());
+							}
+							catch {
+								core.drawFailTip('错误：不合法的值，无法解析!');
+								return;
+							}
+							core.setFlag('debug_flagValue', newValue);
 							this.menu.drawContent();
 						});
 					},
@@ -3794,15 +3835,26 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 				)],
 				['debug_setFlag', new Setting(
-					() => '111',
+					() => '',
 					() => {
-						core.setFlag('debug', true);
-						if (core.hasFlag('debug_flagName')) {
-							core.setStatus(core.getFlag('debug_flagName'), core.getFlag('debug_flagValue'))
+						const name = core.getFlag('debug_flagName'),
+							value = core.getFlag('debug_flagValue');
+						if (!name) {
+							core.drawFailTip('错误：不合法的变量名称!');
+							return;
 						}
+						core.setFlag('debug', true);
+						core.setFlag(name, value);
+						core.updateStatusBar();
+						core.drawSuccessTip('设置成功!');
 					},
-					'',
+					'将变量设为相应值。',
 					false,
+					function (ctx, x, y, w, h) {
+						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
+						core.fillText(ctx, '执行', x + 5, y + h / 2 + 5, ' #333333', '16px Verdana');
+					}
 				)],
 			])
 
@@ -3884,7 +3936,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					this.text = '';
 					this.selectedBtn;
 					this.clickEvent = (x, y, px, py) => {
-						let hasClick = false;
 						this.btnList.forEach((btn) => {
 							if (btn.disable) return;
 							if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
@@ -3932,12 +3983,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
 							core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
 							core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
-							// core.fillText(this.name, "变量", 45, 264, 'white', '16px Verdana');
-							// core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
-							// core.ui.drawTextContent(this.name, "属性                 设为", {
-							// 	left: 40, top: 250, bold: false, color: "white",
-							// 	align: "left", fontSize: 16, maxWidth: 350
-							// });
 							break;
 					}
 				}
@@ -4010,10 +4055,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['wallHacking', new SettingButton(40, 220, 150, 25, 'wallHacking')],
 				['debug_statusName', new SettingButton(80, 250, 80, 20, 'debug_statusName')],
 				['debug_statusValue', new SettingButton(210, 250, 80, 20, 'debug_statusValue')],
+				['debug_setStatus', new SettingButton(340, 250, 40, 20, 'debug_setStatus')],
 				['debug_itemName', new SettingButton(80, 276, 80, 20, 'debug_itemName')],
 				['debug_itemValue', new SettingButton(240, 276, 80, 20, 'debug_itemValue')],
+				['debug_setItem', new SettingButton(340, 276, 40, 20, 'debug_setItem')],
 				['debug_flagName', new SettingButton(80, 302, 80, 20, 'debug_flagName')],
 				['debug_flagValue', new SettingButton(210, 302, 80, 20, 'debug_flagValue')],
+				['debug_setFlag', new SettingButton(340, 302, 40, 20, 'debug_setFlag')],
 			]);
 
 			// 在此处添加新的菜单页面

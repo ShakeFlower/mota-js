@@ -735,6 +735,12 @@ ui.prototype._drawTip_drawOne = function (tip) {
     core.setAlpha('data', 1);
 }
 
+////// 绘制提示同时播放成功音效 //////
+ui.prototype.drawSuccessTip = function (text, id, frame) {
+    this.drawTip(text, id, frame);
+    core.playSound('gem.mp3');
+}
+
 ////// 绘制提示同时播放错误音效 //////
 ui.prototype.drawFailTip = function (text, id, frame) {
     this.drawTip(text, id, frame);
