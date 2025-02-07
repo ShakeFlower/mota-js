@@ -139,7 +139,8 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"equipment": [],
 			"items": {
 				"constants": {
-					"book": 1
+					"book": 1,
+					"setting": 1,
 				},
 				"tools": {},
 				"equips": {}

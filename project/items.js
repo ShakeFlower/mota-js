@@ -446,78 +446,12 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "圣锤",
 		"text": "该道具尚未被定义"
 	},
-	"lifeWand": {
-		"cls": "tools",
-		"name": "生命魔杖",
-		"text": "可以恢复100点生命值",
-		"useItemEvent": [
-			{
-				"type": "comment",
-				"text": "先恢复一个魔杖（因为使用道具必须消耗一个）"
-			},
-			{
-				"type": "function",
-				"function": "function(){\ncore.addItem('lifeWand', 1);\n}"
-			},
-			{
-				"type": "playSound",
-				"name": "打开界面"
-			},
-			{
-				"type": "input",
-				"text": "请输入生命魔杖使用次数：(0-${item:lifeWand})"
-			},
-			{
-				"type": "comment",
-				"text": "【接受用户输入】弹窗输入的结果将会保存在“flag:input”中\n如果需要更多帮助，请查阅帮助文档"
-			},
-			{
-				"type": "if",
-				"condition": "flag:input<=item:lifeWand",
-				"true": [
-					{
-						"type": "setValue",
-						"name": "item:lifeWand",
-						"operator": "-=",
-						"value": "flag:input"
-					},
-					{
-						"type": "setValue",
-						"name": "status:hp",
-						"operator": "+=",
-						"value": "flag:input*100"
-					},
-					{
-						"type": "playSound",
-						"name": "回血"
-					},
-					"成功使用${flag:input}次生命魔杖，恢复${flag:input*100}点生命。"
-				],
-				"false": [
-					{
-						"type": "playSound",
-						"name": "操作失败"
-					},
-					"输入不合法！"
-				]
-			}
-		],
-		"canUseItemEffect": "true"
-	},
 	"jumpShoes": {
 		"cls": "tools",
 		"name": "跳跃靴",
 		"text": "能跳跃到前方两格处",
 		"useItemEffect": "core.playSound(\"跳跃\");\ncore.insertAction({ \"type\": \"jumpHero\", \"loc\": [core.nextX(2), core.nextY(2)] });",
 		"canUseItemEffect": "(function () {\n\tvar nx = core.nextX(2),\n\t\tny = core.nextY(2);\n\treturn nx >= 0 && nx < core.bigmap.width && ny >= 0 && ny < core.bigmap.height && core.getBlockId(nx, ny) == null;\n})();"
-	},
-	"skill1": {
-		"cls": "constants",
-		"name": "技能：二倍斩",
-		"text": "可以打开或关闭主动技能二倍斩",
-		"hideInReplay": true,
-		"useItemEffect": "(function () {\n\tvar skillValue = 1; // 技能的flag:skill值，可用于当前开启技能的判定；对于新技能可以依次改成2，3等等\n\tvar skillNeed = 5; // 技能的需求\n\tvar skillName = '二倍斩'; // 技能的名称\n\n\tif (core.getFlag('skill', 0) != skillValue) { // 判断当前是否已经开了技能\n\t\tif (core.getStatus('mana') >= skillNeed) { // 这里要写当前能否开技能的条件判断，比如魔力值至少要多少\n\t\t\tcore.playSound('打开界面');\n\t\t\tcore.setFlag('skill', skillValue); // 开技能1\n\t\t\tcore.setFlag('skillName', skillName); // 设置技能名\n\t\t} else {\n\t\t\tcore.playSound('操作失败');\n\t\t\tcore.drawTip('魔力不足，无法开启技能');\n\t\t}\n\t} else { // 关闭技能\n\t\tcore.setFlag('skill', 0); // 关闭技能状态\n\t\tcore.setFlag('skillName', '无');\n\t}\n})();",
-		"canUseItemEffect": "true"
 	},
 	"wand": {
 		"cls": "items",
@@ -528,5 +462,80 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "钱袋",
 		"itemEffect": "core.status.hero.money += 500",
 		"itemEffectTip": "，金币+500"
+	},
+	"blueWine": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"silverCoin": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"orb": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"bentWand": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"setting": {
+		"cls": "constants",
+		"name": "设置",
+		"canUseItemEffect": "true",
+		"text": "可以调节设置开关。",
+		"useItemEffect": "core.plugin.openSetting();"
+	},
+	"redWand": {
+		"cls": "items",
+		"name": "新物品",
+		"text": "null",
+		"hideInReplay": false,
+		"useItemEffect": null,
+		"canUseItemEffect": "true"
+	},
+	"cyanWand": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"yellowWand": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"greenWand": {
+		"cls": "tools",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"blueWand": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"whiteWand": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"purpleKey": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"scroll": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
+	},
+	"crossChest": {
+		"cls": "items",
+		"name": "新物品",
+		"canUseItemEffect": "true"
 	}
 }
