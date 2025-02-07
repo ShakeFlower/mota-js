@@ -1985,7 +1985,7 @@ events.prototype._action_setHeroIcon = function (data, x, y, prefix) {
 
 events.prototype._action_input = function (data, x, y, prefix) {
     this.__action_getInput(core.replaceText(data.text, prefix), false, function (value) {
-        value = Math.abs(parseInt(value) || 0);
+        value = parseInt(value) || 0;
         core.status.route.push("input:" + value);
         core.setFlag("input", value);
         core.doAction();
