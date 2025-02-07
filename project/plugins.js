@@ -1,7 +1,7 @@
 /// <reference path="../runtime.d.ts" />
-var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = 
+var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 {
-    "init": function () {
+	"init": function () {
 
 		console.log("插件编写测试");
 
@@ -19,7 +19,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为 core.plugin.xxx();
 		// 从V2.6开始，插件中用this.XXX方式定义的函数也会被转发到core中，详见文档-脚本-函数的转发。
 	},
-    "shop": function () {
+	"shop": function () {
 		// 【全局商店】相关的功能
 		// 
 		// 打开一个全局商店
@@ -214,7 +214,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}, 60);
 	},
-    "removeMap": function () {
+	"removeMap": function () {
 		// 高层塔砍层插件，删除后不会存入存档，不可浏览地图也不可飞到。
 		// 推荐用法：
 		// 对于超高层或分区域塔，当在1区时将2区以后的地图删除；1区结束时恢复2区，进二区时删除1区地图，以此类推
@@ -301,7 +301,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 	},
-    "fiveLayers": function () {
+	"fiveLayers": function () {
 		// 是否启用五图层（增加背景2层和前景2层） 将__enable置为true即会启用；启用后请保存后刷新编辑器
 		// 背景层2将会覆盖背景层 被事件层覆盖 前景层2将会覆盖前景层
 		// 另外 请注意加入两个新图层 会让大地图的性能降低一些
@@ -455,7 +455,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 		}
 	},
-    "itemShop": function () {
+	"itemShop": function () {
 		// 道具商店相关的插件
 		// 可在全塔属性-全局商店中使用「道具商店」事件块进行编辑（如果找不到可以在入口方块中找）
 
@@ -761,7 +761,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-    "enemyLevel": function () {
+	"enemyLevel": function () {
 		// 此插件将提供怪物手册中的怪物境界显示
 		// 使用此插件需要先给每个怪物定义境界，方法如下：
 		// 点击怪物的【配置表格】，找到“【怪物】相关的表格配置”，然后在【名称】仿照增加境界定义：
@@ -849,7 +849,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 
 	},
-    "multiHeros": function () {
+	"multiHeros": function () {
 		// 多角色插件
 		// Step 1: 启用本插件
 		// Step 2: 定义每个新的角色各项初始数据（参见下方注释）
@@ -995,7 +995,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag("heroId", toHeroId); // 保存切换到的角色ID
 		}
 	},
-    "heroFourFrames": function () {
+	"heroFourFrames": function () {
 		// 样板的勇士/跟随者移动时只使用2、4两帧，观感较差。本插件可以将四帧全用上。
 
 		// 是否启用本插件
@@ -1048,7 +1048,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}
 	},
-    "startCanvas": function () {
+	"startCanvas": function () {
 		// 使用本插件可以将自绘的标题界面居中。仅在【标题开启事件化】后才有效。
 		// 由于一些技术性的原因，标题界面事件化无法应用到覆盖状态栏的整个界面。
 		// 这是一个较为妥协的插件，会在自绘标题界面时隐藏状态栏、工具栏和边框，并将画布进行居中。
@@ -1134,569 +1134,569 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_loadData.call(core.control, data, callback);
 		}
 	},
-    "advancedAnimation": function () {
-	// -------------------- 插件说明 -------------------- //
-	// github仓库：https://github.com/unanmed/animate
-	// npm包名：mutate-animate
-	// npm地址：https://www.npmjs.com/package/mutate-animate
+	"advancedAnimation": function () {
+		// -------------------- 插件说明 -------------------- //
+		// github仓库：https://github.com/unanmed/animate
+		// npm包名：mutate-animate
+		// npm地址：https://www.npmjs.com/package/mutate-animate
 
-	if (main.replayChecking) return core.plugin.animate = {}
+		if (main.replayChecking) return core.plugin.animate = {}
 
-	// 保存所有Ticker的引用
-	const tickersMap = new Map();
+		// 保存所有Ticker的引用
+		const tickersMap = new Map();
 
-	/** 摧毁指定名字的ticker */
-	this.deleteTicker = function (name) {
-		const ticker = tickersMap.get(name);
-		if (!ticker) return;
-		ticker.destroy();
-		tickersMap.delete(name);
-	}
-
-	/** 摧毁所有有名字的ticker */
-	this.deleteAllTickers = function () {
-		tickersMap.forEach((ticker) => {
+		/** 摧毁指定名字的ticker */
+		this.deleteTicker = function (name) {
+			const ticker = tickersMap.get(name);
 			if (!ticker) return;
 			ticker.destroy();
-		})
-		tickersMap.clear();
-	}
+			tickersMap.delete(name);
+		}
 
-	this.getAllTickers = () => tickersMap;
+		/** 摧毁所有有名字的ticker */
+		this.deleteAllTickers = function () {
+			tickersMap.forEach((ticker) => {
+				if (!ticker) return;
+				ticker.destroy();
+			})
+			tickersMap.clear();
+		}
 
-	var M = Object.defineProperty;
-	var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
-	var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
-	let w = [];
-	const k = (n) => {
-		for (const i of w)
-			if (i.status === "running")
-				try {
-					for (const t of i.funcs)
-						t(n - i.startTime);
-				} catch (t) {
-					i.destroy(), console.error(t);
-				}
+		this.getAllTickers = () => tickersMap;
+
+		var M = Object.defineProperty;
+		var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
+		var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
+		let w = [];
+		const k = (n) => {
+			for (const i of w)
+				if (i.status === "running")
+					try {
+						for (const t of i.funcs)
+							t(n - i.startTime);
+					} catch (t) {
+						i.destroy(), console.error(t);
+					}
+			requestAnimationFrame(k);
+		};
 		requestAnimationFrame(k);
-	};
-	requestAnimationFrame(k);
-	class I {
-		constructor() {
-			o(this, "funcs", /* @__PURE__ */ new Set());
-			o(this, "status", "stop");
-			o(this, "startTime", 0);
-			this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
+		class I {
+			constructor() {
+				o(this, "funcs", /* @__PURE__ */ new Set());
+				o(this, "status", "stop");
+				o(this, "startTime", 0);
+				this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
+			}
+			add(i) {
+				return this.funcs.add(i), this;
+			}
+			remove(i) {
+				return this.funcs.delete(i), this;
+			}
+			clear() {
+				this.funcs.clear();
+			}
+			destroy() {
+				this.clear(), this.stop();
+			}
+			stop() {
+				this.status = "stop", w = w.filter((i) => i !== this);
+			}
 		}
-		add(i) {
-			return this.funcs.add(i), this;
-		}
-		remove(i) {
-			return this.funcs.delete(i), this;
-		}
-		clear() {
-			this.funcs.clear();
-		}
-		destroy() {
-			this.clear(), this.stop();
-		}
-		stop() {
-			this.status = "stop", w = w.filter((i) => i !== this);
-		}
-	}
-	class F {
-		constructor(name) {
-			o(this, "timing");
-			o(this, "relation", "absolute");
-			o(this, "easeTime", 0);
-			o(this, "applying", {});
-			o(this, "getTime", Date.now);
-			const ticker = new I();
-			o(this, "ticker", ticker);
-			o(this, "value", {});
-			o(this, "listener", {});
-			this.timing = (i) => i;
-			if (typeof name === 'string') tickersMap.set(name, ticker);
-		}
-		async all() {
-			if (Object.values(this.applying).every((i) => i === !0))
-				throw new ReferenceError("There is no animates to be waited.");
-			await new Promise((i) => {
-				const t = () => {
-					Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
-				};
-				this.listen("end", t);
-			});
-		}
-		async n(i) {
-			const t = Object.values(this.applying).filter((s) => s === !0).length;
-			if (t < i)
-				throw new ReferenceError(
-					`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
-				);
-			let e = 0;
-			await new Promise((s) => {
-				const r = () => {
-					e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
-				};
-				this.listen("end", r);
-			});
-		}
-		async w(i) {
-			if (this.applying[i] === !1)
-				throw new ReferenceError(`The ${i} animate is not animating.`);
-			await new Promise((t) => {
-				const e = () => {
-					this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
-				};
-				this.listen("end", e);
-			});
-		}
-		listen(i, t) {
-			var e, s;
-			(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
-		}
-		unlisten(i, t) {
-			const e = this.listener[i].findIndex((s) => s === t);
-			if (e === -1)
-				throw new ReferenceError(
-					"You are trying to remove a nonexistent listener."
-				);
-			this.listener[i].splice(e, 1);
-		}
-		hook(...i) {
-			const t = Object.entries(this.listener).filter(
-				(e) => i.includes(e[0])
-			);
-			for (const [e, s] of t)
-				for (const r of s)
-					r(this, e);
-		}
-	}
-
-	function y(n) {
-		return n != null;
-	}
-	async function R(n) {
-		return new Promise((i) => setTimeout(i, n));
-	}
-	class j extends F {
-		constructor() {
-			super();
-			o(this, "shakeTiming");
-			o(this, "path");
-			o(this, "multiTiming");
-			o(this, "value", {});
-			o(this, "size", 1);
-			o(this, "angle", 0);
-			o(this, "targetValue", {
-				system: {
-					move: [0, 0],
-					moveAs: [0, 0],
-					resize: 0,
-					rotate: 0,
-					shake: 0,
-					"@@bind": []
-				},
-				custom: {}
-			});
-			o(this, "animateFn", {
-				system: {
-					move: [() => 0, () => 0],
-					moveAs: () => 0,
-					resize: () => 0,
-					rotate: () => 0,
-					shake: () => 0,
-					"@@bind": () => 0
-				},
-				custom: {}
-			});
-			o(this, "ox", 0);
-			o(this, "oy", 0);
-			o(this, "sx", 0);
-			o(this, "sy", 0);
-			o(this, "bindInfo", []);
-			this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
-				move: !1,
-				scale: !1,
-				rotate: !1,
-				shake: !1
-			}, this.ticker.add(() => {
-				const { running: t } = this.listener;
-				if (y(t))
-					for (const e of t)
-						e(this, "running");
-			});
-		}
-		get x() {
-			return this.ox + this.sx;
-		}
-		get y() {
-			return this.oy + this.sy;
-		}
-		mode(t, e = !1) {
-			return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
-		}
-		time(t) {
-			return this.easeTime = t, this;
-		}
-		relative() {
-			return this.relation = "relative", this;
-		}
-		absolute() {
-			return this.relation = "absolute", this;
-		}
-		bind(...t) {
-			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
-		}
-		unbind() {
-			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
-		}
-		move(t, e) {
-			return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
-		}
-		rotate(t) {
-			return this.applySys("angle", t, "rotate"), this;
-		}
-		scale(t) {
-			return this.applySys("size", t, "resize"), this;
-		}
-		shake(t, e) {
-			this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
-			const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
-			if (this.hook("start", "shakestart"), s <= 0)
-				return this.end(!1, "shake"), this;
-			const a = () => {
-				const c = this.getTime() - l;
-				if (c > s) {
-					this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
-					return;
-				}
-				const h = c / s,
-					m = r(h);
-				this.sx = m * t, this.sy = m * e;
-			};
-			return this.ticker.add(a), this.animateFn.system.shake = a, this;
-		}
-		moveAs(t) {
-			this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
-			const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
-				if (s === "absolute")
-					return t(1); {
-					const [d, f] = t(1);
-					return [a + d, u + f];
-				}
-			})();
-			if (this.hook("start", "movestart"), e <= 0)
-				return this.end(!1, "moveAs"), this;
-			const m = () => {
-				const f = this.getTime() - l;
-				if (f > e) {
-					this.end(!0, "moveAs");
-					return;
-				}
-				const g = f / e,
-					[v, x] = t(r(g));
-				s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
-			};
-			return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
-		}
-		register(t, e) {
-			if (typeof this.value[t] == "number")
-				return this.error(
-					`Property ${t} has been regietered twice.`,
-					"reregister"
-				);
-			this.value[t] = e, this.applying[t] = !1;
-		}
-		apply(t, e) {
-			this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
-				`You are trying to execute nonexistent property ${t}.`
-			), this.applying[t] = !0;
-			const s = this.value[t],
-				r = this.getTime(),
-				{ timing: l, relation: a, easeTime: u } = this,
-				c = a === "absolute" ? e - s : e;
-			if (this.hook("start"), u <= 0)
-				return this.end(!1, t), this;
-			const h = () => {
-				const d = this.getTime() - r;
-				if (d > u) {
-					this.end(!1, t);
-					return;
-				}
-				const f = d / u,
-					g = l(f);
-				this.value[t] = s + g * c;
-			};
-			return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
-		}
-		applyMulti() {
-			this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
-			const t = this.bindInfo,
-				e = t.map((h) => this.value[h]),
-				s = this.getTime(),
-				{ multiTiming: r, relation: l, easeTime: a } = this,
-				u = r(1);
-			if (u.length !== e.length)
-				throw new TypeError(
-					`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
-				);
-			if (this.hook("start"), a <= 0)
-				return this.end(!1, "@@bind"), this;
-			const c = () => {
-				const m = this.getTime() - s;
-				if (m > a) {
-					this.end(!1, "@@bind");
-					return;
-				}
-				const d = m / a,
-					f = r(d);
-				t.forEach((g, v) => {
-					l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
+		class F {
+			constructor(name) {
+				o(this, "timing");
+				o(this, "relation", "absolute");
+				o(this, "easeTime", 0);
+				o(this, "applying", {});
+				o(this, "getTime", Date.now);
+				const ticker = new I();
+				o(this, "ticker", ticker);
+				o(this, "value", {});
+				o(this, "listener", {});
+				this.timing = (i) => i;
+				if (typeof name === 'string') tickersMap.set(name, ticker);
+			}
+			async all() {
+				if (Object.values(this.applying).every((i) => i === !0))
+					throw new ReferenceError("There is no animates to be waited.");
+				await new Promise((i) => {
+					const t = () => {
+						Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
+					};
+					this.listen("end", t);
 				});
-			};
-			return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+			}
+			async n(i) {
+				const t = Object.values(this.applying).filter((s) => s === !0).length;
+				if (t < i)
+					throw new ReferenceError(
+						`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
+					);
+				let e = 0;
+				await new Promise((s) => {
+					const r = () => {
+						e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
+					};
+					this.listen("end", r);
+				});
+			}
+			async w(i) {
+				if (this.applying[i] === !1)
+					throw new ReferenceError(`The ${i} animate is not animating.`);
+				await new Promise((t) => {
+					const e = () => {
+						this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
+					};
+					this.listen("end", e);
+				});
+			}
+			listen(i, t) {
+				var e, s;
+				(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
+			}
+			unlisten(i, t) {
+				const e = this.listener[i].findIndex((s) => s === t);
+				if (e === -1)
+					throw new ReferenceError(
+						"You are trying to remove a nonexistent listener."
+					);
+				this.listener[i].splice(e, 1);
+			}
+			hook(...i) {
+				const t = Object.entries(this.listener).filter(
+					(e) => i.includes(e[0])
+				);
+				for (const [e, s] of t)
+					for (const r of s)
+						r(this, e);
+			}
 		}
-		applySys(t, e, s) {
-			s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
-			const r = this[t],
-				l = this.getTime(),
-				a = this.timing,
-				u = this.relation,
-				c = this.easeTime,
-				h = u === "absolute" ? e - r : e;
-			if (this.hook("start", `${s}start`), c <= 0)
-				return this.end(!0, s);
-			const m = () => {
-				const f = this.getTime() - l;
-				if (f > c) {
-					this.end(!0, s);
-					return;
-				}
-				const g = f / c,
-					v = a(g);
-				this[t] = r + h * v, t !== "oy" && this.hook(s);
-			};
-			this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+
+		function y(n) {
+			return n != null;
 		}
-		error(t, e) {
-			throw e === "repeat" ? new Error(
-				`Cannot execute the same animation twice. Info: ${t}`
-			) : e === "reregister" ? new Error(
-				`Cannot register an animated property twice. Info: ${t}`
-			) : new Error(t);
+		async function R(n) {
+			return new Promise((i) => setTimeout(i, n));
 		}
-		end(t, e) {
-			if (t === !0)
-				if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
+		class j extends F {
+			constructor() {
+				super();
+				o(this, "shakeTiming");
+				o(this, "path");
+				o(this, "multiTiming");
+				o(this, "value", {});
+				o(this, "size", 1);
+				o(this, "angle", 0);
+				o(this, "targetValue", {
+					system: {
+						move: [0, 0],
+						moveAs: [0, 0],
+						resize: 0,
+						rotate: 0,
+						shake: 0,
+						"@@bind": []
+					},
+					custom: {}
+				});
+				o(this, "animateFn", {
+					system: {
+						move: [() => 0, () => 0],
+						moveAs: () => 0,
+						resize: () => 0,
+						rotate: () => 0,
+						shake: () => 0,
+						"@@bind": () => 0
+					},
+					custom: {}
+				});
+				o(this, "ox", 0);
+				o(this, "oy", 0);
+				o(this, "sx", 0);
+				o(this, "sy", 0);
+				o(this, "bindInfo", []);
+				this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
+					move: !1,
+					scale: !1,
+					rotate: !1,
+					shake: !1
+				}, this.ticker.add(() => {
+					const { running: t } = this.listener;
+					if (y(t))
+						for (const e of t)
+							e(this, "running");
+				});
+			}
+			get x() {
+				return this.ox + this.sx;
+			}
+			get y() {
+				return this.oy + this.sy;
+			}
+			mode(t, e = !1) {
+				return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
+			}
+			time(t) {
+				return this.easeTime = t, this;
+			}
+			relative() {
+				return this.relation = "relative", this;
+			}
+			absolute() {
+				return this.relation = "absolute", this;
+			}
+			bind(...t) {
+				return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
+			}
+			unbind() {
+				return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
+			}
+			move(t, e) {
+				return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
+			}
+			rotate(t) {
+				return this.applySys("angle", t, "rotate"), this;
+			}
+			scale(t) {
+				return this.applySys("size", t, "resize"), this;
+			}
+			shake(t, e) {
+				this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
+				const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
+				if (this.hook("start", "shakestart"), s <= 0)
+					return this.end(!1, "shake"), this;
+				const a = () => {
+					const c = this.getTime() - l;
+					if (c > s) {
+						this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
+						return;
+					}
+					const h = c / s,
+						m = r(h);
+					this.sx = m * t, this.sy = m * e;
+				};
+				return this.ticker.add(a), this.animateFn.system.shake = a, this;
+			}
+			moveAs(t) {
+				this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
+				const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
+					if (s === "absolute")
+						return t(1); {
+						const [d, f] = t(1);
+						return [a + d, u + f];
+					}
+				})();
+				if (this.hook("start", "movestart"), e <= 0)
+					return this.end(!1, "moveAs"), this;
+				const m = () => {
+					const f = this.getTime() - l;
+					if (f > e) {
+						this.end(!0, "moveAs");
+						return;
+					}
+					const g = f / e,
+						[v, x] = t(r(g));
+					s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
+				};
+				return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
+			}
+			register(t, e) {
+				if (typeof this.value[t] == "number")
+					return this.error(
+						`Property ${t} has been regietered twice.`,
+						"reregister"
+					);
+				this.value[t] = e, this.applying[t] = !1;
+			}
+			apply(t, e) {
+				this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
+					`You are trying to execute nonexistent property ${t}.`
+				), this.applying[t] = !0;
+				const s = this.value[t],
+					r = this.getTime(),
+					{ timing: l, relation: a, easeTime: u } = this,
+					c = a === "absolute" ? e - s : e;
+				if (this.hook("start"), u <= 0)
+					return this.end(!1, t), this;
+				const h = () => {
+					const d = this.getTime() - r;
+					if (d > u) {
+						this.end(!1, t);
+						return;
+					}
+					const f = d / u,
+						g = l(f);
+					this.value[t] = s + g * c;
+				};
+				return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
+			}
+			applyMulti() {
+				this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
+				const t = this.bindInfo,
+					e = t.map((h) => this.value[h]),
+					s = this.getTime(),
+					{ multiTiming: r, relation: l, easeTime: a } = this,
+					u = r(1);
+				if (u.length !== e.length)
+					throw new TypeError(
+						`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
+					);
+				if (this.hook("start"), a <= 0)
+					return this.end(!1, "@@bind"), this;
+				const c = () => {
+					const m = this.getTime() - s;
+					if (m > a) {
+						this.end(!1, "@@bind");
+						return;
+					}
+					const d = m / a,
+						f = r(d);
+					t.forEach((g, v) => {
+						l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
+					});
+				};
+				return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+			}
+			applySys(t, e, s) {
+				s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
+				const r = this[t],
+					l = this.getTime(),
+					a = this.timing,
+					u = this.relation,
+					c = this.easeTime,
+					h = u === "absolute" ? e - r : e;
+				if (this.hook("start", `${s}start`), c <= 0)
+					return this.end(!0, s);
+				const m = () => {
+					const f = this.getTime() - l;
+					if (f > c) {
+						this.end(!0, s);
+						return;
+					}
+					const g = f / c,
+						v = a(g);
+					this[t] = r + h * v, t !== "oy" && this.hook(s);
+				};
+				this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+			}
+			error(t, e) {
+				throw e === "repeat" ? new Error(
+					`Cannot execute the same animation twice. Info: ${t}`
+				) : e === "reregister" ? new Error(
+					`Cannot register an animated property twice. Info: ${t}`
+				) : new Error(t);
+			}
+			end(t, e) {
+				if (t === !0)
+					if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
 						this.animateFn.system[e]
 					), e === "move") {
-					const [s, r] = this.targetValue.system.move;
-					this.ox = s, this.oy = r, this.hook("moveend", "end");
-				} else if (e === "moveAs") {
-				const [s, r] = this.targetValue.system.moveAs;
-				this.ox = s, this.oy = r, this.hook("moveend", "end");
-			} else
-				e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
-					this.value[r] = this.targetValue.system["@@bind"][l];
-				}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
-			else
-				this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
+						const [s, r] = this.targetValue.system.move;
+						this.ox = s, this.oy = r, this.hook("moveend", "end");
+					} else if (e === "moveAs") {
+						const [s, r] = this.targetValue.system.moveAs;
+						this.ox = s, this.oy = r, this.hook("moveend", "end");
+					} else
+						e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
+							this.value[r] = this.targetValue.system["@@bind"][l];
+						}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
+				else
+					this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
+			}
 		}
-	}
-	class O extends F {
-		constructor() {
-			super();
-			o(this, "now", {});
-			o(this, "target", {});
-			o(this, "transitionFn", {});
-			o(this, "value");
-			o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
-			o(this, "handleGet", (t, e) => this.now[e]);
-			this.timing = (t) => t, this.value = new Proxy(this.target, {
-				set: this.handleSet,
-				get: this.handleGet
-			});
+		class O extends F {
+			constructor() {
+				super();
+				o(this, "now", {});
+				o(this, "target", {});
+				o(this, "transitionFn", {});
+				o(this, "value");
+				o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
+				o(this, "handleGet", (t, e) => this.now[e]);
+				this.timing = (t) => t, this.value = new Proxy(this.target, {
+					set: this.handleSet,
+					get: this.handleGet
+				});
+			}
+			mode(t) {
+				return this.timing = t, this;
+			}
+			time(t) {
+				return this.easeTime = t, this;
+			}
+			relative() {
+				return this.relation = "relative", this;
+			}
+			absolute() {
+				return this.relation = "absolute", this;
+			}
+			transition(t, e) {
+				if (e === this.target[t])
+					return this;
+				if (!y(this.now[t]))
+					return this.now[t] = e, this;
+				this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
+				const s = this.getTime(),
+					r = this.easeTime,
+					l = this.timing,
+					a = this.now[t],
+					u = e + (this.relation === "absolute" ? 0 : a),
+					c = u - a;
+				this.target[t] = u;
+				const h = () => {
+					const d = this.getTime() - s;
+					if (d >= r) {
+						this.end(t);
+						return;
+					}
+					const f = d / r;
+					this.now[t] = l(f) * c + a, this.hook("running");
+				};
+				return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
+			}
+			end(t, e = !1) {
+				const s = this.transitionFn[t];
+				if (!y(s))
+					throw new ReferenceError(
+						`You are trying to end an ended transition: ${t}`
+					);
+				this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
+			}
 		}
-		mode(t) {
-			return this.timing = t, this;
+		const T = (...n) => n.reduce((i, t) => i + t, 0),
+			b = (n) => {
+				if (n === 0)
+					return 1;
+				let i = n;
+				for (; n > 1;)
+					n--, i *= n;
+				return i;
+			},
+			A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
+			p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
+			$ = Math.cosh(2),
+			z = Math.acosh(2),
+			V = Math.tanh(3),
+			P = Math.atan(5);
+
+		function Y() {
+			return (n) => n;
 		}
-		time(t) {
-			return this.easeTime = t, this;
-		}
-		relative() {
-			return this.relation = "relative", this;
-		}
-		absolute() {
-			return this.relation = "absolute", this;
-		}
-		transition(t, e) {
-			if (e === this.target[t])
-				return this;
-			if (!y(this.now[t]))
-				return this.now[t] = e, this;
-			this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
-			const s = this.getTime(),
-				r = this.easeTime,
-				l = this.timing,
-				a = this.now[t],
-				u = e + (this.relation === "absolute" ? 0 : a),
-				c = u - a;
-			this.target[t] = u;
-			const h = () => {
-				const d = this.getTime() - s;
-				if (d >= r) {
-					this.end(t);
-					return;
-				}
-				const f = d / r;
-				this.now[t] = l(f) * c + a, this.hook("running");
+
+		function q(...n) {
+			const i = [0].concat(n);
+			i.push(1);
+			const t = i.length,
+				e = Array(t).fill(0).map((s, r) => A(r, t - 1));
+			return (s) => {
+				const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
+				return T(...r);
 			};
-			return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
 		}
-		end(t, e = !1) {
-			const s = this.transitionFn[t];
-			if (!y(s))
-				throw new ReferenceError(
-					`You are trying to end an ended transition: ${t}`
-				);
-			this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
-		}
-	}
-	const T = (...n) => n.reduce((i, t) => i + t, 0),
-		b = (n) => {
-			if (n === 0)
-				return 1;
-			let i = n;
-			for (; n > 1;)
-				n--, i *= n;
-			return i;
-		},
-		A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
-		p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
-		$ = Math.cosh(2),
-		z = Math.acosh(2),
-		V = Math.tanh(3),
-		P = Math.atan(5);
 
-	function Y() {
-		return (n) => n;
-	}
-
-	function q(...n) {
-		const i = [0].concat(n);
-		i.push(1);
-		const t = i.length,
-			e = Array(t).fill(0).map((s, r) => A(r, t - 1));
-		return (s) => {
-			const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
-			return T(...r);
-		};
-	}
-
-	function U(n, i) {
-		if (n === "sin") {
-			const t = (s) => Math.sin(s * Math.PI / 2);
-			return p(i, (s) => 1 - t(1 - s), t);
-		}
-		if (n === "sec") {
-			const t = (s) => 1 / Math.cos(s);
-			return p(i, (s) => t(s * Math.PI / 3) - 1);
-		}
-		throw new TypeError(
-			"Unexpected parameters are delivered in trigo timing function."
-		);
-	}
-
-	function C(n, i) {
-		if (!Number.isInteger(n))
+		function U(n, i) {
+			if (n === "sin") {
+				const t = (s) => Math.sin(s * Math.PI / 2);
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			if (n === "sec") {
+				const t = (s) => 1 / Math.cos(s);
+				return p(i, (s) => t(s * Math.PI / 3) - 1);
+			}
 			throw new TypeError(
-				"The first parameter of power timing function only allow integer."
+				"Unexpected parameters are delivered in trigo timing function."
 			);
-		return p(i, (e) => e ** n);
-	}
-
-	function G(n, i) {
-		if (n === "sin")
-			return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
-		if (n === "tan") {
-			const t = (s) => Math.tanh(s * 3) * 1 / V;
-			return p(i, (s) => 1 - t(1 - s), t);
 		}
-		if (n === "sec") {
-			const t = (s) => 1 / Math.cosh(s);
-			return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
+
+		function C(n, i) {
+			if (!Number.isInteger(n))
+				throw new TypeError(
+					"The first parameter of power timing function only allow integer."
+				);
+			return p(i, (e) => e ** n);
 		}
-		throw new TypeError(
-			"Unexpected parameters are delivered in hyper timing function."
-		);
-	}
 
-	function N(n, i) {
-		if (n === "sin") {
-			const t = (s) => Math.asin(s) / Math.PI * 2;
-			return p(i, (s) => 1 - t(1 - s), t);
+		function G(n, i) {
+			if (n === "sin")
+				return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
+			if (n === "tan") {
+				const t = (s) => Math.tanh(s * 3) * 1 / V;
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			if (n === "sec") {
+				const t = (s) => 1 / Math.cosh(s);
+				return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
+			}
+			throw new TypeError(
+				"Unexpected parameters are delivered in hyper timing function."
+			);
 		}
-		if (n === "tan") {
-			const t = (s) => Math.atan(s * 5) / P;
-			return p(i, (s) => 1 - t(1 - s), t);
+
+		function N(n, i) {
+			if (n === "sin") {
+				const t = (s) => Math.asin(s) / Math.PI * 2;
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			if (n === "tan") {
+				const t = (s) => Math.atan(s * 5) / P;
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			throw new TypeError(
+				"Unexpected parameters are delivered in inverse trigo timing function."
+			);
 		}
-		throw new TypeError(
-			"Unexpected parameters are delivered in inverse trigo timing function."
-		);
-	}
 
-	function B(n, i = () => 1) {
-		let t = -1;
-		return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
-	}
+		function B(n, i = () => 1) {
+			let t = -1;
+			return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
+		}
 
-	function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
-		return (l) => {
-			const a = i * l * Math.PI * 2 + e * Math.PI / 180,
-				u = Math.cos(a),
-				c = Math.sin(a),
-				h = n * s(s(r ? 1 - l : l));
-			return [h * u + t[0], h * c + t[1]];
-		};
-	}
+		function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
+			return (l) => {
+				const a = i * l * Math.PI * 2 + e * Math.PI / 180,
+					u = Math.cos(a),
+					c = Math.sin(a),
+					h = n * s(s(r ? 1 - l : l));
+				return [h * u + t[0], h * c + t[1]];
+			};
+		}
 
-	function H(n, i, ...t) {
-		const e = [n].concat(t);
-		e.push(i);
-		const s = e.length,
-			r = Array(s).fill(0).map((l, a) => A(a, s - 1));
-		return (l) => {
-			const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
-				u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
-			return [T(...a), T(...u)];
-		};
-	}
+		function H(n, i, ...t) {
+			const e = [n].concat(t);
+			e.push(i);
+			const s = e.length,
+				r = Array(s).fill(0).map((l, a) => A(a, s - 1));
+			return (l) => {
+				const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
+					u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
+				return [T(...a), T(...u)];
+			};
+		}
 
-	core.plugin.animate = {
-		Animation: j,
-		AnimationBase: F,
-		Ticker: I,
-		Transition: O,
-		bezier: q,
-		bezierPath: H,
-		circle: D,
-		hyper: G,
-		inverseTrigo: N,
-		linear: Y,
-		power: C,
-		shake: B,
-		sleep: R,
-		trigo: U,
-	}
+		core.plugin.animate = {
+			Animation: j,
+			AnimationBase: F,
+			Ticker: I,
+			Transition: O,
+			bezier: q,
+			bezierPath: H,
+			circle: D,
+			hyper: G,
+			inverseTrigo: N,
+			linear: Y,
+			power: C,
+			shake: B,
+			sleep: R,
+			trigo: U,
+		}
 
-},
-    "drawItemDetail": function () {
+	},
+	"drawItemDetail": function () {
 		/* 宝石血瓶左下角显示数值
- 		 * 需要将 变量：itemDetail改为true才可正常运行
- 		 * 请尽量减少勇士的属性数量，否则可能会出现严重卡顿（划掉，现在你放一万个属性也不会卡）
+			 * 需要将 变量：itemDetail改为true才可正常运行
+			 * 请尽量减少勇士的属性数量，否则可能会出现严重卡顿（划掉，现在你放一万个属性也不会卡）
 		 * 注意：这里的属性必须是core.status.hero里面的，flag无法显示
- 		 * 如果不想显示，可以core.setFlag("itemDetail", false);
+			 * 如果不想显示，可以core.setFlag("itemDetail", false);
 		 * 然后再core.getItemDetail();
 		 * 如有bug在大群或造塔群@古祠
 		 */
@@ -1846,277 +1846,277 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 	},
-    "autoGet": function () {
-	// 在此增加新插件
-	/**
-	 * --------------- 使用说明 ---------------
-	 * 变量autoGet控制自动拾取开关
-	 * 变量autoBattle控制自动清怪开关
-	 */
+	"autoGet": function () {
+		// 在此增加新插件
+		/**
+		 * --------------- 使用说明 ---------------
+		 * 变量autoGet控制自动拾取开关
+		 * 变量autoBattle控制自动清怪开关
+		 */
 
-	const { Transition, hyper, Ticker } = core.plugin.animate ?? {};
+		const { Transition, hyper, Ticker } = core.plugin.animate ?? {};
 
-	// 磁吸特效的时长，单位毫秒
-	const transitionTime = 600;
+		// 磁吸特效的时长，单位毫秒
+		const transitionTime = 600;
 
-	const transitionList = [];
+		const transitionList = [];
 
-	const ctxName = 'globalAnimate';
+		const ctxName = 'globalAnimate';
 
-	if (!main.replayChecking) {
-		const ticker = new Ticker();
-		ticker.add(() => {
-			if (!core.isPlaying()) return;
-			const ctx = core.getContextByName(ctxName);
-			if (!has(ctx)) return;
-			core.clearMap(ctx);
-		});
-	}
-
-	// 每走一步后自动拾取的判定要放在阻击结算之后
-
-	control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
-		const res = this.controldata.moveDirectly(
-			destX,
-			destY,
-			ignoreSteps
-		);
-		core.plugin.autoClear();
-		return res;
-	};
-
-	this.autoClear = function () {
-		if (core.isReplaying()) return;
-		auto();
-		for (let i = 0; i < transitionList.length; i++) {
-			const t = transitionList[i];
-			let { x, y } = core.status.hero.loc;
-			t.value.x = x * 32 - core.bigmap.offsetX;
-			t.value.y = y * 32 - core.bigmap.offsetY;
+		if (!main.replayChecking) {
+			const ticker = new Ticker();
+			ticker.add(() => {
+				if (!core.isPlaying()) return;
+				const ctx = core.getContextByName(ctxName);
+				if (!has(ctx)) return;
+				core.clearMap(ctx);
+			});
 		}
-	}
 
-	function willLvUp(exp){
-		const nextExp = core.getNextLvUpNeed();
-		if (typeof exp === 'number' && typeof nextExp === 'number' && exp >= nextExp) return true;
-		return false;
-	}
+		// 每走一步后自动拾取的判定要放在阻击结算之后
 
-	/**
-	 * 是否清这个怪，可以修改这里来实现对不同怪的不同操作
-	 * @param {string} enemy
-	 * @param {number} x
-	 * @param {number} y
-	 */
-	function canBattle(enemy, x, y) {
-		const loc = `${x},${y}`;
-		const floor = core.floors[core.status.floorId];
-		const e = core.material.enemys[enemy];
-		const hasEvent =
-			has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc])
-			|| has(e.beforeBattle) || has(e.afterBattle)
-			|| has(floor.events[loc] || willLvUp(e.exp) // 防止有升级后事件
+		control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
+			const res = this.controldata.moveDirectly(
+				destX,
+				destY,
+				ignoreSteps
 			);
-		// 有事件，不清
-		if (hasEvent) return false;
-		if (core.hasSpecial(e.special, 19) || core.hasSpecial(e.special, 21)
-			|| core.hasSpecial(e.special, 29)) return false; // 有特定特殊属性的怪不清
-		const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
-		// 0伤或负伤，清
-		if (has(damage) && damage <= 0) return true;
-		return false;
-	}
+			core.plugin.autoClear();
+			return res;
+		};
 
-	/**
-	 * 判断一个点是否能遍历
-	 */
-	function judge(block, nx, ny, tx, ty, dir, floorId, autoBattle, autoGet) {
-		if (!has(block)) return {};
-		const cls = block.event.cls;
-		const loc = `${tx},${ty}`;
-		const floor = core.floors[floorId];
-		const changeFloor = floor.changeFloor[loc];
-		const isEnemy = autoBattle && cls.startsWith('enemy'),
-			isItem = autoGet && cls === 'items';
+		this.autoClear = function () {
+			if (core.isReplaying()) return;
+			auto();
+			for (let i = 0; i < transitionList.length; i++) {
+				const t = transitionList[i];
+				let { x, y } = core.status.hero.loc;
+				t.value.x = x * 32 - core.bigmap.offsetX;
+				t.value.y = y * 32 - core.bigmap.offsetY;
+			}
+		}
 
-		if (has(changeFloor)) {
-			if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
-				return false;
-			}
-			if (changeFloor.ignoreChangeFloor ?? core.flags.ignoreChangeFloor) {
-				return true;
-			}
+		function willLvUp(exp) {
+			const nextExp = core.getNextLvUpNeed();
+			if (typeof exp === 'number' && typeof nextExp === 'number' && exp >= nextExp) return true;
 			return false;
 		}
 
-		if (has(core.floors[floorId].events[loc])) return false;
+		/**
+		 * 是否清这个怪，可以修改这里来实现对不同怪的不同操作
+		 * @param {string} enemy
+		 * @param {number} x
+		 * @param {number} y
+		 */
+		function canBattle(enemy, x, y) {
+			const loc = `${x},${y}`;
+			const floor = core.floors[core.status.floorId];
+			const e = core.material.enemys[enemy];
+			const hasEvent =
+				has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc])
+				|| has(e.beforeBattle) || has(e.afterBattle)
+				|| has(floor.events[loc] || willLvUp(e.exp) // 防止有升级后事件
+				);
+			// 有事件，不清
+			if (hasEvent) return false;
+			if (core.hasSpecial(e.special, 19) || core.hasSpecial(e.special, 21)
+				|| core.hasSpecial(e.special, 29)) return false; // 有特定特殊属性的怪不清
+			const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
+			// 0伤或负伤，清
+			if (has(damage) && damage <= 0) return true;
+			return false;
+		}
 
-		if (isEnemy || isItem)
-			return {
-				isEnemy,
-				isItem,
+		/**
+		 * 判断一个点是否能遍历
+		 */
+		function judge(block, nx, ny, tx, ty, dir, floorId, autoBattle, autoGet) {
+			if (!has(block)) return {};
+			const cls = block.event.cls;
+			const loc = `${tx},${ty}`;
+			const floor = core.floors[floorId];
+			const changeFloor = floor.changeFloor[loc];
+			const isEnemy = autoBattle && cls.startsWith('enemy'),
+				isItem = autoGet && cls === 'items';
+
+			if (has(changeFloor)) {
+				if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
+					return false;
+				}
+				if (changeFloor.ignoreChangeFloor ?? core.flags.ignoreChangeFloor) {
+					return true;
+				}
+				return false;
+			}
+
+			if (has(core.floors[floorId].events[loc])) return false;
+
+			if (isEnemy || isItem)
+				return {
+					isEnemy,
+					isItem,
+				};
+
+			return false;
+		}
+
+		/**
+		 * 是否捡拾这个物品
+		 */
+		function canGetItem(item, loc, floorId) {
+			// 可以用于检测道具是否应该被捡起，例如如果捡起后血量超过80%则不捡起可以这么写：
+			// if (item.cls === 'items') {
+			//     let diff = {};
+			//     const before = core.status.hero;
+			//     const hero = core.clone(core.status.hero);
+			//     const handler = {
+			//         set(target, key, v) {
+			//             diff[key] = v - (target[key] || 0);
+			//             if (!diff[key]) diff[key] = void 0;
+			//             return true;
+			//         }
+			//     };
+			//     core.status.hero = new Proxy(hero, handler);
+
+			//     eval(item.itemEffect);
+
+			//     core.status.hero = before;
+			//     window.hero = before;
+			//     window.flags = before.flags;
+			//     if (
+			//         diff.hp &&
+			//         diff.hp + core.status.hero.hp > core.status.hero.hpmax * 0.8
+			//     )
+			//         return false;
+			// }
+			return true;
+		}
+
+		/**
+		 * @template T
+		 * @param {T} v
+		 * @returns {v is NonNullable<T>}
+		 */
+		function has(v) {
+			return v !== null && v !== undefined;
+		}
+
+		function hasBlockDamage(loc) {
+			const checkblockInfo = core.status.checkBlock;
+			const damage = checkblockInfo.damage[loc];
+			const ambush = checkblockInfo.ambush[loc];
+			const repulse = checkblockInfo.repulse[loc];
+			const chase = checkblockInfo.chase[loc];
+			return (has(damage) && damage > 0) || has(ambush) || has(repulse) || has(chase);
+		}
+
+		/**
+		 * 广搜，搜索可以到达的需要清的怪
+		 * @param {string} floorId
+		 */
+		function bfs(floorId, deep = Infinity) {
+			core.extractBlocks(floorId);
+			const objs = core.getMapBlocksObj(floorId);
+			const { x, y } = core.status.hero.loc;
+			/** @type {[direction, number, number][]} */
+			const dir = Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
+			const floor = core.status.maps[floorId];
+
+			/** @type {[number, number][]} */
+			const queue = [[x, y]];
+			const mapped = {
+				[`${x},${y}`]: true
 			};
 
-		return false;
-	}
+			const autoBattle = core.getFlag('autoBattle', false),
+				autoGet = core.getFlag('autoGet', false);
+			if (!autoGet && !autoBattle) return;
 
-	/**
-	 * 是否捡拾这个物品
-	 */
-	function canGetItem(item, loc, floorId) {
-		// 可以用于检测道具是否应该被捡起，例如如果捡起后血量超过80%则不捡起可以这么写：
-		// if (item.cls === 'items') {
-		//     let diff = {};
-		//     const before = core.status.hero;
-		//     const hero = core.clone(core.status.hero);
-		//     const handler = {
-		//         set(target, key, v) {
-		//             diff[key] = v - (target[key] || 0);
-		//             if (!diff[key]) diff[key] = void 0;
-		//             return true;
-		//         }
-		//     };
-		//     core.status.hero = new Proxy(hero, handler);
-
-		//     eval(item.itemEffect);
-
-		//     core.status.hero = before;
-		//     window.hero = before;
-		//     window.flags = before.flags;
-		//     if (
-		//         diff.hp &&
-		//         diff.hp + core.status.hero.hp > core.status.hero.hpmax * 0.8
-		//     )
-		//         return false;
-		// }
-		return true;
-	}
-
-	/**
-	 * @template T
-	 * @param {T} v
-	 * @returns {v is NonNullable<T>}
-	 */
-	function has(v) {
-		return v !== null && v !== undefined;
-	}
-
-	function hasBlockDamage(loc) {
-		const checkblockInfo = core.status.checkBlock;
-		const damage = checkblockInfo.damage[loc];
-		const ambush = checkblockInfo.ambush[loc];
-		const repulse = checkblockInfo.repulse[loc];
-		const chase = checkblockInfo.chase[loc];
-		return (has(damage) && damage > 0) || has(ambush) || has(repulse) || has(chase);
-	}
-
-	/**
-	 * 广搜，搜索可以到达的需要清的怪
-	 * @param {string} floorId
-	 */
-	function bfs(floorId, deep = Infinity) {
-		core.extractBlocks(floorId);
-		const objs = core.getMapBlocksObj(floorId);
-		const { x, y } = core.status.hero.loc;
-		/** @type {[direction, number, number][]} */
-		const dir = Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
-		const floor = core.status.maps[floorId];
-
-		/** @type {[number, number][]} */
-		const queue = [[x, y]];
-		const mapped = {
-			[`${x},${y}`]: true
-		};
-
-		const autoBattle = core.getFlag('autoBattle', false),
-			autoGet = core.getFlag('autoGet', false);
-		if (!autoGet && !autoBattle) return;
-
-		while (queue.length > 0 && deep > 0) {
-			const [nx, ny] = queue.shift();
-			dir.forEach(v => {
-				const [tx, ty] = [nx + v[1], ny + v[2]];
-				if (tx < 0 || ty < 0 || tx >= floor.width || ty >= floor.height) {
-					return;
-				}
-				const loc = `${tx},${ty}`;
-				if (mapped[loc]) return;
-				const block = objs[loc];
-				mapped[loc] = true;
-				const type = judge(block, nx, ny, tx, ty, v[0], floorId, autoBattle, autoGet);
-				if (type === false) return;
-				const { isEnemy, isItem } = type;
-
-				if (isEnemy) {
-					if (canBattle(block.event.id, tx, ty) && !block.disable) {
-						core.battle(block.event.id, tx, ty);
-						core.updateCheckBlock();
-					} else {
+			while (queue.length > 0 && deep > 0) {
+				const [nx, ny] = queue.shift();
+				dir.forEach(v => {
+					const [tx, ty] = [nx + v[1], ny + v[2]];
+					if (tx < 0 || ty < 0 || tx >= floor.width || ty >= floor.height) {
 						return;
 					}
-				} else if (isItem) {
-					const item = core.material.items[block.event.id];
-					if (canGetItem(item, loc, floorId)) {
-						core.getItem(item.id, 1, tx, ty);
-						if (!core.isReplaying()) {
-							let px = tx * 32 - core.bigmap.offsetX;
-							let py = ty * 32 - core.bigmap.offsetY;
-							const t = new Transition();
-							t.mode(hyper('sin', 'out'))
-								.time(transitionTime)
-								.absolute()
-								.transition('x', px)
-								.transition('y', py);
-							let { x, y } = core.status.hero.loc;
-							t.value.x = x * 32 - core.bigmap.offsetX;
-							t.value.y = y * 32 - core.bigmap.offsetY;
-							transitionList.push(t);
-							t.ticker.add(() => {
-								core.drawIcon(ctxName, item.id, t.value.x, t.value.y, 32, 32);
-								let { x, y } = core.status.hero.loc;
-								if (Math.abs(t.value.x - x * 32 + core.bigmap.offsetX) < 0.05 &&
-									Math.abs(t.value.y - y * 32 + core.bigmap.offsetY) < 0.05
-								) {
-									t.ticker.destroy();
-									const index = transitionList.findIndex(v => v === t);
-									transitionList.splice(index, 1);
-								}
-							});
+					const loc = `${tx},${ty}`;
+					if (mapped[loc]) return;
+					const block = objs[loc];
+					mapped[loc] = true;
+					const type = judge(block, nx, ny, tx, ty, v[0], floorId, autoBattle, autoGet);
+					if (type === false) return;
+					const { isEnemy, isItem } = type;
+
+					if (isEnemy) {
+						if (canBattle(block.event.id, tx, ty) && !block.disable) {
+							core.battle(block.event.id, tx, ty);
+							core.updateCheckBlock();
+						} else {
+							return;
 						}
-					} else {
-						return;
+					} else if (isItem) {
+						const item = core.material.items[block.event.id];
+						if (canGetItem(item, loc, floorId)) {
+							core.getItem(item.id, 1, tx, ty);
+							if (!core.isReplaying()) {
+								let px = tx * 32 - core.bigmap.offsetX;
+								let py = ty * 32 - core.bigmap.offsetY;
+								const t = new Transition();
+								t.mode(hyper('sin', 'out'))
+									.time(transitionTime)
+									.absolute()
+									.transition('x', px)
+									.transition('y', py);
+								let { x, y } = core.status.hero.loc;
+								t.value.x = x * 32 - core.bigmap.offsetX;
+								t.value.y = y * 32 - core.bigmap.offsetY;
+								transitionList.push(t);
+								t.ticker.add(() => {
+									core.drawIcon(ctxName, item.id, t.value.x, t.value.y, 32, 32);
+									let { x, y } = core.status.hero.loc;
+									if (Math.abs(t.value.x - x * 32 + core.bigmap.offsetX) < 0.05 &&
+										Math.abs(t.value.y - y * 32 + core.bigmap.offsetY) < 0.05
+									) {
+										t.ticker.destroy();
+										const index = transitionList.findIndex(v => v === t);
+										transitionList.splice(index, 1);
+									}
+								});
+							}
+						} else {
+							return;
+						}
 					}
-				}
-				if (hasBlockDamage(loc)) return;
-				queue.push([tx, ty]);
-			});
-			deep--;
+					if (hasBlockDamage(loc)) return;
+					queue.push([tx, ty]);
+				});
+				deep--;
+			}
 		}
-	}
 
-	function auto() {
-		const before = flags.__forbidSave__;
-		// 如果勇士当前点有地图伤害，只清周围，如果有事件，直接不清了
-		const { x, y } = core.status.hero.loc;
-		const floor = core.floors[core.status.floorId];
-		const loc = `${x},${y}`;
-		const hasEvent = has(floor.events[loc]);
-		if (hasEvent) return;
-		let deep = Infinity;
-		if (hasBlockDamage(loc) && core.flags.enableGentleClick) { // 有地图伤害允许轻点附近1格
-			deep = 1;
-		}
-		flags.__forbidSave__ = true;
-		flags.__statistics__ = true;
-		const ctx = core.getContextByName(ctxName);
-		if (!ctx) core.createCanvas(ctxName, 0, 0, core.__PIXELS__, core.__PIXELS__, 75);
-		bfs(core.status.floorId, deep);
-		flags.__statistics__ = false;
-		flags.__forbidSave__ = before;
-		core.updateStatusBar();
-	};
-},
-    "newBackpackLook": function () {
+		function auto() {
+			const before = flags.__forbidSave__;
+			// 如果勇士当前点有地图伤害，只清周围，如果有事件，直接不清了
+			const { x, y } = core.status.hero.loc;
+			const floor = core.floors[core.status.floorId];
+			const loc = `${x},${y}`;
+			const hasEvent = has(floor.events[loc]);
+			if (hasEvent) return;
+			let deep = Infinity;
+			if (hasBlockDamage(loc) && core.flags.enableGentleClick) { // 有地图伤害允许轻点附近1格
+				deep = 1;
+			}
+			flags.__forbidSave__ = true;
+			flags.__statistics__ = true;
+			const ctx = core.getContextByName(ctxName);
+			if (!ctx) core.createCanvas(ctxName, 0, 0, core.__PIXELS__, core.__PIXELS__, 75);
+			bfs(core.status.floorId, deep);
+			flags.__statistics__ = false;
+			flags.__forbidSave__ = before;
+			core.updateStatusBar();
+		};
+	},
+	"newBackpackLook": function () {
 		// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
 		// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
 
@@ -3167,7 +3167,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			ani.all().then(() => { ani.ticker.destroy(); });
 		}
 	},
-    "Menu": function () {
+	"Menu": function () {
 		// 本插件定义了一些用于绘制的基类
 		class ButtonBase {
 			constructor(x, y, w, h) {
@@ -3176,8 +3176,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.w = w;
 				this.h = h;
 				this.disable = false;
-				/** 按下此按钮后是否重绘所在Menu */
-				this.redraw = true;
 
 				/** 所在的Menu，用于触发重绘等事件 */
 				this.menu;
@@ -3194,14 +3192,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.btnList = new Map();
 				this.keyEvent = () => { };
 				this.clickEvent = (x, y, px, py) => {
-					let hasClick = false;
 					this.btnList.forEach((btn) => {
 						if (btn.disable) return;
 						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
 							btn.event(x, y, px, py);
-							if (btn.redraw) hasClick = true;
 						}
-						if (hasClick) this.drawContent();
 					});
 				}
 			}
@@ -3227,7 +3222,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			beginListen() {
 				core.registerAction('keyDown', this.name, this.keyEvent, 100);
 				core.registerAction('ondown', this.name, this.clickEvent, 100);
-				
+
 			}
 
 			endListen() {
@@ -3248,7 +3243,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class MenuPage extends MenuBase {
 			constructor(pageList, currPage, ctx) {
 				super(ctx);
+				/**
+				 * 当前页面列表
+				 * @type {Array<MenuBase>}
+				 */
 				this.pageList = pageList;
+				/**
+				 * 当前页的序号
+				 * @type {number}
+				 */
 				this.currPage = currPage | 0;
 			}
 
@@ -3282,835 +3285,923 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		this.MenuBase = { ButtonBase, MenuBase, MenuPage };
 	},
-    "scrollingText": function () {
-	// 本插件用于绘制在线留言
+	"scrollingText": function () {
+		// 本插件用于绘制在线留言
 
-	/** 塔的英文名 */
-	const towerName = core.firstData.name;
+		/** 塔的英文名 */
+		const towerName = core.firstData.name;
 
-	let [W, H] = [core.__SIZE__, core.__SIZE__];
-	let [WIDTH, HEIGHT] = [core.__PIXELS__, core.__PIXELS__];
+		let [W, H] = [core.__SIZE__, core.__SIZE__];
+		let [WIDTH, HEIGHT] = [core.__PIXELS__, core.__PIXELS__];
 
-	//#region 弹幕的收发
-	this.getComment = function () {
-		if (core.isReplaying()) return;
-		let form = new FormData();
-		form.append('type', 1);
-		form.append('towername', towerName);
-		utils.prototype.http(
-			'POST',
-			'https://h5mota.com/backend/tower/barrage.php',
-			form,
-			function (res) {
-				try {
-					res = JSON.parse(res);
-					console.log(res);
-					core.drawTip('接收成功！')
-					core.playSound('item.mp3');
-					let commentCollection = {};
-					const commentList = res?.list;
-					const isEmpty = /^\s*$/;
-					for (let i = 0, l = commentList.length; i <= l - 1; i++) {
-						if (isEmpty.test(commentList[i]?.comment)) continue;
-						const commentTagsList = commentList[i].tags.split(',');
-						const [cFloorId, cX, cY] = commentTagsList;
-						if (0 <= cX && cX <= W - 1 && 0 <= cY && cY <= H - 1 && core.floorIds.includes(cFloorId)) {
-							if (!commentCollection.hasOwnProperty(cFloorId)) { commentCollection[cFloorId] = {}; }
-							const str = cX + ',' + cY;
-							if (!commentCollection[cFloorId].hasOwnProperty(str)) { commentCollection[cFloorId][str] = []; }
-							commentCollection[cFloorId][str].push(commentList[i]?.comment);
-						}
-					}
-					core.setFlag('commentCollection', commentCollection);
-				} catch (err) {
-					core.drawTip('接收失败！' + err.message);
-					core.playSound('error.mp3');
-				}
-			},
-			function (err) {
-				err = JSON.parse(err);
-				console.error(err);
-				core.drawTip('接收失败' + err?.message);
-				core.playSound('error.mp3');
-			},
-			null, null, null, 1000
-		);
-	}
-
-	this.postComment = function (comment, tags) {
-		if (core.isReplaying()) return;
-		const isEmpty = /^\s*$/;
-		if (isEmpty.test(comment)){
-			core.drawTip('您输入的消息为空，请重发！');
-			core.playSound('error.mp3');
-			return;
-		}
-		let form = new FormData();
-		form.append('type', 2);
-		form.append('towername', towerName);
-		form.append('comment', comment);
-		form.append('tags', tags);
-		utils.prototype.http(
-			'POST',
-			'https://h5mota.com/backend/tower/barrage.php',
-			form,
-			function (res) {
-				try {
-					res = JSON.parse(res);
-					console.log(res);
-					if (res?.code === 0) {
-						core.drawTip('提交成功！')
+		//#region 弹幕的收发
+		this.getComment = function () {
+			if (core.isReplaying()) return;
+			let form = new FormData();
+			form.append('type', 1);
+			form.append('towername', towerName);
+			utils.prototype.http(
+				'POST',
+				'https://h5mota.com/backend/tower/barrage.php',
+				form,
+				function (res) {
+					try {
+						res = JSON.parse(res);
+						console.log(res);
+						core.drawTip('接收成功！')
 						core.playSound('item.mp3');
-					} else {
-						core.drawTip('提交失败！' + res?.message);
+						let commentCollection = {};
+						const commentList = res?.list;
+						const isEmpty = /^\s*$/;
+						for (let i = 0, l = commentList.length; i <= l - 1; i++) {
+							if (isEmpty.test(commentList[i]?.comment)) continue;
+							const commentTagsList = commentList[i].tags.split(',');
+							const [cFloorId, cX, cY] = commentTagsList;
+							if (0 <= cX && cX <= W - 1 && 0 <= cY && cY <= H - 1 && core.floorIds.includes(cFloorId)) {
+								if (!commentCollection.hasOwnProperty(cFloorId)) { commentCollection[cFloorId] = {}; }
+								const str = cX + ',' + cY;
+								if (!commentCollection[cFloorId].hasOwnProperty(str)) { commentCollection[cFloorId][str] = []; }
+								commentCollection[cFloorId][str].push(commentList[i]?.comment);
+							}
+						}
+						core.setFlag('commentCollection', commentCollection);
+					} catch (err) {
+						core.drawTip('接收失败！' + err.message);
 						core.playSound('error.mp3');
 					}
-				}
-				catch (err) {
-					core.drawTip('提交失败！' + err.message);
+				},
+				function (err) {
+					err = JSON.parse(err);
+					console.error(err);
+					core.drawTip('接收失败' + err?.message);
 					core.playSound('error.mp3');
-				}
-			},
-			function (err) {
-				err = JSON.parse(err);
-				console.error(err);
-				core.drawTip('提交失败！' + err?.message);
+				},
+				null, null, null, 1000
+			);
+		}
+
+		this.postComment = function (comment, tags) {
+			if (core.isReplaying()) return;
+			const isEmpty = /^\s*$/;
+			if (isEmpty.test(comment)) {
+				core.drawTip('您输入的消息为空，请重发！');
 				core.playSound('error.mp3');
-			},
-			null, null, null, 1000
-		);
-	}
-	//#endregion
-
-	this.drawCommentSign = function () {
-		if (!core.getFlag('comment') || core.isReplaying()) return;
-		let commentCollection = core.getFlag('commentCollection', {}),
-			floorId = core.status.floorId;
-		core.createCanvas('sign', 0, 0, WIDTH, HEIGHT, 61);
-		core.setOpacity('sign', 0.6);
-		if (commentCollection.hasOwnProperty(floorId)) {
-			for (let pos in commentCollection[floorId]) {
-				const l = commentCollection[floorId][pos].length;
-				for (let i = 0; i <= l - 1; i++) {
-					const [x, y] = pos.split(',');
-					core.drawImage('sign', 'sign.png', 32 * x, 32 * y);
-					break;
-				}
+				return;
 			}
-		}
-	}
-
-	this.clearCommentSign = function () {
-		core.deleteCanvas('sign');
-	}
-
-	/** 返回从commentArr中挑选showNum个comment组成的数组*/
-	function pickComment(commentArr, showNum) {
-		let showList = [];
-		if (commentArr.length <= showNum) {
-			showList = commentArr;
-		} else {
-			for (let i = 0; i <= showNum - 1; i++) {
-				const l = commentArr.length,
-					n = core.plugin.dice(l - 1);
-				showList.push(commentArr[n]);
-				commentArr.splice(n, 1);
-			}
-		}
-		return showList;
-	}
-
-	/** 生成count个随机数，范围从min到max，作为弹幕的y坐标*/
-	function generateCommentYList(min, max, count) {
-		let yList = Array(count).fill(0);
-		const distance = (max - min) / (count + 1);
-		for (let i = 0; i < count; i++) {
-			yList[i] = min + distance * (i + 1) + (Math.random() - 0.5) * (distance / 2);
-		}
-		return yList;
-	}
-
-	function getRandomElements(arr, count) {
-		let result = [...arr];
-		let len = result.length;
-		count = Math.min(len, count);
-
-		for (let i = len - 1; i > len - 1 - count; i--) {
-			let j = Math.floor(Math.random() * (i + 1));
-			[result[i], result[j]] = [result[j], result[i]];
-		}
-
-		return result.slice(len - count);
-	}
-
-	/** 默认一次显示的弹幕数 */
-	const showNum = 5;
-
-	function drawComment(commentArr) {
-		const l = commentArr.length;
-		let yList = generateCommentYList(20, HEIGHT - 20, showNum);
-		if (l < showNum) yList = getRandomElements(yList, l);
-		for (let i = 0; i <= l - 1; i++) {
-			core.plugin.drawCommentStr(commentArr[i], WIDTH + 20 * Math.random(),
-				yList[i], Math.random() * 0.1 + 0.1);
-		}
-	}
-
-	this.showComment = function (x, y) {
-		if (!core.getFlag('comment') || core.isReplaying()) return;
-		const commentCollection = core.getFlag('commentCollection', {});
-		const floorId = core.status.floorId,
-			str = x + ',' + y;
-		if (commentCollection.hasOwnProperty(floorId) &&
-			commentCollection[floorId].hasOwnProperty(str)) {
-			let commentArr = commentCollection[floorId][str].concat();
-			const commentArrPicked = pickComment(commentArr, showNum);
-			drawComment(commentArrPicked);
-		}
-	}
-
-},
-    "setting": function () {
-		// 设置界面绘制
-		// core.openSettings = ...
-
-			const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
-
-			class Setting {
-				/**
-				 * @param {(ctx:string, x:number, y:number, w:number, h:number)=>void} draw 
-				 */
-				constructor(name, effect, text, replay, draw) {
-					/** 获取选项界面显示的名称 */
-					this.getName = name;
-					/** 执行该选项的效果 */
-					this.effect = effect;
-					/** 该选项在框中的说明文字 */
-					this.text = text;
-					/** 该选项是否计入录像 
-					 * @type {boolean}
-					 */
-					this.replay = replay;
-					/** 除名称外的绘制内容
-					 * @type {(ctx:string, x:number, y:number, w:number, h:number)=>void}
-					 */
-					this.draw = draw;
-				}
-			}
-
-			function invertFlag(name) {
-				core.setFlag(name, !core.getFlag(name, false));
-			}
-
-			const settingMap = new Map([
-				['autoGet', new Setting(
-					() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),
-					() => invertFlag('autoGet'),
-					'每走一步，自动拾取当前层可获得的道具。',
-					true,
-				)],
-				['autoBattle', new Setting(
-					() => '自动清怪:' + (core.getFlag('autoBattle', false) ? '开' : '关'),
-					() => invertFlag('autoBattle'),
-					'每走一步，自动和当前层可到达位置伤害为0的敌人战斗。对部分特殊敌人无效。',
-					true,
-				)],
-				['potionRouting', new Setting(
-					() => '血瓶绕路:' + core.getFlag('__potionNoRouting__', false) ? '开' : '关',
-					() => invertFlag('__potionNoRouting__'),
-					'系统设置。开启后自动寻路时将绕过血瓶和绿宝石。',
-					true,
-				)],
-				['clickMove', new Setting(
-					() => '单击瞬移:' + (core.getFlag('__noClickMove__', false) ? '开' : '关'),
-					() => invertFlag('__noClickMove__'),
-					'系统设置。单击即可触发瞬移。',
-					true,
-				)],
-				['itemDetail', new Setting(
-					() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
-					() => invertFlag('itemDetail'),
-					'在地图上显示即捡即用道具和装备增加的属性值。',
-					true,
-				)],
-				['zoomIn', new Setting(
-					() => ' <   放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
-					() => core.actions._clickSwitchs_display_setSize(-1),
-					'放缩',
-					false, // 录像中不可录入任何DOM操作
-				)],
-				['zoomOut', new Setting(
-					() => ' > ',
-					() => core.actions._clickSwitchs_display_setSize(1),
-					'放缩',
-					false,
-				)],
-				['HDCanvas', new Setting(
-					() => '高清画面:' + (core.flags.enableHDCanvas ? '开' : '关'),
-					core.actions._clickSwitchs_display_enableHDCanvas,
-					'高清画面',
-					false,
-				)],
-				['enableEnemyPoint', new Setting(
-					() => '定点怪显:' + (core.flags.enableEnemyPoint ? '开' : '关'),
-					core.actions._clickSwitchs_display_enableEnemyPoint,
-					'怪物属性定点显示功能，即属性不同的怪物会在怪物手册单列。',
-					false,
-				)],
-				['displayEnemyDamage', new Setting(
-					() => '怪物显伤:' + (core.flags.displayEnemyDamage ? '开' : '关'),
-					core.actions._clickSwitchs_display_enemyDamage,
-					'怪物显伤',
-					false,
-				)],
-				['displayCritical', new Setting(
-					() => '临界显伤:' + (core.flags.displayCritical ? '开' : '关'),
-					core.actions._clickSwitchs_display_critical,
-					'临界显伤',
-					false,
-				)],
-				['displayExtraDamage', new Setting(
-					() => '领域显伤:' + (core.flags.displayExtraDamage ? '开' : '关'),
-					core.actions._clickSwitchs_display_extraDamage,
-					'领域显伤',
-					false,
-				)],
-				['extraDamageType', new Setting(
-					() => '领域模式:' + (core.flags.extraDamageType == 2 ? '[最简]' : core.flags.extraDamageType == 1 ? '[半透明]' : '[完整]'),
-					core.actions._clickSwitchs_display_extraDamageType,
-					'领域模式',
-					false,
-				)],
-				['autoScale', new Setting(
-					() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
-					() => core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true),
-					'自动放缩',
-					false,
-				)],
-				['bgm', new Setting(
-					() => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
-					core.actions._clickSwitchs_sounds_bgm,
-					'播放背景音乐',
-					false,
-				)],
-				['se', new Setting(
-					() => '音效:' + (core.musicStatus.soundStatus ? '开' : '关'),
-					core.actions._clickSwitchs_sounds_se,
-					'播放音效',
-					false,
-				)],
-				['decreaseVolume', new Setting(
-					() => " <   音量:" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)),
-					() => core.actions._clickSwitchs_sounds_userVolume(-1),
-					'减小音量',
-					false,
-				)],
-				['increaseVolume', new Setting(
-					() => ' > ',
-					() => core.actions._clickSwitchs_sounds_userVolume(1),
-					'增大音量',
-					false,
-				)],
-				['leftHand', new Setting(
-					() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
-					() => core.flags.leftHandPrefer = !core.flags.leftHandPrefer,
-					'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
-					true,
-				)],
-				['setHotKey', new Setting(
-					() => '',
-					function(num){
-						core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', null, (value) => {
-							const itemInfo = core.material.items;
-							if (itemInfo) {
-								const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
-								if (aimItem) {
-									if (['constants','tools'].includes(aimItem.cls)) {
-										core.setFlag('hotkey' + num, aimItem.id);
-										this.menu.drawContent();
-									}
-									else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
-								}
-								else core.drawFailTip('错误：找不到该名称的物品!');
-							}
-							else core.drawFailTip('未知错误：core.material.items不存在!');
-						});
-					},
-					'给选定的数字键绑定一个可快捷使用的物品。',
-					true,
-					function (ctx) {
-						const num = this.eventArgs[0];
-						const item = core.getFlag('hotkey' + num, null);
-						let icon, itemName;
-						if (item && core.material.items.hasOwnProperty(item)) {
-							icon = item;
-							itemName = core.material.items.item.name;
-						}
-						else {
-							switch (num) {
-								case 1:
-									icon = 'pickaxe';
-									itemName = '破墙镐';
-									break;
-								case 2:
-									icon = 'bomb';
-									itemName = '炸弹';
-									break;
-								case 3:
-									icon = 'centerFly';
-									itemName = '中心飞';
-									break;
-								case 4:
-									itemName = '杂物';
-									break;
-								case 5:
-									itemName = '回退一步';
-									break;
-								case 6:
-									itemName = '撤销回退';
-									break;
-								case 7:
-									itemName = '轻按';
-									break;
-							}
-						}
-						let text = '\\i[btn' + num + ']: ';
-						if (icon) text += '\\i[' + icon + ']';
-						text += itemName;
-						core.ui.drawTextContent(ctx, text, {
-							left: this.x, top: this.y + 2, maxWidth: 200, fontSize: 16,
-						});
-					}
-				)],
-				['clearHotKeys', new Setting(
-					() => '',
-					function () {
-						for (let i = 1; i <= 7; i++) {
-							core.setFlag('hotkey' + i, null);
-						}
-						this.menu.drawContent();
-						core.drawSuccessTip('快捷键已重置到默认状态。')
-					},
-					'重置本页面所有快捷键到默认状态。',
-					true,
-					function (ctx) {
-						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-						core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-					},
-				)],
-				['wallHacking', new Setting(
-					() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
-					() => {
-						core.setFlag('debug', true);
-						invertFlag('debug_wallHacking');
-					},
-					'开启时将始终穿墙并无视各种事件，无论是否按下Ctrl。',
-					false,
-				)],
-				['debug_statusName', new Setting(
-					() => core.getFlag('debug_statusName', '??'),
-					function () {
-						const dictionary = {
-							'体力': 'hp', '血量': 'hp', '生命': 'hp', '血': 'hp',
-							'体力上限': 'hpmax', '血量上限': 'hpmax', '生命上限': 'hpmax', '血限': 'hpmax',
-							'攻击': 'atk', '攻': 'atk', '防御': 'def', '防': 'def',
-							'魔防': 'mdef', '护盾': 'mdef', 'mf': 'mdef',
-							'金币': 'money', '金钱': 'money', '钱': 'money', '经验': 'exp',
-							'魔力': 'mana', '蓝': 'mana',
-						}
-						core.utils.myprompt('输入要修改的属性名称', null, (value) => {
-							const heroStatus = core.status.hero;
-							if (dictionary.hasOwnProperty(value)) {
-								value = dictionary[value];
-							}
-							if (heroStatus && heroStatus.hasOwnProperty(value)
-								&& ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'].includes(value)) {
-								core.setFlag('debug_statusName', value);
-								this.menu.drawContent();
-							}
-							else {
-								core.drawFailTip('错误：不合法的名称!');
-							}
-						});
-					},
-					'',
-					false,
-					function (ctx) {
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-					},
-				)],
-				['debug_statusValue', new Setting(
-					() => {
-						let value = core.getFlag('debug_statusValue', '??');
-						if (typeof value === 'number') return core.formatBigNumber(value, 5);
-						else return value;
-					},
-					function () {
-						core.utils.myprompt('输入要修改到的值', null, (value) => {
-							value = parseInt(value);
-							if (!Number.isNaN(value)) {
-								core.setFlag('debug_statusValue', value);
-								this.menu.drawContent();
-							}
-							else {
-								core.drawFailTip('错误：不合法的值!');
-							}
-						});
-					},
-					'',
-					false,
-					function (ctx) {
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-					},
-				)],
-				['debug_setStatus', new Setting(
-					() => '',
-					() => {
-						const name = core.getFlag('debug_statusName'),
-							value = core.getFlag('debug_statusValue');
-						if (!(name && core.status.hero && core.status.hero.hasOwnProperty(name))) {
-							core.drawFailTip('错误：不合法的名称!');
-							return;
-						}
-						if (!Number.isInteger(value)) {
-							core.drawFailTip('错误：不合法的值!');
-							return;
-						}
-						core.setFlag('debug', true);
-						core.setStatus(name, value);
-						core.updateStatusBar();
-						core.drawSuccessTip('设置成功!');
-					},
-					'将角色状态设为相应值。',
-					false,
-					function (ctx) {
-						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-						core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-					},
-				)],
-				['debug_itemName', new Setting(
-					() => core.getFlag('debug_itemName', '??'),
-					function () {
-						core.utils.myprompt('输入要修改的物品名称', null, (value) => {
-							const itemInfo = core.material.items;
-							if (itemInfo) {
-								const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
-								if (aimItem) {
-									core.setFlag('debug_itemName', aimItem.id);
-									this.menu.drawContent();
-									return;
-								}
-							}
-							core.drawFailTip('错误：不合法的名称!');
-						});
-					},
-					'',
-					false,
-					function (ctx) {
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-					},
-				)],
-				['debug_itemValue', new Setting(
-					() => core.getFlag('debug_itemValue', '??'),
-					function () {
-						core.setFlag('debug', true);
-						core.utils.myprompt('输入要修改到的值', null, (value) => {
-							value = parseInt(value);
-							if (!Number.isNaN(value)) {
-								core.setFlag('debug_itemValue', value);
-								this.menu.drawContent();
-							}
-							else {
-								core.drawFailTip('错误：不合法的值!');
-							}
-						});
-					},
-					'',
-					false,
-					function (ctx) {
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-					},
-				)],
-				['debug_setItem', new Setting(
-					() => '',
-					() => {
-						const name = core.getFlag('debug_itemName'),
-							value = core.getFlag('debug_itemValue');
-						const itemInfo = core.material.items;
-						
-						if (name && itemInfo) {
-							let itemExist = Object.values(itemInfo).some((item) => item.id === name);
-							if (!itemExist) {
-								core.drawFailTip('错误：不合法的名称!');
-								return;
-							}
-						}
-						else {
-							core.drawFailTip('错误：不合法的名称!');
-							return;
-						}
-
-						if (!Number.isInteger(value)) {
-							core.drawFailTip('错误：不合法的值!');
-							return;
-						}
-						core.setFlag('debug', true);
-						core.setItem(name, value);
-						core.updateStatusBar();
-						core.drawSuccessTip('设置成功!');
-					},
-					'将道具数设为相应值。',
-					false,
-					function (ctx) {
-						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-						core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-					},
-				)],
-				['debug_flagName', new Setting(
-					() => core.getFlag('debug_flagName', '??'),
-					function () {
-						core.setFlag('debug', true);
-						core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
-							if (!value.startsWith('debug')) {
-								core.setFlag('debug_flagName', value);
-								this.menu.drawContent();
-							}
-							else {
-								core.drawFailTip('错误：不合法的名称!');
-							}
-						});
-					},
-					'',
-					false,
-					function (ctx) {
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-					},
-				)],
-				['debug_flagValue', new Setting(
-					() => core.getFlag('debug_flagValue', '??'),
-					function () {
-						core.setFlag('debug', true);
-						core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
-							let newValue;
-							try {
-								newValue = JSON.parse(value.trim());
-							}
-							catch {
-								core.drawFailTip('错误：不合法的值，无法解析!');
-								return;
-							}
-							core.setFlag('debug_flagValue', newValue);
-							this.menu.drawContent();
-						});
-					},
-					'',
-					false,
-					function (ctx) {
-						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-					},
-				)],
-				['debug_setFlag', new Setting(
-					() => '',
-					() => {
-						const name = core.getFlag('debug_flagName'),
-							value = core.getFlag('debug_flagValue');
-						if (!name) {
-							core.drawFailTip('错误：不合法的变量名称!');
-							return;
-						}
-						core.setFlag('debug', true);
-						core.setFlag(name, value);
-						core.updateStatusBar();
-						core.drawSuccessTip('设置成功!');
-					},
-					'将变量设为相应值。',
-					false,
-					function (ctx) {
-						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-						core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-					},
-				)],
-			])
-
-			class SettingButton extends ButtonBase {
-				/**
-				 * @param {unknown[]} eventArgs 
-				 */
-				constructor(x, y, w, h, name, eventArgs) {
-					super(x, y, w, h);
-					this.name = name;
-					/**
-					 * @type {Array<unknown>}
-					 */
-					this.eventArgs = eventArgs || [];
-					/**
-					 * @type {Setting}
-					 */
-					this.setting = settingMap.get(name);
-					this.draw = (ctx) => {
-						if (this.disable) return;
-						// 取消注释下面这一句将显示所有按钮的判定框
-						// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
-						core.ui.fillText(ctx, this.setting.getName(),
-							this.x , this.y + this.h / 2 + 5, 'white', '16px Verdana');
-						const drawFunc = this.setting.draw;
-						if (drawFunc) drawFunc.apply(this, [ctx]);
-					}
-					this.event = () => {
-						if (this.disable) return;
-						this.setting.effect.apply(this, eventArgs);
-						this.menu.drawContent();
-						if (this.setting.replay) core.status.route.push('cSet:' + name);
-					}
-				}
-			}
-
-			core.registerReplayAction('cSet', (action) => {
-				const strArr = action.split(':');
-				if (strArr[0] !== 0) return false;
-				const btn = settingMap.get(strArr[1]);
-				btn.effect();
-				core.status.route.push(action);
-				core.replay();
-				return true;
-			})
-
-			function drawSetting(ctx) {
-				core.setAlpha(ctx, 0.85);
-				core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "#fff", 2);
-				core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
-				core.setAlpha(ctx, 1);
-
-				// 绘制设置说明的文本框
-				core.strokeRoundRect(ctx, 20, 70, core.__PIXELS__ - 40, 70, 3, "white");
-				core.fillRoundRect(ctx, 21, 71, core.__PIXELS__ - 42, 68, 3, " #555555");
-
-				// 绘制设置的框体
-				core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 240, 3, "white");
-				core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 238, 3, " #999999");
-
-				core.setTextAlign(ctx, 'center');
-				core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
-			}
-
-			class ChoiceButton extends ButtonBase {
-				constructor(x, y, w, h, text, index) {
-					super(x, y, w, h);
-					this.index = index;
-					this.draw = (ctx) => {
-						core.setTextAlign(ctx, 'center');
-						if (this.status === 'clicked') {
-							core.fillRoundRect(ctx, x, y, w, h, 3, ' #ADD8E6');
-							core.strokeRoundRect(ctx, x, y, w, h, 3, ' #FFFF00');
-							core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #555555', '16px Verdana');
+			let form = new FormData();
+			form.append('type', 2);
+			form.append('towername', towerName);
+			form.append('comment', comment);
+			form.append('tags', tags);
+			utils.prototype.http(
+				'POST',
+				'https://h5mota.com/backend/tower/barrage.php',
+				form,
+				function (res) {
+					try {
+						res = JSON.parse(res);
+						console.log(res);
+						if (res?.code === 0) {
+							core.drawTip('提交成功！')
+							core.playSound('item.mp3');
 						} else {
-							core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
-							core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
-							core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #333333', '16px Verdana');
+							core.drawTip('提交失败！' + res?.message);
+							core.playSound('error.mp3');
 						}
-					};
+					}
+					catch (err) {
+						core.drawTip('提交失败！' + err.message);
+						core.playSound('error.mp3');
+					}
+				},
+				function (err) {
+					err = JSON.parse(err);
+					console.error(err);
+					core.drawTip('提交失败！' + err?.message);
+					core.playSound('error.mp3');
+				},
+				null, null, null, 1000
+			);
+		}
+		//#endregion
+
+		this.drawCommentSign = function () {
+			if (!core.getFlag('comment') || core.isReplaying()) return;
+			let commentCollection = core.getFlag('commentCollection', {}),
+				floorId = core.status.floorId;
+			core.createCanvas('sign', 0, 0, WIDTH, HEIGHT, 61);
+			core.setOpacity('sign', 0.6);
+			if (commentCollection.hasOwnProperty(floorId)) {
+				for (let pos in commentCollection[floorId]) {
+					const l = commentCollection[floorId][pos].length;
+					for (let i = 0; i <= l - 1; i++) {
+						const [x, y] = pos.split(',');
+						core.drawImage('sign', 'sign.png', 32 * x, 32 * y);
+						break;
+					}
+				}
+			}
+		}
+
+		this.clearCommentSign = function () {
+			core.deleteCanvas('sign');
+		}
+
+		/** 返回从commentArr中挑选showNum个comment组成的数组*/
+		function pickComment(commentArr, showNum) {
+			let showList = [];
+			if (commentArr.length <= showNum) {
+				showList = commentArr;
+			} else {
+				for (let i = 0; i <= showNum - 1; i++) {
+					const l = commentArr.length,
+						n = core.plugin.dice(l - 1);
+					showList.push(commentArr[n]);
+					commentArr.splice(n, 1);
+				}
+			}
+			return showList;
+		}
+
+		/** 生成count个随机数，范围从min到max，作为弹幕的y坐标*/
+		function generateCommentYList(min, max, count) {
+			let yList = Array(count).fill(0);
+			const distance = (max - min) / (count + 1);
+			for (let i = 0; i < count; i++) {
+				yList[i] = min + distance * (i + 1) + (Math.random() - 0.5) * (distance / 2);
+			}
+			return yList;
+		}
+
+		function getRandomElements(arr, count) {
+			let result = [...arr];
+			let len = result.length;
+			count = Math.min(len, count);
+
+			for (let i = len - 1; i > len - 1 - count; i--) {
+				let j = Math.floor(Math.random() * (i + 1));
+				[result[i], result[j]] = [result[j], result[i]];
+			}
+
+			return result.slice(len - count);
+		}
+
+		/** 默认一次显示的弹幕数 */
+		const showNum = 5;
+
+		function drawComment(commentArr) {
+			const l = commentArr.length;
+			let yList = generateCommentYList(20, HEIGHT - 20, showNum);
+			if (l < showNum) yList = getRandomElements(yList, l);
+			for (let i = 0; i <= l - 1; i++) {
+				core.plugin.drawCommentStr(commentArr[i], WIDTH + 20 * Math.random(),
+					yList[i], Math.random() * 0.1 + 0.1);
+			}
+		}
+
+		this.showComment = function (x, y) {
+			if (!core.getFlag('comment') || core.isReplaying()) return;
+			const commentCollection = core.getFlag('commentCollection', {});
+			const floorId = core.status.floorId,
+				str = x + ',' + y;
+			if (commentCollection.hasOwnProperty(floorId) &&
+				commentCollection[floorId].hasOwnProperty(str)) {
+				let commentArr = commentCollection[floorId][str].concat();
+				const commentArrPicked = pickComment(commentArr, showNum);
+				drawComment(commentArrPicked);
+			}
+		}
+
+	},
+	"setting": function () {
+		// 自绘设置界面
+		// 抽象的不好，很后悔，还是功底太差
+
+		const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
+
+		class Setting {
+			/**
+			 * @param {(ctx:string, x:number, y:number, w:number, h:number)=>void} draw 
+			 */
+			constructor(name, effect, text, replay, draw) {
+				/** 获取选项界面显示的名称 */
+				this.getName = name;
+				/** 执行该选项的效果 */
+				this.effect = effect;
+				/** 该选项在框中的说明文字 */
+				this.text = text;
+				/** 该选项是否计入录像 
+				 * @type {boolean}
+				 */
+				this.replay = replay;
+				/** 除名称外的绘制内容
+				 * @type {(ctx:string, x:number, y:number, w:number, h:number)=>void}
+				 */
+				this.draw = draw;
+			}
+		}
+
+		function invertFlag(name) {
+			core.setFlag(name, !core.getFlag(name, false));
+		}
+
+		const settingMap = new Map([
+			['autoGet', new Setting(
+				() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),
+				() => invertFlag('autoGet'),
+				'每走一步，自动拾取当前层可获得的道具。',
+				true,
+			)],
+			['autoBattle', new Setting(
+				() => '自动清怪:' + (core.getFlag('autoBattle', false) ? '开' : '关'),
+				() => invertFlag('autoBattle'),
+				'每走一步，自动和当前层可到达位置伤害为0的敌人战斗。对部分特殊敌人无效。',
+				true,
+			)],
+			['potionRouting', new Setting(
+				() => '血瓶绕路:' + core.getFlag('__potionNoRouting__', false) ? '开' : '关',
+				() => invertFlag('__potionNoRouting__'),
+				'系统设置。开启后自动寻路时将绕过血瓶和绿宝石。',
+				true,
+			)],
+			['clickMove', new Setting(
+				() => '单击瞬移:' + (core.getFlag('__noClickMove__', false) ? '开' : '关'),
+				() => invertFlag('__noClickMove__'),
+				'系统设置。单击即可触发瞬移。',
+				true,
+			)],
+			['itemDetail', new Setting(
+				() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
+				() => invertFlag('itemDetail'),
+				'在地图上显示即捡即用道具和装备增加的属性值。',
+				true,
+			)],
+			['zoomIn', new Setting(
+				() => ' <   放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
+				() => core.actions._clickSwitchs_display_setSize(-1),
+				'放缩',
+				false, // 录像中不可录入任何DOM操作
+			)],
+			['zoomOut', new Setting(
+				() => ' > ',
+				() => core.actions._clickSwitchs_display_setSize(1),
+				'放缩',
+				false,
+			)],
+			['HDCanvas', new Setting(
+				() => '高清画面:' + (core.flags.enableHDCanvas ? '开' : '关'),
+				core.actions._clickSwitchs_display_enableHDCanvas,
+				'高清画面',
+				false,
+			)],
+			['enableEnemyPoint', new Setting(
+				() => '定点怪显:' + (core.flags.enableEnemyPoint ? '开' : '关'),
+				core.actions._clickSwitchs_display_enableEnemyPoint,
+				'怪物属性定点显示功能，即属性不同的怪物会在怪物手册单列。',
+				false,
+			)],
+			['displayEnemyDamage', new Setting(
+				() => '怪物显伤:' + (core.flags.displayEnemyDamage ? '开' : '关'),
+				core.actions._clickSwitchs_display_enemyDamage,
+				'怪物显伤',
+				false,
+			)],
+			['displayCritical', new Setting(
+				() => '临界显伤:' + (core.flags.displayCritical ? '开' : '关'),
+				core.actions._clickSwitchs_display_critical,
+				'临界显伤',
+				false,
+			)],
+			['displayExtraDamage', new Setting(
+				() => '领域显伤:' + (core.flags.displayExtraDamage ? '开' : '关'),
+				core.actions._clickSwitchs_display_extraDamage,
+				'领域显伤',
+				false,
+			)],
+			['extraDamageType', new Setting(
+				() => '领域模式:' + (core.flags.extraDamageType == 2 ? '[最简]' : core.flags.extraDamageType == 1 ? '[半透明]' : '[完整]'),
+				core.actions._clickSwitchs_display_extraDamageType,
+				'领域模式',
+				false,
+			)],
+			['autoScale', new Setting(
+				() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
+				() => core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true),
+				'自动放缩',
+				false,
+			)],
+			['bgm', new Setting(
+				() => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
+				core.actions._clickSwitchs_sounds_bgm,
+				'播放背景音乐',
+				false,
+			)],
+			['se', new Setting(
+				() => '音效:' + (core.musicStatus.soundStatus ? '开' : '关'),
+				core.actions._clickSwitchs_sounds_se,
+				'播放音效',
+				false,
+			)],
+			['decreaseVolume', new Setting(
+				() => " <   音量:" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)),
+				() => core.actions._clickSwitchs_sounds_userVolume(-1),
+				'减小音量',
+				false,
+			)],
+			['increaseVolume', new Setting(
+				() => ' > ',
+				() => core.actions._clickSwitchs_sounds_userVolume(1),
+				'增大音量',
+				false,
+			)],
+			['leftHand', new Setting(
+				() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
+				() => core.flags.leftHandPrefer = !core.flags.leftHandPrefer,
+				'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
+				true,
+			)],
+			['setHotKey', new Setting(
+				() => '',
+				function (num) {
+					core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', null, (value) => {
+						const itemInfo = core.material.items;
+						if (itemInfo) {
+							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+							if (aimItem) {
+								if (['constants', 'tools'].includes(aimItem.cls)) {
+									core.setFlag('hotkey' + num, aimItem.id);
+									this.menu.drawContent();
+								}
+								else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
+							}
+							else core.drawFailTip('错误：找不到该名称的物品!');
+						}
+						else core.drawFailTip('未知错误：core.material.items不存在!');
+					});
+				},
+				'给选定的数字键绑定一个可快捷使用的物品。',
+				true,
+				function (ctx) {
+					const num = this.eventArgs[0];
+					const item = core.getFlag('hotkey' + num, null);
+					let icon, itemName;
+					if (item && core.material.items.hasOwnProperty(item)) {
+						icon = item;
+						itemName = core.material.items[item].name;
+					}
+					else {
+						switch (num) {
+							case 1:
+								icon = 'pickaxe';
+								itemName = '破墙镐';
+								break;
+							case 2:
+								icon = 'bomb';
+								itemName = '炸弹';
+								break;
+							case 3:
+								icon = 'centerFly';
+								itemName = '中心飞';
+								break;
+							case 4:
+								itemName = '杂物';
+								break;
+							case 5:
+								itemName = '回退一步';
+								break;
+							case 6:
+								itemName = '撤销回退';
+								break;
+							case 7:
+								itemName = '轻按';
+								break;
+						}
+					}
+					let text = '\\i[btn' + num + ']: ';
+					if (icon) text += '\\i[' + icon + ']';
+					text += itemName;
+					core.ui.drawTextContent(ctx, text, {
+						left: this.x, top: this.y + 2, maxWidth: 200, fontSize: 16,
+					});
+				}
+			)],
+			['clearHotKeys', new Setting(
+				() => '',
+				function () {
+					for (let i = 1; i <= 7; i++) {
+						core.setFlag('hotkey' + i, null);
+					}
+					this.menu.drawContent();
+					core.drawSuccessTip('快捷键已重置到默认状态。')
+				},
+				'重置本页面所有快捷键到默认状态。',
+				true,
+				function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			)],
+			['wallHacking', new Setting(
+				() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
+				() => {
+					core.setFlag('debug', true);
+					invertFlag('debug_wallHacking');
+				},
+				'开启时将始终穿墙并无视各种事件，无论是否按下Ctrl。',
+				false,
+			)],
+			['debug_statusName', new Setting(
+				() => core.getFlag('debug_statusName', '??'),
+				function () {
+					const dictionary = {
+						'体力': 'hp', '血量': 'hp', '生命': 'hp', '血': 'hp',
+						'体力上限': 'hpmax', '血量上限': 'hpmax', '生命上限': 'hpmax', '血限': 'hpmax',
+						'攻击': 'atk', '攻': 'atk', '防御': 'def', '防': 'def',
+						'魔防': 'mdef', '护盾': 'mdef', 'mf': 'mdef',
+						'金币': 'money', '金钱': 'money', '钱': 'money', '经验': 'exp',
+						'魔力': 'mana', '蓝': 'mana',
+					}
+					core.utils.myprompt('输入要修改的属性名称', null, (value) => {
+						const heroStatus = core.status.hero;
+						if (dictionary.hasOwnProperty(value)) {
+							value = dictionary[value];
+						}
+						if (heroStatus && heroStatus.hasOwnProperty(value)
+							&& ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'].includes(value)) {
+							core.setFlag('debug_statusName', value);
+							this.menu.drawContent();
+						}
+						else {
+							core.drawFailTip('错误：不合法的名称!');
+						}
+					});
+				},
+				'',
+				false,
+				function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			)],
+			['debug_statusValue', new Setting(
+				() => {
+					let value = core.getFlag('debug_statusValue', '??');
+					if (typeof value === 'number') return core.formatBigNumber(value, 5);
+					else return value;
+				},
+				function () {
+					core.utils.myprompt('输入要修改到的值', null, (value) => {
+						value = parseInt(value);
+						if (!Number.isNaN(value)) {
+							core.setFlag('debug_statusValue', value);
+							this.menu.drawContent();
+						}
+						else {
+							core.drawFailTip('错误：不合法的值!');
+						}
+					});
+				},
+				'',
+				false,
+				function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			)],
+			['debug_setStatus', new Setting(
+				() => '',
+				() => {
+					const name = core.getFlag('debug_statusName'),
+						value = core.getFlag('debug_statusValue');
+					if (!(name && core.status.hero && core.status.hero.hasOwnProperty(name))) {
+						core.drawFailTip('错误：不合法的名称!');
+						return;
+					}
+					if (!Number.isInteger(value)) {
+						core.drawFailTip('错误：不合法的值!');
+						return;
+					}
+					core.setFlag('debug', true);
+					core.setStatus(name, value);
+					core.updateStatusBar();
+					core.drawSuccessTip('设置成功!');
+				},
+				'将角色状态设为相应值。',
+				false,
+				function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			)],
+			['debug_itemName', new Setting(
+				() => core.getFlag('debug_itemName', '??'),
+				function () {
+					core.utils.myprompt('输入要修改的物品名称', null, (value) => {
+						const itemInfo = core.material.items;
+						if (itemInfo) {
+							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+							if (aimItem) {
+								core.setFlag('debug_itemName', aimItem.id);
+								this.menu.drawContent();
+								return;
+							}
+						}
+						core.drawFailTip('错误：不合法的名称!');
+					});
+				},
+				'',
+				false,
+				function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			)],
+			['debug_itemValue', new Setting(
+				() => core.getFlag('debug_itemValue', '??'),
+				function () {
+					core.setFlag('debug', true);
+					core.utils.myprompt('输入要修改到的值', null, (value) => {
+						value = parseInt(value);
+						if (!Number.isNaN(value)) {
+							core.setFlag('debug_itemValue', value);
+							this.menu.drawContent();
+						}
+						else {
+							core.drawFailTip('错误：不合法的值!');
+						}
+					});
+				},
+				'',
+				false,
+				function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			)],
+			['debug_setItem', new Setting(
+				() => '',
+				() => {
+					const name = core.getFlag('debug_itemName'),
+						value = core.getFlag('debug_itemValue');
+					const itemInfo = core.material.items;
+
+					if (name && itemInfo) {
+						let itemExist = Object.values(itemInfo).some((item) => item.id === name);
+						if (!itemExist) {
+							core.drawFailTip('错误：不合法的名称!');
+							return;
+						}
+					}
+					else {
+						core.drawFailTip('错误：不合法的名称!');
+						return;
+					}
+
+					if (!Number.isInteger(value)) {
+						core.drawFailTip('错误：不合法的值!');
+						return;
+					}
+					core.setFlag('debug', true);
+					core.setItem(name, value);
+					core.updateStatusBar();
+					core.drawSuccessTip('设置成功!');
+				},
+				'将道具数设为相应值。',
+				false,
+				function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			)],
+			['debug_flagName', new Setting(
+				() => core.getFlag('debug_flagName', '??'),
+				function () {
+					core.setFlag('debug', true);
+					core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+						if (!value.startsWith('debug')) {
+							core.setFlag('debug_flagName', value);
+							this.menu.drawContent();
+						}
+						else {
+							core.drawFailTip('错误：不合法的名称!');
+						}
+					});
+				},
+				'',
+				false,
+				function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			)],
+			['debug_flagValue', new Setting(
+				() => core.getFlag('debug_flagValue', '??'),
+				function () {
+					core.setFlag('debug', true);
+					core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+						let newValue;
+						try {
+							newValue = JSON.parse(value.trim());
+						}
+						catch {
+							core.drawFailTip('错误：不合法的值，无法解析!');
+							return;
+						}
+						core.setFlag('debug_flagValue', newValue);
+						this.menu.drawContent();
+					});
+				},
+				'',
+				false,
+				function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			)],
+			['debug_setFlag', new Setting(
+				() => '',
+				() => {
+					const name = core.getFlag('debug_flagName'),
+						value = core.getFlag('debug_flagValue');
+					if (!name) {
+						core.drawFailTip('错误：不合法的变量名称!');
+						return;
+					}
+					core.setFlag('debug', true);
+					core.setFlag(name, value);
+					core.updateStatusBar();
+					core.drawSuccessTip('设置成功!');
+				},
+				'将变量设为相应值。',
+				false,
+				function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			)],
+		])
+
+		class SettingButton extends ButtonBase {
+			/**
+			 * @param {unknown[]} eventArgs 
+			 */
+			constructor(x, y, w, h, name, eventArgs) {
+				super(x, y, w, h);
+				this.name = name;
+				/**
+				 * @type {Array<unknown>}
+				 */
+				this.eventArgs = eventArgs || [];
+				/**
+				 * @type {Setting}
+				 */
+				this.setting = settingMap.get(name);
+				this.draw = (ctx) => {
+					if (this.disable) return;
+					// 取消注释下面这一句将显示所有按钮的判定框
+					// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
+					core.ui.fillText(ctx, this.setting.getName(),
+						this.x, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+					const drawFunc = this.setting.draw;
+					if (drawFunc) drawFunc.apply(this, [ctx]);
+				}
+				this.event = () => {
+					if (this.disable) return;
+					this.setting.effect.apply(this, eventArgs);
+					this.menu.drawContent();
+					if (this.setting.replay) core.status.route.push('cSet:' + name);
+				}
+			}
+		}
+
+		core.registerReplayAction('cSet', (action) => {
+			const strArr = action.split(':');
+			if (strArr[0] !== 0) return false;
+			const btn = settingMap.get(strArr[1]);
+			btn.effect();
+			core.status.route.push(action);
+			core.replay();
+			return true;
+		})
+
+		function drawSetting(ctx) {
+			core.setAlpha(ctx, 0.85);
+			core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "#fff", 2);
+			core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
+			core.setAlpha(ctx, 1);
+
+			// 绘制设置说明的文本框
+			core.strokeRoundRect(ctx, 20, 70, core.__PIXELS__ - 40, 70, 3, "white");
+			core.fillRoundRect(ctx, 21, 71, core.__PIXELS__ - 42, 68, 3, " #555555");
+
+			// 绘制设置的框体
+			core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 240, 3, "white");
+			core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 238, 3, " #999999");
+
+			core.setTextAlign(ctx, 'center');
+			core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
+		}
+
+		class ChoiceButton extends ButtonBase {
+			constructor(x, y, w, h, text, index) {
+				super(x, y, w, h);
+				this.index = index;
+				this.draw = (ctx) => {
+					core.setTextAlign(ctx, 'center');
+					if (this.status === 'clicked') {
+						core.fillRoundRect(ctx, x, y, w, h, 3, ' #ADD8E6');
+						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #FFFF00');
+						core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #555555', '16px Verdana');
+					} else {
+						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
+						core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #333333', '16px Verdana');
+					}
+				};
+			}
+		}
+
+		class SettingOnePage extends MenuBase {
+			constructor(name) {
+				super(name);
+				this.text = '';
+				this.selectedPos;
+				this.selectedBtn;
+				this.clickEvent = (x, y, px, py) => {
+					this.btnList.forEach((btn, pos) => {
+						if (btn.disable) return;
+						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+							if (this.selectedBtn === btn) btn.event(x, y, px, py);
+							else {
+								this.focus(btn, pos);
+							}
+						}
+					});
+				}
+				this.keyEvent = (keyCode) => {
+					let x, y;
+					const changePos = (newPos) => {
+						if (this.btnList.has(newPos)) {
+							const button = this.btnList.get(newPos);
+							this.focus(button, newPos);
+						}
+					}
+					if ([37, 38, 39, 40].includes(keyCode)) {
+						if (!this.selectedBtn) {
+							const button = this.btnList.get('1,1');
+							if (button) this.focus(button, '1,1');
+							return;
+						}
+						else {
+							[x, y] = this.selectedPos.split(',').map((x) => parseInt(x));
+							if (keyCode === 37) x--;
+							if (keyCode === 38) y--;
+							if (keyCode === 39) x++;
+							if (keyCode === 40) y++;
+							let newPos = x + ',' + y;
+
+							// 逻辑：左右，查找不到对应坐标就不动。
+							// 上下，查找不到对应坐标，只要该列存在第一个元素，就会移到该列。
+
+							if (keyCode === 37 || keyCode === 39) {
+								changePos(newPos);
+							}
+							if (keyCode === 38 || keyCode === 40) {
+								if (this.btnList.has(newPos)) {
+									const button = this.btnList.get(newPos);
+									this.focus(button, newPos);
+								}
+								else {
+									newPos = '1,' + y;
+									changePos(newPos);
+								}
+							}
+						}
+					}
+					else {
+						switch (keyCode) {
+							case 13:
+							case 32: // Enter/Space
+								if (this.selectedBtn) this.selectedBtn.event();
+								break;
+						}
+					}
 				}
 			}
 
-			class SettingOnePage extends MenuBase {
-				constructor(name) {
-					super(name);
-					this.text = '';
-					this.selectedBtn;
-					this.clickEvent = (x, y, px, py) => {
-						this.btnList.forEach((btn) => {
-							if (btn.disable) return;
-							if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-								if (this.selectedBtn === btn) btn.event(x, y, px, py);
-								else {
-									this.selectedBtn = btn;
-									this.text = btn.setting.text;
-									this.drawEventSelector();
-									this.drawContent();
-								}
-							}
-						});
-					}
-				}
+			focus(button, pos) {
+				this.selectedPos = pos;
+				this.selectedBtn = button;
+				this.text = button.setting.text;
+				this.drawEventSelector();
+				this.drawContent();
+			}
 
-				drawEventSelector() {
-					if (core.isset(this.selectedBtn)) {
-						core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
-							this.selectedBtn.w, this.selectedBtn.h, 137);
-					}
+			drawEventSelector() {
+				if (core.isset(this.selectedBtn)) {
+					core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
+						this.selectedBtn.w, this.selectedBtn.h, 137);
 				}
+			}
 
-				drawContent() {
-					super.drawContent();
-					if (this.text && this.text.length > 0) {
-						core.ui.drawTextContent(this.name, this.text, {
-							left: 30, top: 78, bold: false, color: "white",
+			drawContent() {
+				super.drawContent();
+				if (this.text && this.text.length > 0) {
+					core.ui.drawTextContent(this.name, this.text, {
+						left: 30, top: 78, bold: false, color: "white",
+						align: "left", fontSize: 14, maxWidth: 350
+					});
+				}
+				switch (this.name) {
+					case 'gamePlay':
+						core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
+						core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
+						break;
+					case 'gameView':
+						core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
+						core.fillText(this.name, '-- 音效 --', 40, 295, ' #FFE4B5', '18px Verdana');
+						break;
+					case 'key':
+						core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
+						break;
+					case 'console':
+						const consoleWarnText =
+							"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
+						core.ui.drawTextContent(this.name, consoleWarnText, {
+							left: 30, top: 158, bold: false, color: " #FFC0CB",
 							align: "left", fontSize: 14, maxWidth: 350
 						});
-					}
-					switch (this.name) {
-						case 'gamePlay':
-							core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
-							core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
-							break;
-						case 'gameView':
-							core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
-							core.fillText(this.name, '-- 音效 --', 40, 295, ' #FFE4B5', '18px Verdana');
-							break;
-						case 'key':
-							core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
-							break;
-						case 'console':
-							const consoleWarnText = 								
-							"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
-							core.ui.drawTextContent(this.name, consoleWarnText, {
-								left: 30, top: 158, bold: false, color: " #FFC0CB",
-								align: "left", fontSize: 14, maxWidth: 350
-							});
-							core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
-							core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
-							core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
-							core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
-							core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
-							core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
-							break;
-					}
-					this.drawEventSelector();
+						core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
+						core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
+						core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
+						core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
+						core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
+						core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
+						break;
 				}
-
-				clear() {
-					core.clearUIEventSelector(0);
-					super.clear();
-				}
+				this.drawEventSelector();
 			}
 
-			class SettingMenu extends MenuPage {
-				constructor(pageList, currPage, name) {
-					super(pageList, currPage, name);
-				}
-
-				drawContent() {
-					core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
-					drawSetting(this.name);
-					super.drawButtonContent();
-					this.initOnePage();
-				}
+			clear() {
+				core.clearUIEventSelector(0);
+				super.clear();
 			}
+		}
 
-			class TextButton extends ButtonBase {
-				constructor(x, y, w, h, text) {
-					super(x, y, w, h);
-					this.draw = (ctx) => {
-						if (this.disable) return;
-						core.ui.fillText(ctx, text,
-							this.x + this.w / 2, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+		class SettingMenu extends MenuPage {
+			constructor(pageList, currPage, name) {
+				super(pageList, currPage, name);
+				this.keyEvent = (keyCode) => {
+					if (keyCode === 33) this.pageUp();
+					if (keyCode === 34) this.pageDown();
+					if ([33, 34].includes(keyCode)) {
+						const btn = this.btnList.get(this.currPage);
+						this.changeBtn(btn);
+						this.drawContent();
+					}
+					if (keyCode === 27) {
+						this.btnList.get('quit').event();
 					}
 				}
 			}
+
+			initBtnList(arr) {
+				super.initBtnList(arr);
+				this.btnList.forEach((btn) => {
+					if (btn instanceof ChoiceButton) {
+						btn.event = function () {
+							this.menu.changePage(this.index);
+							this.menu.changeBtn(this);
+							this.menu.drawContent();
+						}
+					}
+				});
+			}
+
+			drawContent() {
+				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
+				drawSetting(this.name);
+				super.drawButtonContent();
+				this.initOnePage();
+			}
+
+			changeBtn(aimBtn) {
+				this.btnList.forEach((btn) => {
+					if (btn instanceof ChoiceButton) {
+						btn.status = aimBtn === btn ? 'clicked' : 'pending';
+					}
+				})
+			}
+		}
+
+		class TextButton extends ButtonBase {
+			constructor(x, y, w, h, text) {
+				super(x, y, w, h);
+				this.draw = (ctx) => {
+					if (this.disable) return;
+					core.ui.fillText(ctx, text,
+						this.x + this.w / 2, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+				}
+			}
+		}
 
 		this.openSetting = function () {
 			if (core.isReplaying()) return;
@@ -4120,53 +4211,53 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 每个页面的按钮
 			const gamePlayMenu = new SettingOnePage('gamePlay');
 			gamePlayMenu.initBtnList([
-				['autoGet', new SettingButton(40, 180, 150, 30, 'autoGet')],
-				['autoBattle', new SettingButton(220, 180, 150, 30, 'autoBattle')],
-				['clickMove', new SettingButton(40, 230, 150, 30, 'clickMove')]
+				['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')],
+				['2,1', new SettingButton(220, 180, 150, 30, 'autoBattle')],
+				['1,2', new SettingButton(40, 230, 150, 30, 'clickMove')]
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');
 			gameViewMenu.initBtnList([
-				['itemDetail', new SettingButton(40, 180, 150, 25, 'itemDetail')],
-				['HDCanvas', new SettingButton(40, 205, 150, 25, 'HDCanvas')],
-				['displayEnemyDamage', new SettingButton(40, 230, 150, 25, 'displayEnemyDamage')],
-				['displayExtraDamage', new SettingButton(40, 255, 150, 25, 'displayExtraDamage')],
-				['bgm', new SettingButton(40, 300, 150, 25, 'bgm')],
-				['decreaseVolume', new SettingButton(40, 325, 25, 25, 'decreaseVolume')],
-				['increaseVolume', new SettingButton(140, 325, 25, 25, 'increaseVolume')],
+				['1,1', new SettingButton(40, 180, 150, 25, 'itemDetail')],
+				['1,2', new SettingButton(40, 205, 150, 25, 'HDCanvas')],
+				['1,3', new SettingButton(40, 230, 150, 25, 'displayEnemyDamage')],
+				['1,4', new SettingButton(40, 255, 150, 25, 'displayExtraDamage')],
+				['1,5', new SettingButton(40, 300, 150, 25, 'bgm')],
+				['1,6', new SettingButton(40, 325, 25, 25, 'decreaseVolume')],
+				['2,6', new SettingButton(140, 325, 25, 25, 'increaseVolume')],
 
-				['zoomIn', new SettingButton(220, 180, 25, 25, 'zoomIn')],
-				['zoomOut', new SettingButton(320, 180, 25, 25, 'zoomOut')],
-				['enableEnemyPoint', new SettingButton(220, 205, 150, 25, 'enableEnemyPoint')],		
-				['displayCritical', new SettingButton(220, 230, 150, 25, 'displayCritical')],
-				['se', new SettingButton(220, 300, 150, 25, 'se')],
+				['2,1', new SettingButton(220, 180, 25, 25, 'zoomIn')],
+				['3,1', new SettingButton(320, 180, 25, 25, 'zoomOut')],
+				['2,2', new SettingButton(220, 205, 150, 25, 'enableEnemyPoint')],
+				['2,3', new SettingButton(220, 230, 150, 25, 'displayCritical')],
+				['2,5', new SettingButton(220, 300, 150, 25, 'se')],
 			]);
-			
+
 			const keyMenu = new SettingOnePage('key');
 			keyMenu.initBtnList([
-				['leftHand', new SettingButton(40, 160, 150, 25, 'leftHand')],
-				['hotKey1', new SettingButton(40, 220, 150, 25, 'setHotKey', [1])],
-				['hotKey2', new SettingButton(220, 220, 150, 25, 'setHotKey', [2])],
-				['hotKey3', new SettingButton(40, 250, 150, 25, 'setHotKey', [3])],
-				['hotKey4', new SettingButton(220, 250, 150, 25, 'setHotKey', [4])],
-				['hotKey5', new SettingButton(40, 280, 150, 25, 'setHotKey', [5])],
-				['hotKey6', new SettingButton(220, 280, 150, 25, 'setHotKey', [6])],
-				['hotKey7', new SettingButton(40, 310, 150, 25, 'setHotKey', [7])],
-				['clearHotKeys', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
+				['1,1', new SettingButton(40, 160, 150, 25, 'leftHand')],
+				['1,2', new SettingButton(40, 220, 150, 25, 'setHotKey', [1])],
+				['2,2', new SettingButton(220, 220, 150, 25, 'setHotKey', [2])],
+				['1,3', new SettingButton(40, 250, 150, 25, 'setHotKey', [3])],
+				['2,3', new SettingButton(220, 250, 150, 25, 'setHotKey', [4])],
+				['1,4', new SettingButton(40, 280, 150, 25, 'setHotKey', [5])],
+				['2,4', new SettingButton(220, 280, 150, 25, 'setHotKey', [6])],
+				['1,5', new SettingButton(40, 310, 150, 25, 'setHotKey', [7])],
+				['1,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
 			]);
 
 			const consoleMenu = new SettingOnePage('console');
 			consoleMenu.initBtnList([
-				['wallHacking', new SettingButton(40, 220, 150, 25, 'wallHacking')],
-				['debug_statusName', new SettingButton(80, 250, 80, 20, 'debug_statusName')],
-				['debug_statusValue', new SettingButton(210, 250, 80, 20, 'debug_statusValue')],
-				['debug_setStatus', new SettingButton(340, 250, 40, 20, 'debug_setStatus')],
-				['debug_itemName', new SettingButton(80, 276, 80, 20, 'debug_itemName')],
-				['debug_itemValue', new SettingButton(240, 276, 80, 20, 'debug_itemValue')],
-				['debug_setItem', new SettingButton(340, 276, 40, 20, 'debug_setItem')],
-				['debug_flagName', new SettingButton(80, 302, 80, 20, 'debug_flagName')],
-				['debug_flagValue', new SettingButton(210, 302, 80, 20, 'debug_flagValue')],
-				['debug_setFlag', new SettingButton(340, 302, 40, 20, 'debug_setFlag')],
+				['1,1', new SettingButton(40, 220, 150, 25, 'wallHacking')],
+				['1,2', new SettingButton(80, 250, 80, 20, 'debug_statusName')],
+				['2,2', new SettingButton(210, 250, 80, 20, 'debug_statusValue')],
+				['3,2', new SettingButton(340, 250, 40, 20, 'debug_setStatus')],
+				['1,3', new SettingButton(80, 276, 80, 20, 'debug_itemName')],
+				['2,3', new SettingButton(240, 276, 80, 20, 'debug_itemValue')],
+				['3,3', new SettingButton(340, 276, 40, 20, 'debug_setItem')],
+				['1,4', new SettingButton(80, 302, 80, 20, 'debug_flagName')],
+				['2,4', new SettingButton(210, 302, 80, 20, 'debug_flagValue')],
+				['3,4', new SettingButton(340, 302, 40, 20, 'debug_setFlag')],
 			]);
 
 			// 在此处添加新的菜单页面
@@ -4178,37 +4269,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				keyBtn = new ChoiceButton(152, 40, 46, 24, '按键', 2),
 				consoleBtn = new ChoiceButton(212, 40, 66, 24, '控制台', 3);
 			const quit = new TextButton(360, 10, 45, 25, '[退出]');
-			quit.redraw = false;
 			quit.event = () => {
 				settingMenu.clear();
 				setTimeout(core.unlockControl, 0); // 消抖，防止点击关闭按钮的一瞬间触发瞬移。
 			}
 
-			settingMenu.btnList = new Map([['gamePlayBtn', gamePlayBtn], ['gameViewBtn', gameViewBtn],
-			['keyBtn', keyBtn], ['consoleBtn', consoleBtn],
+			settingMenu.initBtnList([[0, gamePlayBtn], [1, gameViewBtn],
+			[2, keyBtn], [3, consoleBtn],
 			['quit', quit]]);
 
-			function changeBtn(aimBtn) {
-				settingMenu.btnList.forEach((btn) => {
-					if (btn instanceof ChoiceButton) {
-						btn.status = aimBtn === btn ? 'clicked' : 'pending';
-					}
-				})
-			}
-			settingMenu.btnList.forEach((btn) => {
-				if (btn instanceof ChoiceButton) {
-					btn.event = function () {
-						changeBtn(this);
-						settingMenu.changePage(this.index);
-					}
-				}
-			});
 			// 设置初始时选中的按键为第一个按键
-			changeBtn(gamePlayBtn);
+			settingMenu.changeBtn(gamePlayBtn);
 
 			settingMenu.init();
 		}
 
+		// todolist 自定义设置界面添加键盘支持
+		// todolist 剧情全skip功能 文字-文字+演出(跳跃) 
 		// todolist 批量使用：您当前选定了：xxx。请勿选定不适合批量使用的道具，请勿输入过大的数字。
+		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏
+		// todolist 内置ATRI 解决连通性问题
+		// todolist 血瓶宝石显示数据 解决浏览地图和楼传显示错误 引入自动配置值的块
+		// todolist 存读档过程保存图块连通性（可选）
+		// todolist 清怪检测，重开杖，吸噬
+		// todolist 修复已知的插件bug
+		// todolist 添加鸽窝样板的快速读取撤回 和 优化美工
 	}
 }
