@@ -1175,8 +1175,8 @@ utils.prototype.myprompt = function (hint, value, callback) {
         main.dom.inputBox.focus();
     });
     core.status.holdingKeys = [];
-
-    core.platform.successCallback = core.platform.errorCallback = callback;
+    core.platform.successCallback = callback;
+    core.platform.errorCallback = () => { };
 }
 
 ////// 动画显示某对象 //////
