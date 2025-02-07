@@ -3619,13 +3619,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				)],
 				['setHotKey', new Setting(
 					() => '',
-					(num) => {
+					function(num){
 						core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', null, (value) => {
 							const itemInfo = core.material.items;
 							if (itemInfo) {
 								const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
 								if (aimItem) {
-									if (aimItem.cls === 'constants' || aimItem.cls === 'tools') {
+									if (['constants','tools'].includes(aimItem.cls)) {
 										core.setFlag('hotkey' + num, aimItem.id);
 										this.menu.drawContent();
 									}
@@ -3638,8 +3638,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'给选定的数字键绑定一个可快捷使用的物品。',
 					true,
-					function (ctx, x, y, w, h) {
-						const num = this.EventArgs[0];
+					function (ctx) {
+						const num = this.eventArgs[0];
 						const item = core.getFlag('hotkey' + num, null);
 						let icon, itemName;
 						if (item && core.material.items.hasOwnProperty(item)) {
@@ -3674,13 +3674,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 									break;
 							}
 						}
-
-						core.ui.drawTextContent(ctx, '快捷键' + num);
+						let text = '\\i[btn' + num + ']: ';
+						if (icon) text += '\\i[' + icon + ']';
+						text += itemName;
+						core.ui.drawTextContent(ctx, text, {
+							left: this.x, top: this.y + 2, maxWidth: 200, fontSize: 16,
+						});
 					}
 				)],
 				['clearHotKeys', new Setting(
 					() => '',
-					() => {
+					function () {
 						for (let i = 1; i <= 7; i++) {
 							core.setFlag('hotkey' + i, null);
 						}
@@ -3689,6 +3693,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'重置本页面所有快捷键到默认状态。',
 					true,
+					function (ctx) {
+						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+						core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+					},
 				)],
 				['wallHacking', new Setting(
 					() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
@@ -3727,8 +3736,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'',
 					false,
-					function (ctx, x, y, w, h) {
-						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					function (ctx) {
+						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
 					},
 				)],
 				['debug_statusValue', new Setting(
@@ -3751,8 +3760,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'',
 					false,
-					function (ctx, x, y, w, h) {
-						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					function (ctx) {
+						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
 					},
 				)],
 				['debug_setStatus', new Setting(
@@ -3775,11 +3784,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'将角色状态设为相应值。',
 					false,
-					function (ctx, x, y, w, h) {
-						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
-						core.fillText(ctx, '执行', x + 5, y + h / 2 + 5, ' #333333', '16px Verdana');
-					}
+					function (ctx) {
+						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+						core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+					},
 				)],
 				['debug_itemName', new Setting(
 					() => core.getFlag('debug_itemName', '??'),
@@ -3799,8 +3808,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'',
 					false,
-					function (ctx, x, y, w, h) {
-						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					function (ctx) {
+						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
 					},
 				)],
 				['debug_itemValue', new Setting(
@@ -3820,8 +3829,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'',
 					false,
-					function (ctx, x, y, w, h) {
-						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					function (ctx) {
+						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
 					},
 				)],
 				['debug_setItem', new Setting(
@@ -3854,11 +3863,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'将道具数设为相应值。',
 					false,
-					function (ctx, x, y, w, h) {
-						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
-						core.fillText(ctx, '执行', x + 5, y + h / 2 + 5, ' #333333', '16px Verdana');
-					}
+					function (ctx) {
+						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+						core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+					},
 				)],
 				['debug_flagName', new Setting(
 					() => core.getFlag('debug_flagName', '??'),
@@ -3876,8 +3885,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'',
 					false,
-					function (ctx, x, y, w, h) {
-						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					function (ctx) {
+						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
 					},
 				)],
 				['debug_flagValue', new Setting(
@@ -3899,8 +3908,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'',
 					false,
-					function (ctx, x, y, w, h) {
-						core.strokeRect(ctx, x, y, w, h, ' #708090');
+					function (ctx) {
+						core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
 					},
 				)],
 				['debug_setFlag', new Setting(
@@ -3919,11 +3928,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					},
 					'将变量设为相应值。',
 					false,
-					function (ctx, x, y, w, h) {
-						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
-						core.fillText(ctx, '执行', x + 5, y + h / 2 + 5, ' #333333', '16px Verdana');
-					}
+					function (ctx) {
+						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+						core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+					},
 				)],
 			])
 
@@ -3944,11 +3953,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					this.setting = settingMap.get(name);
 					this.draw = (ctx) => {
 						if (this.disable) return;
-						//core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
+						// 取消注释下面这一句将显示所有按钮的判定框
+						// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
 						core.ui.fillText(ctx, this.setting.getName(),
 							this.x , this.y + this.h / 2 + 5, 'white', '16px Verdana');
 						const drawFunc = this.setting.draw;
-						if (drawFunc) drawFunc.apply(this, [ctx, this.x, this.y, this.w, this.h]);
+						if (drawFunc) drawFunc.apply(this, [ctx]);
 					}
 					this.event = () => {
 						if (this.disable) return;
@@ -4020,6 +4030,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 									this.selectedBtn = btn;
 									this.text = btn.setting.text;
 									this.drawEventSelector();
+									this.drawContent();
 								}
 							}
 						});
@@ -4049,6 +4060,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						case 'gameView':
 							core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
 							core.fillText(this.name, '-- 音效 --', 40, 295, ' #FFE4B5', '18px Verdana');
+							break;
+						case 'key':
+							core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
 							break;
 						case 'console':
 							const consoleWarnText = 								
@@ -4131,8 +4145,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const keyMenu = new SettingOnePage('key');
 			keyMenu.initBtnList([
 				['leftHand', new SettingButton(40, 160, 150, 25, 'leftHand')],
-				['hotKey1', new SettingButton(40, 200, 100, 25, 'setHotKey', [1])],
-			])
+				['hotKey1', new SettingButton(40, 220, 150, 25, 'setHotKey', [1])],
+				['hotKey2', new SettingButton(220, 220, 150, 25, 'setHotKey', [2])],
+				['hotKey3', new SettingButton(40, 250, 150, 25, 'setHotKey', [3])],
+				['hotKey4', new SettingButton(220, 250, 150, 25, 'setHotKey', [4])],
+				['hotKey5', new SettingButton(40, 280, 150, 25, 'setHotKey', [5])],
+				['hotKey6', new SettingButton(220, 280, 150, 25, 'setHotKey', [6])],
+				['hotKey7', new SettingButton(40, 310, 150, 25, 'setHotKey', [7])],
+				['clearHotKeys', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
+			]);
 
 			const consoleMenu = new SettingOnePage('console');
 			consoleMenu.initBtnList([
