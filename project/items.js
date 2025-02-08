@@ -27,6 +27,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"useItemEffect": "core.status.hero.atk += core.values.redGem",
 		"canUseItemEffect": "true",
 		"itemEffectEvent": {
+			"sound": "item.mp3",
 			"value": {
 				"atk:o": "core.values.redGem"
 			}

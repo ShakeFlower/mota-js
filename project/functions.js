@@ -493,26 +493,27 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.clearContinueAutomaticRoute();
 		},
         "afterGetItem": function (itemId, x, y, isGentleClick) {
-			// 获得一个道具后触发的事件
-			// itemId：获得的道具ID；x和y是该道具所在的坐标
-			// isGentleClick：是否是轻按触发的
-			if (itemId.endsWith('Potion') && core.material.items[itemId].cls == 'items')
-				core.playSound('回血');
-			else if (itemId.endsWith('Gem') && core.material.items[itemId].cls == 'items')
-				core.playSound('宝石')
-			else
-				core.playSound('获得道具');
+	// 获得一个道具后触发的事件
+	// itemId：获得的道具ID；x和y是该道具所在的坐标
+	// isGentleClick：是否是轻按触发的
 
-			var todo = [];
-			// 检查该点的获得道具后事件。
-			if (core.status.floorId == null) return;
-			var event = core.floors[core.status.floorId].afterGetItem[x + "," + y];
-			if (event && (event instanceof Array || !isGentleClick || !event.disableOnGentleClick)) {
-				core.unshift(todo, event);
-			}
+	let sound = '获得道具';
+	const itemInfo = core.material.items[itemId];
+	if (itemInfo.itemEffectEvent && itemInfo.itemEffectEvent.hasOwnProperty('sound')) {
+		sound = itemInfo.itemEffectEvent.sound;
+	}
+	core.playSound(sound);
 
-			if (todo.length > 0) core.insertAction(todo, x, y);
-		},
+	var todo = [];
+	// 检查该点的获得道具后事件。
+	if (core.status.floorId == null) return;
+	var event = core.floors[core.status.floorId].afterGetItem[x + "," + y];
+	if (event && (event instanceof Array || !isGentleClick || !event.disableOnGentleClick)) {
+		core.unshift(todo, event);
+	}
+
+	if (todo.length > 0) core.insertAction(todo, x, y);
+},
         "afterPushBox": function () {
 			// 推箱子后的事件
 			if (core.searchBlock('box').length == 0) {
