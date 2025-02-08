@@ -3619,6 +3619,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				'系统设置。单击即可触发瞬移。',
 				true,
 			)],
+			['moveSpeedDown', new Setting(
+				() => ' < 步时:' + core.values.moveSpeed,
+				() => core.actions._clickSwitchs_action_moveSpeed(-10),
+				'缩短步时。',
+				false,
+			)],
+			['moveSpeedUp', new Setting(
+				() => ' > ',
+				() => core.actions._clickSwitchs_action_moveSpeed(10),
+				'增大步时。',
+				false,
+			)],
+			['floorChangeTimeDown', new Setting(
+				() => ' <   转场:' + core.values.floorChangeTime,
+				() => core.actions._clickSwitchs_action_floorChangeTime(-100),
+				'缩短转场时间。',
+				false, // 录像中不可录入任何DOM操作
+			)],
+			['floorChangeTimeUp', new Setting(
+				() => ' > ',
+				() => core.actions._clickSwitchs_action_floorChangeTime(100),
+				'增大转场时间。',
+				false,
+			)],
 			['itemDetail', new Setting(
 				() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
 				() => invertFlag('itemDetail'),
@@ -4204,6 +4228,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
 						core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
 						core.fillText(this.name, '绕开', 220, 250, 'white', '16px Verdana');
+						core.fillText(this.name, '-- 杂项 --', 40, 275, ' #FFE4B5', '18px Verdana');
 						break;
 					case 'gameView':
 						core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
@@ -4308,6 +4333,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['3,2', new SettingButton(290, 234, 24, 24, 'noRouting_MDEF')],
 				['4,2', new SettingButton(320, 234, 24, 24, 'noRouting_ATK')],
 				['5,2', new SettingButton(350, 234, 24, 24, 'noRouting_DEF')],
+				['1,3', new SettingButton(40, 280, 25, 25, 'moveSpeedDown')],
+				['2,3', new SettingButton(140, 280, 25, 25, 'moveSpeedUp')],
+				['3,3', new SettingButton(220, 280, 25, 25, 'floorChangeTimeDown')],
+				['4,3', new SettingButton(340, 280, 25, 25, 'floorChangeTimeUp')],
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');

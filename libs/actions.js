@@ -2426,13 +2426,13 @@ actions.prototype._clickSwitchs_action = function (x, y) {
 actions.prototype._clickSwitchs_action_moveSpeed = function (delta) {
     core.values.moveSpeed = core.clamp(core.values.moveSpeed + delta, 50, 200);
     core.setLocalStorage("moveSpeed", core.values.moveSpeed);
-    core.ui._drawSwitchs_action();
+    // core.ui._drawSwitchs_action();
 }
 
 actions.prototype._clickSwitchs_action_floorChangeTime = function (delta) {
     core.values.floorChangeTime = core.clamp(core.values.floorChangeTime + delta, 0, 2000);
     core.setLocalStorage("floorChangeTime", core.values.floorChangeTime);
-    core.ui._drawSwitchs_action();
+    // core.ui._drawSwitchs_action();
 }
 
 actions.prototype._clickSwitchs_action_potionNoRouting = function () {
