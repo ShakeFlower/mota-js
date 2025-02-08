@@ -960,7 +960,15 @@ maps.prototype._automaticRoute_deepAdd = function (x, y, blocks) {
         // 绕过路障
         if (id.endsWith("Net") && !core.hasFlag(id.substring(0, id.length - 3))) deepAdd += 100;
         // 绕过血瓶和绿宝石
-        if (core.hasFlag('__potionNoRouting__') && (id.endsWith("Potion") || id == 'greenGem')) deepAdd += 100;
+        if (block.event.cls === 'items') {
+            const itemEffectType = core.getItemEffectType(id);
+            if (core.hasFlag('noRouting_HP') && itemEffectType.includes('hp')) deepAdd += 100;
+            if (core.hasFlag('noRouting_MDEF') && itemEffectType.includes('mdef')) deepAdd += 100;
+            if (core.hasFlag('noRouting_ATK') && itemEffectType.includes('atk')) deepAdd += 100;
+            if (core.hasFlag('noRouting_DEF') && itemEffectType.includes('def')) deepAdd += 100;
+        }
+
+        // if (core.hasFlag('__potionNoRouting__') && (id.endsWith("Potion") || id == 'greenGem')) deepAdd += 100;
         // 绕过传送点
         // if (block.event.trigger == 'changeFloor') deepAdd+=10;
     }

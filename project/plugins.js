@@ -2034,6 +2034,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			//     )
 			//         return false;
 			// }
+			if (item.cls === 'items') {
+				const itemEffectType = core.getItemEffectType(item.id);
+				if (core.hasFlag('noRouting_HP') && itemEffectType.includes('hp')) return false;
+				if (core.hasFlag('noRouting_MDEF') && itemEffectType.includes('mdef')) return false;
+				if (core.hasFlag('noRouting_ATK') && itemEffectType.includes('atk')) return false;
+				if (core.hasFlag('noRouting_DEF') && itemEffectType.includes('def')) return false;
+			}
 			return true;
 		}
 
@@ -3562,14 +3569,52 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				'每走一步，自动和当前层可到达位置伤害为0的敌人战斗。对部分特殊敌人无效。',
 				true,
 			)],
-			['potionRouting', new Setting(
-				() => '血瓶绕路:' + core.getFlag('__potionNoRouting__', false) ? '开' : '关',
-				() => invertFlag('__potionNoRouting__'),
-				'系统设置。开启后自动寻路时将绕过血瓶和绿宝石。',
+			['noRouting_HP', new Setting(
+				() => '',
+				() => invertFlag('noRouting_HP'),
+				'自动寻路时绕过加血物品。同时自动拾取也将忽略这类物品。',
 				true,
+				function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_HP') ? 1 : 0.3);
+					core.drawIcon(ctx, 'redPotion', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			)],
+			['noRouting_MDEF', new Setting(
+				() => '',
+				() => invertFlag('noRouting_MDEF'),
+				'自动寻路时绕过加护盾物品。同时自动拾取也将忽略这类物品。',
+				true,
+				function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_MDEF') ? 1 : 0.3);
+					core.drawIcon(ctx, 'greenGem', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			)],
+			['noRouting_ATK', new Setting(
+				() => '',
+				() => invertFlag('noRouting_ATK'),
+				'自动寻路时绕过加攻物品。同时自动拾取也将忽略这类物品。',
+				true,
+				function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_ATK') ? 1 : 0.3);
+					core.drawIcon(ctx, 'redGem', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			)],
+			['noRouting_DEF', new Setting(
+				() => '',
+				() => invertFlag('noRouting_DEF'),
+				'自动寻路时绕过加防物品。同时自动拾取也将忽略这类物品。',
+				true,
+				function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_DEF') ? 1 : 0.3);
+					core.drawIcon(ctx, 'blueGem', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
 			)],
 			['clickMove', new Setting(
-				() => '单击瞬移:' + (core.getFlag('__noClickMove__', false) ? '开' : '关'),
+				() => '单击瞬移:' + (core.hasFlag('__noClickMove__') ? '关' : '开'),
 				() => invertFlag('__noClickMove__'),
 				'系统设置。单击即可触发瞬移。',
 				true,
@@ -3583,13 +3628,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['zoomIn', new Setting(
 				() => ' <   放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
 				() => core.actions._clickSwitchs_display_setSize(-1),
-				'放缩',
+				'放缩。',
 				false, // 录像中不可录入任何DOM操作
 			)],
 			['zoomOut', new Setting(
 				() => ' > ',
 				() => core.actions._clickSwitchs_display_setSize(1),
-				'放缩',
+				'放缩。',
 				false,
 			)],
 			['HDCanvas', new Setting(
@@ -3625,37 +3670,37 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['extraDamageType', new Setting(
 				() => '领域模式:' + (core.flags.extraDamageType == 2 ? '[最简]' : core.flags.extraDamageType == 1 ? '[半透明]' : '[完整]'),
 				core.actions._clickSwitchs_display_extraDamageType,
-				'领域模式',
+				'是否显示不可通行地块的领域伤害。',
 				false,
 			)],
 			['autoScale', new Setting(
 				() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
 				() => core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true),
-				'自动放缩',
+				'自动放缩。',
 				false,
 			)],
 			['bgm', new Setting(
 				() => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
 				core.actions._clickSwitchs_sounds_bgm,
-				'播放背景音乐',
+				'播放背景音乐。',
 				false,
 			)],
 			['se', new Setting(
 				() => '音效:' + (core.musicStatus.soundStatus ? '开' : '关'),
 				core.actions._clickSwitchs_sounds_se,
-				'播放音效',
+				'播放音效。',
 				false,
 			)],
 			['decreaseVolume', new Setting(
 				() => " <   音量:" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)),
 				() => core.actions._clickSwitchs_sounds_userVolume(-1),
-				'减小音量',
+				'减小音量。',
 				false,
 			)],
 			['increaseVolume', new Setting(
 				() => ' > ',
 				() => core.actions._clickSwitchs_sounds_userVolume(1),
-				'增大音量',
+				'增大音量。',
 				false,
 			)],
 			['leftHand', new Setting(
@@ -4158,6 +4203,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					case 'gamePlay':
 						core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
 						core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
+						core.fillText(this.name, '绕开', 220, 250, 'white', '16px Verdana');
 						break;
 					case 'gameView':
 						core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
@@ -4257,7 +4303,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			gamePlayMenu.initBtnList([
 				['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')],
 				['2,1', new SettingButton(220, 180, 150, 30, 'autoBattle')],
-				['1,2', new SettingButton(40, 230, 150, 30, 'clickMove')]
+				['1,2', new SettingButton(40, 230, 150, 30, 'clickMove')],
+				['2,2', new SettingButton(260, 234, 24, 24, 'noRouting_HP')],
+				['3,2', new SettingButton(290, 234, 24, 24, 'noRouting_MDEF')],
+				['4,2', new SettingButton(320, 234, 24, 24, 'noRouting_ATK')],
+				['5,2', new SettingButton(350, 234, 24, 24, 'noRouting_DEF')],
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');

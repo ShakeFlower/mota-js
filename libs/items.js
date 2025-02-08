@@ -85,7 +85,15 @@ items.prototype.getItemEffect = function (itemId, itemNum) {
     }
 }
 
-////// “即捡即用类”道具的文字提示 //////
+////// 获取“即捡即用类”道具会增加哪些属性 //////
+items.prototype.getItemEffectType = function (itemId) {
+    if (!core.material.items.hasOwnProperty(itemId)) return [];
+    const itemEffectEvent = core.material.items[itemId].itemEffectEvent;
+    if (!itemEffectEvent) return [];
+    return Object.keys(itemEffectEvent.value).map((statusName) => statusName.endsWith(':o') ? statusName.slice(0, -2) : statusName);
+}
+
+////// “即捡即用类”道具的文字提示 //////s
 items.prototype.getItemEffectTip = function (itemId) {
     var itemCls = core.material.items[itemId].cls;
     // 消耗品

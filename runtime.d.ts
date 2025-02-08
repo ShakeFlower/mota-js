@@ -2044,6 +2044,13 @@ interface items {
     getItemEffect(itemId: string, itemNum?: number): void
 
     /**
+     * 获取“即捡即用类”道具会增加哪些属性
+     * @example core.getItemEffect('redPotion') // 返回红血增加的属性列表
+     * @param itemId 道具id
+     */
+    getItemEffectType(itemId: string): string[]
+
+    /**
      * 即捡即用类的道具获得时的额外提示
      * @example core.getItemEffectTip(redPotion) // （获得 红血瓶）'，生命+100'
      * @param itemId 道具id
