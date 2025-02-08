@@ -3475,13 +3475,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	},
 	"setting": function () {
 		// 自绘设置界面
-		// 抽象的不好，很后悔，还是功底太差
 
 		const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
 
 		class Setting {
 			/**
-			 * @param {(ctx:string, x:number, y:number, w:number, h:number)=>void} draw 
+			 * @param {(ctx:string)=>void} draw 
 			 */
 			constructor(name, effect, text, replay, draw) {
 				/** 获取选项界面显示的名称 */
@@ -3495,7 +3494,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				 */
 				this.replay = replay;
 				/** 除名称外的绘制内容
-				 * @type {(ctx:string, x:number, y:number, w:number, h:number)=>void}
+				 * @type {(ctx:string)=>void}
 				 */
 				this.draw = draw;
 			}
@@ -4284,7 +4283,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			settingMenu.init();
 		}
 
-		// todolist 自定义设置界面添加键盘支持
+		// todolist 自定义设置界面添加键盘支持 √
 		// todolist 剧情全skip功能 文字-文字+演出(跳跃) 
 		// todolist 批量使用：您当前选定了：xxx。请勿选定不适合批量使用的道具，请勿输入过大的数字。
 		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏

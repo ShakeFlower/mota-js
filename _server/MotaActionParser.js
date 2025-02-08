@@ -85,6 +85,24 @@ ActionParser.prototype.parse = function (obj,type) {
       return MotaActionBlocks['equip_m'].xmlText([obj.type, obj.animate, buildEquip(obj.value), buildEquip(obj.percentage),
         this.parseList(obj.equipEvent), this.parseList(obj.unequipEvent)]);
 
+    case 'itemEffect':
+      if (!obj) obj = {};
+      var buildItemEffect = function (obj) {
+        obj = obj || {};
+        var text_choices = null;
+        var knownItemListKeys = MotaActionBlocks['ItemEffect_List'].options.map(function (one) { return one[1]; })
+        Object.keys(obj).sort().forEach(function (key) {
+          var noNeed = key.endsWith(':o');
+          if (noNeed) key = key.substring(0, key.length - 2);
+          var one = knownItemListKeys.indexOf(key) >= 0 ? 'itemEffectKnown' : 'itemEffectUnknown';
+          text_choices = MotaActionBlocks[one].xmlText([
+            key, obj[key], noNeed, text_choices
+          ]);
+        })
+        return text_choices;
+      }
+      return MotaActionBlocks['itemEffect_m'].xmlText([buildItemEffect(obj.value)]);
+
       case 'doorInfo':
         if(!obj) obj={};
         var buildKeys = function (obj) {

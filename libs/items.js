@@ -28,11 +28,36 @@ items.prototype.getItems = function () {
 
 ////// “即捡即用类”道具的使用效果 //////
 items.prototype.getItemEffect = function (itemId, itemNum) {
-    var itemCls = core.material.items[itemId].cls;
+    const itemCls = core.material.items[itemId].cls;
     // 消耗品
     if (itemCls === 'items') {
-        var curr_hp = core.status.hero.hp;
-        var itemEffect = core.material.items[itemId].itemEffect;
+        const curr_hp = core.status.hero.hp;
+        const itemEffectEvent = core.material.items[itemId].itemEffectEvent;
+        if (itemEffectEvent) {
+            const { value } = itemEffectEvent;
+            for (var i = 0; i < itemNum; ++i) {
+                for (let statusName in value) {
+                    let statusValue, ratio, needRatio;
+                    const effect = value[statusName];
+                    if (statusName.endsWith(':o')) {
+                        needRatio = true;
+                        statusName = statusName.slice(0, -2);
+                    }
+                    if (core.status.hero.hasOwnProperty(statusName)) {
+                        try {
+                            ratio = core.status.thisMap.ratio || 1;
+                            statusValue = eval(effect);
+                        }
+                        catch (e) {
+                            console.error(e);
+                        }
+                        if (needRatio) statusValue *= ratio;
+                        core.addStatus(statusName, statusValue);
+                    }
+                }
+            }
+        }
+        const itemEffect = core.material.items[itemId].itemEffect;
         if (itemEffect) {
             try {
                 for (var i = 0; i < itemNum; ++i)

@@ -62,13 +62,20 @@ var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "回放不绘制道具栏",
 					"_data": "此项建议在会频繁连续多次使用的道具开启（如开启技能，或者《镜子》那样的镜像切换等等）"
 				},
+				"itemEffectEvent": {
+					"_leaf": true,
+					"_type": "event",
+					"_event": "itemEffect",
+					"_docs": "即捡即用效果",
+					"_data": "即捡即用类物品的效果，仅对cls为items有效。"
+				},
 				"itemEffect": {
 					"_leaf": true,
 					"_type": "textarea",
 					"_string": true,
 					"_lint": true,
-					"_docs": "即捡即用效果",
-					"_data": "即捡即用类物品的效果，仅对cls为items有效。"
+					"_docs": "即捡即用脚本",
+					"_data": "即捡即用类物品在获得时执行的脚本，仅对cls为items有效。"
 				},
 				"itemEffectTip": {
 					"_leaf": true,

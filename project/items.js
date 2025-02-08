@@ -25,7 +25,12 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"itemEffect": "core.status.hero.atk += core.values.redGem * core.status.thisMap.ratio",
 		"itemEffectTip": "，攻击+${core.values.redGem * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.atk += core.values.redGem",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"value": {
+				"atk:o": "core.values.redGem"
+			}
+		}
 	},
 	"blueGem": {
 		"cls": "items",

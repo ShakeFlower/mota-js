@@ -80,6 +80,9 @@ editor_blocklyconfig=(function(){
       MotaActionFunctions.actionParser.parse({
         "type": 0, "value": {"atk": 10}, "percentage": {"speed": 10},
       }, 'equip'),
+      MotaActionFunctions.actionParser.parse({
+        "value": {"atk": 10},
+      }, 'itemEffect'),
       MotaActionFunctions.actionParser.parse([{
         "name": "bg.jpg", "x": 0, "y": 0, "canvas": "bg"
       }], 'floorImage'),

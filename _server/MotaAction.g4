@@ -616,6 +616,59 @@ var code = ' \n';
 return code;
 */;
 
+// itemEffect 事件编辑器入口之一
+itemEffect_m 
+    :   '拾取即捡即用物品的效果' BGNL? '数值提升项' itemEffectList+ '此道具cls须为items' BEND
+
+
+/* itemEffect_m 
+tooltip : 道具效果
+default : []
+helpUrl : /_docs/#/instruction
+var code = '{"value": {\n'+itemEffectList_0+'\n}}';
+return code;
+*/;
+
+itemEffectList
+    : itemEffectKnown
+    | itemEffectUnknown
+    | itemEffectEmpty;
+
+
+itemEffectKnown
+    : ItemEffect_List ':' EvalString '增加值乘以地图倍率' Bool BEND
+
+
+/* itemEffectKnown
+tooltip : 数值增加项
+default : ['atk', 10]
+helpUrl : /_docs/#/instruction
+if (Bool_0) ItemEffect_List_0 += ':o';
+if (!/^[+-]?\d+(\.\d+)?$/.test(EvalString_0)) EvalString_0 = '"' + EvalString_0 + '"';
+return '"'+ItemEffect_List_0+'": '+EvalString_0+', ';
+*/;
+
+itemEffectUnknown
+    : EvalString ':' EvalString '需要但不消耗' Bool BEND
+
+
+/* itemEffectUnknown
+tooltip : 数值增加项
+default : ['speed', 10]
+helpUrl : /_docs/#/instruction
+if (Bool_0) EvalString_0 += ':o';
+if (!/^[+-]?\d+(\.\d+)?$/.test(EvalString_1)) EvalString_1 = '"' + EvalString_1 + '"';
+return '"'+EvalString_0+'": '+EvalString_1+', ';
+*/;
+
+
+itemEffectEmpty
+    :   Newline
+    
+/* itemEffectEmpty
+var code = ' \n';
+return code;
+*/;
 
 faceIds_m
     : '行走图朝向:' BGNL? Newline '向下ID' IdString? '向左ID' IdString? '向右ID' IdString? '向上ID' IdString?  BEND
@@ -4149,6 +4202,10 @@ EnemyPoint_List
 Equip_List
     :   '生命'|'生命上限'|'攻击'|'防御'|'护盾'|'魔力'|'魔力上限'
     /*Equip_List ['hp','hpmax','atk','def','mdef','mana','manamax']*/;
+
+ItemEffect_List
+    :   '生命'|'生命上限'|'攻击'|'防御'|'护盾'|'魔力'|'魔力上限'|'金币'|'经验'
+    /*ItemEffect_List ['hp','hpmax','atk','def','mdef','mana','manamax','money','exp']*/;
 
 Key_List
     :   '黄钥匙'|'蓝钥匙'|'红钥匙'|'绿钥匙'|'铁门钥匙'
