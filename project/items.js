@@ -22,12 +22,12 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"cls": "items",
 		"name": "红宝石",
 		"text": "攻击+${core.values.redGem}",
-		"itemEffect": "core.status.hero.atk += core.values.redGem * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，攻击+${core.values.redGem * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.atk += core.values.redGem",
 		"canUseItemEffect": "true",
 		"itemEffectEvent": {
-			"sound": "item.mp3",
+			"sound": "gem.mp3",
 			"value": {
 				"atk:o": "core.values.redGem"
 			}
@@ -37,25 +37,37 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"cls": "items",
 		"name": "蓝宝石",
 		"text": "，防御+${core.values.blueGem}",
-		"itemEffect": "core.status.hero.def += core.values.blueGem * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，防御+${core.values.blueGem * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.def += core.values.blueGem",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "gem.mp3",
+			"value": {
+				"def:o": "core.values.blueGem"
+			}
+		}
 	},
 	"greenGem": {
 		"cls": "items",
 		"name": "绿宝石",
 		"text": "，护盾+${core.values.greenGem}",
-		"itemEffect": "core.status.hero.mdef += core.values.greenGem * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，护盾+${core.values.greenGem * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.mdef += core.values.greenGem",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "gem.mp3",
+			"value": {
+				"mdef:o": "core.values.greenGem"
+			}
+		}
 	},
 	"yellowGem": {
 		"cls": "items",
 		"name": "黄宝石",
 		"text": "可以进行加点",
-		"itemEffect": "core.status.hero.hp+=1000;core.status.hero.atk+=6;core.status.hero.def+=6;core.status.hero.mdef+=10;",
+		"itemEffect": null,
 		"itemEffectTip": "，全属性提升",
 		"useItemEvent": [
 			{
@@ -97,43 +109,75 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 				]
 			}
 		],
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "gem.mp3",
+			"value": {
+				"mdef:o": "core.values.greenGem",
+				"def:o": "core.values.blueGem",
+				"atk:o": "core.values.redGem"
+			}
+		}
 	},
 	"redPotion": {
 		"cls": "items",
 		"name": "红血瓶",
 		"text": "，生命+${core.values.redPotion}",
-		"itemEffect": "core.status.hero.hp += core.values.redPotion * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，生命+${core.values.redPotion * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.hp += core.values.redPotion",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "recovery.mp3",
+			"value": {
+				"hp:o": "core.values.redPotion"
+			}
+		}
 	},
 	"bluePotion": {
 		"cls": "items",
 		"name": "蓝血瓶",
 		"text": "，生命+${core.values.bluePotion}",
-		"itemEffect": "core.status.hero.hp += core.values.bluePotion * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，生命+${core.values.bluePotion * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.hp += core.values.bluePotion",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "recovery.mp3",
+			"value": {
+				"hp:o": "core.values.bluePotion"
+			}
+		}
 	},
 	"yellowPotion": {
 		"cls": "items",
 		"name": "黄血瓶",
 		"text": "，生命+${core.values.yellowPotion}",
-		"itemEffect": "core.status.hero.hp += core.values.yellowPotion * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，生命+${core.values.yellowPotion * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.hp += core.values.yellowPotion",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "recovery.mp3",
+			"value": {
+				"hp:o": "core.values.yellowPotion"
+			}
+		}
 	},
 	"greenPotion": {
 		"cls": "items",
 		"name": "绿血瓶",
 		"text": "，生命+${core.values.greenPotion}",
-		"itemEffect": "core.status.hero.hp += core.values.greenPotion * core.status.thisMap.ratio",
+		"itemEffect": null,
 		"itemEffectTip": "，生命+${core.values.greenPotion * core.status.thisMap.ratio}",
 		"useItemEffect": "core.status.hero.hp += core.values.greenPotion",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"itemEffectEvent": {
+			"sound": "recovery.mp3",
+			"value": {
+				"hp:o": "core.values.greenPotion"
+			}
+		}
 	},
 	"sword0": {
 		"cls": "items",

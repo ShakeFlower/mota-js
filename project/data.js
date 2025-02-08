@@ -140,7 +140,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"items": {
 				"constants": {
 					"book": 1,
-					"setting": 1,
+					"setting": 1
 				},
 				"tools": {},
 				"equips": {}
@@ -510,6 +510,11 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			{
 				"type": "comment",
 				"text": "初始剧情"
+			},
+			{
+				"type": "setValue",
+				"name": "flag:itemDetail",
+				"value": "true"
 			}
 		],
 		"shops": [

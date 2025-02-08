@@ -1733,6 +1733,26 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.status.thisMap) core.getItemDetail(floorId); // 宝石血瓶详细信息
 			this.drawDamage(ctx);
 		};
+
+		function getRatio() {
+			let ratio = core.status.thisMap.ratio;
+			if (!core.isset(ratio)) ratio = 1;
+			const currEvent = core.status.event;
+			if (!currEvent) return ratio;
+			switch (currEvent.id) {
+				case 'viewMaps': //调整浏览地图时的倍率
+					if (currEvent.data) {
+						const viewMapFloorId = (currEvent.data.floorId);
+						ratio = core.status.maps[viewMapFloorId].ratio;
+					}
+					break;
+				case 'fly': //调整在楼传界面浏览地图时的倍率
+					ratio = core.status.maps[core.floorIds[currEvent.data]].ratio;
+					break;
+			}
+			return ratio;
+		}
+
 		// 获取宝石信息 并绘制
 		this.getItemDetail = function (floorId) {
 			if (!core.getFlag('itemDetail')) return;
@@ -1764,9 +1784,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (core.bigmap.v2) {
 					if (
 						x < core.bigmap.posX - core.bigmap.extend ||
-						x > core.bigmap.posX + core._SIZE_ + core.bigmap.extend ||
+						x > core.bigmap.posX + core.__SIZE__ + core.bigmap.extend ||
 						y < core.bigmap.posY - core.bigmap.extend ||
-						y > core.bigmap.posY + core._SIZE_ + core.bigmap.extend
+						y > core.bigmap.posY + core.__SIZE__ + core.bigmap.extend
 					) {
 						return;
 					}
@@ -1774,6 +1794,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				diff = {};
 				const id = block.event.id;
 				const item = core.material.items[id];
+				if (item.cls === 'items' && item.hasOwnProperty('itemEffectEvent') && item.itemEffectEvent.hasOwnProperty('value')) {
+					const values = item.itemEffectEvent.value;
+					for (let statusName in values) {
+						const getStatusValue = values[statusName];
+						let ratio, needRatio, statusValue;
+						if (statusName.endsWith(':o')) {
+							needRatio = true;
+							statusName = statusName.slice(0, -2);
+						}
+						ratio = getRatio();
+						if (core.status.hero.hasOwnProperty(statusName)) {
+							if (!diff.hasOwnProperty(statusName)) {
+								diff[statusName] = 0;
+							}
+							try {
+								statusValue = eval(getStatusValue);
+							} catch (error) {
+								console.log(error);
+							}
+							if (needRatio) statusValue *= ratio;
+							diff[statusName] += statusValue || 0;
+						}
+					}
+				}
 				if (item.cls === 'equips') {
 					// 装备也显示
 					const diff = item.equip.value ?? {};
@@ -1814,25 +1858,26 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				switch (name) {
 					case 'atk':
 					case 'atkper':
-						color = '#FF7A7A';
+						color = ' #FF7A7A';
 						break;
 					case 'def':
 					case 'defper':
-						color = '#00E6F1';
+						color = ' #00E6F1';
 						break;
 					case 'mdef':
 					case 'mdefper':
-						color = '#6EFF83';
+						color = ' #6EFF83';
 						break;
 					case 'hp':
-						color = '#A4FF00';
+						color = ' #A4FF00';
 						break;
 					case 'hpmax':
 					case 'hpmaxper':
-						color = '#F9FF00';
+						color = ' #F9FF00';
 						break;
 					case 'mana':
-						color = '#c66';
+					case 'manamax':
+						color = ' #CC6666';
 						break;
 				}
 				// 绘制
@@ -4294,5 +4339,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// todolist 修复已知的插件bug
 		// todolist 添加鸽窝样板的快速读取撤回 和 优化美工
 		// todolist 音效连续播放的优化（与自动清有关）
+		// todolist 新的临界计算
 	}
 }
