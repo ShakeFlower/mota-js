@@ -4232,7 +4232,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						break;
 					case 'gameView':
 						core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
-						core.fillText(this.name, '-- 音效 --', 40, 295, ' #FFE4B5', '18px Verdana');
+						core.fillText(this.name, '-- 音效 --', 40, 320, ' #FFE4B5', '18px Verdana');
 						break;
 					case 'key':
 						core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
@@ -4345,15 +4345,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,2', new SettingButton(40, 205, 150, 25, 'HDCanvas')],
 				['1,3', new SettingButton(40, 230, 150, 25, 'displayEnemyDamage')],
 				['1,4', new SettingButton(40, 255, 150, 25, 'displayExtraDamage')],
-				['1,5', new SettingButton(40, 300, 150, 25, 'bgm')],
-				['1,6', new SettingButton(40, 325, 25, 25, 'decreaseVolume')],
-				['2,6', new SettingButton(140, 325, 25, 25, 'increaseVolume')],
+				['1,5', new SettingButton(40, 280, 150, 25, 'extraDamageType')],
+				['1,6', new SettingButton(40, 325, 150, 25, 'bgm')],
+				['1,7', new SettingButton(40, 350, 25, 25, 'decreaseVolume')],
+				['2,7', new SettingButton(140, 350, 25, 25, 'increaseVolume')],
 
 				['2,1', new SettingButton(220, 180, 25, 25, 'zoomIn')],
 				['3,1', new SettingButton(320, 180, 25, 25, 'zoomOut')],
-				['2,2', new SettingButton(220, 205, 150, 25, 'enableEnemyPoint')],
-				['2,3', new SettingButton(220, 230, 150, 25, 'displayCritical')],
-				['2,5', new SettingButton(220, 300, 150, 25, 'se')],
+				['2,2', new SettingButton(220, 205, 150, 25, 'autoScale')],
+				['2,3', new SettingButton(220, 230, 150, 25, 'enableEnemyPoint')],
+				['2,4', new SettingButton(220, 255, 150, 25, 'displayCritical')],
+				['2,6', new SettingButton(220, 325, 150, 25, 'se')],
 			]);
 
 			const keyMenu = new SettingOnePage('key');

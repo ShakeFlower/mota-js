@@ -2486,38 +2486,38 @@ actions.prototype._clickSettings = function (x, y) {
         var selection = y - topIndex;
         core.status.event.selection = selection;
         switch (selection) {
+            // case 0:
+            //     core.status.event.selection = 0;
+            //     core.playSound('确定');
+            //     core.ui._drawSwitchs();
+            //     break;
             case 0:
-                core.status.event.selection = 0;
-                core.playSound('确定');
-                core.ui._drawSwitchs();
-                break;
-            case 1:
                 // core.playSound('确定');
                 core.ui._drawKeyBoard();
                 break;
-            case 2:
+            case 1:
                 // core.playSound('确定');
                 core.clearUI();
                 core.ui._drawViewMaps();
                 break;
-            case 3:
+            case 2:
                 core.status.event.selection = 0;
                 core.playSound('确定');
                 core.ui._drawNotes();
                 break;
-            case 4:
+            case 3:
                 core.status.event.selection = 0;
                 core.playSound('确定');
                 core.ui._drawSyncSave();
                 break;
-            case 5:
+            case 4:
                 core.status.event.selection = 0;
                 core.playSound('确定');
                 core.ui._drawGameInfo();
                 break;
-            case 6:
+            case 5:
                 return core.confirmRestart();
-            case 7:
+            case 6:
                 core.playSound('取消');
                 core.ui.closePanel();
                 break;

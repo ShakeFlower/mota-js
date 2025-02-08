@@ -1992,7 +1992,8 @@ ui.prototype._drawSwitchs_action = function () {
 ui.prototype._drawSettings = function () {
     core.status.event.id = 'settings';
     this.drawChoices(null, [
-        "系统设置", "虚拟键盘", "浏览地图", "存档笔记", "同步存档", "游戏信息", "返回标题", "返回游戏"
+        // "系统设置", "虚拟键盘", "浏览地图", "存档笔记", "同步存档", "游戏信息", "返回标题", "返回游戏"
+        "虚拟键盘", "浏览地图", "存档笔记", "同步存档", "游戏信息", "返回标题", "返回游戏"
     ]);
 }
 
