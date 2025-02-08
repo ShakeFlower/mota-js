@@ -618,14 +618,16 @@ return code;
 
 // itemEffect 事件编辑器入口之一
 itemEffect_m 
-    :   '拾取即捡即用物品的效果' BGNL? '数值提升项' itemEffectList+ '此道具cls须为items' BEND
+    :   '拾取即捡即用物品的效果' '播放音效' EvalString? BGNL? '数值提升项' itemEffectList+ '此道具cls须为items' BEND
 
 
 /* itemEffect_m 
 tooltip : 道具效果
-default : []
+default : ['item.mp3']
+allSounds : ['EvalString_0']
 helpUrl : /_docs/#/instruction
-var code = '{"value": {\n'+itemEffectList_0+'\n}}';
+EvalString_0 = EvalString_0 && ('"sound": "' + EvalString_0 + '",');
+var code = '{' + EvalString_0 + '"value": {\n' + itemEffectList_0 + '\n}}';
 return code;
 */;
 
@@ -641,7 +643,7 @@ itemEffectKnown
 
 /* itemEffectKnown
 tooltip : 数值增加项
-default : ['atk', 10]
+default : ['atk', 10, false]
 helpUrl : /_docs/#/instruction
 if (Bool_0) ItemEffect_List_0 += ':o';
 if (!/^[+-]?\d+(\.\d+)?$/.test(EvalString_0)) EvalString_0 = '"' + EvalString_0 + '"';
@@ -654,7 +656,7 @@ itemEffectUnknown
 
 /* itemEffectUnknown
 tooltip : 数值增加项
-default : ['speed', 10]
+default : ['speed', 10, false]
 helpUrl : /_docs/#/instruction
 if (Bool_0) EvalString_0 += ':o';
 if (!/^[+-]?\d+(\.\d+)?$/.test(EvalString_1)) EvalString_1 = '"' + EvalString_1 + '"';

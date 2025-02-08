@@ -4293,5 +4293,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// todolist 清怪检测，重开杖，吸噬
 		// todolist 修复已知的插件bug
 		// todolist 添加鸽窝样板的快速读取撤回 和 优化美工
+		// todolist 音效连续播放的优化（与自动清有关）
 	}
 }

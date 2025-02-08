@@ -92,16 +92,17 @@ ActionParser.prototype.parse = function (obj,type) {
         var text_choices = null;
         var knownItemListKeys = MotaActionBlocks['ItemEffect_List'].options.map(function (one) { return one[1]; })
         Object.keys(obj).sort().forEach(function (key) {
+          var addValue = obj[key];
           var noNeed = key.endsWith(':o');
           if (noNeed) key = key.substring(0, key.length - 2);
           var one = knownItemListKeys.indexOf(key) >= 0 ? 'itemEffectKnown' : 'itemEffectUnknown';
           text_choices = MotaActionBlocks[one].xmlText([
-            key, obj[key], noNeed, text_choices
+            key, addValue, noNeed, text_choices
           ]);
         })
         return text_choices;
       }
-      return MotaActionBlocks['itemEffect_m'].xmlText([buildItemEffect(obj.value)]);
+      return MotaActionBlocks['itemEffect_m'].xmlText([obj.sound, buildItemEffect(obj.value)]);
 
       case 'doorInfo':
         if(!obj) obj={};

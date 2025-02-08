@@ -35,17 +35,17 @@ items.prototype.getItemEffect = function (itemId, itemNum) {
         const itemEffectEvent = core.material.items[itemId].itemEffectEvent;
         if (itemEffectEvent) {
             const { value } = itemEffectEvent;
-            for (var i = 0; i < itemNum; ++i) {
-                for (let statusName in value) {
-                    let statusValue, ratio, needRatio;
-                    const effect = value[statusName];
-                    if (statusName.endsWith(':o')) {
-                        needRatio = true;
-                        statusName = statusName.slice(0, -2);
-                    }
-                    if (core.status.hero.hasOwnProperty(statusName)) {
+            for (let statusName in value) {
+                let statusValue, ratio, needRatio;
+                const effect = value[statusName];
+                if (statusName.endsWith(':o')) {
+                    needRatio = true;
+                    statusName = statusName.slice(0, -2);
+                }
+                ratio = core.status.thisMap.ratio || 1;
+                if (core.status.hero.hasOwnProperty(statusName)) {
+                    for (var i = 0; i < itemNum; ++i) {
                         try {
-                            ratio = core.status.thisMap.ratio || 1;
                             statusValue = eval(effect);
                         }
                         catch (e) {
