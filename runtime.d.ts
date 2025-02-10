@@ -1550,6 +1550,21 @@ interface enemys {
 interface maps {
 
     /**
+     * 获取初始core.maps.blockInfo的一个拷贝
+     */
+    getBlocksInfo(): {
+        [x: string]: {
+            cls: string
+            id: string
+            name: string
+            cannotIn: string[]
+            cannotOut: string[]
+            canPass: boolean
+            [x: string]: any
+        }
+    }
+    
+    /**
      * 根据图块id得到数字（地图矩阵中的值）
      * @example core.getNumberById('yellowWall'); // 1
      * @param id 图块id
@@ -1831,6 +1846,16 @@ interface maps {
      * @param floorId 地图id，不填视为当前地图
      */
     setBgFgBlock(name: 'bg' | 'fg', number: number | string, x: number, y: number, floorId?: string): void
+
+    /**
+     * 改变事件层图块的连通性
+     * @example core.setBlockConnectivity(165, 'noPass', true);
+     * @example core.setBlockConnectivity(162, 'cannotIn', ['left', 'right']);
+     * @param num 图层的数字或id
+     * @param statusName 要修改的图块属性的名称
+     * @param statusValue 要修改到的值
+     */
+    setBlockConnectivity(num: number | string, statusName: 'noPass' | 'cannotIn' | 'cannotOut', statusValue: unknown): void
 
     /**
      * 移动图块

@@ -1,8 +1,8 @@
 /// <reference path="../runtime.d.ts" />
-var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a = 
+var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 {
-    "events": {
-        "resetGame": function (hero, hard, floorId, maps, values) {
+	"events": {
+		"resetGame": function (hero, hard, floorId, maps, values) {
 			// 重置整个游戏；此函数将在游戏开始时，或者每次读档时最先被调用
 			// hero：勇士信息；hard：难度；floorId：当前楼层ID；maps：地图信息；values：全局数值信息
 
@@ -30,9 +30,10 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.status.floorId = floorId;
 			core.status.maps = maps;
 			core.maps._resetFloorImages();
-			// 初始化怪物和道具
+			// 初始化怪物,道具,和地图图块信息
 			core.material.enemys = core.enemys.getEnemys();
 			core.material.items = core.items.getItems();
+			core.maps.blocksInfo = core.maps.getBlocksInfo();
 			// 初始化全局数值和全局开关
 			core.values = core.clone(core.data.values);
 			for (var key in values || {})
@@ -52,7 +53,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 隐藏右下角的音乐按钮
 			core.dom.musicBtn.style.display = 'none';
 		},
-        "win": function (reason, norank, noexit) {
+		"win": function (reason, norank, noexit) {
 			// 游戏获胜事件
 			// 请注意，成绩统计时是按照hp进行上传并排名
 			// 可以先在这里对最终分数进行计算，比如将2倍攻击和5倍黄钥匙数量加到分数上
@@ -81,7 +82,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				})
 			});
 		},
-        "lose": function (reason) {
+		"lose": function (reason) {
 			// 游戏失败事件
 			core.ui.closePanel();
 			var replaying = core.isReplaying();
@@ -94,77 +95,77 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				});
 			})
 		},
-        "changingFloor": function (floorId, heroLoc) {
-	// 正在切换楼层过程中执行的操作；此函数的执行时间是“屏幕完全变黑“的那一刻
-	// floorId为要切换到的楼层ID；heroLoc表示勇士切换到的位置
+		"changingFloor": function (floorId, heroLoc) {
+			// 正在切换楼层过程中执行的操作；此函数的执行时间是“屏幕完全变黑“的那一刻
+			// floorId为要切换到的楼层ID；heroLoc表示勇士切换到的位置
 
-	// ---------- 此时还没有进行切换，当前floorId还是原来的 ---------- //
-	var currentId = core.status.floorId || null; // 获得当前的floorId，可能为null
-	var fromLoad = core.hasFlag('__fromLoad__'); // 是否是读档造成的切换
-	var isFlying = core.hasFlag('__isFlying__'); // 是否是楼传造成的切换
-	if (!fromLoad && !(isFlying && currentId == floorId)) {
-		if (!core.hasFlag("__leaveLoc__")) core.setFlag("__leaveLoc__", {});
-		if (currentId != null) core.getFlag("__leaveLoc__")[currentId] = core.clone(core.status.hero.loc);
-	}
-
-	// 可以对currentId进行判定，比如删除某些自定义图层等
-	// if (currentId == 'MT0') {
-	//     core.deleteAllCanvas();
-	// }
-
-	// 根据分区信息自动砍层与恢复
-	if (core.autoRemoveMaps) core.autoRemoveMaps(floorId);
-
-	// 重置画布尺寸
-	core.maps.resizeMap(floorId);
-	// 设置勇士的位置
-	heroLoc.direction = core.turnDirection(heroLoc.direction);
-	core.status.hero.loc = heroLoc;
-	// 检查重生怪并重置
-	if (!fromLoad) {
-		core.extractBlocks(floorId);
-		core.status.maps[floorId].blocks.forEach(function (block) {
-			if (block.disable && core.enemys.hasSpecial(block.event.id, 23)) {
-				block.disable = false;
-				core.setMapBlockDisabled(floorId, block.x, block.y, false);
-				core.maps._updateMapArray(floorId, block.x, block.y);
+			// ---------- 此时还没有进行切换，当前floorId还是原来的 ---------- //
+			var currentId = core.status.floorId || null; // 获得当前的floorId，可能为null
+			var fromLoad = core.hasFlag('__fromLoad__'); // 是否是读档造成的切换
+			var isFlying = core.hasFlag('__isFlying__'); // 是否是楼传造成的切换
+			if (!fromLoad && !(isFlying && currentId == floorId)) {
+				if (!core.hasFlag("__leaveLoc__")) core.setFlag("__leaveLoc__", {});
+				if (currentId != null) core.getFlag("__leaveLoc__")[currentId] = core.clone(core.status.hero.loc);
 			}
-		});
-		core.control.gatherFollowers();
-	}
 
-	// ---------- 重绘新地图；这一步将会设置core.status.floorId ---------- //
-	core.drawMap(floorId);
+			// 可以对currentId进行判定，比如删除某些自定义图层等
+			// if (currentId == 'MT0') {
+			//     core.deleteAllCanvas();
+			// }
 
-	// 切换楼层BGM
-	if (core.status.maps[floorId].bgm) {
-		var bgm = core.status.maps[floorId].bgm;
-		if (bgm instanceof Array) bgm = bgm[Math.floor(Math.random() * bgm.length)]; // 多个bgm则随机播放一个
-		if (!core.hasFlag("__bgm__")) core.playBgm(bgm);
-	} else if (fromLoad && !core.hasFlag("__bgm__")) {
-		core.pauseBgm();
-	}
-	// 更改画面色调
-	var color = core.getFlag('__color__', null);
-	if (!color && core.status.maps[floorId].color)
-		color = core.status.maps[floorId].color;
-	core.clearMap('curtain');
-	core.status.curtainColor = color;
-	if (color) core.fillRect('curtain', 0, 0, core.__PIXELS__, core.__PIXELS__, core.arrayToRGBA(color));
-	// 更改天气
-	var weather = core.getFlag('__weather__', null);
-	if (!weather && core.status.maps[floorId].weather)
-		weather = core.status.maps[floorId].weather;
-	if (weather)
-		core.setWeather(weather[0], weather[1]);
-	else core.setWeather();
+			// 根据分区信息自动砍层与恢复
+			if (core.autoRemoveMaps) core.autoRemoveMaps(floorId);
 
-	core.deleteAllTickers(); // 摧毁所有现存的高级动画
+			// 重置画布尺寸
+			core.maps.resizeMap(floorId);
+			// 设置勇士的位置
+			heroLoc.direction = core.turnDirection(heroLoc.direction);
+			core.status.hero.loc = heroLoc;
+			// 检查重生怪并重置
+			if (!fromLoad) {
+				core.extractBlocks(floorId);
+				core.status.maps[floorId].blocks.forEach(function (block) {
+					if (block.disable && core.enemys.hasSpecial(block.event.id, 23)) {
+						block.disable = false;
+						core.setMapBlockDisabled(floorId, block.x, block.y, false);
+						core.maps._updateMapArray(floorId, block.x, block.y);
+					}
+				});
+				core.control.gatherFollowers();
+			}
 
-	// ...可以新增一些其他内容，比如创建个画布在右上角显示什么内容等等
+			// ---------- 重绘新地图；这一步将会设置core.status.floorId ---------- //
+			core.drawMap(floorId);
 
-},
-        "afterChangeFloor": function (floorId) {
+			// 切换楼层BGM
+			if (core.status.maps[floorId].bgm) {
+				var bgm = core.status.maps[floorId].bgm;
+				if (bgm instanceof Array) bgm = bgm[Math.floor(Math.random() * bgm.length)]; // 多个bgm则随机播放一个
+				if (!core.hasFlag("__bgm__")) core.playBgm(bgm);
+			} else if (fromLoad && !core.hasFlag("__bgm__")) {
+				core.pauseBgm();
+			}
+			// 更改画面色调
+			var color = core.getFlag('__color__', null);
+			if (!color && core.status.maps[floorId].color)
+				color = core.status.maps[floorId].color;
+			core.clearMap('curtain');
+			core.status.curtainColor = color;
+			if (color) core.fillRect('curtain', 0, 0, core.__PIXELS__, core.__PIXELS__, core.arrayToRGBA(color));
+			// 更改天气
+			var weather = core.getFlag('__weather__', null);
+			if (!weather && core.status.maps[floorId].weather)
+				weather = core.status.maps[floorId].weather;
+			if (weather)
+				core.setWeather(weather[0], weather[1]);
+			else core.setWeather();
+
+			core.deleteAllTickers(); // 摧毁所有现存的高级动画
+
+			// ...可以新增一些其他内容，比如创建个画布在右上角显示什么内容等等
+
+		},
+		"afterChangeFloor": function (floorId) {
 			// 转换楼层结束的事件；此函数会在整个楼层切换完全结束后再执行
 			// floorId是切换到的楼层
 
@@ -183,7 +184,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				}
 			}
 		},
-        "flyTo": function (toId, callback) {
+		"flyTo": function (toId, callback) {
 			// 楼层传送器的使用，从当前楼层飞往toId
 			// 如果不能飞行请返回false
 
@@ -226,7 +227,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			return true;
 		},
-        "beforeBattle": function (enemyId, x, y) {
+		"beforeBattle": function (enemyId, x, y) {
 			// 战斗前触发的事件，可以加上一些战前特效（详见下面支援的例子）
 			// 此函数在“检测能否战斗和自动存档”【之后】执行。如果需要更早的战前事件，请在插件中覆重写 core.events.doSystemEvent 函数。
 			// 返回true则将继续战斗，返回false将不再战斗。
@@ -257,7 +258,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			return true;
 		},
-        "afterBattle": function (enemyId, x, y) {
+		"afterBattle": function (enemyId, x, y) {
 			// 战斗结束后触发的事件
 
 			var enemy = core.material.enemys[enemyId];
@@ -471,7 +472,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.clearContinueAutomaticRoute();
 
 		},
-        "afterOpenDoor": function (doorId, x, y) {
+		"afterOpenDoor": function (doorId, x, y) {
 			// 开一个门后触发的事件
 
 			var todo = [];
@@ -492,29 +493,29 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			else
 				core.clearContinueAutomaticRoute();
 		},
-        "afterGetItem": function (itemId, x, y, isGentleClick) {
-	// 获得一个道具后触发的事件
-	// itemId：获得的道具ID；x和y是该道具所在的坐标
-	// isGentleClick：是否是轻按触发的
+		"afterGetItem": function (itemId, x, y, isGentleClick) {
+			// 获得一个道具后触发的事件
+			// itemId：获得的道具ID；x和y是该道具所在的坐标
+			// isGentleClick：是否是轻按触发的
 
-	let sound = '获得道具';
-	const itemInfo = core.material.items[itemId];
-	if (itemInfo.itemEffectEvent && itemInfo.itemEffectEvent.hasOwnProperty('sound')) {
-		sound = itemInfo.itemEffectEvent.sound;
-	}
-	core.playSound(sound);
+			let sound = '获得道具';
+			const itemInfo = core.material.items[itemId];
+			if (itemInfo.itemEffectEvent && itemInfo.itemEffectEvent.hasOwnProperty('sound')) {
+				sound = itemInfo.itemEffectEvent.sound;
+			}
+			core.playSound(sound);
 
-	var todo = [];
-	// 检查该点的获得道具后事件。
-	if (core.status.floorId == null) return;
-	var event = core.floors[core.status.floorId].afterGetItem[x + "," + y];
-	if (event && (event instanceof Array || !isGentleClick || !event.disableOnGentleClick)) {
-		core.unshift(todo, event);
-	}
+			var todo = [];
+			// 检查该点的获得道具后事件。
+			if (core.status.floorId == null) return;
+			var event = core.floors[core.status.floorId].afterGetItem[x + "," + y];
+			if (event && (event instanceof Array || !isGentleClick || !event.disableOnGentleClick)) {
+				core.unshift(todo, event);
+			}
 
-	if (todo.length > 0) core.insertAction(todo, x, y);
-},
-        "afterPushBox": function () {
+			if (todo.length > 0) core.insertAction(todo, x, y);
+		},
+		"afterPushBox": function () {
 			// 推箱子后的事件
 			if (core.searchBlock('box').length == 0) {
 				// 可以通过if语句来进行开门操作
@@ -527,48 +528,48 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				*/
 			}
 		}
-    },
-    "enemys": {
-        "getSpecials": function () {
-	// 获得怪物的特殊属性，每一行定义一个特殊属性。
-	// 分为五项，第一项为该特殊属性的数字，第二项为特殊属性的名字，第三项为特殊属性的描述
-	// 第四项为该特殊属性的颜色，可以写十六进制 #RRGGBB 或者 [r,g,b,a] 四元数组
-	// 第五项为该特殊属性的标记；目前 1 代表是地图类技能（需要进行遍历全图）
-	// 名字和描述可以直接写字符串，也可以写个function将怪物传进去
-	return [
-		[1, "先攻", "怪物首先攻击", "#ffcc33"],
-		[2, "魔攻", "怪物无视角色的防御", "#bbb0ff"],
-		[3, "坚固", "怪物防御不小于角色攻击-1", "#c0b088"],
-		[4, "2连击", "怪物每回合攻击2次", "#ffee77"],
-		[5, "3连击", "怪物每回合攻击3次", "#ffee77"],
-		[6, function (enemy) { return (enemy.n || '') + "连击"; }, function (enemy) { return "怪物每回合攻击" + (enemy.n || 4) + "次"; }, "#ffee77"],
-		[7, "破甲", function (enemy) { return "战斗前，怪物附加角色防御的" + Math.floor(100 * (enemy.breakArmor || core.values.breakArmor || 0)) + "%作为伤害"; }, "#88c0ff"],
-		[8, "反击", function (enemy) { return "战斗时，怪物每回合附加角色攻击的" + Math.floor(100 * (enemy.counterAttack || core.values.counterAttack || 0)) + "%作为伤害，无视角色防御"; }, "#ffaa44"],
-		[9, "净化", function (enemy) { return "战斗前，怪物附加角色护盾的" + (enemy.purify || core.values.purify) + "倍作为伤害"; }, "#80eed6"],
-		[10, "模仿", "怪物的攻防和角色攻防相等", "#b0c0dd"],
-		[11, "吸血", function (enemy) { return "战斗前，怪物首先吸取角色的" + Math.floor(100 * enemy.vampire || 0) + "%生命（约" + Math.floor((enemy.vampire || 0) * core.getStatus('hp')) + "点）作为伤害" + (enemy.add ? "，并把伤害数值加到自身生命上" : ""); }, "#dd4448"],
-		[12, "中毒", "战斗后，角色陷入中毒状态，每一步损失生命" + core.values.poisonDamage + "点", "#99ee88"],
-		[13, "衰弱", "战斗后，角色陷入衰弱状态，攻防暂时下降" + (core.values.weakValue >= 1 ? core.values.weakValue + "点" : parseInt(core.values.weakValue * 100) + "%"), "#f0bbcc"],
-		[14, "诅咒", "战斗后，角色陷入诅咒状态，战斗无法获得金币和经验", "#bbeef0"],
-		[15, "领域", function (enemy) { return "经过怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "范围内" + (enemy.range || 1) + "格时自动减生命" + (enemy.zone || 0) + "点"; }, "#c677dd"],
-		[16, "夹击", "经过两只相同的怪物中间，角色生命值变成一半", "#bb99ee"],
-		[17, "仇恨", "战斗前，怪物附加之前积累的仇恨值作为伤害；战斗后，释放一半的仇恨值。（每杀死一个怪物获得" + (core.values.hatred || 0) + "点仇恨值）", "#b0b666"],
-		[18, "阻击", function (enemy) { return "经过怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时自动减生命" + (enemy.repulse || 0) + "点，同时怪物后退一格"; }, "#8888e6"],
-		[19, "自爆", "战斗后角色的生命值变成1", "#ff6666"],
-		[20, "无敌", "角色无法打败怪物，除非拥有十字架", "#aaaaaa"],
-		[21, "退化", function (enemy) { return "战斗后角色永久下降" + (enemy.atkValue || 0) + "点攻击和" + (enemy.defValue || 0) + "点防御"; }],
-		[22, "固伤", function (enemy) { return "战斗前，怪物对角色造成" + (enemy.damage || 0) + "点固定伤害，未开启负伤时无视角色护盾。"; }, "#ff9977"],
-		[23, "重生", "怪物被击败后，角色转换楼层则怪物将再次出现", "#a0e0ff"],
-		[24, "激光", function (enemy) { return "经过怪物同行或同列时自动减生命" + (enemy.laser || 0) + "点"; }, "#dda0dd"],
-		[25, "光环", function (enemy) { return (enemy.range != null ? ((enemy.haloSquare ? "该怪物九宫格" : "该怪物十字") + enemy.haloRange + "格范围内") : "同楼层所有") + "怪物生命提升" + (enemy.hpBuff || 0) + "%，攻击提升" + (enemy.atkBuff || 0) + "%，防御提升" + (enemy.defBuff || 0) + "%，" + (enemy.haloAdd ? "可叠加" : "不可叠加"); }, "#e6e099", 1],
-		[26, "支援", "当周围一圈的怪物受到攻击时将上前支援，并组成小队战斗。", "#77c0b6", 1],
-		[27, "捕捉", function (enemy) { return "当走到怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时会强制进行战斗。"; }, "#c0ddbb"],
-		[28, "追猎", function (enemy) { return ""; }, "#c0ddbb"],
-		[29, "败移", function (enemy) { return ""; }, "#c0ddbb"],
-		[30, "吸噬", function (enemy) { return ""; }, "#c0ddbb"],
-	];
-},
-        "getEnemyInfo": function (enemy, hero, x, y, floorId) {
+	},
+	"enemys": {
+		"getSpecials": function () {
+			// 获得怪物的特殊属性，每一行定义一个特殊属性。
+			// 分为五项，第一项为该特殊属性的数字，第二项为特殊属性的名字，第三项为特殊属性的描述
+			// 第四项为该特殊属性的颜色，可以写十六进制 #RRGGBB 或者 [r,g,b,a] 四元数组
+			// 第五项为该特殊属性的标记；目前 1 代表是地图类技能（需要进行遍历全图）
+			// 名字和描述可以直接写字符串，也可以写个function将怪物传进去
+			return [
+				[1, "先攻", "怪物首先攻击", "#ffcc33"],
+				[2, "魔攻", "怪物无视角色的防御", "#bbb0ff"],
+				[3, "坚固", "怪物防御不小于角色攻击-1", "#c0b088"],
+				[4, "2连击", "怪物每回合攻击2次", "#ffee77"],
+				[5, "3连击", "怪物每回合攻击3次", "#ffee77"],
+				[6, function (enemy) { return (enemy.n || '') + "连击"; }, function (enemy) { return "怪物每回合攻击" + (enemy.n || 4) + "次"; }, "#ffee77"],
+				[7, "破甲", function (enemy) { return "战斗前，怪物附加角色防御的" + Math.floor(100 * (enemy.breakArmor || core.values.breakArmor || 0)) + "%作为伤害"; }, "#88c0ff"],
+				[8, "反击", function (enemy) { return "战斗时，怪物每回合附加角色攻击的" + Math.floor(100 * (enemy.counterAttack || core.values.counterAttack || 0)) + "%作为伤害，无视角色防御"; }, "#ffaa44"],
+				[9, "净化", function (enemy) { return "战斗前，怪物附加角色护盾的" + (enemy.purify || core.values.purify) + "倍作为伤害"; }, "#80eed6"],
+				[10, "模仿", "怪物的攻防和角色攻防相等", "#b0c0dd"],
+				[11, "吸血", function (enemy) { return "战斗前，怪物首先吸取角色的" + Math.floor(100 * enemy.vampire || 0) + "%生命（约" + Math.floor((enemy.vampire || 0) * core.getStatus('hp')) + "点）作为伤害" + (enemy.add ? "，并把伤害数值加到自身生命上" : ""); }, "#dd4448"],
+				[12, "中毒", "战斗后，角色陷入中毒状态，每一步损失生命" + core.values.poisonDamage + "点", "#99ee88"],
+				[13, "衰弱", "战斗后，角色陷入衰弱状态，攻防暂时下降" + (core.values.weakValue >= 1 ? core.values.weakValue + "点" : parseInt(core.values.weakValue * 100) + "%"), "#f0bbcc"],
+				[14, "诅咒", "战斗后，角色陷入诅咒状态，战斗无法获得金币和经验", "#bbeef0"],
+				[15, "领域", function (enemy) { return "经过怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "范围内" + (enemy.range || 1) + "格时自动减生命" + (enemy.zone || 0) + "点"; }, "#c677dd"],
+				[16, "夹击", "经过两只相同的怪物中间，角色生命值变成一半", "#bb99ee"],
+				[17, "仇恨", "战斗前，怪物附加之前积累的仇恨值作为伤害；战斗后，释放一半的仇恨值。（每杀死一个怪物获得" + (core.values.hatred || 0) + "点仇恨值）", "#b0b666"],
+				[18, "阻击", function (enemy) { return "经过怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时自动减生命" + (enemy.repulse || 0) + "点，同时怪物后退一格"; }, "#8888e6"],
+				[19, "自爆", "战斗后角色的生命值变成1", "#ff6666"],
+				[20, "无敌", "角色无法打败怪物，除非拥有十字架", "#aaaaaa"],
+				[21, "退化", function (enemy) { return "战斗后角色永久下降" + (enemy.atkValue || 0) + "点攻击和" + (enemy.defValue || 0) + "点防御"; }],
+				[22, "固伤", function (enemy) { return "战斗前，怪物对角色造成" + (enemy.damage || 0) + "点固定伤害，未开启负伤时无视角色护盾。"; }, "#ff9977"],
+				[23, "重生", "怪物被击败后，角色转换楼层则怪物将再次出现", "#a0e0ff"],
+				[24, "激光", function (enemy) { return "经过怪物同行或同列时自动减生命" + (enemy.laser || 0) + "点"; }, "#dda0dd"],
+				[25, "光环", function (enemy) { return (enemy.range != null ? ((enemy.haloSquare ? "该怪物九宫格" : "该怪物十字") + enemy.haloRange + "格范围内") : "同楼层所有") + "怪物生命提升" + (enemy.hpBuff || 0) + "%，攻击提升" + (enemy.atkBuff || 0) + "%，防御提升" + (enemy.defBuff || 0) + "%，" + (enemy.haloAdd ? "可叠加" : "不可叠加"); }, "#e6e099", 1],
+				[26, "支援", "当周围一圈的怪物受到攻击时将上前支援，并组成小队战斗。", "#77c0b6", 1],
+				[27, "捕捉", function (enemy) { return "当走到怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时会强制进行战斗。"; }, "#c0ddbb"],
+				[28, "追猎", function (enemy) { return ""; }, "#c0ddbb"],
+				[29, "败移", function (enemy) { return ""; }, "#c0ddbb"],
+				[30, "吸噬", function (enemy) { return ""; }, "#c0ddbb"],
+			];
+		},
+		"getEnemyInfo": function (enemy, hero, x, y, floorId) {
 			// 获得某个怪物变化后的数据；该函数将被伤害计算和怪物手册使用
 			// 例如：坚固、模仿、仿攻等等
 			// 
@@ -691,7 +692,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				"guards": guards, // 返回支援情况
 			};
 		},
-        "getDamageInfo": function (enemy, hero, x, y, floorId) {
+		"getDamageInfo": function (enemy, hero, x, y, floorId) {
 			// 获得战斗伤害信息（实际伤害计算函数）
 			// 
 			// 参数说明：
@@ -849,186 +850,186 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				"damage": Math.floor(damage)
 			};
 		}
-    },
-    "actions": {
-        "onKeyUp": function (keyCode, altKey) {
-	// 键盘按键处理，可以在这里自定义快捷键列表
-	// keyCode：当前按键的keyCode（每个键的keyCode自行百度）
-	// altKey：Alt键是否被按下，为true代表同时按下了Alt键
-	// 可以在这里任意增加或编辑每个按键的行为
+	},
+	"actions": {
+		"onKeyUp": function (keyCode, altKey) {
+			// 键盘按键处理，可以在这里自定义快捷键列表
+			// keyCode：当前按键的keyCode（每个键的keyCode自行百度）
+			// altKey：Alt键是否被按下，为true代表同时按下了Alt键
+			// 可以在这里任意增加或编辑每个按键的行为
 
-	// 如果处于正在行走状态，则不处理
-	if (core.isMoving()) return;
+			// 如果处于正在行走状态，则不处理
+			if (core.isMoving()) return;
 
-	// 商店长按时忽略
-	if (core.status.onShopLongDown) return core.status.onShopLongDown = false;
+			// 商店长按时忽略
+			if (core.status.onShopLongDown) return core.status.onShopLongDown = false;
 
-	// Alt+0~9，快捷换上套装
-	if (altKey && keyCode >= 48 && keyCode <= 57) {
-		core.items.quickLoadEquip(keyCode - 48);
-		return;
-	}
-
-	function tryUseItem(item) {
-		if (core.hasItem(item)) {
-			switch (item) {
-			case 'centerFly':
-				core.ui._drawCenterFly(); // 中心对称飞行器需要特殊判断
-				break;
-			default:
-				core.useItem(item);
-				break;
+			// Alt+0~9，快捷换上套装
+			if (altKey && keyCode >= 48 && keyCode <= 57) {
+				core.items.quickLoadEquip(keyCode - 48);
+				return;
 			}
-		} else {
-			core.drawFailTip('当前未持有对应道具！');
-		}
-	}
 
-	// 根据keyCode值来执行对应操作
-	switch (keyCode) {
-	case 27: // ESC：打开菜单栏
-		core.openSettings(true);
-		break;
-	case 88: // X：使用怪物手册
-		core.openBook(true);
-		break;
-	case 71: // G：使用楼传器
-		core.useFly(true);
-		break;
-	case 65: // A：读取自动存档（回退）
-		core.doSL("autoSave", "load");
-		break;
-	case 87: // W：撤销回退
-		core.doSL("autoSave", "reload");
-		break;
-	case 83: // S：存档
-		core.save(true);
-		break;
-	case 68: // D：读档
-		core.load(true);
-		break;
-	case 69: // E：打开光标
-		core.ui._drawCursor();
-		break;
-	case 84: // T：打开道具栏
-		core.openToolbox(true);
-		break;
-	case 81: // Q：打开装备栏
-		core.openEquipbox(true);
-		break;
-	case 90: // Z：转向
-		core.turnHero();
-		break;
-	case 86: // V：打开快捷商店列表
-		core.openQuickShop(true);
-		break;
-	case 32: // SPACE：轻按
-		core.getNextItem();
-		break;
-	case 82: // R：回放录像
-		core.ui._drawReplay();
-		break;
-	case 33:
-	case 34: // PgUp/PgDn：浏览地图
-		core.ui._drawViewMaps();
-		break;
-	case 66: // B：打开数据统计
-		core.ui._drawStatistics();
-		break;
-	case 72: // H：打开帮助页面
-		core.ui._drawHelp();
-		break;
-	case 77: // M：打开存档笔记
-		core.actions._clickNotes_show();
-		break;
-	case 78: // N：重新开始
-		core.confirmRestart();
-		break;
-	case 79: // O：查看工程
-		core.actions._clickGameInfo_openProject();
-		break;
-	case 80: // P：游戏主页
-		core.actions._clickGameInfo_openComments();
-		break;
-	case 49: // 快捷键1: 破
-	{
-		const item = core.getFlag('hotkey1');
-		if (item) tryUseItem(item);
-		else tryUseItem('pickaxe');
-	}
-	break;
-	case 50: // 快捷键2: 炸
-	{
-		const item = core.getFlag('hotkey2');
-		if (item) tryUseItem(item);
-		else tryUseItem('bomb');
-	}
-	break;
-	case 51: // 快捷键3: 飞
-	{
-		const item = core.getFlag('hotkey3');
-		if (item) tryUseItem(item);
-		else tryUseItem('centerFly');
-	}
-	break;
-	case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
-	{
-		const item = core.getFlag('hotkey4');
-		if (item) tryUseItem(item);
-		else {
-			const list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
-			for (var i = 0; i < list.length; i++) {
-				var itemId = list[i];
-				tryUseItem(itemId);
-			}
-		}
-	}
-	break;
-	case 53: // 5：读取自动存档（回退），方便手机版操作
-	{
-		const item = core.getFlag('hotkey5');
-		if (item) tryUseItem(item);
-		else core.doSL("autoSave", "load");
-	}
-	break;
-	case 54: // 6：撤销回退，方便手机版操作
-	{
-		const item = core.getFlag('hotkey6');
-		if (item) tryUseItem(item);
-		else core.doSL("autoSave", "reload");
-	}
-	break;
-	case 55: // 快捷键7：绑定为轻按，方便手机版操作
-	{
-		const item = core.getFlag('hotkey71');
-		if (item) tryUseItem(item);
-		else core.getNextItem();
-	}
-	break;
-	case 118: // F7：开启debug模式
-	case 119: // F8：由于F7与部分浏览器有冲突，故新增F8
-		core.debug();
-		break;
-	case 70: // F
-		break;
-		// 在这里可以任意新增或编辑已有的快捷键内容
-		/*
-				case 0: // 使用该按键的keyCode
-					// 还可以再判定altKey是否被按下，即 if (altKey) { ...
-		
-					// ... 在这里写你要执行脚本
-					// **强烈建议所有新增的自定义快捷键均能给个对应的道具可点击，以方便手机端的行为**
-					if (core.hasItem('...')) {
-						core.status.route.push("key:0");
-						core.useItem('...', true); // 增加true代表该使用道具不计入录像
+			function tryUseItem(item) {
+				if (core.hasItem(item)) {
+					switch (item) {
+						case 'centerFly':
+							core.ui._drawCenterFly(); // 中心对称飞行器需要特殊判断
+							break;
+						default:
+							core.useItem(item);
+							break;
 					}
-		
-					break;
-				*/
-	}
+				} else {
+					core.drawFailTip('当前未持有对应道具！');
+				}
+			}
 
-},
-        "onStatusBarClick": function (px, py, vertical) {
+			// 根据keyCode值来执行对应操作
+			switch (keyCode) {
+				case 27: // ESC：打开菜单栏
+					core.openSettings(true);
+					break;
+				case 88: // X：使用怪物手册
+					core.openBook(true);
+					break;
+				case 71: // G：使用楼传器
+					core.useFly(true);
+					break;
+				case 65: // A：读取自动存档（回退）
+					core.doSL("autoSave", "load");
+					break;
+				case 87: // W：撤销回退
+					core.doSL("autoSave", "reload");
+					break;
+				case 83: // S：存档
+					core.save(true);
+					break;
+				case 68: // D：读档
+					core.load(true);
+					break;
+				case 69: // E：打开光标
+					core.ui._drawCursor();
+					break;
+				case 84: // T：打开道具栏
+					core.openToolbox(true);
+					break;
+				case 81: // Q：打开装备栏
+					core.openEquipbox(true);
+					break;
+				case 90: // Z：转向
+					core.turnHero();
+					break;
+				case 86: // V：打开快捷商店列表
+					core.openQuickShop(true);
+					break;
+				case 32: // SPACE：轻按
+					core.getNextItem();
+					break;
+				case 82: // R：回放录像
+					core.ui._drawReplay();
+					break;
+				case 33:
+				case 34: // PgUp/PgDn：浏览地图
+					core.ui._drawViewMaps();
+					break;
+				case 66: // B：打开数据统计
+					core.ui._drawStatistics();
+					break;
+				case 72: // H：打开帮助页面
+					core.ui._drawHelp();
+					break;
+				case 77: // M：打开存档笔记
+					core.actions._clickNotes_show();
+					break;
+				case 78: // N：重新开始
+					core.confirmRestart();
+					break;
+				case 79: // O：查看工程
+					core.actions._clickGameInfo_openProject();
+					break;
+				case 80: // P：游戏主页
+					core.actions._clickGameInfo_openComments();
+					break;
+				case 49: // 快捷键1: 破
+					{
+						const item = core.getFlag('hotkey1');
+						if (item) tryUseItem(item);
+						else tryUseItem('pickaxe');
+					}
+					break;
+				case 50: // 快捷键2: 炸
+					{
+						const item = core.getFlag('hotkey2');
+						if (item) tryUseItem(item);
+						else tryUseItem('bomb');
+					}
+					break;
+				case 51: // 快捷键3: 飞
+					{
+						const item = core.getFlag('hotkey3');
+						if (item) tryUseItem(item);
+						else tryUseItem('centerFly');
+					}
+					break;
+				case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
+					{
+						const item = core.getFlag('hotkey4');
+						if (item) tryUseItem(item);
+						else {
+							const list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
+							for (var i = 0; i < list.length; i++) {
+								var itemId = list[i];
+								tryUseItem(itemId);
+							}
+						}
+					}
+					break;
+				case 53: // 5：读取自动存档（回退），方便手机版操作
+					{
+						const item = core.getFlag('hotkey5');
+						if (item) tryUseItem(item);
+						else core.doSL("autoSave", "load");
+					}
+					break;
+				case 54: // 6：撤销回退，方便手机版操作
+					{
+						const item = core.getFlag('hotkey6');
+						if (item) tryUseItem(item);
+						else core.doSL("autoSave", "reload");
+					}
+					break;
+				case 55: // 快捷键7：绑定为轻按，方便手机版操作
+					{
+						const item = core.getFlag('hotkey71');
+						if (item) tryUseItem(item);
+						else core.getNextItem();
+					}
+					break;
+				case 118: // F7：开启debug模式
+				case 119: // F8：由于F7与部分浏览器有冲突，故新增F8
+					core.debug();
+					break;
+				case 70: // F
+					break;
+				// 在这里可以任意新增或编辑已有的快捷键内容
+				/*
+						case 0: // 使用该按键的keyCode
+							// 还可以再判定altKey是否被按下，即 if (altKey) { ...
+				
+							// ... 在这里写你要执行脚本
+							// **强烈建议所有新增的自定义快捷键均能给个对应的道具可点击，以方便手机端的行为**
+							if (core.hasItem('...')) {
+								core.status.route.push("key:0");
+								core.useItem('...', true); // 增加true代表该使用道具不计入录像
+							}
+				
+							break;
+						*/
+			}
+
+		},
+		"onStatusBarClick": function (px, py, vertical) {
 			// 点击状态栏时触发的事件，仅在自绘状态栏开启时生效
 			// px和py为点击的像素坐标
 			// vertical为录像播放过程中的横竖屏信息
@@ -1096,9 +1097,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			*/
 
 		}
-    },
-    "control": {
-        "saveData": function () {
+	},
+	"control": {
+		"saveData": function () {
 			// 存档操作，此函数应该返回“具体要存档的内容”
 
 			// 差异化存储values
@@ -1123,7 +1124,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			return data;
 		},
-        "loadData": function (data, callback) {
+		"loadData": function (data, callback) {
 			// 读档操作；从存储中读取了内容后的行为
 
 			// 重置游戏和路线
@@ -1162,7 +1163,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				if (callback) callback();
 			});
 		},
-        "getStatusLabel": function (name) {
+		"getStatusLabel": function (name) {
 			// 返回某个状态英文名的对应中文标签，如atk -> 攻击，def -> 防御等。
 			// 请注意此项仅影响 libs/ 下的内容（如绘制怪物手册、数据统计等）
 			// 自行定义的（比如获得道具效果）中用到的“攻击+3”等需要自己去对应地方修改
@@ -1183,7 +1184,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				steps: "步数",
 			}[name] || name;
 		},
-        "triggerDebuff": function (action, type) {
+		"triggerDebuff": function (action, type) {
 			// 毒衰咒效果的获得与解除
 			// action：获得还是解除；'get'表示获得，'remove'表示解除
 			// type：一个数组表示获得了哪些毒衰咒效果；poison, weak，curse
@@ -1240,7 +1241,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				if (success) core.playSound('回血');
 			}
 		},
-        "updateStatusBar": function () {
+		"updateStatusBar": function () {
 			// 更新状态栏
 
 			// 检查等级
@@ -1322,247 +1323,247 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// updateDamage只能在此处执行！！更新全地图显伤
 			core.updateDamage();
 		},
-        "getCheckBlock": function (floorId) {
-	// 领域、夹击、阻击等的伤害值计算
-	floorId = floorId || core.status.floorId;
-	if (!floorId || !core.status.maps) return;
+		"getCheckBlock": function (floorId) {
+			// 领域、夹击、阻击等的伤害值计算
+			floorId = floorId || core.status.floorId;
+			if (!floorId || !core.status.maps) return;
 
-	var width = core.floors[floorId].width,
-		height = core.floors[floorId].height;
-	var blocks = core.getMapBlocksObj(floorId);
+			var width = core.floors[floorId].width,
+				height = core.floors[floorId].height;
+			var blocks = core.getMapBlocksObj(floorId);
 
-	var damage = {}, // 每个点的伤害值
-		type = {}, // 每个点的伤害类型
-		repulse = {}, // 每个点的阻击怪信息
-		ambush = {}, // 每个点的捕捉信息
-		chase = {}; // 每个点的追猎信息
-	var betweenAttackLocs = {}; // 所有可能的夹击点
-	var needCache = false;
-	var canGoDeadZone = core.flags.canGoDeadZone;
-	core.flags.canGoDeadZone = true;
+			var damage = {}, // 每个点的伤害值
+				type = {}, // 每个点的伤害类型
+				repulse = {}, // 每个点的阻击怪信息
+				ambush = {}, // 每个点的捕捉信息
+				chase = {}; // 每个点的追猎信息
+			var betweenAttackLocs = {}; // 所有可能的夹击点
+			var needCache = false;
+			var canGoDeadZone = core.flags.canGoDeadZone;
+			core.flags.canGoDeadZone = true;
 
-	// 计算血网和领域、阻击、激光的伤害，计算捕捉信息
-	for (var loc in blocks) {
-		const block = blocks[loc],
-			x = block.x,
-			y = block.y,
-			id = block.event.id,
-			enemy = core.material.enemys[id];
-		if (block.disable) continue;
+			// 计算血网和领域、阻击、激光的伤害，计算捕捉信息
+			for (var loc in blocks) {
+				const block = blocks[loc],
+					x = block.x,
+					y = block.y,
+					id = block.event.id,
+					enemy = core.material.enemys[id];
+				if (block.disable) continue;
 
-		type[loc] = type[loc] || {};
+				type[loc] = type[loc] || {};
 
-		// 血网
-		// 如需调用当前楼层的ratio可使用  core.status.maps[floorId].ratio
-		if (id == 'lavaNet' && !core.hasItem('amulet')) {
-			damage[loc] = (damage[loc] || 0) + core.values.lavaDamage;
-			type[loc][(block.event.name || "血网") + "伤害"] = true;
-		}
+				// 血网
+				// 如需调用当前楼层的ratio可使用  core.status.maps[floorId].ratio
+				if (id == 'lavaNet' && !core.hasItem('amulet')) {
+					damage[loc] = (damage[loc] || 0) + core.values.lavaDamage;
+					type[loc][(block.event.name || "血网") + "伤害"] = true;
+				}
 
-		// 领域
-		// 如果要防止领域伤害，可以直接简单的将 flag:no_zone 设为true
-		if (enemy && core.hasSpecial(enemy.special, 15) && !core.hasFlag('no_zone')) {
-			// 领域范围，默认为1
-			var range = enemy.range || 1;
-			// 是否是九宫格领域
-			var zoneSquare = false;
-			if (enemy.zoneSquare != null) zoneSquare = enemy.zoneSquare;
-			// 在范围内进行搜索，增加领域伤害值
-			for (var dx = -range; dx <= range; dx++) {
-				for (var dy = -range; dy <= range; dy++) {
-					if (dx == 0 && dy == 0) continue;
-					var nx = x + dx,
-						ny = y + dy,
-						currloc = nx + "," + ny;
-					if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-					// 如果是十字领域，则还需要满足 |dx|+|dy|<=range
-					if (!zoneSquare && Math.abs(dx) + Math.abs(dy) > range) continue;
-					damage[currloc] = (damage[currloc] || 0) + (enemy.zone || 0);
-					type[currloc] = type[currloc] || {};
-					type[currloc]["领域伤害"] = true;
+				// 领域
+				// 如果要防止领域伤害，可以直接简单的将 flag:no_zone 设为true
+				if (enemy && core.hasSpecial(enemy.special, 15) && !core.hasFlag('no_zone')) {
+					// 领域范围，默认为1
+					var range = enemy.range || 1;
+					// 是否是九宫格领域
+					var zoneSquare = false;
+					if (enemy.zoneSquare != null) zoneSquare = enemy.zoneSquare;
+					// 在范围内进行搜索，增加领域伤害值
+					for (var dx = -range; dx <= range; dx++) {
+						for (var dy = -range; dy <= range; dy++) {
+							if (dx == 0 && dy == 0) continue;
+							var nx = x + dx,
+								ny = y + dy,
+								currloc = nx + "," + ny;
+							if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+							// 如果是十字领域，则还需要满足 |dx|+|dy|<=range
+							if (!zoneSquare && Math.abs(dx) + Math.abs(dy) > range) continue;
+							damage[currloc] = (damage[currloc] || 0) + (enemy.zone || 0);
+							type[currloc] = type[currloc] || {};
+							type[currloc]["领域伤害"] = true;
+						}
+					}
+				}
+
+				// 阻击
+				// 如果要防止阻击伤害，可以直接简单的将 flag:no_repulse 设为true
+				if (enemy && core.hasSpecial(enemy.special, 18) && !core.hasFlag('no_repulse')) {
+					var scan = enemy.zoneSquare ? core.utils.scan2 : core.utils.scan;
+					for (var dir in scan) {
+						var nx = x + scan[dir].x,
+							ny = y + scan[dir].y,
+							currloc = nx + "," + ny;
+						if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+						damage[currloc] = (damage[currloc] || 0) + (enemy.repulse || 0);
+						type[currloc] = type[currloc] || {};
+						type[currloc]["阻击伤害"] = true;
+
+						var rdir = core.turnDirection(":back", dir);
+						// 检查下一个点是否存在事件（从而判定是否移动）
+						var rnx = x + scan[rdir].x,
+							rny = y + scan[rdir].y;
+						if (rnx < 0 || rnx >= width || rny < 0 || rny >= height) continue;
+						// 如需禁止阻击被推到已隐藏的事件处（如重生怪处），可将这一句的false改为true
+						if (core.getBlock(rnx, rny, floorId, false) != null) continue;
+						if (core.utils.scan[rdir] && !core.canMoveHero(x, y, rdir, floorId)) continue;
+						repulse[currloc] = (repulse[currloc] || []).concat([
+							[x, y, id, rdir]
+						]);
+					}
+				}
+
+				// 激光
+				// 如果要防止激光伤害，可以直接简单的将 flag:no_laser 设为true
+				if (enemy && core.hasSpecial(enemy.special, 24) && !core.hasFlag("no_laser")) {
+					for (var nx = 0; nx < width; nx++) {
+						var currloc = nx + "," + y;
+						if (nx != x) {
+							damage[currloc] = (damage[currloc] || 0) + (enemy.laser || 0);
+							type[currloc] = type[currloc] || {};
+							type[currloc]["激光伤害"] = true;
+						}
+					}
+					for (var ny = 0; ny < height; ny++) {
+						var currloc = x + "," + ny;
+						if (ny != y) {
+							damage[currloc] = (damage[currloc] || 0) + (enemy.laser || 0);
+							type[currloc] = type[currloc] || {};
+							type[currloc]["激光伤害"] = true;
+						}
+					}
+				}
+
+				// 捕捉
+				// 如果要防止捕捉效果，可以直接简单的将 flag:no_ambush 设为true
+				if (enemy && core.enemys.hasSpecial(enemy.special, 27) && !core.hasFlag("no_ambush")) {
+					var scan = enemy.zoneSquare ? core.utils.scan2 : core.utils.scan;
+					// 给周围格子加上【捕捉】记号
+					for (var dir in scan) {
+						var nx = x + scan[dir].x,
+							ny = y + scan[dir].y,
+							currloc = nx + "," + ny;
+						if (nx < 0 || nx >= width || ny < 0 || ny >= height || (core.utils.scan[dir] && !core.canMoveHero(x, y, dir, floorId))) continue;
+						ambush[currloc] = (ambush[currloc] || []).concat([
+							[x, y, id, dir]
+						]);
+					}
+				}
+
+				/**
+				 * 追猎的视野能否通过该格子
+				 */
+				function canSeeThrough(x, y) {
+					const block = core.getBlock(x, y);
+					// 空地和道具，敌人（不含普通事件）可被穿过
+					if (block === null ||
+						(['items', 'enemys', 'enemy48'].includes(block.event.cls) && !block.event.data)) return true;
+					return false;
+				}
+
+				// 追猎
+				if (enemy && core.hasSpecial(enemy.special, 28)) {
+					let scan = core.utils.scan;
+					for (const dir in scan) {
+						for (let i = 1; ; i++) {
+							const [nx, ny] = [x + i * scan[dir].x, y + i * scan[dir].y];
+							const currloc = nx + "," + ny;
+							if (nx < 0 || nx > core.__SIZE__ - 1 || ny < 0 || ny > core.__SIZE__ - 1) break;
+							if (!canSeeThrough(nx, ny)) break;
+							if (i === 1) continue; // 离勇士一格以内的追猎怪不需要移动
+							if (!chase[currloc]) chase[currloc] = [];
+							chase[currloc].push({ x, y, dir });
+						}
+					}
+				}
+
+				// 夹击；在这里提前计算所有可能的夹击点，具体计算逻辑在下面
+				// 如果要防止夹击伤害，可以简单的将 flag:no_betweenAttack 设为true
+				if (enemy && core.enemys.hasSpecial(enemy.special, 16) && !core.hasFlag('no_betweenAttack')) {
+					for (var dir in core.utils.scan) {
+						var nx = x + core.utils.scan[dir].x,
+							ny = y + core.utils.scan[dir].y,
+							currloc = nx + "," + ny;
+						if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+						betweenAttackLocs[currloc] = true;
+					}
+				}
+
+				// 检查地图范围类技能
+				var specialFlag = core.getSpecialFlag(enemy);
+				if (specialFlag & 1) needCache = true;
+				if (core.status.event.id == 'viewMaps') needCache = true;
+				if ((core.status.event.id == 'book' || core.status.event.id == 'bool-detail') && core.status.event.ui) needCache = true;
+			}
+
+			// 对每个可能的夹击点计算夹击伤害
+			for (var loc in betweenAttackLocs) {
+				let xy = loc.split(","),
+					x = parseInt(xy[0]),
+					y = parseInt(xy[1]);
+				// 夹击怪物的ID
+				var enemyId1 = null,
+					enemyId2 = null;
+				// 检查左右夹击
+				var leftBlock = blocks[(x - 1) + "," + y],
+					rightBlock = blocks[(x + 1) + "," + y];
+				var leftId = core.getFaceDownId(leftBlock),
+					rightId = core.getFaceDownId(rightBlock);
+				if (leftBlock && !leftBlock.disable && rightBlock && !rightBlock.disable && leftId == rightId) {
+					if (core.hasSpecial(leftId, 16))
+						enemyId1 = leftId;
+				}
+				// 检查上下夹击
+				var topBlock = blocks[x + "," + (y - 1)],
+					bottomBlock = blocks[x + "," + (y + 1)];
+				var topId = core.getFaceDownId(topBlock),
+					bottomId = core.getFaceDownId(bottomBlock);
+				if (topBlock && !topBlock.disable && bottomBlock && !bottomBlock.disable && topId == bottomId) {
+					if (core.hasSpecial(topId, 16))
+						enemyId2 = topId;
+				}
+
+				if (enemyId1 != null || enemyId2 != null) {
+					var leftHp = core.status.hero.hp - (damage[loc] || 0);
+					if (leftHp > 1) {
+						// 夹击伤害值
+						var value = Math.floor(leftHp / 2);
+						// 是否不超过怪物伤害值
+						if (core.flags.betweenAttackMax) {
+							var enemyDamage1 = core.getDamage(enemyId1, x, y, floorId);
+							if (enemyDamage1 != null && enemyDamage1 < value)
+								value = enemyDamage1;
+							var enemyDamage2 = core.getDamage(enemyId2, x, y, floorId);
+							if (enemyDamage2 != null && enemyDamage2 < value)
+								value = enemyDamage2;
+						}
+						if (value > 0) {
+							damage[loc] = (damage[loc] || 0) + value;
+							type[loc] = type[loc] || {};
+							type[loc]["夹击伤害"] = true;
+						}
+					}
 				}
 			}
-		}
 
-		// 阻击
-		// 如果要防止阻击伤害，可以直接简单的将 flag:no_repulse 设为true
-		if (enemy && core.hasSpecial(enemy.special, 18) && !core.hasFlag('no_repulse')) {
-			var scan = enemy.zoneSquare ? core.utils.scan2 : core.utils.scan;
-			for (var dir in scan) {
-				var nx = x + scan[dir].x,
-					ny = y + scan[dir].y,
-					currloc = nx + "," + ny;
-				if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-				damage[currloc] = (damage[currloc] || 0) + (enemy.repulse || 0);
-				type[currloc] = type[currloc] || {};
-				type[currloc]["阻击伤害"] = true;
-
-				var rdir = core.turnDirection(":back", dir);
-				// 检查下一个点是否存在事件（从而判定是否移动）
-				var rnx = x + scan[rdir].x,
-					rny = y + scan[rdir].y;
-				if (rnx < 0 || rnx >= width || rny < 0 || rny >= height) continue;
-				// 如需禁止阻击被推到已隐藏的事件处（如重生怪处），可将这一句的false改为true
-				if (core.getBlock(rnx, rny, floorId, false) != null) continue;
-				if (core.utils.scan[rdir] && !core.canMoveHero(x, y, rdir, floorId)) continue;
-				repulse[currloc] = (repulse[currloc] || []).concat([
-					[x, y, id, rdir]
-				]);
+			// 取消注释下面这一段可以让护盾抵御阻激夹域伤害
+			/*
+			for (var loc in damage) {
+				damage[loc] = Math.max(0, damage[loc] - core.getRealStatus('mdef'));
 			}
-		}
+			*/
 
-		// 激光
-		// 如果要防止激光伤害，可以直接简单的将 flag:no_laser 设为true
-		if (enemy && core.hasSpecial(enemy.special, 24) && !core.hasFlag("no_laser")) {
-			for (var nx = 0; nx < width; nx++) {
-				var currloc = nx + "," + y;
-				if (nx != x) {
-					damage[currloc] = (damage[currloc] || 0) + (enemy.laser || 0);
-					type[currloc] = type[currloc] || {};
-					type[currloc]["激光伤害"] = true;
-				}
-			}
-			for (var ny = 0; ny < height; ny++) {
-				var currloc = x + "," + ny;
-				if (ny != y) {
-					damage[currloc] = (damage[currloc] || 0) + (enemy.laser || 0);
-					type[currloc] = type[currloc] || {};
-					type[currloc]["激光伤害"] = true;
-				}
-			}
-		}
-
-		// 捕捉
-		// 如果要防止捕捉效果，可以直接简单的将 flag:no_ambush 设为true
-		if (enemy && core.enemys.hasSpecial(enemy.special, 27) && !core.hasFlag("no_ambush")) {
-			var scan = enemy.zoneSquare ? core.utils.scan2 : core.utils.scan;
-			// 给周围格子加上【捕捉】记号
-			for (var dir in scan) {
-				var nx = x + scan[dir].x,
-					ny = y + scan[dir].y,
-					currloc = nx + "," + ny;
-				if (nx < 0 || nx >= width || ny < 0 || ny >= height || (core.utils.scan[dir] && !core.canMoveHero(x, y, dir, floorId))) continue;
-				ambush[currloc] = (ambush[currloc] || []).concat([
-					[x, y, id, dir]
-				]);
-			}
-		}
-
-		/**
-		 * 追猎的视野能否通过该格子
-		 */
-		function canSeeThrough(x, y) {
-			const block = core.getBlock(x, y);
-			// 空地和道具，敌人（不含普通事件）可被穿过
-			if (block === null ||
-				(['items', 'enemys', 'enemy48'].includes(block.event.cls) && !block.event.data)) return true;
-			return false;
-		}
-
-		// 追猎
-		if (enemy && core.hasSpecial(enemy.special, 28)) {
-			let scan = core.utils.scan;
-			for (const dir in scan) {
-				for (let i = 1; ; i++) {
-					const [nx, ny] = [x + i * scan[dir].x, y + i * scan[dir].y];
-					const currloc = nx + "," + ny;
-					if (nx < 0 || nx > core.__SIZE__ - 1 || ny < 0 || ny > core.__SIZE__ - 1) break;
-					if (!canSeeThrough(nx, ny)) break;
-					if (i === 1) continue; // 离勇士一格以内的追猎怪不需要移动
-					if (!chase[currloc]) chase[currloc] = [];
-					chase[currloc].push({ x, y, dir });
-				}
-			}
-		}
-
-		// 夹击；在这里提前计算所有可能的夹击点，具体计算逻辑在下面
-		// 如果要防止夹击伤害，可以简单的将 flag:no_betweenAttack 设为true
-		if (enemy && core.enemys.hasSpecial(enemy.special, 16) && !core.hasFlag('no_betweenAttack')) {
-			for (var dir in core.utils.scan) {
-				var nx = x + core.utils.scan[dir].x,
-					ny = y + core.utils.scan[dir].y,
-					currloc = nx + "," + ny;
-				if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-				betweenAttackLocs[currloc] = true;
-			}
-		}
-
-		// 检查地图范围类技能
-		var specialFlag = core.getSpecialFlag(enemy);
-		if (specialFlag & 1) needCache = true;
-		if (core.status.event.id == 'viewMaps') needCache = true;
-		if ((core.status.event.id == 'book' || core.status.event.id == 'bool-detail') && core.status.event.ui) needCache = true;
-	}
-
-	// 对每个可能的夹击点计算夹击伤害
-	for (var loc in betweenAttackLocs) {
-		let xy = loc.split(","),
-			x = parseInt(xy[0]),
-			y = parseInt(xy[1]);
-		// 夹击怪物的ID
-		var enemyId1 = null,
-			enemyId2 = null;
-		// 检查左右夹击
-		var leftBlock = blocks[(x - 1) + "," + y],
-			rightBlock = blocks[(x + 1) + "," + y];
-		var leftId = core.getFaceDownId(leftBlock),
-			rightId = core.getFaceDownId(rightBlock);
-		if (leftBlock && !leftBlock.disable && rightBlock && !rightBlock.disable && leftId == rightId) {
-			if (core.hasSpecial(leftId, 16))
-				enemyId1 = leftId;
-		}
-		// 检查上下夹击
-		var topBlock = blocks[x + "," + (y - 1)],
-			bottomBlock = blocks[x + "," + (y + 1)];
-		var topId = core.getFaceDownId(topBlock),
-			bottomId = core.getFaceDownId(bottomBlock);
-		if (topBlock && !topBlock.disable && bottomBlock && !bottomBlock.disable && topId == bottomId) {
-			if (core.hasSpecial(topId, 16))
-				enemyId2 = topId;
-		}
-
-		if (enemyId1 != null || enemyId2 != null) {
-			var leftHp = core.status.hero.hp - (damage[loc] || 0);
-			if (leftHp > 1) {
-				// 夹击伤害值
-				var value = Math.floor(leftHp / 2);
-				// 是否不超过怪物伤害值
-				if (core.flags.betweenAttackMax) {
-					var enemyDamage1 = core.getDamage(enemyId1, x, y, floorId);
-					if (enemyDamage1 != null && enemyDamage1 < value)
-						value = enemyDamage1;
-					var enemyDamage2 = core.getDamage(enemyId2, x, y, floorId);
-					if (enemyDamage2 != null && enemyDamage2 < value)
-						value = enemyDamage2;
-				}
-				if (value > 0) {
-					damage[loc] = (damage[loc] || 0) + value;
-					type[loc] = type[loc] || {};
-					type[loc]["夹击伤害"] = true;
-				}
-			}
-		}
-	}
-
-	// 取消注释下面这一段可以让护盾抵御阻激夹域伤害
-	/*
-	for (var loc in damage) {
-		damage[loc] = Math.max(0, damage[loc] - core.getRealStatus('mdef'));
-	}
-	*/
-
-	core.flags.canGoDeadZone = canGoDeadZone;
+			core.flags.canGoDeadZone = canGoDeadZone;
 			return {
-		damage: damage,
-		type: type,
-		repulse: repulse,
-		ambush: ambush,
-		chase: chase,
-		needCache: needCache,
-		cache: {} // clear cache
-	};
-},
-        "moveOneStep": function (callback) {
+				damage: damage,
+				type: type,
+				repulse: repulse,
+				ambush: ambush,
+				chase: chase,
+				needCache: needCache,
+				cache: {} // clear cache
+			};
+		},
+		"moveOneStep": function (callback) {
 			// 勇士每走一步后执行的操作。callback为行走完毕后的回调
 			// 这个函数执行在“刚走完”的时候，即还没有检查该点的事件和领域伤害等。
 			// 请注意：瞬间移动不会执行该函数。如果要控制能否瞬间移动有三种方法：
@@ -1625,7 +1626,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 如需强行终止行走可以在这里条件判定：
 			// core.stopAutomaticRoute();
 		},
-        "moveDirectly": function (x, y, ignoreSteps) {
+		"moveDirectly": function (x, y, ignoreSteps) {
 			// 瞬间移动；x,y为要瞬间移动的点；ignoreSteps为减少的步数，可能之前已经被计算过
 			// 返回true代表成功瞬移，false代表没有成功瞬移
 
@@ -1663,7 +1664,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 			return false;
 		},
-        "parallelDo": function (timestamp) {
+		"parallelDo": function (timestamp) {
 			// 并行事件处理，可以在这里写任何需要并行处理的脚本或事件
 			// 该函数将被系统反复执行，每次执行间隔视浏览器或设备性能而定，一般约为16.6ms一次
 			// 参数timestamp为“从游戏资源加载完毕到当前函数执行时”的时间差，以毫秒为单位
@@ -1680,9 +1681,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				}
 			}
 		}
-    },
-    "ui": {
-        "getToolboxItems": function (cls) {
+	},
+	"ui": {
+		"getToolboxItems": function (cls) {
 			// 获得道具栏中当前某类型道具的显示项和显示顺序
 			// cls为道具类型，只可能是 tools, constants 和 equips
 			// 返回一个数组，代表当前某类型道具的显示内容和顺序
@@ -1692,7 +1693,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				.filter(function (id) { return !core.material.items[id].hideInToolbox; })
 				.sort( /*function (id1, id2) { return core.material.items[id1].name <= core.material.items[id2].name ? -1 : 1 }*/);
 		},
-        "drawStatusBar": function () {
+		"drawStatusBar": function () {
 			// 自定义绘制状态栏，需要开启状态栏canvas化
 
 			// 如果是非状态栏canvas化，直接返回
@@ -1795,7 +1796,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				_fillBoldTextWithFontCheck(core.setTwoDigits(core.itemCount('redKey')), 212, 90, '#FF8888');
 			}
 		},
-        "drawStatistics": function () {
+		"drawStatistics": function () {
 			// 浏览地图时参与的统计项目
 
 			return [
@@ -1811,7 +1812,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				// 在这里可以增加新的ID来进行统计个数，只能增加道具ID
 			];
 		},
-        "drawAbout": function () {
+		"drawAbout": function () {
 			// 绘制“关于”界面
 			core.ui.closePanel();
 			core.lockControl();
@@ -1839,5 +1840,5 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// TODO: 写自己的“关于”页面，每次增加32像素即可
 			core.playSound('打开界面');
 		}
-    }
+	}
 }

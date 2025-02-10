@@ -11,6 +11,19 @@ maps.prototype._init = function () {
     //delete(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
 }
 
+maps.prototype.getBlocksInfo = function () {
+    let blocksInfo = core.clone(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
+    const blocksInfo_flag = core.getFlag('blocksInfo', {});
+    for (let i in blocksInfo_flag) {
+        if (blocksInfo.hasOwnProperty(i)) {
+            for (let j in blocksInfo_flag[i]) {
+                blocksInfo[i][j] = blocksInfo_flag[i][j];
+            }
+        }
+    }
+    return blocksInfo;
+}
+
 maps.prototype._initFloors = function (floorId) {
     if (!floorId) {
         core.floorIds.forEach(function (floorId) {
@@ -2482,6 +2495,49 @@ maps.prototype.setBgFgBlock = function (name, number, x, y, floorId) {
         else core.drawFg(floorId);
     }
 }
+
+////// 改变事件层图块的连通性 //////
+maps.prototype.setBlockConnectivity = function (num, statusName, statusValue) {
+    if (typeof num === 'string') num = this.getNumberById(num);
+    if (!core.maps.blocksInfo.hasOwnProperty(num)) return;
+
+    const floorIds = core.floorIds,
+        maps = core.status.maps,
+        mapBlockObjs = core.status.mapBlockObjs,
+        blocksInfo = core.maps.blocksInfo,
+        number2Block = core.status.number2Block;
+        core.maps.blocksInfo = core.clone(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
+    if (statusName === 'noPass') {
+        floorIds.forEach((floorId) => {
+            if (maps.hasOwnProperty(floorId)) {
+                Object.values(maps[floorId].blocks).forEach(
+                    (block) => {
+                        if (block.id === num) block.event[statusName] = statusValue;
+                    });
+            }
+            if (mapBlockObjs.hasOwnProperty(floorId)) {
+                Object.values(mapBlockObjs[floorId]).forEach(
+                    (block) => {
+                        if (block.id === num) block.event[statusName] = statusValue;
+                    });
+            }
+        });
+        blocksInfo[num]['canPass'] = !statusValue;
+        const blocksInfo_flag = core.getFlag('blocksInfo', {});
+        if (!blocksInfo_flag.hasOwnProperty(num)) blocksInfo_flag[num] = {};
+        blocksInfo_flag[num]['canPass'] = !statusValue;
+        core.setFlag('blocksInfo', blocksInfo_flag);
+    }
+    else if (['cannotOut', 'cannotIn'].includes(statusName)) {
+        if (number2Block) number2Block[num]['event'][statusName] = statusValue;
+        blocksInfo[num][statusName] = statusValue;
+        const blocksInfo_flag = core.getFlag('blocksInfo', {});
+        if (!blocksInfo_flag.hasOwnProperty(num)) blocksInfo_flag[num] = {};
+        blocksInfo_flag[num][statusName] = statusValue;
+        core.setFlag('blocksInfo', blocksInfo_flag);
+    }
+}
+
 
 ////// 重置地图 //////
 maps.prototype.resetMap = function (floorId) {
