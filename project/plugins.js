@@ -3527,6 +3527,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	},
 	"setting": function () {
 		// 自绘设置界面
+		// 请保持本插件在所有插件的最下方
 
 		const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
 
@@ -3554,6 +3555,85 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function invertFlag(name) {
 			core.setFlag(name, !core.getFlag(name, false));
+		}
+
+		const perform = {
+			jumpBlock: core.jumpBlock, jumpHero: core.jumpHero, moveBlock: core.moveBlock,
+			drawAnimate: core.drawAnimate, drawHeroAnimate: core.drawHeroAnimate,
+			vibrate: core.vibrate, _action_sleep: core.events._action_sleep,
+			__action_checkReplaying: core.events.__action_checkReplaying,
+		};
+
+		function instantMove(fromX, fromY, aimX, aimY, keep, callback) {
+			const [block, blockInfo] = _getAndRemoveBlock(fromX, fromY);
+			if (keep) {
+				core.setBlock(blockInfo.number, aimX, aimY);
+				core.showBlock(aimX, aimY);
+			}
+			if (callback) callback();
+		}
+
+		function skipTextOn() {
+			events.prototype.__action_checkReplaying = function () {
+				core.doAction();
+				return true;
+			}
+		}
+
+		function skipTextOff() {
+			events.prototype.__action_checkReplaying = perform.__action_checkReplaying;
+		}
+
+		function skipPeformOn() {
+			core.jumpBlock = maps.prototype.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {
+				return instantMove(sx, sy, ex, ey, keep, callback);
+			}
+			core.jumpHero = maps.prototype.jumpHero = function (ex, ey, time, callback) {
+				core.setHeroLoc('x', ex);
+				core.setHeroLoc('y', ey);
+				core.clearMap('hero');
+				core.drawHero();
+				if (callback) callback();
+			}
+
+			core.moveBlock = maps.prototype.moveBlock = function (x, y, steps, time, keep, callback) {
+				perform.moveBlock(x, y, steps, 1, keep, callback);
+			}
+
+			core.drawAnimate = maps.prototype.drawAnimate = function (name, x, y, alignWindow, callback) {
+				if (callback) callback();
+				return -1;
+			}
+
+			core.drawHeroAnimate = maps.prototype.drawHeroAnimate = function (name, callback) {
+				if (callback) callback();
+				return -1;
+			}
+
+			core.vibrate = events.prototype.vibrate = function () {
+				if (callback) callback();
+				return;
+			}
+
+			events.prototype._action_sleep = function (data, x, y, prefix) {
+				core.doAction();
+			}
+
+			events.prototype.__action_checkReplaying = function () {
+				core.doAction();
+				return true;
+			}
+		}
+
+		function skipPeformOff() {
+			core.jumpBlock = maps.prototype.jumpBlock = perform.jumpBlock;
+			core.jumpHero = maps.prototype.jumpHero = perform.jumpHero;
+			core.moveBlock = maps.prototype.moveBlock = perform.moveBlock;
+			core.drawAnimate = maps.prototype.drawAnimate = perform.drawAnimate;
+			core.drawHeroAnimate = maps.prototype.drawHeroAnimate = perform.drawHeroAnimate;
+			core.vibrate = events.prototype.vibrate = perform.vibrate;
+			events.prototype._action_sleep = perform._action_sleep;
+			events.prototype.__action_checkReplaying = perform.__action_checkReplaying;
 		}
 
 		const settingMap = new Map([
@@ -3642,6 +3722,45 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				() => core.actions._clickSwitchs_action_floorChangeTime(100),
 				'增大转场时间。',
 				false,
+			)],
+			['skip', new Setting(
+				() => {
+					let text = '跳过:';
+					switch (core.getFlag('skip')) {
+						case 'perform':
+							text += '[剧情+演出]';
+							break;
+						case 'text':
+							text += '[剧情]';
+							break;
+						default:
+							text += '无';
+							break;
+					}
+					return text;
+				},
+				() => {
+					const list = [null, 'text', 'perform'];
+					const skipMode = core.getFlag('skip', null);
+					const index = list.indexOf(skipMode);
+					let newIndex = index + 1;
+					if (newIndex > list.length - 1) newIndex = 0;
+					const newSkipMode = list[newIndex];
+					switch (newSkipMode) {
+						case 'text':
+							skipTextOn();
+							break;
+						case 'perform':
+							skipPeformOn();
+							break;
+						default:
+							skipPeformOff();
+							break;
+					}
+					core.setFlag('skip', newSkipMode);
+				},
+				'跳过所有对话（可能跳过重要信息，请慎用）。',
+				true,
 			)],
 			['itemDetail', new Setting(
 				() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
@@ -4337,6 +4456,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['2,3', new SettingButton(140, 280, 25, 25, 'moveSpeedUp')],
 				['3,3', new SettingButton(220, 280, 25, 25, 'floorChangeTimeDown')],
 				['4,3', new SettingButton(340, 280, 25, 25, 'floorChangeTimeUp')],
+				['1,4', new SettingButton(40, 305, 150, 25, 'skip')],
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');
@@ -4410,7 +4530,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		// todolist 自定义设置界面添加键盘支持 √
-		// todolist 剧情全skip功能 文字-文字+演出(跳跃) × 不是不会 但是好像没必要 再想想
+		// todolist 剧情全skip功能 文字-文字+演出(跳跃) √
 		// todolist 批量使用：您当前选定了：xxx。请勿选定不适合批量使用的道具，请勿输入过大的数字。
 		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏 手动hide无用道具
 		// todolist 内置ATRI 解决连通性问题
@@ -4421,5 +4541,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// todolist 添加鸽窝样板的快速读取撤回 和 优化美工
 		// todolist 音效连续播放的优化（与自动清有关）
 		// todolist 新的临界计算
+		// todolist 微调BGM播放
 	}
 }
