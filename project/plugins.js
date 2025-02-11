@@ -1135,591 +1135,576 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 	},
     "advancedAnimation": function () {
-	// -------------------- 插件说明 -------------------- //
-	// github仓库：https://github.com/unanmed/animate
-	// npm包名：mutate-animate
-	// npm地址：https://www.npmjs.com/package/mutate-animate
+		// -------------------- 插件说明 -------------------- //
+		// github仓库：https://github.com/unanmed/animate
+		// npm包名：mutate-animate
+		// npm地址：https://www.npmjs.com/package/mutate-animate
 
-			// 是否开启本插件，默认启用；将此改成 false 将禁用本插件。
-			var __enable = false;
+		// 是否开启本插件，默认启用；将此改成 false 将禁用本插件。
+		var __enable = false;
 
-			if (main.replayChecking) __enable = false;
-			if (!__enable) {
-				core.plugin.animate = {
-					Ticker: class {
-						add() { }
-					}
-				};
-				this.deleteTicker = () => { };
-				this.deleteAllTickers = () => { };
-				this.getAllTickers = () => { };
-				return;
-			}
-	// core.plugin.animate = {
-	// 	Animation: j,
-	// 	AnimationBase: F,
-	// 	Ticker: I,
-	// 	Transition: O,
-	// 	bezier: q,
-	// 	bezierPath: H,
-	// 	circle: D,
-	// 	hyper: G,
-	// 	inverseTrigo: N,
-	// 	linear: Y,
-	// 	power: C,
-	// 	shake: B,
-	// 	sleep: R,
-	// 	trigo: U,
-	// }
-	// 保存所有Ticker的引用
-	const tickersMap = new Map();
+		if (main.replayChecking) __enable = false;
+		if (!__enable) {
+			core.plugin.animate = {
+				Ticker: class {
+					add() { }
+				}
+			};
+			this.deleteTicker = () => { };
+			this.deleteAllTickers = () => { };
+			this.getAllTickers = () => { };
+			return;
+		}
 
-	/** 摧毁指定名字的ticker */
-	this.deleteTicker = function (name) {
-		const ticker = tickersMap.get(name);
-		if (!ticker) return;
-		ticker.destroy();
-		tickersMap.delete(name);
-	}
+		// 保存所有Ticker的引用
+		const tickersMap = new Map();
 
-	/** 摧毁所有有名字的ticker */
-	this.deleteAllTickers = function () {
-		tickersMap.forEach((ticker) => {
+		/** 摧毁指定名字的ticker */
+		this.deleteTicker = function (name) {
+			const ticker = tickersMap.get(name);
 			if (!ticker) return;
 			ticker.destroy();
-		})
-		tickersMap.clear();
-	}
+			tickersMap.delete(name);
+		}
 
-	this.getAllTickers = () => tickersMap;
+		/** 摧毁所有有名字的ticker */
+		this.deleteAllTickers = function () {
+			tickersMap.forEach((ticker) => {
+				if (!ticker) return;
+				ticker.destroy();
+			})
+			tickersMap.clear();
+		}
 
-	var M = Object.defineProperty;
-	var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
-	var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
-	let w = [];
-	const k = (n) => {
-		for (const i of w)
-			if (i.status === "running")
-				try {
-					for (const t of i.funcs)
-						t(n - i.startTime);
-				} catch (t) {
-					i.destroy(), console.error(t);
-				}
+		this.getAllTickers = () => tickersMap;
+
+		var M = Object.defineProperty;
+		var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
+		var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
+		let w = [];
+		const k = (n) => {
+			for (const i of w)
+				if (i.status === "running")
+					try {
+						for (const t of i.funcs)
+							t(n - i.startTime);
+					} catch (t) {
+						i.destroy(), console.error(t);
+					}
+			requestAnimationFrame(k);
+		};
 		requestAnimationFrame(k);
-	};
-	requestAnimationFrame(k);
-	class I {
-		constructor() {
-			o(this, "funcs", /* @__PURE__ */ new Set());
-			o(this, "status", "stop");
-			o(this, "startTime", 0);
-			this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
+		class I {
+			constructor() {
+				o(this, "funcs", /* @__PURE__ */ new Set());
+				o(this, "status", "stop");
+				o(this, "startTime", 0);
+				this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
+			}
+			add(i) {
+				return this.funcs.add(i), this;
+			}
+			remove(i) {
+				return this.funcs.delete(i), this;
+			}
+			clear() {
+				this.funcs.clear();
+			}
+			destroy() {
+				this.clear(), this.stop();
+			}
+			stop() {
+				this.status = "stop", w = w.filter((i) => i !== this);
+			}
 		}
-		add(i) {
-			return this.funcs.add(i), this;
-		}
-		remove(i) {
-			return this.funcs.delete(i), this;
-		}
-		clear() {
-			this.funcs.clear();
-		}
-		destroy() {
-			this.clear(), this.stop();
-		}
-		stop() {
-			this.status = "stop", w = w.filter((i) => i !== this);
-		}
-	}
-	class F {
-		constructor(name) {
-			o(this, "timing");
-			o(this, "relation", "absolute");
-			o(this, "easeTime", 0);
-			o(this, "applying", {});
-			o(this, "getTime", Date.now);
-			const ticker = new I();
-			o(this, "ticker", ticker);
-			o(this, "value", {});
-			o(this, "listener", {});
-			this.timing = (i) => i;
-			if (typeof name === 'string') tickersMap.set(name, ticker);
-		}
-		async all() {
-			if (Object.values(this.applying).every((i) => i === !0))
-				throw new ReferenceError("There is no animates to be waited.");
-			await new Promise((i) => {
-				const t = () => {
-					Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
-				};
-				this.listen("end", t);
-			});
-		}
-		async n(i) {
-			const t = Object.values(this.applying).filter((s) => s === !0).length;
-			if (t < i)
-				throw new ReferenceError(
-					`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
-				);
-			let e = 0;
-			await new Promise((s) => {
-				const r = () => {
-					e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
-				};
-				this.listen("end", r);
-			});
-		}
-		async w(i) {
-			if (this.applying[i] === !1)
-				throw new ReferenceError(`The ${i} animate is not animating.`);
-			await new Promise((t) => {
-				const e = () => {
-					this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
-				};
-				this.listen("end", e);
-			});
-		}
-		listen(i, t) {
-			var e, s;
-			(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
-		}
-		unlisten(i, t) {
-			const e = this.listener[i].findIndex((s) => s === t);
-			if (e === -1)
-				throw new ReferenceError(
-					"You are trying to remove a nonexistent listener."
-				);
-			this.listener[i].splice(e, 1);
-		}
-		hook(...i) {
-			const t = Object.entries(this.listener).filter(
-				(e) => i.includes(e[0])
-			);
-			for (const [e, s] of t)
-				for (const r of s)
-					r(this, e);
-		}
-	}
-
-	function y(n) {
-		return n != null;
-	}
-	async function R(n) {
-		return new Promise((i) => setTimeout(i, n));
-	}
-	class j extends F {
-		constructor() {
-			super();
-			o(this, "shakeTiming");
-			o(this, "path");
-			o(this, "multiTiming");
-			o(this, "value", {});
-			o(this, "size", 1);
-			o(this, "angle", 0);
-			o(this, "targetValue", {
-				system: {
-					move: [0, 0],
-					moveAs: [0, 0],
-					resize: 0,
-					rotate: 0,
-					shake: 0,
-					"@@bind": []
-				},
-				custom: {}
-			});
-			o(this, "animateFn", {
-				system: {
-					move: [() => 0, () => 0],
-					moveAs: () => 0,
-					resize: () => 0,
-					rotate: () => 0,
-					shake: () => 0,
-					"@@bind": () => 0
-				},
-				custom: {}
-			});
-			o(this, "ox", 0);
-			o(this, "oy", 0);
-			o(this, "sx", 0);
-			o(this, "sy", 0);
-			o(this, "bindInfo", []);
-			this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
-				move: !1,
-				scale: !1,
-				rotate: !1,
-				shake: !1
-			}, this.ticker.add(() => {
-				const { running: t } = this.listener;
-				if (y(t))
-					for (const e of t)
-						e(this, "running");
-			});
-		}
-		get x() {
-			return this.ox + this.sx;
-		}
-		get y() {
-			return this.oy + this.sy;
-		}
-		mode(t, e = !1) {
-			return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
-		}
-		time(t) {
-			return this.easeTime = t, this;
-		}
-		relative() {
-			return this.relation = "relative", this;
-		}
-		absolute() {
-			return this.relation = "absolute", this;
-		}
-		bind(...t) {
-			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
-		}
-		unbind() {
-			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
-		}
-		move(t, e) {
-			return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
-		}
-		rotate(t) {
-			return this.applySys("angle", t, "rotate"), this;
-		}
-		scale(t) {
-			return this.applySys("size", t, "resize"), this;
-		}
-		shake(t, e) {
-			this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
-			const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
-			if (this.hook("start", "shakestart"), s <= 0)
-				return this.end(!1, "shake"), this;
-			const a = () => {
-				const c = this.getTime() - l;
-				if (c > s) {
-					this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
-					return;
-				}
-				const h = c / s,
-					m = r(h);
-				this.sx = m * t, this.sy = m * e;
-			};
-			return this.ticker.add(a), this.animateFn.system.shake = a, this;
-		}
-		moveAs(t) {
-			this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
-			const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
-				if (s === "absolute")
-					return t(1); {
-					const [d, f] = t(1);
-					return [a + d, u + f];
-				}
-			})();
-			if (this.hook("start", "movestart"), e <= 0)
-				return this.end(!1, "moveAs"), this;
-			const m = () => {
-				const f = this.getTime() - l;
-				if (f > e) {
-					this.end(!0, "moveAs");
-					return;
-				}
-				const g = f / e,
-					[v, x] = t(r(g));
-				s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
-			};
-			return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
-		}
-		register(t, e) {
-			if (typeof this.value[t] == "number")
-				return this.error(
-					`Property ${t} has been regietered twice.`,
-					"reregister"
-				);
-			this.value[t] = e, this.applying[t] = !1;
-		}
-		apply(t, e) {
-			this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
-				`You are trying to execute nonexistent property ${t}.`
-			), this.applying[t] = !0;
-			const s = this.value[t],
-				r = this.getTime(),
-				{ timing: l, relation: a, easeTime: u } = this,
-				c = a === "absolute" ? e - s : e;
-			if (this.hook("start"), u <= 0)
-				return this.end(!1, t), this;
-			const h = () => {
-				const d = this.getTime() - r;
-				if (d > u) {
-					this.end(!1, t);
-					return;
-				}
-				const f = d / u,
-					g = l(f);
-				this.value[t] = s + g * c;
-			};
-			return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
-		}
-		applyMulti() {
-			this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
-			const t = this.bindInfo,
-				e = t.map((h) => this.value[h]),
-				s = this.getTime(),
-				{ multiTiming: r, relation: l, easeTime: a } = this,
-				u = r(1);
-			if (u.length !== e.length)
-				throw new TypeError(
-					`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
-				);
-			if (this.hook("start"), a <= 0)
-				return this.end(!1, "@@bind"), this;
-			const c = () => {
-				const m = this.getTime() - s;
-				if (m > a) {
-					this.end(!1, "@@bind");
-					return;
-				}
-				const d = m / a,
-					f = r(d);
-				t.forEach((g, v) => {
-					l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
+		class F {
+			constructor(name) {
+				o(this, "timing");
+				o(this, "relation", "absolute");
+				o(this, "easeTime", 0);
+				o(this, "applying", {});
+				o(this, "getTime", Date.now);
+				const ticker = new I();
+				o(this, "ticker", ticker);
+				o(this, "value", {});
+				o(this, "listener", {});
+				this.timing = (i) => i;
+				if (typeof name === 'string') tickersMap.set(name, ticker);
+			}
+			async all() {
+				if (Object.values(this.applying).every((i) => i === !0))
+					throw new ReferenceError("There is no animates to be waited.");
+				await new Promise((i) => {
+					const t = () => {
+						Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
+					};
+					this.listen("end", t);
 				});
-			};
-			return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+			}
+			async n(i) {
+				const t = Object.values(this.applying).filter((s) => s === !0).length;
+				if (t < i)
+					throw new ReferenceError(
+						`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
+					);
+				let e = 0;
+				await new Promise((s) => {
+					const r = () => {
+						e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
+					};
+					this.listen("end", r);
+				});
+			}
+			async w(i) {
+				if (this.applying[i] === !1)
+					throw new ReferenceError(`The ${i} animate is not animating.`);
+				await new Promise((t) => {
+					const e = () => {
+						this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
+					};
+					this.listen("end", e);
+				});
+			}
+			listen(i, t) {
+				var e, s;
+				(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
+			}
+			unlisten(i, t) {
+				const e = this.listener[i].findIndex((s) => s === t);
+				if (e === -1)
+					throw new ReferenceError(
+						"You are trying to remove a nonexistent listener."
+					);
+				this.listener[i].splice(e, 1);
+			}
+			hook(...i) {
+				const t = Object.entries(this.listener).filter(
+					(e) => i.includes(e[0])
+				);
+				for (const [e, s] of t)
+					for (const r of s)
+						r(this, e);
+			}
 		}
-		applySys(t, e, s) {
-			s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
-			const r = this[t],
-				l = this.getTime(),
-				a = this.timing,
-				u = this.relation,
-				c = this.easeTime,
-				h = u === "absolute" ? e - r : e;
-			if (this.hook("start", `${s}start`), c <= 0)
-				return this.end(!0, s);
-			const m = () => {
-				const f = this.getTime() - l;
-				if (f > c) {
-					this.end(!0, s);
-					return;
-				}
-				const g = f / c,
-					v = a(g);
-				this[t] = r + h * v, t !== "oy" && this.hook(s);
-			};
-			this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+
+		function y(n) {
+			return n != null;
 		}
-		error(t, e) {
-			throw e === "repeat" ? new Error(
-				`Cannot execute the same animation twice. Info: ${t}`
-			) : e === "reregister" ? new Error(
-				`Cannot register an animated property twice. Info: ${t}`
-			) : new Error(t);
+		async function R(n) {
+			return new Promise((i) => setTimeout(i, n));
 		}
-		end(t, e) {
-			if (t === !0)
-				if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
+		class j extends F {
+			constructor() {
+				super();
+				o(this, "shakeTiming");
+				o(this, "path");
+				o(this, "multiTiming");
+				o(this, "value", {});
+				o(this, "size", 1);
+				o(this, "angle", 0);
+				o(this, "targetValue", {
+					system: {
+						move: [0, 0],
+						moveAs: [0, 0],
+						resize: 0,
+						rotate: 0,
+						shake: 0,
+						"@@bind": []
+					},
+					custom: {}
+				});
+				o(this, "animateFn", {
+					system: {
+						move: [() => 0, () => 0],
+						moveAs: () => 0,
+						resize: () => 0,
+						rotate: () => 0,
+						shake: () => 0,
+						"@@bind": () => 0
+					},
+					custom: {}
+				});
+				o(this, "ox", 0);
+				o(this, "oy", 0);
+				o(this, "sx", 0);
+				o(this, "sy", 0);
+				o(this, "bindInfo", []);
+				this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
+					move: !1,
+					scale: !1,
+					rotate: !1,
+					shake: !1
+				}, this.ticker.add(() => {
+					const { running: t } = this.listener;
+					if (y(t))
+						for (const e of t)
+							e(this, "running");
+				});
+			}
+			get x() {
+				return this.ox + this.sx;
+			}
+			get y() {
+				return this.oy + this.sy;
+			}
+			mode(t, e = !1) {
+				return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
+			}
+			time(t) {
+				return this.easeTime = t, this;
+			}
+			relative() {
+				return this.relation = "relative", this;
+			}
+			absolute() {
+				return this.relation = "absolute", this;
+			}
+			bind(...t) {
+				return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
+			}
+			unbind() {
+				return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
+			}
+			move(t, e) {
+				return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
+			}
+			rotate(t) {
+				return this.applySys("angle", t, "rotate"), this;
+			}
+			scale(t) {
+				return this.applySys("size", t, "resize"), this;
+			}
+			shake(t, e) {
+				this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
+				const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
+				if (this.hook("start", "shakestart"), s <= 0)
+					return this.end(!1, "shake"), this;
+				const a = () => {
+					const c = this.getTime() - l;
+					if (c > s) {
+						this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
+						return;
+					}
+					const h = c / s,
+						m = r(h);
+					this.sx = m * t, this.sy = m * e;
+				};
+				return this.ticker.add(a), this.animateFn.system.shake = a, this;
+			}
+			moveAs(t) {
+				this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
+				const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
+					if (s === "absolute")
+						return t(1); {
+						const [d, f] = t(1);
+						return [a + d, u + f];
+					}
+				})();
+				if (this.hook("start", "movestart"), e <= 0)
+					return this.end(!1, "moveAs"), this;
+				const m = () => {
+					const f = this.getTime() - l;
+					if (f > e) {
+						this.end(!0, "moveAs");
+						return;
+					}
+					const g = f / e,
+						[v, x] = t(r(g));
+					s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
+				};
+				return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
+			}
+			register(t, e) {
+				if (typeof this.value[t] == "number")
+					return this.error(
+						`Property ${t} has been regietered twice.`,
+						"reregister"
+					);
+				this.value[t] = e, this.applying[t] = !1;
+			}
+			apply(t, e) {
+				this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
+					`You are trying to execute nonexistent property ${t}.`
+				), this.applying[t] = !0;
+				const s = this.value[t],
+					r = this.getTime(),
+					{ timing: l, relation: a, easeTime: u } = this,
+					c = a === "absolute" ? e - s : e;
+				if (this.hook("start"), u <= 0)
+					return this.end(!1, t), this;
+				const h = () => {
+					const d = this.getTime() - r;
+					if (d > u) {
+						this.end(!1, t);
+						return;
+					}
+					const f = d / u,
+						g = l(f);
+					this.value[t] = s + g * c;
+				};
+				return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
+			}
+			applyMulti() {
+				this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
+				const t = this.bindInfo,
+					e = t.map((h) => this.value[h]),
+					s = this.getTime(),
+					{ multiTiming: r, relation: l, easeTime: a } = this,
+					u = r(1);
+				if (u.length !== e.length)
+					throw new TypeError(
+						`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
+					);
+				if (this.hook("start"), a <= 0)
+					return this.end(!1, "@@bind"), this;
+				const c = () => {
+					const m = this.getTime() - s;
+					if (m > a) {
+						this.end(!1, "@@bind");
+						return;
+					}
+					const d = m / a,
+						f = r(d);
+					t.forEach((g, v) => {
+						l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
+					});
+				};
+				return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+			}
+			applySys(t, e, s) {
+				s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
+				const r = this[t],
+					l = this.getTime(),
+					a = this.timing,
+					u = this.relation,
+					c = this.easeTime,
+					h = u === "absolute" ? e - r : e;
+				if (this.hook("start", `${s}start`), c <= 0)
+					return this.end(!0, s);
+				const m = () => {
+					const f = this.getTime() - l;
+					if (f > c) {
+						this.end(!0, s);
+						return;
+					}
+					const g = f / c,
+						v = a(g);
+					this[t] = r + h * v, t !== "oy" && this.hook(s);
+				};
+				this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+			}
+			error(t, e) {
+				throw e === "repeat" ? new Error(
+					`Cannot execute the same animation twice. Info: ${t}`
+				) : e === "reregister" ? new Error(
+					`Cannot register an animated property twice. Info: ${t}`
+				) : new Error(t);
+			}
+			end(t, e) {
+				if (t === !0)
+					if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
 						this.animateFn.system[e]
 					), e === "move") {
-					const [s, r] = this.targetValue.system.move;
-					this.ox = s, this.oy = r, this.hook("moveend", "end");
-				} else if (e === "moveAs") {
-				const [s, r] = this.targetValue.system.moveAs;
-				this.ox = s, this.oy = r, this.hook("moveend", "end");
-			} else
-				e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
-					this.value[r] = this.targetValue.system["@@bind"][l];
-				}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
-			else
-				this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
+						const [s, r] = this.targetValue.system.move;
+						this.ox = s, this.oy = r, this.hook("moveend", "end");
+					} else if (e === "moveAs") {
+						const [s, r] = this.targetValue.system.moveAs;
+						this.ox = s, this.oy = r, this.hook("moveend", "end");
+					} else
+						e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
+							this.value[r] = this.targetValue.system["@@bind"][l];
+						}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
+				else
+					this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
+			}
 		}
-	}
-	class O extends F {
-		constructor() {
-			super();
-			o(this, "now", {});
-			o(this, "target", {});
-			o(this, "transitionFn", {});
-			o(this, "value");
-			o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
-			o(this, "handleGet", (t, e) => this.now[e]);
-			this.timing = (t) => t, this.value = new Proxy(this.target, {
-				set: this.handleSet,
-				get: this.handleGet
-			});
+		class O extends F {
+			constructor() {
+				super();
+				o(this, "now", {});
+				o(this, "target", {});
+				o(this, "transitionFn", {});
+				o(this, "value");
+				o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
+				o(this, "handleGet", (t, e) => this.now[e]);
+				this.timing = (t) => t, this.value = new Proxy(this.target, {
+					set: this.handleSet,
+					get: this.handleGet
+				});
+			}
+			mode(t) {
+				return this.timing = t, this;
+			}
+			time(t) {
+				return this.easeTime = t, this;
+			}
+			relative() {
+				return this.relation = "relative", this;
+			}
+			absolute() {
+				return this.relation = "absolute", this;
+			}
+			transition(t, e) {
+				if (e === this.target[t])
+					return this;
+				if (!y(this.now[t]))
+					return this.now[t] = e, this;
+				this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
+				const s = this.getTime(),
+					r = this.easeTime,
+					l = this.timing,
+					a = this.now[t],
+					u = e + (this.relation === "absolute" ? 0 : a),
+					c = u - a;
+				this.target[t] = u;
+				const h = () => {
+					const d = this.getTime() - s;
+					if (d >= r) {
+						this.end(t);
+						return;
+					}
+					const f = d / r;
+					this.now[t] = l(f) * c + a, this.hook("running");
+				};
+				return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
+			}
+			end(t, e = !1) {
+				const s = this.transitionFn[t];
+				if (!y(s))
+					throw new ReferenceError(
+						`You are trying to end an ended transition: ${t}`
+					);
+				this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
+			}
 		}
-		mode(t) {
-			return this.timing = t, this;
+		const T = (...n) => n.reduce((i, t) => i + t, 0),
+			b = (n) => {
+				if (n === 0)
+					return 1;
+				let i = n;
+				for (; n > 1;)
+					n--, i *= n;
+				return i;
+			},
+			A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
+			p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
+			$ = Math.cosh(2),
+			z = Math.acosh(2),
+			V = Math.tanh(3),
+			P = Math.atan(5);
+
+		function Y() {
+			return (n) => n;
 		}
-		time(t) {
-			return this.easeTime = t, this;
-		}
-		relative() {
-			return this.relation = "relative", this;
-		}
-		absolute() {
-			return this.relation = "absolute", this;
-		}
-		transition(t, e) {
-			if (e === this.target[t])
-				return this;
-			if (!y(this.now[t]))
-				return this.now[t] = e, this;
-			this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
-			const s = this.getTime(),
-				r = this.easeTime,
-				l = this.timing,
-				a = this.now[t],
-				u = e + (this.relation === "absolute" ? 0 : a),
-				c = u - a;
-			this.target[t] = u;
-			const h = () => {
-				const d = this.getTime() - s;
-				if (d >= r) {
-					this.end(t);
-					return;
-				}
-				const f = d / r;
-				this.now[t] = l(f) * c + a, this.hook("running");
+
+		function q(...n) {
+			const i = [0].concat(n);
+			i.push(1);
+			const t = i.length,
+				e = Array(t).fill(0).map((s, r) => A(r, t - 1));
+			return (s) => {
+				const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
+				return T(...r);
 			};
-			return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
 		}
-		end(t, e = !1) {
-			const s = this.transitionFn[t];
-			if (!y(s))
-				throw new ReferenceError(
-					`You are trying to end an ended transition: ${t}`
-				);
-			this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
-		}
-	}
-	const T = (...n) => n.reduce((i, t) => i + t, 0),
-		b = (n) => {
-			if (n === 0)
-				return 1;
-			let i = n;
-			for (; n > 1;)
-				n--, i *= n;
-			return i;
-		},
-		A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
-		p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
-		$ = Math.cosh(2),
-		z = Math.acosh(2),
-		V = Math.tanh(3),
-		P = Math.atan(5);
 
-	function Y() {
-		return (n) => n;
-	}
-
-	function q(...n) {
-		const i = [0].concat(n);
-		i.push(1);
-		const t = i.length,
-			e = Array(t).fill(0).map((s, r) => A(r, t - 1));
-		return (s) => {
-			const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
-			return T(...r);
-		};
-	}
-
-	function U(n, i) {
-		if (n === "sin") {
-			const t = (s) => Math.sin(s * Math.PI / 2);
-			return p(i, (s) => 1 - t(1 - s), t);
-		}
-		if (n === "sec") {
-			const t = (s) => 1 / Math.cos(s);
-			return p(i, (s) => t(s * Math.PI / 3) - 1);
-		}
-		throw new TypeError(
-			"Unexpected parameters are delivered in trigo timing function."
-		);
-	}
-
-	function C(n, i) {
-		if (!Number.isInteger(n))
+		function U(n, i) {
+			if (n === "sin") {
+				const t = (s) => Math.sin(s * Math.PI / 2);
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			if (n === "sec") {
+				const t = (s) => 1 / Math.cos(s);
+				return p(i, (s) => t(s * Math.PI / 3) - 1);
+			}
 			throw new TypeError(
-				"The first parameter of power timing function only allow integer."
+				"Unexpected parameters are delivered in trigo timing function."
 			);
-		return p(i, (e) => e ** n);
-	}
-
-	function G(n, i) {
-		if (n === "sin")
-			return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
-		if (n === "tan") {
-			const t = (s) => Math.tanh(s * 3) * 1 / V;
-			return p(i, (s) => 1 - t(1 - s), t);
 		}
-		if (n === "sec") {
-			const t = (s) => 1 / Math.cosh(s);
-			return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
+
+		function C(n, i) {
+			if (!Number.isInteger(n))
+				throw new TypeError(
+					"The first parameter of power timing function only allow integer."
+				);
+			return p(i, (e) => e ** n);
 		}
-		throw new TypeError(
-			"Unexpected parameters are delivered in hyper timing function."
-		);
-	}
 
-	function N(n, i) {
-		if (n === "sin") {
-			const t = (s) => Math.asin(s) / Math.PI * 2;
-			return p(i, (s) => 1 - t(1 - s), t);
+		function G(n, i) {
+			if (n === "sin")
+				return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
+			if (n === "tan") {
+				const t = (s) => Math.tanh(s * 3) * 1 / V;
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			if (n === "sec") {
+				const t = (s) => 1 / Math.cosh(s);
+				return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
+			}
+			throw new TypeError(
+				"Unexpected parameters are delivered in hyper timing function."
+			);
 		}
-		if (n === "tan") {
-			const t = (s) => Math.atan(s * 5) / P;
-			return p(i, (s) => 1 - t(1 - s), t);
+
+		function N(n, i) {
+			if (n === "sin") {
+				const t = (s) => Math.asin(s) / Math.PI * 2;
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			if (n === "tan") {
+				const t = (s) => Math.atan(s * 5) / P;
+				return p(i, (s) => 1 - t(1 - s), t);
+			}
+			throw new TypeError(
+				"Unexpected parameters are delivered in inverse trigo timing function."
+			);
 		}
-		throw new TypeError(
-			"Unexpected parameters are delivered in inverse trigo timing function."
-		);
-	}
 
-	function B(n, i = () => 1) {
-		let t = -1;
-		return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
-	}
+		function B(n, i = () => 1) {
+			let t = -1;
+			return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
+		}
 
-	function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
-		return (l) => {
-			const a = i * l * Math.PI * 2 + e * Math.PI / 180,
-				u = Math.cos(a),
-				c = Math.sin(a),
-				h = n * s(s(r ? 1 - l : l));
-			return [h * u + t[0], h * c + t[1]];
-		};
-	}
+		function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
+			return (l) => {
+				const a = i * l * Math.PI * 2 + e * Math.PI / 180,
+					u = Math.cos(a),
+					c = Math.sin(a),
+					h = n * s(s(r ? 1 - l : l));
+				return [h * u + t[0], h * c + t[1]];
+			};
+		}
 
-	function H(n, i, ...t) {
-		const e = [n].concat(t);
-		e.push(i);
-		const s = e.length,
-			r = Array(s).fill(0).map((l, a) => A(a, s - 1));
-		return (l) => {
-			const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
-				u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
-			return [T(...a), T(...u)];
-		};
-	}
+		function H(n, i, ...t) {
+			const e = [n].concat(t);
+			e.push(i);
+			const s = e.length,
+				r = Array(s).fill(0).map((l, a) => A(a, s - 1));
+			return (l) => {
+				const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
+					u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
+				return [T(...a), T(...u)];
+			};
+		}
 
-	core.plugin.animate = {
-		Animation: j,
-		AnimationBase: F,
-		Ticker: I,
-		Transition: O,
-		bezier: q,
-		bezierPath: H,
-		circle: D,
-		hyper: G,
-		inverseTrigo: N,
-		linear: Y,
-		power: C,
-		shake: B,
-		sleep: R,
-		trigo: U,
-	}
+		core.plugin.animate = {
+			Animation: j,
+			AnimationBase: F,
+			Ticker: I,
+			Transition: O,
+			bezier: q,
+			bezierPath: H,
+			circle: D,
+			hyper: G,
+			inverseTrigo: N,
+			linear: Y,
+			power: C,
+			shake: B,
+			sleep: R,
+			trigo: U,
+		}
 
-},
+	},
     "drawItemDetail": function () {
 		/* 宝石血瓶左下角显示数值
 			 * 需要将 变量：itemDetail改为true才可正常运行
@@ -1937,7 +1922,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		const ctxName = 'globalAnimate';
 
-		if (!core.isReplaying() && Ticker) {
+		if (!core.isReplaying()) {
 			const ticker = new Ticker();
 			ticker.add(() => {
 				const ctx = core.getContextByName(ctxName);
@@ -2230,124 +2215,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			ani.all().then(() => { ani.ticker.destroy(); });
 		}
 	},
-    "Menu": function () {
-		// 本插件定义了一些用于绘制的基类
-		class ButtonBase {
-			constructor(x, y, w, h) {
-				this.x = x;
-				this.y = y;
-				this.w = w;
-				this.h = h;
-				this.disable = false;
-
-				/** 所在的Menu，用于触发重绘等事件 */
-				this.menu;
-
-				this.draw = (ctx) => { };
-				this.event = (x, y, px, py) => { };
-				this.status;
-			}
-		}
-
-		class MenuBase {
-			constructor(name) {
-				this.name = name;
-				this.btnList = new Map();
-				this.keyEvent = () => { };
-				this.clickEvent = (x, y, px, py) => {
-					this.btnList.forEach((btn) => {
-						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-							btn.event(x, y, px, py);
-						}
-					});
-				}
-			}
-
-			initBtnList(arr) {
-				this.btnList = new Map(arr);
-				this.btnList.forEach((button) => {
-					button.menu = this;
-				})
-			}
-
-			drawButtonContent() {
-				this.btnList.forEach((button) => {
-					if (!button.disable) button.draw(this.name);
-				})
-			}
-
-			drawContent() {
-				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
-				this.drawButtonContent(this.name);
-			}
-
-			beginListen() {
-				core.registerAction('keyDown', this.name, this.keyEvent, 100);
-				core.registerAction('ondown', this.name, this.clickEvent, 100);
-
-			}
-
-			endListen() {
-				core.unregisterAction('keyDown', this.name);
-				core.unregisterAction('ondown', this.name);
-			}
-
-			clear() {
-				this.endListen();
-				core.deleteCanvas(this.name);
-			}
-
-			init() {
-				this.beginListen();
-				this.drawContent();
-			}
-		}
-		class MenuPage extends MenuBase {
-			constructor(pageList, currPage, ctx) {
-				super(ctx);
-				/**
-				 * 当前页面列表
-				 * @type {Array<MenuBase>}
-				 */
-				this.pageList = pageList;
-				/**
-				 * 当前页的序号
-				 * @type {number}
-				 */
-				this.currPage = currPage | 0;
-			}
-
-			initOnePage(index) {
-				if (!core.isset(index)) index = this.currPage;
-				this.pageList[index].init();
-			}
-
-			changePage(num) {
-				if (num !== this.currPage) {
-					const beforeMenu = this.pageList[this.currPage];
-					beforeMenu.clear();
-				}
-				this.currPage = num;
-				this.initOnePage();
-			}
-
-			pageDown() {
-				if (this.currPage > 0) this.changePage(this.currPage - 1);
-			}
-
-			pageUp() {
-				if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
-			}
-
-			clear() {
-				this.pageList.forEach((page) => page.clear());
-				super.clear();
-			}
-		}
-
-		this.MenuBase = { ButtonBase, MenuBase, MenuPage };
-	},
     "scrollingText": function () {
 		// 本插件用于绘制在线留言
 
@@ -2537,6 +2404,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 	},
     "newBackpackLook": function () {
+	// 这个插件有点离谱 参数过多还不如硬编码
 	// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
 	// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
 
@@ -2814,6 +2682,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			itemName = item.name,
 			itemText = item.text;
 		itemText = core.replaceText(itemText);
+		if (!itemText) itemText = '该道具无描述。'
 		/* 一个根据道具id修改道具名字(右栏)的例子
 		 * if (item.id == "xxx") itemNameColor = "red";
 		 */
@@ -2887,7 +2756,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			drawToolbox_setBatchUseBtn(ctx, batchUseBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
 		}
 		drawToolbox_setHideBtn(ctx, useBtn_x, hideBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
-		drawToolbox_setShowHideBtn(ctx, rightbar_x, useBtn_y,  useBtnHeight, useBtnBorderStyle);
+		drawToolbox_setShowHideBtn(ctx, rightbar_x, useBtn_y, useBtnHeight, useBtnBorderStyle);
 	}
 
 	this.drawEquipbox_drawOthers = function (ctx, obj) {
@@ -2991,6 +2860,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var tx = (x + x + lineWidth / 2 + width) / 2,
 			ty = y + height + lineWidth / 2 * 3 + space;
 		core.fillText(ctx, name, tx, ty, color, font);
+
+		core.setAlpha(ctx, 1);
+
 		core.setTextBaseline(ctx, "alphabetic");
 		core.setTextAlign("left");
 	}
@@ -3076,16 +2948,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 	function getSelectedItem() {
 		var info = core.status.thisUIEventInfo;
-		if (!(info && info.select.id && core.status.event.id == "toolbox")) {
+		if (!(info && info.select.id && ["toolbox", "equipbox"].includes(core.status.event.id))) {
 			core.drawFailTip('发生了未知错误！');
 			return;
 		}
 		return info.select.id;
 	}
 
-	function batchUse(item,count){
+	function batchUse(item, count) {
 		try {
-			const itemCount = core.itemCount(id);
+			const itemCount = core.itemCount(item);
 			if (eval(core.material.items[item].noBatchUse)) {
 				core.drawFailTip('该道具不能被批量使用！');
 				return;
@@ -3096,8 +2968,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (core.canUseItem(item)) core.useItem(item);
 				else return;
 			}
-		}
-		catch (e) {
+		} catch (e) {
 			console.log(e);
 			core.drawFailTip('批量使用时出现未知错误！');
 		}
@@ -3147,18 +3018,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
 
 		var todo = function () {
+			//debugger;
 			var id = getSelectedItem();
 			let hideInfo = core.getFlag('hideInfo', {});
 			console.log(id);
 			if (hideInfo.hasOwnProperty(id)) {
 				hideInfo[id] = !hideInfo[id];
 				core.setFlag('hideInfo', hideInfo);
-			}
-			else {
+			} else {
 				hideInfo[id] = !core.material.items[id].hideInToolbox;
 				core.setFlag('hideInfo', hideInfo);
 			}
-			core.plugin.drawToolbox();
+			if (core.status.event.id === 'toolbox') core.plugin.drawToolbox();
+			else if (core.status.event.id === 'equipbox') core.plugin.drawEquipbox();
 		}
 		core.addUIEventListener(x, y, w, h, todo);
 	}
@@ -3171,8 +3043,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				list = list.concat(Object.keys(core.status.hero.items[name])); // 获取'constants'和'tools'整体的列表
 			}
 			if (!showHide) list = list.filter(function (id) {
-				const hideInfo = core.getFlag('hideInfo',{});
-				//if (id === 'yellowKey') debugger;
+				const hideInfo = core.getFlag('hideInfo', {});
 				if (hideInfo.hasOwnProperty(id)) return !hideInfo[id];
 				else return !core.material.items[id].hideInToolbox;
 			})
@@ -3207,13 +3078,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (core.hasFlag('showHideItem')) {
 			core.fillRect(ctx, x + border, y + border, squareSize - 2 * border, squareSize - 2 * border, 'lime');
 		}
-		// core.strokeRect(ctx, x, y, w, h, style);
 		core.fillText(ctx, text, x + squareSize + 2, y + 4, style, font);
 
 		var todo = function () {
 			core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
-			core.plugin.drawToolbox();
-			//core.useSelectItemInBox();
+			if (core.status.event.id === 'toolbox') core.plugin.drawToolbox();
+			else if (core.status.event.id === 'equipbox') core.plugin.drawEquipbox();
 		}
 		core.addUIEventListener(x, y, w, h, todo);
 	}
@@ -3269,26 +3139,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		return core.refreshBox();
 	}
-
-	// core.ui.getToolboxItems = function (cls) {
-	// 	var list = Object.keys(core.status.hero.items[cls] || {});
-	// 	if (cls == "all") {
-	// 		for (var name in core.status.hero.items) {
-	// 			if (name == "equips") continue;
-	// 			list = list.concat(Object.keys(core.status.hero.items[name]));
-	// 		}
-	// 		return list.filter(function (id) {
-	// 			return !core.material.items[id].hideInToolbox;
-	// 		}).sort();
-	// 	}
-
-	// 	if (this.uidata.getToolboxItems) {
-	// 		return this.uidata.getToolboxItems(cls);
-	// 	}
-	// 	return list.filter(function (id) {
-	// 		return !core.material.items[id].hideInToolbox;
-	// 	}).sort();
-	// }
 
 	this.useSelectItemInBox = function () {
 		var info = core.status.thisUIEventInfo;
@@ -3714,7 +3564,119 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方
 
-		const { ButtonBase, MenuBase, MenuPage } = this.MenuBase;
+		class ButtonBase {
+			constructor(x, y, w, h) {
+				this.x = x;
+				this.y = y;
+				this.w = w;
+				this.h = h;
+				this.disable = false;
+
+				/** 所在的Menu，用于触发重绘等事件 */
+				this.menu;
+
+				this.draw = (ctx) => { };
+				this.event = (x, y, px, py) => { };
+				this.status;
+			}
+		}
+
+		class MenuBase {
+			constructor(name) {
+				this.name = name;
+				this.btnList = new Map();
+				this.keyEvent = () => { };
+				this.clickEvent = (x, y, px, py) => {
+					this.btnList.forEach((btn) => {
+						if (btn.disable) return;
+						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+							btn.event(x, y, px, py);
+						}
+					});
+				}
+			}
+
+			initBtnList(arr) {
+				this.btnList = new Map(arr);
+				this.btnList.forEach((button) => {
+					button.menu = this;
+				})
+			}
+
+			drawButtonContent() {
+				this.btnList.forEach((button) => {
+					if (!button.disable) button.draw(this.name);
+				})
+			}
+
+			drawContent() {
+				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
+				this.drawButtonContent(this.name);
+			}
+
+			beginListen() {
+				core.registerAction('keyDown', this.name, this.keyEvent, 100);
+				core.registerAction('ondown', this.name, this.clickEvent, 100);
+
+			}
+
+			endListen() {
+				core.unregisterAction('keyDown', this.name);
+				core.unregisterAction('ondown', this.name);
+			}
+
+			clear() {
+				this.endListen();
+				core.deleteCanvas(this.name);
+			}
+
+			init() {
+				this.beginListen();
+				this.drawContent();
+			}
+		}
+		class MenuPage extends MenuBase {
+			constructor(pageList, currPage, ctx) {
+				super(ctx);
+				/**
+				 * 当前页面列表
+				 * @type {Array<MenuBase>}
+				 */
+				this.pageList = pageList;
+				/**
+				 * 当前页的序号
+				 * @type {number}
+				 */
+				this.currPage = currPage | 0;
+			}
+
+			initOnePage(index) {
+				if (!core.isset(index)) index = this.currPage;
+				this.pageList[index].init();
+			}
+
+			changePage(num) {
+				if (num !== this.currPage) {
+					const beforeMenu = this.pageList[this.currPage];
+					beforeMenu.clear();
+				}
+				this.currPage = num;
+				this.initOnePage();
+			}
+
+			pageDown() {
+				if (this.currPage > 0) this.changePage(this.currPage - 1);
+			}
+
+			pageUp() {
+				if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
+			}
+
+			clear() {
+				this.pageList.forEach((page) => page.clear());
+				super.clear();
+			}
+		}
 
 		class Setting {
 			/**
@@ -4717,7 +4679,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// todolist 自定义设置界面添加键盘支持 √
 		// todolist 剧情全skip功能 文字-文字+演出(跳跃) √
 		// todolist 批量使用：您当前选定了：xxx。请勿选定不适合批量使用的道具，请勿输入过大的数字。
-		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏 手动hide无用道具
+		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏 手动hide无用道具 √
 		// todolist 内置ATRI 解决连通性问题
 		// todolist 血瓶宝石显示数据 解决浏览地图和楼传显示错误 引入自动配置值的块 √
 		// todolist 存读档过程保存图块连通性（可选）√
@@ -4727,345 +4689,5 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// todolist 音效连续播放的优化（与自动清有关）
 		// todolist 新的临界计算
 		// todolist 微调BGM播放
-	},
-    "temp1": function () {
-	return;
-	// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
-	// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
-
-	///// *** 道具类型
-	// cls对应name
-	const itemClsName = {
-		"constants": "永久道具",
-		"tools": "消耗道具",
 	}
-	// 一页最大放的道具数量 将把整个道具左栏分成num份 每份是一个道具项
-	const itemNum = 12;
-	///// ***
-
-	class ButtonBase {
-		constructor(x, y, w, h) {
-			this.x = x;
-			this.y = y;
-			this.w = w;
-			this.h = h;
-			this.disable = false;
-
-			/** 所在的Menu，用于触发重绘等事件 */
-			this.menu;
-
-			this.draw = (ctx) => {};
-			this.event = (x, y, px, py) => {};
-			this.status;
-		}
-	}
-
-	class MenuBase {
-		constructor(name) {
-			/** name */
-			this.name = name;
-			/** btnList */
-			this.btnList = new Map();
-			/** keyEvent */
-			this.keyEvent = () => {};
-			/** clickEvent */
-			this.clickEvent = (x, y, px, py) => {
-				this.btnList.forEach((btn) => {
-					if (btn.disable) return;
-					if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-						btn.event(x, y, px, py);
-					}
-				});
-			}
-		}
-
-		initBtnList(arr) {
-			this.btnList = new Map(arr);
-			this.btnList.forEach((button) => {
-				button.menu = this;
-			})
-		}
-
-		drawButtonContent() {
-			this.btnList.forEach((button) => {
-				if (!button.disable) button.draw(this.name);
-			})
-		}
-
-		drawContent() {
-			core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
-			this.drawButtonContent(this.name);
-		}
-
-		beginListen() {
-			core.registerAction('keyDown', this.name, this.keyEvent, 100);
-			core.registerAction('ondown', this.name, this.clickEvent, 100);
-
-		}
-
-		endListen() {
-			core.unregisterAction('keyDown', this.name);
-			core.unregisterAction('ondown', this.name);
-		}
-
-		clear() {
-			this.endListen();
-			core.deleteCanvas(this.name);
-		}
-
-		init() {
-			this.beginListen();
-			this.drawContent();
-		}
-	}
-	class MenuPage extends MenuBase {
-		constructor(pageList, currPage, ctx) {
-			super(ctx);
-			/**
-			 * 当前页面列表
-			 * @type {Array<MenuBase>}
-			 */
-			this.pageList = pageList;
-			/**
-			 * 当前页的序号
-			 * @type {number}
-			 */
-			this.currPage = currPage | 0;
-		}
-
-		initOnePage(index) {
-			if (!core.isset(index)) index = this.currPage;
-			this.pageList[index].init();
-		}
-
-		changePage(num) {
-			if (num !== this.currPage) {
-				const beforeMenu = this.pageList[this.currPage];
-				beforeMenu.clear();
-			}
-			this.currPage = num;
-			this.initOnePage();
-		}
-
-		pageDown() {
-			if (this.currPage > 0) this.changePage(this.currPage - 1);
-		}
-
-		pageUp() {
-			if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
-		}
-
-		clear() {
-			this.pageList.forEach((page) => page.clear());
-			super.clear();
-		}
-	}
-
-	// 绘制道具栏的共用背景
-	function drawBoxBackground(ctx) {
-		core.setTextAlign(ctx, "left");
-		core.clearMap(ctx);
-		core.deleteCanvas("_selector"); ///!!!// ?这是什么？
-
-		///// *** 背景设置
-		const max = core.__PIXELS__;
-		const x = 2,
-			y = x,
-			w = max - x * 2,
-			h = w;
-		const [borderWidth, borderRadius, borderStyle] = [2, 5, "#fff"]; // radius:圆角矩形的圆角半径
-		const [backgroundColor, backgroundAlpha] = ["gray", 0.85]; // 设置背景不透明度(0.85)
-		///// ***
-		const [start_x, start_y] = [x + borderWidth / 2, y + borderWidth / 2];
-		const [width, height] = [max - start_x * 2, max - start_y * 2];
-
-		// 渐变色背景的一个例子(黑色渐变白色)：
-		// 有关渐变色的具体知识请网上搜索canvas createGradient了解
-		/*
-		   var grd = ctx.createLinearGradient(x, y, x + w, y);
-		   grd.addColorStop(0, "black");
-		   grd.addColorStop(1, "white");
-		   backgroundColor = grd;
-		*/
-		// 使用图片背景要注释掉下面的strokeRect和fillRoundRect
-		// 图片背景的一个例子：
-		/*
-		   core.drawImage(ctx, "xxx.png", x, y, w, h);
-		   core.strokeRect(ctx, x, y, w, h, borderStyle, borderWidth);
-		*/
-
-		core.setAlpha(ctx, backgroundAlpha); // 不透明度暂时设为backgroundAlpha
-		core.strokeRoundRect(ctx, x, y, w, h, borderRadius, borderStyle, borderWidth); // 绘制大边框
-		core.fillRoundRect(ctx, start_x, start_y, width, height, borderRadius, backgroundColor); // 绘制大边框中的灰色背景
-		core.setAlpha(ctx, 1); // 恢复不透明度
-
-		///// *** 左栏配置
-		const [leftbar_height, leftbar_width] = [height, width * 0.6];
-		// 左边栏宽度(width*0.6) 本身仅为坐标使用 需要与底下的rightbar_width(width*0.4)同时更改
-		///// ***
-		// xxx_right参数 代表最右侧坐标
-		// 
-		const [leftbar_right, leftbar_bottom, leftbar_x, leftbar_y] = [start_x + leftbar_width - borderWidth / 2, start_y + leftbar_height, start_x, start_y];
-
-		///// *** 道具栏配置
-
-		const [boxName_color, boxName_fontSize] = ['#fff', 15];
-		const boxName_font = core.ui._buildFont(boxName_fontSize, true);
-
-		const [arrow_x, arrow_y, arrow_width, arrow_style] = [10 + start_x, 10 + start_y, 20, "white"];
-		const arrow_lineWidth = 2;
-		const rightArrow_right = leftbar_right - 10;
-		// 道具内栏顶部坐标 本质是通过该项 控制(道具栏顶部文字和箭头)与道具内栏顶部的间隔
-		///// ***
-
-		const boxName = core.status.event.id == "toolbox" ? "\r[yellow]道具栏\r | 装备栏" : "道具栏 | \r[yellow]装备栏\r"; ///!!!//
-
-		// 绘制左右两个箭头
-		core.drawArrow(ctx, arrow_x + arrow_width, arrow_y, arrow_x, arrow_y, arrow_style, arrow_lineWidth);
-		core.drawArrow(ctx, rightArrow_right - arrow_width, arrow_y, rightArrow_right, arrow_y, arrow_style, arrow_lineWidth);
-
-		core.setTextAlign(ctx, "center");
-		core.setTextBaseline(ctx, "middle");
-		core.fillText(ctx, boxName, (leftbar_right + leftbar_x) / 2, arrow_y + 2, boxName_color, boxName_font); // 绘制道具栏?装备栏的字样 ///!!!//
-
-		///// *** 底栏按钮
-		const [pageBtn_left, pageBtn_right, pageBtn_bottom] = [leftbar_x + 3, leftbar_right - 3, leftbar_bottom - 2];
-		// xxx_bottom 最底部坐标
-		const [pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth, pageText_color] = [8, "#fff", 2, "#fff"];
-		///// ***
-
-		return {
-			pageBtn_radius, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_borderStyle, pageBtn_borderWidth, pageText_color
-		};
-		// 绘制底部的两个箭头（切换道具栏的左右）///!!!//
-		core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
-
-		const pageFontSize = pageBtn_radius * 2 - 4;
-		const pageFont = core.ui._buildFont(pageFontSize);
-
-		///!!!// core.setPageItems(page); // 修改core.status.thisUIEventInfo; ///!!!//
-
-		const pageText = this.currPage + " / " + this.pageMax;
-		core.setTextAlign(ctx, "center");
-		core.setTextBaseline(ctx, "bottom");
-
-		// 添加底部"x/y"的字样
-		core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
-
-		///!!!// core.addUIEventListener(start_x, start_y, leftbar_right - start_x, arrow_y - start_y + 13, changeBox); ///!!!//与监听有关
-		// var itembar_height = Math.ceil(pageBtn_bottom - pageBtn_radius * 2 - pageBtn_borderWidth / 2 - bottomSpace - itembar_top);
-		// var oneItemHeight = (itembar_height - 4) / itemNum;
-		// return {
-		// 	x: start_x,
-		// 	y: start_y,
-		// 	width: width,
-		// 	height: height,
-		// 	leftbar_right: leftbar_right,
-		// 	obj: {
-		// 		x: arrow_x,
-		// 		y: itembar_top,
-		// 		width: itembar_right - arrow_x,
-		// 		height: itembar_height,
-		// 		oneItemHeight: oneItemHeight
-		// 	}
-		// }
-	}
-
-	// 首先抽象一下 思考一下顶层设计
-	// ItemBox类
-	// 需要的属性：当前持有的Item和数量 当前的页数
-
-	class ArrowButton extends ButtonBase{
-		constructor(ctx, left, right, bottom, r, style, lineWidth, direction){
-			const [x, y, pos] = [left + offset, bottom - offset, Math.sqrt(2) / 2 * (r - lineWidth / 2)];
-			super();
-			this.draw = function(ctx, left, right, bottom, r, style, lineWidth){
-				const offset = lineWidth / 2 + r;
-
-				// const [x, y, pos] = [left + offset, bottom - offset, Math.sqrt(2) / 2 * (r - lineWidth / 2)];
-				core.fillPolygon(ctx, [[x - pos, y], [x + pos - 2, y - pos], [x + pos - 2, y + pos]], style);
-				core.strokeCircle(ctx, x, y, r, style, lineWidth);
-		
-				x = right - offset;
-				core.fillPolygon(ctx, [
-					[x + pos, y],
-					[x - pos + 2, y - pos],
-					[x - pos + 2, y + pos]
-				], style);
-				core.strokeCircle(ctx, x, y, r, style, lineWidth);
-			}
-		}
-	}
-
-	class ToolBox extends MenuBase {
-		constructor(name, capacity) {
-			super(name);
-			/** 当前是否要显示隐藏的道具
-				 * @type {boolean}
-				 */
-			this.showHideItem = core.hasFlag('showHideItem');
-			/** 一页显示的道具数量 */
-			this.capacity = capacity;
-			/** 要显示的道具列表 */
-			this.itemList = core.ui.getToolboxItems('all', this.showHideItem);
-			/** 当前页数
-			 * @type {number}
-			 */
-			this.currPage = 0;
-			/** 最大页数 */
-			this.pageMax = this.getPageCount();
-			/** 当前选中的道具的序号
-			 * @type {number}
-			 */
-			this.selectedIndex;
-			/** 绘制参数 */
-			this.drawInfo;
-		}
-
-		drawContent(drawInfo) {
-			const { pageBtn_radius, pageBtn_left, pageBtn_right, pageBtn_bottom,
-				pageBtn_borderStyle, pageBtn_borderWidth, pageText_color } = drawInfo;
-			// 绘制底部的两个箭头（切换道具栏的左右）///!!!//
-			core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
-
-			const pageFontSize = pageBtn_radius * 2 - 4;
-			const pageFont = core.ui._buildFont(pageFontSize);
-
-			///!!!// core.setPageItems(page); // 修改core.status.thisUIEventInfo; ///!!!//
-
-			const pageText = this.currPage + " / " + this.pageMax;
-			core.setTextAlign(ctx, "center");
-			core.setTextBaseline(ctx, "bottom");
-
-			// 添加底部"x/y"的字样
-			core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
-		}
-
-		getPageCount() {
-			return Math.floor(this.itemList.length / this.capacity);
-		}
-	}
-
-	class BoxPage extends MenuPage{
-		drawContent(){
-			this.drawInfo = drawBoxBackground.apply(this, [this.name]);
-			this.pageList.forEach((page) => {
-				page.drawContent(this.drawInfo);
-			})
-		}
-	}
-
-	this.t = function () {
-		const toolBox = new ToolBox('ui', 12);
-		const equipBox = new ToolBox('ui', 7);
-		const boxMenu = new MenuPage([toolBox, equipBox], 0, 'ui');
-		return boxMenu;
-		// boxMenu.init();
-	}
-
-	this.y = function(){
-		// let boxMenu = core.t();
-	}
-
-}
 }
