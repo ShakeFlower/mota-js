@@ -2453,8 +2453,11 @@ interface ui {
     /** 绘制楼层传送器 */
     drawFly(page?: any): void
 
-    /** 获得所有应该在道具栏显示的某个类型道具 */
-    getToolboxItems(cls: string): string[]
+    /** 获得所有应该在道具栏显示的某个类型道具 
+     * @param cls 道具类型
+     * @param cls 是否显示隐藏的道具
+    */
+    getToolboxItems(cls: 'tools' | 'constants' | 'all', showHide: boolean): string[]
 
     /** 绘制状态栏 */
     drawStatusBar(): void

@@ -106,6 +106,14 @@ var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_lint": true,
 					"_docs": "能否使用或装备",
 					"_data": "当前能否使用或装备该道具，仅对cls不为items有效。null表示始终不可使用但可装备"
+				},
+				"noBatchUse": {
+					"_leaf": true,
+					"_type": "textarea",
+					"_string": true,
+					"_lint": true,
+					"_docs": "不可批量使用",
+					"_data": "该道具是否不允许批量使用，true表示不可批量使用"
 				}
 			}
 		},

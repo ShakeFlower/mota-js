@@ -2699,13 +2699,28 @@ ui.prototype._drawToolbox = function (index) {
 }
 
 ////// 获得所有应该在道具栏显示的某个类型道具 //////
-ui.prototype.getToolboxItems = function (cls) {
-    if (this.uidata.getToolboxItems) {
-        return this.uidata.getToolboxItems(cls);
+ui.prototype.getToolboxItems = function (cls, showHide) {
+    let list = Object.keys(core.status.hero.items[cls] || {});;
+    if (cls === 'all') {
+        for (let name in core.status.hero.items) {
+            if (name == "equips") continue;
+            list = list.concat(Object.keys(core.status.hero.items[name])); // 获取'constants'和'tools'整体的列表
+        }
+        if (!showHide) list = list.filter(function (id) {
+            return !core.material.items[id].hideInToolbox;
+        })
+        list = list.sort();
+        return list;
     }
-    return Object.keys(core.status.hero.items[cls] || {})
-        .filter(function (id) { return !core.material.items[id].hideInToolbox; })
-        .sort();
+
+    if (this.uidata.getToolboxItems) {
+        return this.uidata.getToolboxItems(cls, showHide);
+    }
+    if (!showHide) list = list.filter(function (id) {
+        return !core.material.items[id].hideInToolbox;
+    })
+    list = list.sort();
+    return list;
 }
 
 ui.prototype._drawToolbox_getInfo = function (index) {

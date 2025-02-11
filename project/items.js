@@ -357,7 +357,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"text": "可以查看当前楼层各怪物属性",
 		"hideInToolbox": true,
 		"useItemEffect": "core.ui.drawBook(0);",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"noBatchUse": "true"
 	},
 	"fly": {
 		"cls": "constants",
@@ -366,7 +367,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"hideInReplay": true,
 		"hideInToolbox": true,
 		"useItemEffect": "core.ui.drawFly(core.floorIds.indexOf(core.status.floorId));",
-		"canUseItemEffect": "(function () {\n\tif (core.flags.flyNearStair && !core.nearStair()) return false;\n\treturn core.status.maps[core.status.floorId].canFlyFrom;\n})();"
+		"canUseItemEffect": "(function () {\n\tif (core.flags.flyNearStair && !core.nearStair()) return false;\n\treturn core.status.maps[core.status.floorId].canFlyFrom;\n})();",
+		"noBatchUse": "true"
 	},
 	"coin": {
 		"cls": "constants",
@@ -440,7 +442,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "中心对称飞行器",
 		"text": "可以飞向当前楼层中心对称的位置",
 		"useItemEffect": "core.playSound('centerFly.mp3');\ncore.clearMap('hero');\ncore.setHeroLoc('x', core.bigmap.width - 1 - core.getHeroLoc('x'));\ncore.setHeroLoc('y', core.bigmap.height - 1 - core.getHeroLoc('y'));\ncore.drawHero();\ncore.drawTip(core.material.items[itemId].name + '使用成功');",
-		"canUseItemEffect": "(function () {\n\tvar toX = core.bigmap.width - 1 - core.getHeroLoc('x'),\n\t\ttoY = core.bigmap.height - 1 - core.getHeroLoc('y');\n\tvar id = core.getBlockId(toX, toY);\n\treturn id == null;\n})();"
+		"canUseItemEffect": "(function () {\n\tvar toX = core.bigmap.width - 1 - core.getHeroLoc('x'),\n\t\ttoY = core.bigmap.height - 1 - core.getHeroLoc('y');\n\tvar id = core.getBlockId(toX, toY);\n\treturn id == null;\n})();",
+		"noBatchUse": "true"
 	},
 	"upFly": {
 		"cls": "tools",
@@ -519,9 +522,18 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canUseItemEffect": "true"
 	},
 	"silverCoin": {
-		"cls": "items",
+		"cls": "tools",
 		"name": "新物品",
-		"canUseItemEffect": "true"
+		"canUseItemEffect": "true",
+		"useItemEffect": "core.status.hero.hp += 1;",
+		"useItemEvent": [
+			{
+				"type": "setValue",
+				"name": "status:hp",
+				"operator": "+=",
+				"value": "1"
+			}
+		]
 	},
 	"orb": {
 		"cls": "items",
@@ -538,7 +550,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "设置",
 		"canUseItemEffect": "true",
 		"text": "可以调节设置开关。",
-		"useItemEffect": "core.plugin.openSetting();"
+		"useItemEffect": "core.plugin.openSetting();",
+		"noBatchUse": "true"
 	},
 	"redWand": {
 		"cls": "items",

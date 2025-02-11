@@ -7,7 +7,7 @@ main.floors.MT0=
     "canFlyFrom": true,
     "canUseQuickShop": true,
     "cannotViewMap": false,
-    "defaultGround": "ground",
+    "defaultGround": "X10036",
     "images": [],
     "ratio": 2,
     "map": [
@@ -16,9 +16,9 @@ main.floors.MT0=
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
-    [  0,  0,  0,  0,  0,121,121,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+    [  0,  0,  0,  0,  0,  0, 12,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
@@ -28,18 +28,25 @@ main.floors.MT0=
     "firstArrive": [],
     "parallelDo": "",
     "events": {
-        "6,5": [
-            "欢迎使用事件编辑器(双击方块可直接预览)"
-        ],
-        "5,5": [
-            "欢迎使用事件编辑器(双击方块可直接预览)",
+        "6,8": [
             {
-                "type": "jumpHero",
-                "loc": [
-                    0,
-                    0
-                ],
-                "time": 500
+                "type": "setValue",
+                "name": "item:poisonWine",
+                "value": "2"
+            },
+            {
+                "type": "setValue",
+                "name": "item:yellowKey",
+                "value": "99"
+            },
+            {
+                "type": "setValue",
+                "name": "item:silverCoin",
+                "value": "999"
+            },
+            {
+                "type": "comment",
+                "text": "unlockControl"
             }
         ]
     },

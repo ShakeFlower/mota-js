@@ -1,7 +1,7 @@
 /// <reference path="../runtime.d.ts" />
-var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
+var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = 
 {
-	"init": function () {
+    "init": function () {
 
 		console.log("插件编写测试");
 
@@ -19,7 +19,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为 core.plugin.xxx();
 		// 从V2.6开始，插件中用this.XXX方式定义的函数也会被转发到core中，详见文档-脚本-函数的转发。
 	},
-	"shop": function () {
+    "shop": function () {
 		// 【全局商店】相关的功能
 		// 
 		// 打开一个全局商店
@@ -214,7 +214,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}, 60);
 	},
-	"removeMap": function () {
+    "removeMap": function () {
 		// 高层塔砍层插件，删除后不会存入存档，不可浏览地图也不可飞到。
 		// 推荐用法：
 		// 对于超高层或分区域塔，当在1区时将2区以后的地图删除；1区结束时恢复2区，进二区时删除1区地图，以此类推
@@ -301,7 +301,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 	},
-	"fiveLayers": function () {
+    "fiveLayers": function () {
 		// 是否启用五图层（增加背景2层和前景2层） 将__enable置为true即会启用；启用后请保存后刷新编辑器
 		// 背景层2将会覆盖背景层 被事件层覆盖 前景层2将会覆盖前景层
 		// 另外 请注意加入两个新图层 会让大地图的性能降低一些
@@ -455,7 +455,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 		}
 	},
-	"itemShop": function () {
+    "itemShop": function () {
 		// 道具商店相关的插件
 		// 可在全塔属性-全局商店中使用「道具商店」事件块进行编辑（如果找不到可以在入口方块中找）
 
@@ -761,7 +761,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-	"enemyLevel": function () {
+    "enemyLevel": function () {
 		// 此插件将提供怪物手册中的怪物境界显示
 		// 使用此插件需要先给每个怪物定义境界，方法如下：
 		// 点击怪物的【配置表格】，找到“【怪物】相关的表格配置”，然后在【名称】仿照增加境界定义：
@@ -849,7 +849,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 
 	},
-	"multiHeros": function () {
+    "multiHeros": function () {
 		// 多角色插件
 		// Step 1: 启用本插件
 		// Step 2: 定义每个新的角色各项初始数据（参见下方注释）
@@ -995,7 +995,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag("heroId", toHeroId); // 保存切换到的角色ID
 		}
 	},
-	"heroFourFrames": function () {
+    "heroFourFrames": function () {
 		// 样板的勇士/跟随者移动时只使用2、4两帧，观感较差。本插件可以将四帧全用上。
 
 		// 是否启用本插件
@@ -1048,7 +1048,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}
 	},
-	"startCanvas": function () {
+    "startCanvas": function () {
 		// 使用本插件可以将自绘的标题界面居中。仅在【标题开启事件化】后才有效。
 		// 由于一些技术性的原因，标题界面事件化无法应用到覆盖状态栏的整个界面。
 		// 这是一个较为妥协的插件，会在自绘标题界面时隐藏状态栏、工具栏和边框，并将画布进行居中。
@@ -1134,564 +1134,593 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_loadData.call(core.control, data, callback);
 		}
 	},
-	"advancedAnimation": function () {
-		// -------------------- 插件说明 -------------------- //
-		// github仓库：https://github.com/unanmed/animate
-		// npm包名：mutate-animate
-		// npm地址：https://www.npmjs.com/package/mutate-animate
+    "advancedAnimation": function () {
+	// -------------------- 插件说明 -------------------- //
+	// github仓库：https://github.com/unanmed/animate
+	// npm包名：mutate-animate
+	// npm地址：https://www.npmjs.com/package/mutate-animate
 
-		if (main.replayChecking) return core.plugin.animate = {}
+			// 是否开启本插件，默认启用；将此改成 false 将禁用本插件。
+			var __enable = false;
 
-		// 保存所有Ticker的引用
-		const tickersMap = new Map();
+			if (main.replayChecking) __enable = false;
+			if (!__enable) {
+				core.plugin.animate = {
+					Ticker: class {
+						add() { }
+					}
+				};
+				this.deleteTicker = () => { };
+				this.deleteAllTickers = () => { };
+				this.getAllTickers = () => { };
+				return;
+			}
+	// core.plugin.animate = {
+	// 	Animation: j,
+	// 	AnimationBase: F,
+	// 	Ticker: I,
+	// 	Transition: O,
+	// 	bezier: q,
+	// 	bezierPath: H,
+	// 	circle: D,
+	// 	hyper: G,
+	// 	inverseTrigo: N,
+	// 	linear: Y,
+	// 	power: C,
+	// 	shake: B,
+	// 	sleep: R,
+	// 	trigo: U,
+	// }
+	// 保存所有Ticker的引用
+	const tickersMap = new Map();
 
-		/** 摧毁指定名字的ticker */
-		this.deleteTicker = function (name) {
-			const ticker = tickersMap.get(name);
+	/** 摧毁指定名字的ticker */
+	this.deleteTicker = function (name) {
+		const ticker = tickersMap.get(name);
+		if (!ticker) return;
+		ticker.destroy();
+		tickersMap.delete(name);
+	}
+
+	/** 摧毁所有有名字的ticker */
+	this.deleteAllTickers = function () {
+		tickersMap.forEach((ticker) => {
 			if (!ticker) return;
 			ticker.destroy();
-			tickersMap.delete(name);
-		}
+		})
+		tickersMap.clear();
+	}
 
-		/** 摧毁所有有名字的ticker */
-		this.deleteAllTickers = function () {
-			tickersMap.forEach((ticker) => {
-				if (!ticker) return;
-				ticker.destroy();
-			})
-			tickersMap.clear();
-		}
+	this.getAllTickers = () => tickersMap;
 
-		this.getAllTickers = () => tickersMap;
-
-		var M = Object.defineProperty;
-		var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
-		var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
-		let w = [];
-		const k = (n) => {
-			for (const i of w)
-				if (i.status === "running")
-					try {
-						for (const t of i.funcs)
-							t(n - i.startTime);
-					} catch (t) {
-						i.destroy(), console.error(t);
-					}
-			requestAnimationFrame(k);
-		};
+	var M = Object.defineProperty;
+	var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
+	var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
+	let w = [];
+	const k = (n) => {
+		for (const i of w)
+			if (i.status === "running")
+				try {
+					for (const t of i.funcs)
+						t(n - i.startTime);
+				} catch (t) {
+					i.destroy(), console.error(t);
+				}
 		requestAnimationFrame(k);
-		class I {
-			constructor() {
-				o(this, "funcs", /* @__PURE__ */ new Set());
-				o(this, "status", "stop");
-				o(this, "startTime", 0);
-				this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
-			}
-			add(i) {
-				return this.funcs.add(i), this;
-			}
-			remove(i) {
-				return this.funcs.delete(i), this;
-			}
-			clear() {
-				this.funcs.clear();
-			}
-			destroy() {
-				this.clear(), this.stop();
-			}
-			stop() {
-				this.status = "stop", w = w.filter((i) => i !== this);
-			}
+	};
+	requestAnimationFrame(k);
+	class I {
+		constructor() {
+			o(this, "funcs", /* @__PURE__ */ new Set());
+			o(this, "status", "stop");
+			o(this, "startTime", 0);
+			this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
 		}
-		class F {
-			constructor(name) {
-				o(this, "timing");
-				o(this, "relation", "absolute");
-				o(this, "easeTime", 0);
-				o(this, "applying", {});
-				o(this, "getTime", Date.now);
-				const ticker = new I();
-				o(this, "ticker", ticker);
-				o(this, "value", {});
-				o(this, "listener", {});
-				this.timing = (i) => i;
-				if (typeof name === 'string') tickersMap.set(name, ticker);
-			}
-			async all() {
-				if (Object.values(this.applying).every((i) => i === !0))
-					throw new ReferenceError("There is no animates to be waited.");
-				await new Promise((i) => {
-					const t = () => {
-						Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
-					};
-					this.listen("end", t);
-				});
-			}
-			async n(i) {
-				const t = Object.values(this.applying).filter((s) => s === !0).length;
-				if (t < i)
-					throw new ReferenceError(
-						`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
-					);
-				let e = 0;
-				await new Promise((s) => {
-					const r = () => {
-						e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
-					};
-					this.listen("end", r);
-				});
-			}
-			async w(i) {
-				if (this.applying[i] === !1)
-					throw new ReferenceError(`The ${i} animate is not animating.`);
-				await new Promise((t) => {
-					const e = () => {
-						this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
-					};
-					this.listen("end", e);
-				});
-			}
-			listen(i, t) {
-				var e, s;
-				(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
-			}
-			unlisten(i, t) {
-				const e = this.listener[i].findIndex((s) => s === t);
-				if (e === -1)
-					throw new ReferenceError(
-						"You are trying to remove a nonexistent listener."
-					);
-				this.listener[i].splice(e, 1);
-			}
-			hook(...i) {
-				const t = Object.entries(this.listener).filter(
-					(e) => i.includes(e[0])
+		add(i) {
+			return this.funcs.add(i), this;
+		}
+		remove(i) {
+			return this.funcs.delete(i), this;
+		}
+		clear() {
+			this.funcs.clear();
+		}
+		destroy() {
+			this.clear(), this.stop();
+		}
+		stop() {
+			this.status = "stop", w = w.filter((i) => i !== this);
+		}
+	}
+	class F {
+		constructor(name) {
+			o(this, "timing");
+			o(this, "relation", "absolute");
+			o(this, "easeTime", 0);
+			o(this, "applying", {});
+			o(this, "getTime", Date.now);
+			const ticker = new I();
+			o(this, "ticker", ticker);
+			o(this, "value", {});
+			o(this, "listener", {});
+			this.timing = (i) => i;
+			if (typeof name === 'string') tickersMap.set(name, ticker);
+		}
+		async all() {
+			if (Object.values(this.applying).every((i) => i === !0))
+				throw new ReferenceError("There is no animates to be waited.");
+			await new Promise((i) => {
+				const t = () => {
+					Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
+				};
+				this.listen("end", t);
+			});
+		}
+		async n(i) {
+			const t = Object.values(this.applying).filter((s) => s === !0).length;
+			if (t < i)
+				throw new ReferenceError(
+					`You are trying to wait ${i} animate, but there are only ${t} animate animating.`
 				);
-				for (const [e, s] of t)
-					for (const r of s)
-						r(this, e);
-			}
+			let e = 0;
+			await new Promise((s) => {
+				const r = () => {
+					e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
+				};
+				this.listen("end", r);
+			});
 		}
+		async w(i) {
+			if (this.applying[i] === !1)
+				throw new ReferenceError(`The ${i} animate is not animating.`);
+			await new Promise((t) => {
+				const e = () => {
+					this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
+				};
+				this.listen("end", e);
+			});
+		}
+		listen(i, t) {
+			var e, s;
+			(s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
+		}
+		unlisten(i, t) {
+			const e = this.listener[i].findIndex((s) => s === t);
+			if (e === -1)
+				throw new ReferenceError(
+					"You are trying to remove a nonexistent listener."
+				);
+			this.listener[i].splice(e, 1);
+		}
+		hook(...i) {
+			const t = Object.entries(this.listener).filter(
+				(e) => i.includes(e[0])
+			);
+			for (const [e, s] of t)
+				for (const r of s)
+					r(this, e);
+		}
+	}
 
-		function y(n) {
-			return n != null;
+	function y(n) {
+		return n != null;
+	}
+	async function R(n) {
+		return new Promise((i) => setTimeout(i, n));
+	}
+	class j extends F {
+		constructor() {
+			super();
+			o(this, "shakeTiming");
+			o(this, "path");
+			o(this, "multiTiming");
+			o(this, "value", {});
+			o(this, "size", 1);
+			o(this, "angle", 0);
+			o(this, "targetValue", {
+				system: {
+					move: [0, 0],
+					moveAs: [0, 0],
+					resize: 0,
+					rotate: 0,
+					shake: 0,
+					"@@bind": []
+				},
+				custom: {}
+			});
+			o(this, "animateFn", {
+				system: {
+					move: [() => 0, () => 0],
+					moveAs: () => 0,
+					resize: () => 0,
+					rotate: () => 0,
+					shake: () => 0,
+					"@@bind": () => 0
+				},
+				custom: {}
+			});
+			o(this, "ox", 0);
+			o(this, "oy", 0);
+			o(this, "sx", 0);
+			o(this, "sy", 0);
+			o(this, "bindInfo", []);
+			this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
+				move: !1,
+				scale: !1,
+				rotate: !1,
+				shake: !1
+			}, this.ticker.add(() => {
+				const { running: t } = this.listener;
+				if (y(t))
+					for (const e of t)
+						e(this, "running");
+			});
 		}
-		async function R(n) {
-			return new Promise((i) => setTimeout(i, n));
+		get x() {
+			return this.ox + this.sx;
 		}
-		class j extends F {
-			constructor() {
-				super();
-				o(this, "shakeTiming");
-				o(this, "path");
-				o(this, "multiTiming");
-				o(this, "value", {});
-				o(this, "size", 1);
-				o(this, "angle", 0);
-				o(this, "targetValue", {
-					system: {
-						move: [0, 0],
-						moveAs: [0, 0],
-						resize: 0,
-						rotate: 0,
-						shake: 0,
-						"@@bind": []
-					},
-					custom: {}
+		get y() {
+			return this.oy + this.sy;
+		}
+		mode(t, e = !1) {
+			return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
+		}
+		time(t) {
+			return this.easeTime = t, this;
+		}
+		relative() {
+			return this.relation = "relative", this;
+		}
+		absolute() {
+			return this.relation = "absolute", this;
+		}
+		bind(...t) {
+			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
+		}
+		unbind() {
+			return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
+		}
+		move(t, e) {
+			return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
+		}
+		rotate(t) {
+			return this.applySys("angle", t, "rotate"), this;
+		}
+		scale(t) {
+			return this.applySys("size", t, "resize"), this;
+		}
+		shake(t, e) {
+			this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
+			const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
+			if (this.hook("start", "shakestart"), s <= 0)
+				return this.end(!1, "shake"), this;
+			const a = () => {
+				const c = this.getTime() - l;
+				if (c > s) {
+					this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
+					return;
+				}
+				const h = c / s,
+					m = r(h);
+				this.sx = m * t, this.sy = m * e;
+			};
+			return this.ticker.add(a), this.animateFn.system.shake = a, this;
+		}
+		moveAs(t) {
+			this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
+			const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
+				if (s === "absolute")
+					return t(1); {
+					const [d, f] = t(1);
+					return [a + d, u + f];
+				}
+			})();
+			if (this.hook("start", "movestart"), e <= 0)
+				return this.end(!1, "moveAs"), this;
+			const m = () => {
+				const f = this.getTime() - l;
+				if (f > e) {
+					this.end(!0, "moveAs");
+					return;
+				}
+				const g = f / e,
+					[v, x] = t(r(g));
+				s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
+			};
+			return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
+		}
+		register(t, e) {
+			if (typeof this.value[t] == "number")
+				return this.error(
+					`Property ${t} has been regietered twice.`,
+					"reregister"
+				);
+			this.value[t] = e, this.applying[t] = !1;
+		}
+		apply(t, e) {
+			this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
+				`You are trying to execute nonexistent property ${t}.`
+			), this.applying[t] = !0;
+			const s = this.value[t],
+				r = this.getTime(),
+				{ timing: l, relation: a, easeTime: u } = this,
+				c = a === "absolute" ? e - s : e;
+			if (this.hook("start"), u <= 0)
+				return this.end(!1, t), this;
+			const h = () => {
+				const d = this.getTime() - r;
+				if (d > u) {
+					this.end(!1, t);
+					return;
+				}
+				const f = d / u,
+					g = l(f);
+				this.value[t] = s + g * c;
+			};
+			return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
+		}
+		applyMulti() {
+			this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
+			const t = this.bindInfo,
+				e = t.map((h) => this.value[h]),
+				s = this.getTime(),
+				{ multiTiming: r, relation: l, easeTime: a } = this,
+				u = r(1);
+			if (u.length !== e.length)
+				throw new TypeError(
+					`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
+				);
+			if (this.hook("start"), a <= 0)
+				return this.end(!1, "@@bind"), this;
+			const c = () => {
+				const m = this.getTime() - s;
+				if (m > a) {
+					this.end(!1, "@@bind");
+					return;
+				}
+				const d = m / a,
+					f = r(d);
+				t.forEach((g, v) => {
+					l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
 				});
-				o(this, "animateFn", {
-					system: {
-						move: [() => 0, () => 0],
-						moveAs: () => 0,
-						resize: () => 0,
-						rotate: () => 0,
-						shake: () => 0,
-						"@@bind": () => 0
-					},
-					custom: {}
-				});
-				o(this, "ox", 0);
-				o(this, "oy", 0);
-				o(this, "sx", 0);
-				o(this, "sy", 0);
-				o(this, "bindInfo", []);
-				this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
-					move: !1,
-					scale: !1,
-					rotate: !1,
-					shake: !1
-				}, this.ticker.add(() => {
-					const { running: t } = this.listener;
-					if (y(t))
-						for (const e of t)
-							e(this, "running");
-				});
-			}
-			get x() {
-				return this.ox + this.sx;
-			}
-			get y() {
-				return this.oy + this.sy;
-			}
-			mode(t, e = !1) {
-				return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
-			}
-			time(t) {
-				return this.easeTime = t, this;
-			}
-			relative() {
-				return this.relation = "relative", this;
-			}
-			absolute() {
-				return this.relation = "absolute", this;
-			}
-			bind(...t) {
-				return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
-			}
-			unbind() {
-				return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
-			}
-			move(t, e) {
-				return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
-			}
-			rotate(t) {
-				return this.applySys("angle", t, "rotate"), this;
-			}
-			scale(t) {
-				return this.applySys("size", t, "resize"), this;
-			}
-			shake(t, e) {
-				this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
-				const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
-				if (this.hook("start", "shakestart"), s <= 0)
-					return this.end(!1, "shake"), this;
-				const a = () => {
-					const c = this.getTime() - l;
-					if (c > s) {
-						this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
-						return;
-					}
-					const h = c / s,
-						m = r(h);
-					this.sx = m * t, this.sy = m * e;
-				};
-				return this.ticker.add(a), this.animateFn.system.shake = a, this;
-			}
-			moveAs(t) {
-				this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
-				const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
-					if (s === "absolute")
-						return t(1); {
-						const [d, f] = t(1);
-						return [a + d, u + f];
-					}
-				})();
-				if (this.hook("start", "movestart"), e <= 0)
-					return this.end(!1, "moveAs"), this;
-				const m = () => {
-					const f = this.getTime() - l;
-					if (f > e) {
-						this.end(!0, "moveAs");
-						return;
-					}
-					const g = f / e,
-						[v, x] = t(r(g));
-					s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
-				};
-				return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
-			}
-			register(t, e) {
-				if (typeof this.value[t] == "number")
-					return this.error(
-						`Property ${t} has been regietered twice.`,
-						"reregister"
-					);
-				this.value[t] = e, this.applying[t] = !1;
-			}
-			apply(t, e) {
-				this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
-					`You are trying to execute nonexistent property ${t}.`
-				), this.applying[t] = !0;
-				const s = this.value[t],
-					r = this.getTime(),
-					{ timing: l, relation: a, easeTime: u } = this,
-					c = a === "absolute" ? e - s : e;
-				if (this.hook("start"), u <= 0)
-					return this.end(!1, t), this;
-				const h = () => {
-					const d = this.getTime() - r;
-					if (d > u) {
-						this.end(!1, t);
-						return;
-					}
-					const f = d / u,
-						g = l(f);
-					this.value[t] = s + g * c;
-				};
-				return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
-			}
-			applyMulti() {
-				this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
-				const t = this.bindInfo,
-					e = t.map((h) => this.value[h]),
-					s = this.getTime(),
-					{ multiTiming: r, relation: l, easeTime: a } = this,
-					u = r(1);
-				if (u.length !== e.length)
-					throw new TypeError(
-						`The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
-					);
-				if (this.hook("start"), a <= 0)
-					return this.end(!1, "@@bind"), this;
-				const c = () => {
-					const m = this.getTime() - s;
-					if (m > a) {
-						this.end(!1, "@@bind");
-						return;
-					}
-					const d = m / a,
-						f = r(d);
-					t.forEach((g, v) => {
-						l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
-					});
-				};
-				return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
-			}
-			applySys(t, e, s) {
-				s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
-				const r = this[t],
-					l = this.getTime(),
-					a = this.timing,
-					u = this.relation,
-					c = this.easeTime,
-					h = u === "absolute" ? e - r : e;
-				if (this.hook("start", `${s}start`), c <= 0)
-					return this.end(!0, s);
-				const m = () => {
-					const f = this.getTime() - l;
-					if (f > c) {
-						this.end(!0, s);
-						return;
-					}
-					const g = f / c,
-						v = a(g);
-					this[t] = r + h * v, t !== "oy" && this.hook(s);
-				};
-				this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
-			}
-			error(t, e) {
-				throw e === "repeat" ? new Error(
-					`Cannot execute the same animation twice. Info: ${t}`
-				) : e === "reregister" ? new Error(
-					`Cannot register an animated property twice. Info: ${t}`
-				) : new Error(t);
-			}
-			end(t, e) {
-				if (t === !0)
-					if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
+			};
+			return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+		}
+		applySys(t, e, s) {
+			s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
+			const r = this[t],
+				l = this.getTime(),
+				a = this.timing,
+				u = this.relation,
+				c = this.easeTime,
+				h = u === "absolute" ? e - r : e;
+			if (this.hook("start", `${s}start`), c <= 0)
+				return this.end(!0, s);
+			const m = () => {
+				const f = this.getTime() - l;
+				if (f > c) {
+					this.end(!0, s);
+					return;
+				}
+				const g = f / c,
+					v = a(g);
+				this[t] = r + h * v, t !== "oy" && this.hook(s);
+			};
+			this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+		}
+		error(t, e) {
+			throw e === "repeat" ? new Error(
+				`Cannot execute the same animation twice. Info: ${t}`
+			) : e === "reregister" ? new Error(
+				`Cannot register an animated property twice. Info: ${t}`
+			) : new Error(t);
+		}
+		end(t, e) {
+			if (t === !0)
+				if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
 						this.animateFn.system[e]
 					), e === "move") {
-						const [s, r] = this.targetValue.system.move;
-						this.ox = s, this.oy = r, this.hook("moveend", "end");
-					} else if (e === "moveAs") {
-						const [s, r] = this.targetValue.system.moveAs;
-						this.ox = s, this.oy = r, this.hook("moveend", "end");
-					} else
-						e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
-							this.value[r] = this.targetValue.system["@@bind"][l];
-						}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
-				else
-					this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
-			}
+					const [s, r] = this.targetValue.system.move;
+					this.ox = s, this.oy = r, this.hook("moveend", "end");
+				} else if (e === "moveAs") {
+				const [s, r] = this.targetValue.system.moveAs;
+				this.ox = s, this.oy = r, this.hook("moveend", "end");
+			} else
+				e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
+					this.value[r] = this.targetValue.system["@@bind"][l];
+				}) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
+			else
+				this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
 		}
-		class O extends F {
-			constructor() {
-				super();
-				o(this, "now", {});
-				o(this, "target", {});
-				o(this, "transitionFn", {});
-				o(this, "value");
-				o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
-				o(this, "handleGet", (t, e) => this.now[e]);
-				this.timing = (t) => t, this.value = new Proxy(this.target, {
-					set: this.handleSet,
-					get: this.handleGet
-				});
-			}
-			mode(t) {
-				return this.timing = t, this;
-			}
-			time(t) {
-				return this.easeTime = t, this;
-			}
-			relative() {
-				return this.relation = "relative", this;
-			}
-			absolute() {
-				return this.relation = "absolute", this;
-			}
-			transition(t, e) {
-				if (e === this.target[t])
-					return this;
-				if (!y(this.now[t]))
-					return this.now[t] = e, this;
-				this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
-				const s = this.getTime(),
-					r = this.easeTime,
-					l = this.timing,
-					a = this.now[t],
-					u = e + (this.relation === "absolute" ? 0 : a),
-					c = u - a;
-				this.target[t] = u;
-				const h = () => {
-					const d = this.getTime() - s;
-					if (d >= r) {
-						this.end(t);
-						return;
-					}
-					const f = d / r;
-					this.now[t] = l(f) * c + a, this.hook("running");
-				};
-				return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
-			}
-			end(t, e = !1) {
-				const s = this.transitionFn[t];
-				if (!y(s))
-					throw new ReferenceError(
-						`You are trying to end an ended transition: ${t}`
-					);
-				this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
-			}
+	}
+	class O extends F {
+		constructor() {
+			super();
+			o(this, "now", {});
+			o(this, "target", {});
+			o(this, "transitionFn", {});
+			o(this, "value");
+			o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
+			o(this, "handleGet", (t, e) => this.now[e]);
+			this.timing = (t) => t, this.value = new Proxy(this.target, {
+				set: this.handleSet,
+				get: this.handleGet
+			});
 		}
-		const T = (...n) => n.reduce((i, t) => i + t, 0),
-			b = (n) => {
-				if (n === 0)
-					return 1;
-				let i = n;
-				for (; n > 1;)
-					n--, i *= n;
-				return i;
-			},
-			A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
-			p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
-			$ = Math.cosh(2),
-			z = Math.acosh(2),
-			V = Math.tanh(3),
-			P = Math.atan(5);
-
-		function Y() {
-			return (n) => n;
+		mode(t) {
+			return this.timing = t, this;
 		}
-
-		function q(...n) {
-			const i = [0].concat(n);
-			i.push(1);
-			const t = i.length,
-				e = Array(t).fill(0).map((s, r) => A(r, t - 1));
-			return (s) => {
-				const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
-				return T(...r);
+		time(t) {
+			return this.easeTime = t, this;
+		}
+		relative() {
+			return this.relation = "relative", this;
+		}
+		absolute() {
+			return this.relation = "absolute", this;
+		}
+		transition(t, e) {
+			if (e === this.target[t])
+				return this;
+			if (!y(this.now[t]))
+				return this.now[t] = e, this;
+			this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
+			const s = this.getTime(),
+				r = this.easeTime,
+				l = this.timing,
+				a = this.now[t],
+				u = e + (this.relation === "absolute" ? 0 : a),
+				c = u - a;
+			this.target[t] = u;
+			const h = () => {
+				const d = this.getTime() - s;
+				if (d >= r) {
+					this.end(t);
+					return;
+				}
+				const f = d / r;
+				this.now[t] = l(f) * c + a, this.hook("running");
 			};
+			return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
 		}
-
-		function U(n, i) {
-			if (n === "sin") {
-				const t = (s) => Math.sin(s * Math.PI / 2);
-				return p(i, (s) => 1 - t(1 - s), t);
-			}
-			if (n === "sec") {
-				const t = (s) => 1 / Math.cos(s);
-				return p(i, (s) => t(s * Math.PI / 3) - 1);
-			}
-			throw new TypeError(
-				"Unexpected parameters are delivered in trigo timing function."
-			);
-		}
-
-		function C(n, i) {
-			if (!Number.isInteger(n))
-				throw new TypeError(
-					"The first parameter of power timing function only allow integer."
+		end(t, e = !1) {
+			const s = this.transitionFn[t];
+			if (!y(s))
+				throw new ReferenceError(
+					`You are trying to end an ended transition: ${t}`
 				);
-			return p(i, (e) => e ** n);
+			this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
 		}
+	}
+	const T = (...n) => n.reduce((i, t) => i + t, 0),
+		b = (n) => {
+			if (n === 0)
+				return 1;
+			let i = n;
+			for (; n > 1;)
+				n--, i *= n;
+			return i;
+		},
+		A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))),
+		p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2,
+		$ = Math.cosh(2),
+		z = Math.acosh(2),
+		V = Math.tanh(3),
+		P = Math.atan(5);
 
-		function G(n, i) {
-			if (n === "sin")
-				return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
-			if (n === "tan") {
-				const t = (s) => Math.tanh(s * 3) * 1 / V;
-				return p(i, (s) => 1 - t(1 - s), t);
-			}
-			if (n === "sec") {
-				const t = (s) => 1 / Math.cosh(s);
-				return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
-			}
+	function Y() {
+		return (n) => n;
+	}
+
+	function q(...n) {
+		const i = [0].concat(n);
+		i.push(1);
+		const t = i.length,
+			e = Array(t).fill(0).map((s, r) => A(r, t - 1));
+		return (s) => {
+			const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
+			return T(...r);
+		};
+	}
+
+	function U(n, i) {
+		if (n === "sin") {
+			const t = (s) => Math.sin(s * Math.PI / 2);
+			return p(i, (s) => 1 - t(1 - s), t);
+		}
+		if (n === "sec") {
+			const t = (s) => 1 / Math.cos(s);
+			return p(i, (s) => t(s * Math.PI / 3) - 1);
+		}
+		throw new TypeError(
+			"Unexpected parameters are delivered in trigo timing function."
+		);
+	}
+
+	function C(n, i) {
+		if (!Number.isInteger(n))
 			throw new TypeError(
-				"Unexpected parameters are delivered in hyper timing function."
+				"The first parameter of power timing function only allow integer."
 			);
-		}
+		return p(i, (e) => e ** n);
+	}
 
-		function N(n, i) {
-			if (n === "sin") {
-				const t = (s) => Math.asin(s) / Math.PI * 2;
-				return p(i, (s) => 1 - t(1 - s), t);
-			}
-			if (n === "tan") {
-				const t = (s) => Math.atan(s * 5) / P;
-				return p(i, (s) => 1 - t(1 - s), t);
-			}
-			throw new TypeError(
-				"Unexpected parameters are delivered in inverse trigo timing function."
-			);
+	function G(n, i) {
+		if (n === "sin")
+			return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
+		if (n === "tan") {
+			const t = (s) => Math.tanh(s * 3) * 1 / V;
+			return p(i, (s) => 1 - t(1 - s), t);
 		}
-
-		function B(n, i = () => 1) {
-			let t = -1;
-			return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
+		if (n === "sec") {
+			const t = (s) => 1 / Math.cosh(s);
+			return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
 		}
+		throw new TypeError(
+			"Unexpected parameters are delivered in hyper timing function."
+		);
+	}
 
-		function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
-			return (l) => {
-				const a = i * l * Math.PI * 2 + e * Math.PI / 180,
-					u = Math.cos(a),
-					c = Math.sin(a),
-					h = n * s(s(r ? 1 - l : l));
-				return [h * u + t[0], h * c + t[1]];
-			};
+	function N(n, i) {
+		if (n === "sin") {
+			const t = (s) => Math.asin(s) / Math.PI * 2;
+			return p(i, (s) => 1 - t(1 - s), t);
 		}
-
-		function H(n, i, ...t) {
-			const e = [n].concat(t);
-			e.push(i);
-			const s = e.length,
-				r = Array(s).fill(0).map((l, a) => A(a, s - 1));
-			return (l) => {
-				const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
-					u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
-				return [T(...a), T(...u)];
-			};
+		if (n === "tan") {
+			const t = (s) => Math.atan(s * 5) / P;
+			return p(i, (s) => 1 - t(1 - s), t);
 		}
+		throw new TypeError(
+			"Unexpected parameters are delivered in inverse trigo timing function."
+		);
+	}
 
-		core.plugin.animate = {
-			Animation: j,
-			AnimationBase: F,
-			Ticker: I,
-			Transition: O,
-			bezier: q,
-			bezierPath: H,
-			circle: D,
-			hyper: G,
-			inverseTrigo: N,
-			linear: Y,
-			power: C,
-			shake: B,
-			sleep: R,
-			trigo: U,
-		}
+	function B(n, i = () => 1) {
+		let t = -1;
+		return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
+	}
 
-	},
-	"drawItemDetail": function () {
+	function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
+		return (l) => {
+			const a = i * l * Math.PI * 2 + e * Math.PI / 180,
+				u = Math.cos(a),
+				c = Math.sin(a),
+				h = n * s(s(r ? 1 - l : l));
+			return [h * u + t[0], h * c + t[1]];
+		};
+	}
+
+	function H(n, i, ...t) {
+		const e = [n].concat(t);
+		e.push(i);
+		const s = e.length,
+			r = Array(s).fill(0).map((l, a) => A(a, s - 1));
+		return (l) => {
+			const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h),
+				u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
+			return [T(...a), T(...u)];
+		};
+	}
+
+	core.plugin.animate = {
+		Animation: j,
+		AnimationBase: F,
+		Ticker: I,
+		Transition: O,
+		bezier: q,
+		bezierPath: H,
+		circle: D,
+		hyper: G,
+		inverseTrigo: N,
+		linear: Y,
+		power: C,
+		shake: B,
+		sleep: R,
+		trigo: U,
+	}
+
+},
+    "drawItemDetail": function () {
 		/* 宝石血瓶左下角显示数值
 			 * 需要将 变量：itemDetail改为true才可正常运行
 			 * 请尽量减少勇士的属性数量，否则可能会出现严重卡顿（划掉，现在你放一万个属性也不会卡）
@@ -1891,7 +1920,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 	},
-	"autoGet": function () {
+    "autoGet": function () {
 		// 在此增加新插件
 		/**
 		 * --------------- 使用说明 ---------------
@@ -1908,10 +1937,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		const ctxName = 'globalAnimate';
 
-		if (!main.replayChecking) {
+		if (!core.isReplaying() && Ticker) {
 			const ticker = new Ticker();
 			ticker.add(() => {
-				if (!core.isPlaying()) return;
 				const ctx = core.getContextByName(ctxName);
 				if (!has(ctx)) return;
 				core.clearMap(ctx);
@@ -2168,1033 +2196,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.updateStatusBar();
 		};
 	},
-	"newBackpackLook": function () {
-		// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
-		// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
-
-		///// *** 道具类型
-		// cls对应name
-		var itemClsName = {
-			"constants": "永久道具",
-			"tools": "消耗道具",
-		}
-		// 一页最大放的道具数量 将把整个道具左栏分成num份 每份是一个道具项
-		var itemNum = 12;
-		///// ***
-
-		// 背景设置
-		this.drawBoxBackground = function (ctx) {
-			core.setTextAlign(ctx, "left");
-			core.clearMap(ctx);
-			core.deleteCanvas("_selector");
-			var info = core.status.thisUIEventInfo || {};
-
-			///// *** 背景设置
-			var max = core.__PIXELS__;
-			var x = 2,
-				y = x,
-				w = max - x * 2,
-				h = w;
-			var borderWidth = 2,
-				borderRadius = 5, // radius:圆角矩形的圆角半径
-				borderStyle = "#fff";
-			var backgroundColor = "gray";
-			// 设置背景不透明度(0.85)
-			var backgroundAlpha = 0.85;
-			///// ***
-
-			var start_x = x + borderWidth / 2,
-				start_y = y + borderWidth / 2,
-				width = max - start_x * 2,
-				height = max - start_y * 2;
-
-			// 渐变色背景的一个例子(黑色渐变白色)：
-			// 有关渐变色的具体知识请网上搜索canvas createGradient了解
-			/*
-			   var grd = ctx.createLinearGradient(x, y, x + w, y);
-			   grd.addColorStop(0, "black");
-			   grd.addColorStop(1, "white");
-			   backgroundColor = grd;
-			*/
-			// 使用图片背景要注释掉下面的strokeRect和fillRoundRect
-			// 图片背景的一个例子：
-			/*
-			   core.drawImage(ctx, "xxx.png", x, y, w, h);
-			   core.strokeRect(ctx, x, y, w, h, borderStyle, borderWidth);
-			*/
-			core.setAlpha(ctx, backgroundAlpha);
-			core.strokeRoundRect(ctx, x, y, w, h, borderRadius, borderStyle, borderWidth);
-			core.fillRoundRect(ctx, start_x, start_y, width, height, borderRadius, backgroundColor);
-			core.setAlpha(ctx, 1);
-
-			///// *** 左栏配置
-			var leftbar_height = height;
-			// 左边栏宽度(width*0.6) 本身仅为坐标使用 需要与底下的rightbar_width(width*0.4)同时更改
-			var leftbar_width = width * 0.6;
-			///// ***
-
-			// xxx_right参数 代表最右侧坐标
-			var leftbar_right = start_x + leftbar_width - borderWidth / 2;
-			var leftbar_bottom = start_y + leftbar_height;
-			var leftbar_x = start_x;
-			var leftbar_y = start_y;
-
-			///// *** 道具栏配置
-			var boxName_color = "#fff";
-			var boxName_fontSize = 15;
-			var boxName_font = core.ui._buildFont(boxName_fontSize, true);
-			var arrow_x = 10 + start_x;
-			var arrow_y = 10 + start_y;
-			var arrow_width = 20;
-			var arrow_style = "white";
-			// 暂时只能是1 否则不太行 等待新样板(2.7.3)之后对drawArrow做优化
-			var arrow_lineWidth = 1;
-			// 右箭头
-			var rightArrow_right = leftbar_right - 10;
-			// 道具内栏顶部坐标 本质是通过该项 控制(道具栏顶部文字和箭头)与道具内栏顶部的间隔
-			var itembar_top = arrow_y + 15;
-			///// ***
-
-			var itembar_right = rightArrow_right;
-			var boxName = core.status.event.id == "toolbox" ? "\r[yellow]道具栏\r | 装备栏" : "道具栏 | \r[yellow]装备栏\r";
-			core.drawArrow(ctx, arrow_x + arrow_width, arrow_y, arrow_x, arrow_y, arrow_style, arrow_lineWidth);
-			core.drawArrow(ctx, rightArrow_right - arrow_width, arrow_y, rightArrow_right, arrow_y, arrow_style, arrow_lineWidth);
-			core.setTextAlign(ctx, "center");
-			core.setTextBaseline(ctx, "middle");
-			var changeBox = function () {
-				var id = core.status.event.id;
-				core.closePanel();
-				if (id == "toolbox") core.openEquipbox();
-				else core.openToolbox();
-			}
-			core.fillText(ctx, boxName, (leftbar_right + leftbar_x) / 2, arrow_y + 2, boxName_color, boxName_font);
-
-			///// *** 底栏按钮
-			var pageBtn_radius = 8;
-			// xxx_left 最左侧坐标
-			var pageBtn_left = leftbar_x + 3;
-			var pageBtn_right = leftbar_right - 3;
-			// xxx_bottom 最底部坐标
-			var pageBtn_bottom = leftbar_bottom - 2;
-			var pageBtn_borderStyle = "#fff";
-			var pageBtn_borderWidth = 2;
-			var pageText_color = "#fff";
-			// 底部按钮与上面的道具内栏的间隔大小
-			var bottomSpace = 8;
-			///// ***
-
-			core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
-			var page = info.page || 1;
-			var pageFontSize = pageBtn_radius * 2 - 4;
-			var pageFont = core.ui._buildFont(pageFontSize);
-			core.setPageItems(page);
-			var num = itemNum;
-			if (core.status.event.id == "equipbox") num -= 5;
-			var maxPage = info.maxPage;
-			var pageText = page + " / " + maxPage;
-			core.setTextAlign(ctx, "center");
-			core.setTextBaseline(ctx, "bottom");
-			core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
-			core.addUIEventListener(start_x, start_y, leftbar_right - start_x, arrow_y - start_y + 13, changeBox);
-			var itembar_height = Math.ceil(pageBtn_bottom - pageBtn_radius * 2 - pageBtn_borderWidth / 2 - bottomSpace - itembar_top);
-			var oneItemHeight = (itembar_height - 4) / itemNum;
-			return {
-				x: start_x,
-				y: start_y,
-				width: width,
-				height: height,
-				leftbar_right: leftbar_right,
-				obj: {
-					x: arrow_x,
-					y: itembar_top,
-					width: itembar_right - arrow_x,
-					height: itembar_height,
-					oneItemHeight: oneItemHeight
-				}
-			}
-		}
-
-		this.drawItemListbox = function (ctx, obj) {
-			ctx = ctx || core.canvas.ui;
-			var itembar_x = obj.x,
-				itembar_y = obj.y,
-				itembar_width = obj.width,
-				itembar_height = obj.height,
-				itemNum = obj.itemNum,
-				oneItemHeight = obj.oneItemHeight;
-			var itembar_right = itembar_x + itembar_width;
-			var info = core.status.thisUIEventInfo || {};
-			var obj = {};
-			var page = info.page || 1,
-				index = info.index,
-				select = info.select || {};
-
-			///// *** 道具栏内栏配置
-			var itembar_style = "black";
-			var itembar_alpha = 0.7;
-			// 一个竖屏下减少道具显示的例子:
-			// if (core.domStyle.isVertical) itemNum = 10;
-			// 每个道具项的上下空隙占总高度的比例
-			var itembar_marginHeightRatio = 0.2;
-			// 左右间隔空隙
-			var item_marginLeft = 2;
-			var item_x = itembar_x + 2,
-				item_y = itembar_y + 2,
-				item_right = itembar_right - 2,
-				itemName_color = "#fff";
-			// 修改此项以更换闪烁光标
-			var item_selector = "winskin.png";
-			///// ***
-
-			core.setAlpha(ctx, itembar_alpha);
-			core.fillRect(ctx, itembar_x, itembar_y, itembar_width, itembar_height, itembar_style);
-			core.setAlpha(ctx, 1);
-			var pageItems = core.setPageItems(page);
-			var marginHeight = itembar_marginHeightRatio * oneItemHeight;
-			core.setTextBaseline(ctx, "middle");
-			var originColor = itemName_color;
-			for (var i = 0; i < pageItems.length; i++) {
-				itemName_color = originColor;
-				var item = pageItems[i];
-				// 设置某个的字体颜色的一个例子
-				// if (item.id == "xxx") itemName_color = "green";
-				core.drawItemListbox_drawItem(ctx, item_x, item_right, item_y, oneItemHeight, item_marginLeft, marginHeight, itemName_color, pageItems[i]);
-				if (index == i + 1) core.ui._drawWindowSelector(item_selector, item_x + 1, item_y - 1, item_right - item_x - 2, oneItemHeight - 2);
-				item_y += oneItemHeight;
-			}
-		}
-
-		this.drawToolboxRightbar = function (ctx, obj) {
-			ctx = ctx || core.canvas.ui;
-			var info = core.status.thisUIEventInfo || {};
-			var page = info.page || 1,
-				index = info.index || 1,
-				select = info.select || {};
-			var start_x = obj.x,
-				start_y = obj.y,
-				width = obj.width,
-				height = obj.height;
-			var toolboxRight = start_x + width,
-				toolboxBottom = start_y + height;
-
-
-			///// *** 侧边栏(rightbar)背景设置(物品介绍)
-			var rightbar_width = width * 0.4;
-			var rightbar_height = height;
-			var rightbar_lineWidth = 2;
-			var rightbar_lineStyle = "#fff";
-			///// ***
-
-			var rightbar_x = toolboxRight - rightbar_width - rightbar_lineWidth / 2;
-			var rightbar_y = start_y;
-			core.drawLine(ctx, rightbar_x, rightbar_y, rightbar_x, rightbar_y + rightbar_height, rightbar_lineStyle, rightbar_lineWidth);
-
-			// 获取道具id(有可能为null)
-			var itemId = select.id;
-			var item = core.material.items[itemId];
-
-			///// *** 侧边栏物品Icon信息
-			var iconRect_y = rightbar_y + 10;
-			// space：间距
-			// 这里布局设定iconRect与侧边栏左边框 itemName与工具栏右边框 itemRect与itemName的间距均为space
-			var space = 15;
-			var iconRect_x = rightbar_x + space;
-			var iconRect_radius = 2,
-				iconRect_width = 32,
-				iconRect_height = 32,
-				iconRect_style = "#fff",
-				iconRect_lineWidth = 2;
-			///// ***
-
-			var iconRect_bottom = iconRect_y + iconRect_height,
-				iconRect_right = iconRect_x + iconRect_width;
-
-			///// *** 侧边栏各项信息
-			var itemTextFontSize = 15,
-				itemText_x = iconRect_x - 4,
-				itemText_y = Math.floor(start_y + rightbar_height * 0.25), // 坐标取整防止模糊
-				itemClsFontSize = 15,
-				itemClsFont = core.ui._buildFont(itemClsFontSize),
-				itemClsColor = "#fff",
-				itemCls_x = itemText_x - itemClsFontSize / 2,
-				itemCls_middle = (iconRect_bottom + itemText_y) / 2, //_middle代表文字的中心y坐标
-				itemNameFontSize = 18,
-				itemNameColor = "#fff",
-				itemNameFont = core.ui._buildFont(itemNameFontSize, true);
-			var itemName_x = iconRect_right + space;
-			var itemName_middle = iconRect_y + iconRect_height / 2 + iconRect_lineWidth;
-			// 修改这里可以编辑未选中道具时的默认值
-			var defaultItem = {
-				cls: "constants",
-				name: "未知道具",
-				text: "没有道具最永久"
-			}
-			var defaultEquip = {
-				cls: "equips",
-				name: "未知装备",
-				text: "一无所有，又何尝不是一种装备",
-				equip: {
-					type: "装备"
-				}
-			}
-			///// ***
-
-			var originItem = item;
-			if (core.status.event.id == "equipbox") item = item || defaultEquip;
-			item = item || defaultItem;
-			var itemCls = item.cls,
-				itemName = item.name,
-				itemText = item.text;
-			itemText = core.replaceText(itemText);
-			/* 一个根据道具id修改道具名字(右栏)的例子
-			 * if (item.id == "xxx") itemNameColor = "red";
-			 */
-			var itemClsName = core.getItemClsName(item);
-			var itemNameMaxWidth = rightbar_width - iconRect_width - iconRect_lineWidth * 2 - space * 2;
-			core.strokeRoundRect(ctx, iconRect_x, iconRect_y, iconRect_width, iconRect_height, iconRect_radius, iconRect_style, iconRect_lineWidth);
-			if (item.id)
-				core.drawIcon(ctx, item.id, iconRect_x + iconRect_lineWidth / 2, iconRect_y + iconRect_lineWidth / 2, iconRect_width - iconRect_lineWidth, iconRect_height - iconRect_lineWidth);
-			core.setTextAlign(ctx, "left");
-			core.setTextBaseline(ctx, "middle");
-			core.fillText(ctx, itemName, itemName_x, itemName_middle, itemNameColor, itemNameFont, itemNameMaxWidth);
-			core.fillText(ctx, "【" + itemClsName + "】", itemCls_x, itemCls_middle, itemClsColor, itemClsFont);
-			var statusText = "";
-			if (core.status.event.id == "equipbox") {
-				var type = item.equip.type;
-				if (typeof type == "string") type = core.getEquipTypeByName(type);
-				var compare = core.compareEquipment(item.id, core.getEquip(type));
-				if (info.select.action == "unload") compare = core.compareEquipment(null, item.id);
-				// --- 变化值...
-				for (var name in core.status.hero) {
-					if (typeof core.status.hero[name] != 'number') continue;
-					var nowValue = core.getRealStatus(name);
-					// 查询新值
-					var newValue = Math.floor((core.getStatus(name) + (compare.value[name] || 0)) *
-						(core.getBuff(name) * 100 + (compare.percentage[name] || 0)) / 100);
-					if (nowValue == newValue) continue;
-					var color = newValue > nowValue ? '#00FF00' : '#FF0000';
-					nowValue = core.formatBigNumber(nowValue);
-					newValue = core.formatBigNumber(newValue);
-					statusText += core.getStatusLabel(name) + " " + nowValue + "->\r[" + color + "]" + newValue + "\r\n";
-				}
-			}
-			itemText = statusText + itemText;
-			core.drawTextContent(ctx, itemText, {
-				left: itemText_x,
-				top: itemText_y,
-				bold: false,
-				color: "white",
-				align: "left",
-				fontSize: itemTextFontSize,
-				maxWidth: rightbar_width - (itemText_x - rightbar_x) * 2 + itemTextFontSize / 2
-			});
-
-			///// *** 退出按钮设置
-			var btnRadius = 10;
-			var btnBorderWidth = 2;
-			var btnRight = toolboxRight - 2;
-			var btnBottom = toolboxBottom - 2;
-			var btnBorderStyle = "#fff";
-			///// ***
-
-			// 获取圆心位置
-			var btn_x = btnRight - btnRadius - btnBorderWidth / 2;
-			btn_y = btnBottom - btnRadius - btnBorderWidth / 2;
-			core.drawToolbox_setExitBtn(ctx, btn_x, btn_y, btnRadius, btnBorderStyle, btnBorderWidth);
-
-			///// *** 使用按钮设置
-			var useBtnHeight = btnRadius * 2;
-			// 这里不设置useBtnWidth而是根据各项数据自动得出width
-			var useBtnRadius = useBtnHeight / 2;
-			var useBtn_x = rightbar_x + 4,
-				useBtn_y = btnBottom - useBtnHeight;
-			var useBtnBorderStyle = "#fff";
-			var useBtnBorderWidth = btnBorderWidth;
-			///// ***
-
-			core.drawToolbox_setUseBtn(ctx, useBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
-		}
-
-		this.drawEquipbox_drawOthers = function (ctx, obj) {
-			var info = core.status.thisUIEventInfo;
-
-			///// *** 装备格设置
-			var equipList_lineWidth = 2;
-			var equipList_boxSize = 32;
-			var equipList_borderWidth = 2;
-			var equipList_borderStyle = "#fff";
-			var equipList_nameColor = "#fff";
-			///// ***
-
-			var equipList_x = obj.x + 4,
-				equipList_bottom = obj.obj.y - equipList_lineWidth,
-				equipList_y = equipList_bottom - obj.obj.oneItemHeight * reduceItem - 2,
-				equipList_height = equipList_bottom - equipList_y;
-			var equipList_right = obj.leftbar_right,
-				equipList_width = equipList_right - equipList_x;
-			core.drawLine(ctx, obj.x, equipList_bottom + equipList_lineWidth / 2, equipList_right, equipList_bottom + equipList_lineWidth / 2, equipList_borderStyle, equipList_lineWidth);
-			var toDrawList = core.status.globalAttribute.equipName,
-				len = toDrawList.length;
-
-			///// *** 装备格设置
-			var maxItem = 4;
-			var box_width = 32,
-				box_height = 32,
-				box_borderStyle = "#fff",
-				box_selectBorderStyle = "gold", // 选中的装备格的颜色
-				box_borderWidth = 2;
-			var boxName_fontSize = 14,
-				boxName_space = 2,
-				boxName_color = "#fff"; // 装备格名称与上面的装备格框的距离
-			var maxLine = Math.ceil(len / maxItem);
-			///// ***
-			var l = Math.sqrt(len)
-			if (Math.pow(l) == len && len != 4) {
-				if (l <= maxItem) maxItem = l;
-			}
-			maxItem = Math.min(toDrawList.length, maxItem);
-			info.equips = maxItem;
-
-			var boxName_font = core.ui._buildFont(boxName_fontSize);
-			// 总宽高减去所有装备格宽高得到空隙大小
-			var oneBoxWidth = box_width + box_borderWidth * 2;
-			var oneBoxHeight = box_height + boxName_fontSize + boxName_space + 2 * box_borderWidth;
-			var space_y = (equipList_height - maxLine * oneBoxHeight) / (1 + maxLine),
-				space_x = (equipList_width - maxItem * oneBoxWidth) / (1 + maxItem);
-			var box_x = equipList_x + space_x,
-				box_y = equipList_y + space_y;
-			for (var i = 0; i < len; i++) {
-				var id = core.getEquip(i),
-					name = toDrawList[i];
-				var selectBorder = false;
-				if (core.status.thisUIEventInfo.select.type == i) selectBorder = true;
-				var borderStyle = selectBorder ? box_selectBorderStyle : box_borderStyle;
-				core.drawEquipbox_drawOne(ctx, name, id, box_x, box_y, box_width, box_height, boxName_space, boxName_font, boxName_color, borderStyle, box_borderWidth);
-				var todo = new Function("core.clickOneEquipbox('" + id + "'," + i + ")");
-				core.addUIEventListener(box_x - box_borderWidth / 2, box_y - box_borderWidth / 2, oneBoxWidth, oneBoxHeight, todo);
-				box_x += space_x + oneBoxWidth;
-				if ((i + 1) % maxItem == 0) {
-					box_x = equipList_x + space_x;
-					box_y += space_y + oneBoxHeight;
-				}
-			}
-		}
-
-		this.drawToolbox = function (ctx) {
-			ctx = ctx || core.canvas.ui;
-			core.status.thisEventClickArea = [];
-
-			var info = core.drawBoxBackground(ctx);
-			info.itemNum = itemNum;
-			core.drawItemListbox(ctx, info.obj);
-			core.drawToolboxRightbar(ctx, info);
-			core.setTextBaseline(ctx, "alphabetic");
-			core.setTextAlign("left");
-		}
-
-		var reduceItem = 4;
-		this.drawEquipbox = function (ctx) {
-			ctx = ctx || core.canvas.ui;
-			core.status.thisEventClickArea = [];
-			var info = core.drawBoxBackground(ctx);
-			info.itemNum = itemNum - reduceItem;
-			info.obj.y += info.obj.oneItemHeight * reduceItem;
-			info.obj.height -= info.obj.oneItemHeight * reduceItem;
-			core.drawItemListbox(ctx, info.obj);
-			core.drawEquipbox_drawOthers(ctx, info);
-			core.drawToolboxRightbar(ctx, info);
-			core.setTextBaseline(ctx, "alphabetic");
-			core.setTextAlign("left");
-		}
-
-
-		this.drawEquipbox_drawOne = function (ctx, name, id, x, y, width, height, space, font, color, style, lineWidth) {
-			if (id) core.drawIcon(ctx, id, x + lineWidth / 2, y + lineWidth / 2, width, height);
-			core.strokeRect(ctx, x, y, width + lineWidth, height + lineWidth, style, lineWidth);
-			core.setTextAlign(ctx, "center");
-			core.setTextBaseline(ctx, "top");
-			var tx = (x + x + lineWidth / 2 + width) / 2,
-				ty = y + height + lineWidth / 2 * 3 + space;
-			core.fillText(ctx, name, tx, ty, color, font);
-			core.setTextBaseline(ctx, "alphabetic");
-			core.setTextAlign("left");
-		}
-
-		this.drawItemListbox_drawItem = function (ctx, left, right, top, height, marginLeft, marginHeight, style, id) {
-			var info = core.status.thisUIEventInfo;
-			var nowClick = info.index;
-			var item = core.material.items[id] || {};
-			var name = item.name || "???";
-			var num = core.itemCount(id) || 0;
-			var fontSize = Math.floor(height - marginHeight * 2);
-			core.setTextAlign(ctx, "right");
-			var numText = "x" + num;
-			core.fillText(ctx, numText, right - marginLeft, top + height / 2, style, core.ui._buildFont(fontSize));
-			if (name != "???") core.drawIcon(ctx, id, left + marginLeft, top + marginHeight, fontSize, fontSize);
-			var text_x = left + marginLeft + fontSize + 2;
-			var maxWidth = right - core.calWidth(ctx, numText) - text_x;
-			core.setTextAlign(ctx, "left");
-			core.fillText(ctx, name, text_x, top + height / 2, style, core.ui._buildFont(fontSize), maxWidth);
-			var todo = new Function("core.clickItemFunc('" + id + "');");
-			core.addUIEventListener(left, top, right - left, height, todo);
-		}
-
-		this.setPageItems = function (page) {
-			var num = itemNum;
-			if (core.status.event.id == "equipbox") num -= reduceItem;
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			page = page || info.page;
-			var items = core.getToolboxItems(core.status.event.id == "toolbox" ? "all" : "equips");
-			info.allItems = items;
-			var maxPage = Math.ceil(items.length / num);
-			info.maxPage = maxPage;
-			var pageItems = items.slice((page - 1) * num, page * num);
-			info.pageItems = pageItems;
-			info.maxItem = pageItems.length;
-			if (items.length == 0 && pageItems.length == 0) info.index = null;
-			if (pageItems.length == 0 && info.page > 1) {
-				info.page = Math.max(1, info.page - 1);
-				return core.setPageItems(info.page);
-			}
-			return pageItems;
-		}
-
-		this.drawToolbox_setExitBtn = function (ctx, x, y, r, style, lineWidth) {
-			core.strokeCircle(ctx, x, y, r, style, lineWidth);
-			ctx.textAlign = "center";
-			ctx.textBaseline = "middle";
-			var textSize = Math.sqrt(2) * r;
-			core.fillText(ctx, "x", x, y, style, core.ui._buildFont(textSize), textSize);
-			core.setTextAlign(ctx, "start");
-			core.setTextBaseline(ctx, "top");
-
-			var todo = function () {
-				core.closePanel();
-			}
-			core.addUIEventListener(x - r, y - r, r * 2, r * 2, todo);
-		}
-
-		this.drawToolbox_setUseBtn = function (ctx, x, y, r, h, style, lineWidth) {
-			core.setTextAlign(ctx, "left");
-			core.setTextBaseline(ctx, "top");
-			var fontSize = h - 4;
-			var font = core.ui._buildFont(fontSize);
-			var text = core.status.event.id == "toolbox" ? "使用" : "装备";
-			if (core.status.thisUIEventInfo.select.action == "unload") text = "卸下";
-			var w = core.calWidth(ctx, text, font) + 2 * r + lineWidth / 2;
-
-			core.strokeRoundRect(ctx, x, y, w, h, r, style, lineWidth);
-			core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
-
-			var todo = function () {
-				core.useSelectItemInBox();
-			}
-			core.addUIEventListener(x, y, w, h, todo);
-		}
-
-		this.drawItemListbox_setPageBtn = function (ctx, left, right, bottom, r, style, lineWidth) {
-			var offset = lineWidth / 2 + r;
-
-			var x = left + offset;
-			var y = bottom - offset;
-			var pos = Math.sqrt(2) / 2 * (r - lineWidth / 2);
-			core.fillPolygon(ctx, [
-				[x - pos, y],
-				[x + pos - 2, y - pos],
-				[x + pos - 2, y + pos]
-			], style);
-			core.strokeCircle(ctx, x, y, r, style, lineWidth);
-			var todo = function () {
-				core.addItemListboxPage(-1);
-			}
-			core.addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
-
-			x = right - offset;
-			core.fillPolygon(ctx, [
-				[x + pos, y],
-				[x - pos + 2, y - pos],
-				[x - pos + 2, y + pos]
-			], style);
-			core.strokeCircle(ctx, x, y, r, style, lineWidth);
-			var todo = function () {
-				core.addItemListboxPage(1);
-			}
-			core.addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
-		}
-
-		this.clickItemFunc = function (id) {
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			if (info.select.id == id) return core.useSelectItemInBox();
-			info.select = {};
-			info.select.id = id;
-			core.setIndexAndSelect('index');
-			core.refreshBox();
-		}
-
-		this.clickOneEquipbox = function (id, type) {
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			if (info.select.id == id && info.select.type == type) core.useSelectItemInBox();
-			else core.status.thisUIEventInfo.select = {
-				id: id,
-				type: type,
-				action: "unload"
-			}
-			return core.refreshBox();
-		}
-
-		core.ui.getToolboxItems = function (cls) {
-			var list = Object.keys(core.status.hero.items[cls] || {});
-			if (cls == "all") {
-				for (var name in core.status.hero.items) {
-					if (name == "equips") continue;
-					list = list.concat(Object.keys(core.status.hero.items[name]));
-				}
-				return list.filter(function (id) {
-					return !core.material.items[id].hideInToolbox;
-				}).sort();
-			}
-
-			if (this.uidata.getToolboxItems) {
-				return this.uidata.getToolboxItems(cls);
-			}
-			return list.filter(function (id) {
-				return !core.material.items[id].hideInToolbox;
-			}).sort();
-		}
-
-		this.useSelectItemInBox = function () {
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			if (!info.select.id) return;
-			var id = info.select.id;
-			if (core.status.event.id == "toolbox") {
-				core.events.tryUseItem(id);
-				// core.closePanel();
-			} else if (core.status.event.id == "equipbox") {
-				var action = info.select.action || "load";
-				info.index = 1;
-				if (action == "load") {
-					var type = core.getEquipTypeById(id);
-					core.loadEquip(id, function () {
-						core.status.route.push("equip:" + id);
-						info.select.type = type;
-						core.setIndexAndSelect("select");
-						core.drawEquipbox();
-					});
-				} else {
-					var type = info.select.type;
-					core.unloadEquip(type, function () {
-						core.status.route.push("unEquip:" + type);
-						info.select.type = type;
-						//info.select.action = 'load'
-						core.setIndexAndSelect("select");
-						core.drawEquipbox();
-					});
-				}
-			}
-		}
-
-		this.setIndexAndSelect = function (toChange) {
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			core.setPageItems(info.page);
-			var index = info.index || 1;
-			var items = info.pageItems;
-			if (info.select.type != null) {
-				var type = info.select.type;
-				id = core.getEquip(type);
-				info.index = null;
-				info.select = {
-					id: id,
-					action: "unload",
-					type: type
-				};
-				return;
-			} else {
-				info.select.action = null;
-				info.select.type = null;
-				if (toChange == "index") info.index = items.indexOf(info.select.id) + 1;
-				info.select.id = items[info.index - 1];
-			}
-
-		}
-
-		this.addItemListboxPage = function (num) {
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			var maxPage = info.maxPage || 1;
-			info.page = info.page || 1;
-			info.page += num;
-			if (info.page <= 0) info.page = maxPage;
-			if (info.page > maxPage) info.page = 1;
-			info.index = 1;
-			core.setPageItems(info.page);
-			core.setIndexAndSelect("select");
-			core.refreshBox();
-		}
-
-		this.addItemListboxIndex = function (num) {
-			var info = core.status.thisUIEventInfo;
-			if (!info) return;
-			var maxItem = info.maxItem || 0;
-			info.index = info.index || 0;
-			info.index += num;
-			if (info.index <= 0) info.index = 1;
-			if (info.index > maxItem) info.index = maxItem;
-			core.setIndexAndSelect("select");
-			core.refreshBox();
-		}
-
-		this.addEquipboxType = function (num) {
-			var info = core.status.thisUIEventInfo;
-			var type = info.select.type;
-			if (type == null && num > 0) info.select.type = 0;
-			else info.select.type = type + num;
-			var max = core.status.globalAttribute.equipName.length;
-			if (info.select.type >= max) {
-				info.select = {};
-				core.setIndexAndSelect("select")
-				return core.addItemListboxPage(0);
-			} else {
-				var m = Math.abs(info.select.type);
-				if (info.select.type < 0) info.select.type = max - m;
-				core.setIndexAndSelect("select")
-				core.refreshBox();
-				return;
-			}
-		}
-
-		core.actions._keyDownToolbox = function (keycode) {
-			if (!core.status.thisEventClickArea) return;
-			if (keycode == 37) { // left
-				core.addItemListboxPage(-1);
-				return;
-			}
-			if (keycode == 38) { // up
-				core.addItemListboxIndex(-1);
-				return;
-			}
-			if (keycode == 39) { // right
-				core.addItemListboxPage(1);
-				return;
-			}
-			if (keycode == 40) { // down
-				core.addItemListboxIndex(1);
-				return;
-			}
-		}
-
-		////// 工具栏界面时，放开某个键的操作 //////
-		core.actions._keyUpToolbox = function (keycode) {
-			if (keycode == 81) {
-				core.ui.closePanel();
-				if (core.isReplaying())
-					core.control._replay_equipbox();
-				else
-					core.openEquipbox();
-				return;
-			}
-			if (keycode == 84 || keycode == 27 || keycode == 88) {
-				core.closePanel();
-				return;
-			}
-			if (keycode == 13 || keycode == 32 || keycode == 67) {
-				var info = core.status.thisUIEventInfo;
-				if (info.select) {
-					core.useSelectItemInBox();
-				}
-				return;
-			}
-		}
-
-		core.actions._keyDownEquipbox = function (keycode) {
-			if (!core.status.thisEventClickArea) return;
-			if (keycode == 37) { // left
-				var info = core.status.thisUIEventInfo;
-				if (info.index != null) return core.addItemListboxPage(-1);
-				return core.addEquipboxType(-1);
-			}
-			if (keycode == 38) { // up
-				var info = core.status.thisUIEventInfo;
-				if (info.index == 1) {
-					info.select.type = core.status.globalAttribute.equipName.length - 1;
-					core.setIndexAndSelect();
-					return core.refreshBox();
-				}
-				if (info.index) return core.addItemListboxIndex(-1);
-				return core.addEquipboxType(-1 * info.equips);
-			}
-			if (keycode == 39) { // right
-				var info = core.status.thisUIEventInfo;
-				if (info.index != null) return core.addItemListboxPage(1);
-				return core.addEquipboxType(1);
-			}
-			if (keycode == 40) { // down
-				var info = core.status.thisUIEventInfo;
-				if (info.index) return core.addItemListboxIndex(1);
-				return core.addEquipboxType(info.equips);
-			}
-		}
-
-		core.actions._keyUpEquipbox = function (keycode, altKey) {
-			if (altKey && keycode >= 48 && keycode <= 57) {
-				core.items.quickSaveEquip(keycode - 48);
-				return;
-			}
-			if (keycode == 84) {
-				core.ui.closePanel();
-				if (core.isReplaying())
-					core.control._replay_toolbox();
-				else
-					core.openToolbox();
-				return;
-			}
-			if (keycode == 81 || keycode == 27 || keycode == 88) {
-				core.closePanel();
-				return;
-			}
-			if (keycode == 13 || keycode == 32 || keycode == 67) {
-				var info = core.status.thisUIEventInfo;
-				if (info.select) core.useSelectItemInBox();
-				return;
-			}
-		}
-
-		core.registerAction("ondown", "inEventClickAction", function (x, y, px, py) {
-			if (!core.status.thisEventClickArea) return false;
-			var info = core.status.thisEventClickArea;
-			for (var i = 0; i < info.length; i++) {
-				var obj = info[i];
-				if (px >= obj.x && px <= obj.x + obj.width && py > obj.y && py < obj.y + obj.height) {
-					if (obj.todo) obj.todo();
-					break;
-				}
-			}
-			return true;
-		}, 51);
-		core.registerAction("onclick", "stopClick", function () {
-			if (core.status.thisEventClickArea) return true;
-		}, 51);
-
-		this.addUIEventListener = function (x, y, width, height, todo) {
-			if (!core.status.thisEventClickArea) return;
-			var obj = {
-				x: x,
-				y: y,
-				width: width,
-				height: height,
-				todo: todo
-			}
-			core.status.thisEventClickArea.push(obj);
-		}
-
-		this.initThisEventInfo = function () {
-			core.status.thisUIEventInfo = {
-				page: 1,
-				select: {}
-			};
-			core.status.thisEventClickArea = [];
-		}
-
-		this.refreshBox = function () {
-			if (!core.status.event.id) return;
-			if (core.status.event.id == "toolbox") core.drawToolbox();
-			else core.drawEquipbox();
-		}
-
-		core.ui.closePanel = function () {
-			if (core.status.hero && core.status.hero.flags) {
-				// 清除全部临时变量
-				Object.keys(core.status.hero.flags).forEach(function (name) {
-					if (name.startsWith("@temp@") || /^arg\d+$/.test(name)) {
-						delete core.status.hero.flags[name];
-					}
-				});
-			}
-			this.clearUI();
-			core.maps.generateGroundPattern();
-			core.updateStatusBar(true);
-			core.unlockControl();
-			core.status.event.data = null;
-			core.status.event.id = null;
-			core.status.event.selection = null;
-			core.status.event.ui = null;
-			core.status.event.interval = null;
-			core.status.thisUIEventInfo = null;
-			core.status.thisEventClickArea = null
-		}
-
-		this.getItemClsName = function (item) {
-			if (item == null) return itemClsName;
-			if (item.cls == "equips") {
-				if (typeof item.equip.type == "string") return item.equip.type;
-				var type = core.getEquipTypeById(item.id);
-				return core.status.globalAttribute.equipName[type];
-			} else return itemClsName[item.cls] || item.cls;
-		}
-
-		core.events.openToolbox = function (fromUserAction) {
-			if (core.isReplaying()) return;
-			if (!this._checkStatus('toolbox', fromUserAction)) return;
-			core.initThisEventInfo();
-			let info = core.status.thisUIEventInfo
-			info.index = 1
-			core.setIndexAndSelect('select')
-			core.drawToolbox();
-		}
-
-		core.events.openEquipbox = function (fromUserAction) {
-			if (core.isReplaying()) return;
-			if (!this._checkStatus('equipbox', fromUserAction)) return;
-			core.initThisEventInfo();
-			let info = core.status.thisUIEventInfo
-			info.select.type = 0
-			core.setIndexAndSelect('select')
-			core.drawEquipbox();
-		}
-
-		core.control._replay_toolbox = function () {
-			if (!core.isPlaying() || !core.isReplaying()) return;
-			if (!core.status.replay.pausing) return core.drawTip("请先暂停录像");
-			if (core.isMoving() || core.status.replay.animate || core.status.event.id)
-				return core.drawTip("请等待当前事件的处理结束");
-
-			core.lockControl();
-			core.status.event.id = 'toolbox';
-			core.drawToolbox();
-		}
-
-		core.control._replay_equipbox = function () {
-			if (!core.isPlaying() || !core.isReplaying()) return;
-			if (!core.status.replay.pausing) return core.drawTip("请先暂停录像");
-			if (core.isMoving() || core.status.replay.animate || core.status.event.id)
-				return core.drawTip("请等待当前事件的处理结束");
-
-			core.lockControl();
-			core.status.event.id = 'equipbox';
-			core.drawEquipbox();
-		}
-
-		core.control._replayAction_item = function (action) {
-			if (action.indexOf("item:") != 0) return false;
-			var itemId = action.substring(5);
-			if (!core.canUseItem(itemId)) return false;
-			if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
-				core.useItem(itemId, false, core.replay);
-				return true;
-			}
-			core.status.event.id = "toolbox";
-			core.initThisEventInfo();
-			var info = core.status.thisUIEventInfo;
-			var items = core.getToolboxItems("all");
-			core.setPageItems(1);
-			var index = items.indexOf(itemId) + 1;
-			info.page = Math.ceil(index / info.maxItem);
-			info.index = index % info.maxItem || info.maxItem;
-			core.setIndexAndSelect("select");
-			core.setPageItems(info.page);
-			core.drawToolbox();
-			setTimeout(function () {
-				core.ui.closePanel();
-				core.useItem(itemId, false, core.replay);
-			}, core.control.__replay_getTimeout());
-			return true;
-		}
-
-		core.control._replayAction_equip = function (action) {
-			if (action.indexOf("equip:") != 0) return false;
-			var itemId = action.substring(6);
-			var items = core.getToolboxItems('equips');
-			var index = items.indexOf(itemId) + 1;
-			if (index < 1) {
-				core.removeFlag('__doNotCheckAutoEvents__');
-				return false;
-			}
-
-			var cb = function () {
-				var next = core.status.replay.toReplay[0] || "";
-				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
-					core.removeFlag('__doNotCheckAutoEvents__');
-					core.checkAutoEvents();
-				}
-				core.replay();
-			}
-			core.setFlag('__doNotCheckAutoEvents__', true);
-
-			core.status.route.push(action);
-			if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
-				core.loadEquip(itemId, cb);
-				return true;
-			}
-			core.status.event.id = "equipbox";
-			core.initThisEventInfo();
-			var info = core.status.thisUIEventInfo;
-			core.setPageItems(1);
-			info.page = Math.ceil(index / info.maxItem);
-			info.index = index % info.maxItem || info.maxItem;
-			core.setIndexAndSelect("select");
-			core.setPageItems(info.page);
-			core.drawEquipbox();
-			setTimeout(function () {
-				core.ui.closePanel();
-				core.loadEquip(itemId, cb);
-			}, core.control.__replay_getTimeout());
-			return true;
-		}
-
-		core.control._replayAction_unEquip = function (action) {
-			if (action.indexOf("unEquip:") != 0) return false;
-			var equipType = parseInt(action.substring(8));
-			if (!core.isset(equipType)) {
-				core.removeFlag('__doNotCheckAutoEvents__');
-				return false;
-			}
-
-			var cb = function () {
-				var next = core.status.replay.toReplay[0] || "";
-				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
-					core.removeFlag('__doNotCheckAutoEvents__');
-					core.checkAutoEvents();
-				}
-				core.replay();
-			}
-			core.setFlag('__doNotCheckAutoEvents__', true);
-
-			core.status.route.push(action);
-			if (core.status.replay.speed == 24) {
-				core.unloadEquip(equipType, cb);
-				return true;
-			}
-			core.status.event.id = "equipbox";
-			core.initThisEventInfo();
-			var info = core.status.thisUIEventInfo;
-			core.setPageItems(1);
-			info.select.type = equipType;
-			core.setIndexAndSelect();
-			core.drawEquipbox();
-			setTimeout(function () {
-				core.ui.closePanel();
-				core.unloadEquip(equipType, cb);
-			}, core.control.__replay_getTimeout());
-			return true;
-		}
-		core.registerReplayAction("item", core.control._replayAction_item);
-		core.registerReplayAction("equip", core.control._replayAction_equip);
-		core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
-	},
-	"FloatingText": function () {
+    "FloatingText": function () {
 		// 本插件定义了一些字符绘制相关效果
 
 		const { Animation, linear } = core.plugin.animate;
 		const ctx = 'scrollingText';
 
 		if (!main.replayChecking) {
-			new Animation().ticker.add(() => {
-				core.createCanvas(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 136); //每帧重绘该画布
-			});
+			// new Animation().ticker.add(() => {
+			// 	core.createCanvas(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 136); //每帧重绘该画布
+			// });
 		}
 
 		/**
@@ -3219,7 +2230,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			ani.all().then(() => { ani.ticker.destroy(); });
 		}
 	},
-	"Menu": function () {
+    "Menu": function () {
 		// 本插件定义了一些用于绘制的基类
 		class ButtonBase {
 			constructor(x, y, w, h) {
@@ -3337,7 +2348,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		this.MenuBase = { ButtonBase, MenuBase, MenuPage };
 	},
-	"scrollingText": function () {
+    "scrollingText": function () {
 		// 本插件用于绘制在线留言
 
 		/** 塔的英文名 */
@@ -3525,7 +2536,1181 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-	"setting": function () {
+    "newBackpackLook": function () {
+	// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
+	// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
+
+	///// *** 道具类型
+	// cls对应name
+	var itemClsName = {
+		"constants": "永久道具",
+		"tools": "消耗道具",
+	}
+	// 一页最大放的道具数量 将把整个道具左栏分成num份 每份是一个道具项
+	var itemNum = 12;
+	///// ***
+
+	// 背景设置
+	this.drawBoxBackground = function (ctx) {
+		core.setTextAlign(ctx, "left");
+		core.clearMap(ctx);
+		core.deleteCanvas("_selector");
+		var info = core.status.thisUIEventInfo || {};
+
+		///// *** 背景设置
+		var max = core.__PIXELS__;
+		var x = 2,
+			y = x,
+			w = max - x * 2,
+			h = w;
+		var borderWidth = 2,
+			borderRadius = 5, // radius:圆角矩形的圆角半径
+			borderStyle = "#fff";
+		var backgroundColor = "gray";
+		// 设置背景不透明度(0.85)
+		var backgroundAlpha = 0.85;
+		///// ***
+
+		var start_x = x + borderWidth / 2,
+			start_y = y + borderWidth / 2,
+			width = max - start_x * 2,
+			height = max - start_y * 2;
+
+		// 渐变色背景的一个例子(黑色渐变白色)：
+		// 有关渐变色的具体知识请网上搜索canvas createGradient了解
+		/*
+		   var grd = ctx.createLinearGradient(x, y, x + w, y);
+		   grd.addColorStop(0, "black");
+		   grd.addColorStop(1, "white");
+		   backgroundColor = grd;
+		*/
+		// 使用图片背景要注释掉下面的strokeRect和fillRoundRect
+		// 图片背景的一个例子：
+		/*
+		   core.drawImage(ctx, "xxx.png", x, y, w, h);
+		   core.strokeRect(ctx, x, y, w, h, borderStyle, borderWidth);
+		*/
+		core.setAlpha(ctx, backgroundAlpha);
+		core.strokeRoundRect(ctx, x, y, w, h, borderRadius, borderStyle, borderWidth);
+		core.fillRoundRect(ctx, start_x, start_y, width, height, borderRadius, backgroundColor);
+		core.setAlpha(ctx, 1);
+
+		///// *** 左栏配置
+		var leftbar_height = height;
+		// 左边栏宽度(width*0.6) 本身仅为坐标使用 需要与底下的rightbar_width(width*0.4)同时更改
+		var leftbar_width = width * 0.6;
+		///// ***
+
+		// xxx_right参数 代表最右侧坐标
+		var leftbar_right = start_x + leftbar_width - borderWidth / 2;
+		var leftbar_bottom = start_y + leftbar_height;
+		var leftbar_x = start_x;
+		var leftbar_y = start_y;
+
+		///// *** 道具栏配置
+		var boxName_color = "#fff";
+		var boxName_fontSize = 15;
+		var boxName_font = core.ui._buildFont(boxName_fontSize, true);
+		var arrow_x = 10 + start_x;
+		var arrow_y = 10 + start_y;
+		var arrow_width = 20;
+		var arrow_style = "white";
+		// 暂时只能是1 否则不太行 等待新样板(2.7.3)之后对drawArrow做优化
+		var arrow_lineWidth = 2;
+		// 右箭头
+		var rightArrow_right = leftbar_right - 10;
+		// 道具内栏顶部坐标 本质是通过该项 控制(道具栏顶部文字和箭头)与道具内栏顶部的间隔
+		var itembar_top = arrow_y + 15;
+		///// ***
+
+		var itembar_right = rightArrow_right;
+		var boxName = core.status.event.id == "toolbox" ? "\r[yellow]道具栏\r | 装备栏" : "道具栏 | \r[yellow]装备栏\r";
+		core.drawArrow(ctx, arrow_x + arrow_width, arrow_y, arrow_x, arrow_y, arrow_style, arrow_lineWidth);
+		core.drawArrow(ctx, rightArrow_right - arrow_width, arrow_y, rightArrow_right, arrow_y, arrow_style, arrow_lineWidth);
+		core.setTextAlign(ctx, "center");
+		core.setTextBaseline(ctx, "middle");
+		var changeBox = function () {
+			var id = core.status.event.id;
+			core.closePanel();
+			if (id == "toolbox") core.openEquipbox();
+			else core.openToolbox();
+		}
+		core.fillText(ctx, boxName, (leftbar_right + leftbar_x) / 2, arrow_y + 2, boxName_color, boxName_font);
+
+		///// *** 底栏按钮
+		var pageBtn_radius = 8;
+		// xxx_left 最左侧坐标
+		var pageBtn_left = leftbar_x + 3;
+		var pageBtn_right = leftbar_right - 3;
+		// xxx_bottom 最底部坐标
+		var pageBtn_bottom = leftbar_bottom - 2;
+		var pageBtn_borderStyle = "#fff";
+		var pageBtn_borderWidth = 2;
+		var pageText_color = "#fff";
+		// 底部按钮与上面的道具内栏的间隔大小
+		var bottomSpace = 8;
+		///// ***
+
+		core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
+		var page = info.page || 1;
+		var pageFontSize = pageBtn_radius * 2 - 4;
+		var pageFont = core.ui._buildFont(pageFontSize);
+		core.setPageItems(page);
+		var num = itemNum;
+		if (core.status.event.id == "equipbox") num -= 5;
+		var maxPage = info.maxPage;
+		var pageText = page + " / " + maxPage;
+		core.setTextAlign(ctx, "center");
+		core.setTextBaseline(ctx, "bottom");
+		core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
+		core.addUIEventListener(start_x, start_y, leftbar_right - start_x, arrow_y - start_y + 13, changeBox);
+		var itembar_height = Math.ceil(pageBtn_bottom - pageBtn_radius * 2 - pageBtn_borderWidth / 2 - bottomSpace - itembar_top);
+		var oneItemHeight = (itembar_height - 4) / itemNum;
+		return {
+			x: start_x,
+			y: start_y,
+			width: width,
+			height: height,
+			leftbar_right: leftbar_right,
+			obj: {
+				x: arrow_x,
+				y: itembar_top,
+				width: itembar_right - arrow_x,
+				height: itembar_height,
+				oneItemHeight: oneItemHeight
+			}
+		}
+	}
+
+	this.drawItemListbox = function (ctx, obj) {
+		ctx = ctx || core.canvas.ui;
+		var itembar_x = obj.x,
+			itembar_y = obj.y,
+			itembar_width = obj.width,
+			itembar_height = obj.height,
+			itemNum = obj.itemNum,
+			oneItemHeight = obj.oneItemHeight;
+		var itembar_right = itembar_x + itembar_width;
+		var info = core.status.thisUIEventInfo || {};
+		var obj = {};
+		var page = info.page || 1,
+			index = info.index,
+			select = info.select || {};
+
+		///// *** 道具栏内栏配置
+		var itembar_style = "black";
+		var itembar_alpha = 0.7;
+		// 一个竖屏下减少道具显示的例子:
+		// if (core.domStyle.isVertical) itemNum = 10;
+		// 每个道具项的上下空隙占总高度的比例
+		var itembar_marginHeightRatio = 0.2;
+		// 左右间隔空隙
+		var item_marginLeft = 2;
+		var item_x = itembar_x + 2,
+			item_y = itembar_y + 2,
+			item_right = itembar_right - 2,
+			itemName_color = "#fff";
+		// 修改此项以更换闪烁光标
+		var item_selector = "winskin.png";
+		///// ***
+
+		core.setAlpha(ctx, itembar_alpha);
+		core.fillRect(ctx, itembar_x, itembar_y, itembar_width, itembar_height, itembar_style);
+		core.setAlpha(ctx, 1);
+		var pageItems = core.setPageItems(page);
+		var marginHeight = itembar_marginHeightRatio * oneItemHeight;
+		core.setTextBaseline(ctx, "middle");
+		var originColor = itemName_color;
+		for (var i = 0; i < pageItems.length; i++) {
+			itemName_color = originColor;
+			var item = pageItems[i];
+			// 设置某个的字体颜色的一个例子
+			// if (item.id == "xxx") itemName_color = "green";
+			core.drawItemListbox_drawItem(ctx, item_x, item_right, item_y, oneItemHeight, item_marginLeft, marginHeight, itemName_color, pageItems[i]);
+			if (index == i + 1) core.ui._drawWindowSelector(item_selector, item_x + 1, item_y - 1, item_right - item_x - 2, oneItemHeight - 2);
+			item_y += oneItemHeight;
+		}
+	}
+
+	this.drawToolboxRightbar = function (ctx, obj) {
+		ctx = ctx || core.canvas.ui;
+		var info = core.status.thisUIEventInfo || {};
+		var page = info.page || 1,
+			index = info.index || 1,
+			select = info.select || {};
+		var start_x = obj.x,
+			start_y = obj.y,
+			width = obj.width,
+			height = obj.height;
+		var toolboxRight = start_x + width,
+			toolboxBottom = start_y + height;
+
+
+		///// *** 侧边栏(rightbar)背景设置(物品介绍)
+		var rightbar_width = width * 0.4;
+		var rightbar_height = height;
+		var rightbar_lineWidth = 2;
+		var rightbar_lineStyle = "#fff";
+		///// ***
+
+		var rightbar_x = toolboxRight - rightbar_width - rightbar_lineWidth / 2;
+		var rightbar_y = start_y;
+		core.drawLine(ctx, rightbar_x, rightbar_y, rightbar_x, rightbar_y + rightbar_height, rightbar_lineStyle, rightbar_lineWidth);
+
+		// 获取道具id(有可能为null)
+		var itemId = select.id;
+		var item = core.material.items[itemId];
+
+		///// *** 侧边栏物品Icon信息
+		var iconRect_y = rightbar_y + 10;
+		// space：间距
+		// 这里布局设定iconRect与侧边栏左边框 itemName与工具栏右边框 itemRect与itemName的间距均为space
+		var space = 15;
+		var iconRect_x = rightbar_x + space;
+		var iconRect_radius = 2,
+			iconRect_width = 32,
+			iconRect_height = 32,
+			iconRect_style = "#fff",
+			iconRect_lineWidth = 2;
+		///// ***
+
+		var iconRect_bottom = iconRect_y + iconRect_height,
+			iconRect_right = iconRect_x + iconRect_width;
+
+		///// *** 侧边栏各项信息
+		var itemTextFontSize = 15,
+			itemText_x = iconRect_x - 4,
+			itemText_y = Math.floor(start_y + rightbar_height * 0.25), // 坐标取整防止模糊
+			itemClsFontSize = 15,
+			itemClsFont = core.ui._buildFont(itemClsFontSize),
+			itemClsColor = "#fff",
+			itemCls_x = itemText_x - itemClsFontSize / 2,
+			itemCls_middle = (iconRect_bottom + itemText_y) / 2, //_middle代表文字的中心y坐标
+			itemNameFontSize = 18,
+			itemNameColor = "#fff",
+			itemNameFont = core.ui._buildFont(itemNameFontSize, true);
+		var itemName_x = iconRect_right + space;
+		var itemName_middle = iconRect_y + iconRect_height / 2 + iconRect_lineWidth;
+		// 修改这里可以编辑未选中道具时的默认值
+		var defaultItem = {
+			cls: "constants",
+			name: "未知道具",
+			text: "没有道具最永久"
+		}
+		var defaultEquip = {
+			cls: "equips",
+			name: "未知装备",
+			text: "一无所有，又何尝不是一种装备",
+			equip: {
+				type: "装备"
+			}
+		}
+		///// ***
+
+		var originItem = item;
+		if (core.status.event.id == "equipbox") item = item || defaultEquip;
+		item = item || defaultItem;
+		var itemCls = item.cls,
+			itemName = item.name,
+			itemText = item.text;
+		itemText = core.replaceText(itemText);
+		/* 一个根据道具id修改道具名字(右栏)的例子
+		 * if (item.id == "xxx") itemNameColor = "red";
+		 */
+		var itemClsName = core.getItemClsName(item);
+		var itemNameMaxWidth = rightbar_width - iconRect_width - iconRect_lineWidth * 2 - space * 2;
+		core.strokeRoundRect(ctx, iconRect_x, iconRect_y, iconRect_width, iconRect_height, iconRect_radius, iconRect_style, iconRect_lineWidth);
+		if (item.id)
+			core.drawIcon(ctx, item.id, iconRect_x + iconRect_lineWidth / 2, iconRect_y + iconRect_lineWidth / 2, iconRect_width - iconRect_lineWidth, iconRect_height - iconRect_lineWidth);
+		core.setTextAlign(ctx, "left");
+		core.setTextBaseline(ctx, "middle");
+		core.fillText(ctx, itemName, itemName_x, itemName_middle, itemNameColor, itemNameFont, itemNameMaxWidth);
+		core.fillText(ctx, "【" + itemClsName + "】", itemCls_x, itemCls_middle, itemClsColor, itemClsFont);
+		var statusText = "";
+		if (core.status.event.id == "equipbox") {
+			var type = item.equip.type;
+			if (typeof type == "string") type = core.getEquipTypeByName(type);
+			var compare = core.compareEquipment(item.id, core.getEquip(type));
+			if (info.select.action == "unload") compare = core.compareEquipment(null, item.id);
+			// --- 变化值...
+			for (var name in core.status.hero) {
+				if (typeof core.status.hero[name] != 'number') continue;
+				var nowValue = core.getRealStatus(name);
+				// 查询新值
+				var newValue = Math.floor((core.getStatus(name) + (compare.value[name] || 0)) *
+					(core.getBuff(name) * 100 + (compare.percentage[name] || 0)) / 100);
+				if (nowValue == newValue) continue;
+				var color = newValue > nowValue ? '#00FF00' : '#FF0000';
+				nowValue = core.formatBigNumber(nowValue);
+				newValue = core.formatBigNumber(newValue);
+				statusText += core.getStatusLabel(name) + " " + nowValue + "->\r[" + color + "]" + newValue + "\r\n";
+			}
+		}
+		itemText = statusText + itemText;
+		core.drawTextContent(ctx, itemText, {
+			left: itemText_x,
+			top: itemText_y,
+			bold: false,
+			color: "white",
+			align: "left",
+			fontSize: itemTextFontSize,
+			maxWidth: rightbar_width - (itemText_x - rightbar_x) * 2 + itemTextFontSize / 2
+		});
+
+		///// *** 退出按钮设置
+		var btnRadius = 10;
+		var btnBorderWidth = 2;
+		var btnRight = toolboxRight - 2;
+		var btnBottom = toolboxBottom - 2;
+		var btnBorderStyle = "#fff";
+		///// ***
+
+		// 获取圆心位置
+		var btn_x = btnRight - btnRadius - btnBorderWidth / 2;
+		btn_y = btnBottom - btnRadius - btnBorderWidth / 2;
+		core.drawToolbox_setExitBtn(ctx, btn_x, btn_y, btnRadius, btnBorderStyle, btnBorderWidth);
+
+		///// *** 使用按钮设置
+		var useBtnHeight = btnRadius * 2;
+		// 这里不设置useBtnWidth而是根据各项数据自动得出width
+		var useBtnRadius = useBtnHeight / 4;
+		var useBtn_x = rightbar_x + 4,
+			useBtn_y = btnBottom - useBtnHeight;
+		var useBtnBorderStyle = "#fff";
+		var useBtnBorderWidth = btnBorderWidth;
+		const batchUseBtn_x = useBtn_x + 50; // 个人觉得，搞这么多参数还不如硬编码
+		const hideBtn_y = useBtn_y - useBtnHeight - 8;
+		///// ***
+
+		core.drawToolbox_setUseBtn(ctx, useBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
+		if (core.status.event.id === 'toolbox') {
+			drawToolbox_setBatchUseBtn(ctx, batchUseBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
+		}
+		drawToolbox_setHideBtn(ctx, useBtn_x, hideBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
+		drawToolbox_setShowHideBtn(ctx, rightbar_x, useBtn_y,  useBtnHeight, useBtnBorderStyle);
+	}
+
+	this.drawEquipbox_drawOthers = function (ctx, obj) {
+		var info = core.status.thisUIEventInfo;
+
+		///// *** 装备格设置
+		var equipList_lineWidth = 2;
+		var equipList_boxSize = 32;
+		var equipList_borderWidth = 2;
+		var equipList_borderStyle = "#fff";
+		var equipList_nameColor = "#fff";
+		///// ***
+
+		var equipList_x = obj.x + 4,
+			equipList_bottom = obj.obj.y - equipList_lineWidth,
+			equipList_y = equipList_bottom - obj.obj.oneItemHeight * reduceItem - 2,
+			equipList_height = equipList_bottom - equipList_y;
+		var equipList_right = obj.leftbar_right,
+			equipList_width = equipList_right - equipList_x;
+		core.drawLine(ctx, obj.x, equipList_bottom + equipList_lineWidth / 2, equipList_right, equipList_bottom + equipList_lineWidth / 2, equipList_borderStyle, equipList_lineWidth);
+		var toDrawList = core.status.globalAttribute.equipName,
+			len = toDrawList.length;
+
+		///// *** 装备格设置
+		var maxItem = 4;
+		var box_width = 32,
+			box_height = 32,
+			box_borderStyle = "#fff",
+			box_selectBorderStyle = "gold", // 选中的装备格的颜色
+			box_borderWidth = 2;
+		var boxName_fontSize = 14,
+			boxName_space = 2,
+			boxName_color = "#fff"; // 装备格名称与上面的装备格框的距离
+		var maxLine = Math.ceil(len / maxItem);
+		///// ***
+		var l = Math.sqrt(len)
+		if (Math.pow(l) == len && len != 4) {
+			if (l <= maxItem) maxItem = l;
+		}
+		maxItem = Math.min(toDrawList.length, maxItem);
+		info.equips = maxItem;
+
+		var boxName_font = core.ui._buildFont(boxName_fontSize);
+		// 总宽高减去所有装备格宽高得到空隙大小
+		var oneBoxWidth = box_width + box_borderWidth * 2;
+		var oneBoxHeight = box_height + boxName_fontSize + boxName_space + 2 * box_borderWidth;
+		var space_y = (equipList_height - maxLine * oneBoxHeight) / (1 + maxLine),
+			space_x = (equipList_width - maxItem * oneBoxWidth) / (1 + maxItem);
+		var box_x = equipList_x + space_x,
+			box_y = equipList_y + space_y;
+		for (var i = 0; i < len; i++) {
+			var id = core.getEquip(i),
+				name = toDrawList[i];
+			var selectBorder = false;
+			if (core.status.thisUIEventInfo.select.type == i) selectBorder = true;
+			var borderStyle = selectBorder ? box_selectBorderStyle : box_borderStyle;
+			core.drawEquipbox_drawOne(ctx, name, id, box_x, box_y, box_width, box_height, boxName_space, boxName_font, boxName_color, borderStyle, box_borderWidth);
+			var todo = new Function("core.clickOneEquipbox('" + id + "'," + i + ")");
+			core.addUIEventListener(box_x - box_borderWidth / 2, box_y - box_borderWidth / 2, oneBoxWidth, oneBoxHeight, todo);
+			box_x += space_x + oneBoxWidth;
+			if ((i + 1) % maxItem == 0) {
+				box_x = equipList_x + space_x;
+				box_y += space_y + oneBoxHeight;
+			}
+		}
+	}
+
+	this.drawToolbox = function (ctx) {
+		ctx = ctx || core.canvas.ui;
+		core.status.thisEventClickArea = [];
+
+		var info = core.drawBoxBackground(ctx);
+		info.itemNum = itemNum;
+		core.drawItemListbox(ctx, info.obj);
+		core.drawToolboxRightbar(ctx, info);
+		core.setTextBaseline(ctx, "alphabetic");
+		core.setTextAlign("left");
+	}
+
+	var reduceItem = 4;
+	this.drawEquipbox = function (ctx) {
+		ctx = ctx || core.canvas.ui;
+		core.status.thisEventClickArea = [];
+		var info = core.drawBoxBackground(ctx);
+		info.itemNum = itemNum - reduceItem;
+		info.obj.y += info.obj.oneItemHeight * reduceItem;
+		info.obj.height -= info.obj.oneItemHeight * reduceItem;
+		core.drawItemListbox(ctx, info.obj);
+		core.drawEquipbox_drawOthers(ctx, info);
+		core.drawToolboxRightbar(ctx, info);
+		core.setTextBaseline(ctx, "alphabetic");
+		core.setTextAlign("left");
+	}
+
+
+	this.drawEquipbox_drawOne = function (ctx, name, id, x, y, width, height, space, font, color, style, lineWidth) {
+		if (id) core.drawIcon(ctx, id, x + lineWidth / 2, y + lineWidth / 2, width, height);
+		core.strokeRect(ctx, x, y, width + lineWidth, height + lineWidth, style, lineWidth);
+		core.setTextAlign(ctx, "center");
+		core.setTextBaseline(ctx, "top");
+		var tx = (x + x + lineWidth / 2 + width) / 2,
+			ty = y + height + lineWidth / 2 * 3 + space;
+		core.fillText(ctx, name, tx, ty, color, font);
+		core.setTextBaseline(ctx, "alphabetic");
+		core.setTextAlign("left");
+	}
+
+	this.drawItemListbox_drawItem = function (ctx, left, right, top, height, marginLeft, marginHeight, style, id) {
+		var info = core.status.thisUIEventInfo;
+		var nowClick = info.index;
+		var item = core.material.items[id] || {};
+		var name = item.name || "???";
+		var num = core.itemCount(id) || 0;
+		var fontSize = Math.floor(height - marginHeight * 2);
+		core.setTextAlign(ctx, "right");
+		var numText = "x" + num;
+		core.fillText(ctx, numText, right - marginLeft, top + height / 2, style, core.ui._buildFont(fontSize));
+
+		const hideInfo = core.getFlag('hideInfo', {});
+		if (item && (hideInfo.hasOwnProperty(id) ? hideInfo[id] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
+
+		if (name != "???") core.drawIcon(ctx, id, left + marginLeft, top + marginHeight, fontSize, fontSize);
+		var text_x = left + marginLeft + fontSize + 2;
+		var maxWidth = right - core.calWidth(ctx, numText) - text_x;
+		core.setTextAlign(ctx, "left");
+		core.fillText(ctx, name, text_x, top + height / 2, style, core.ui._buildFont(fontSize), maxWidth);
+		core.setAlpha(ctx, 1);
+
+		var todo = new Function("core.clickItemFunc('" + id + "');");
+		core.addUIEventListener(left, top, right - left, height, todo);
+	}
+
+	this.setPageItems = function (page) {
+		var num = itemNum;
+		if (core.status.event.id == "equipbox") num -= reduceItem;
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		page = page || info.page;
+		var items = core.getToolboxItems(core.status.event.id == "toolbox" ? "all" : "equips", core.getFlag('showHideItem', false));
+		info.allItems = items;
+		var maxPage = Math.ceil(items.length / num);
+		info.maxPage = maxPage;
+		var pageItems = items.slice((page - 1) * num, page * num);
+		info.pageItems = pageItems;
+		info.maxItem = pageItems.length;
+		if (items.length == 0 && pageItems.length == 0) info.index = null;
+		if (pageItems.length == 0 && info.page > 1) {
+			info.page = Math.max(1, info.page - 1);
+			return core.setPageItems(info.page);
+		}
+		return pageItems;
+	}
+
+	this.drawToolbox_setExitBtn = function (ctx, x, y, r, style, lineWidth) {
+		core.strokeCircle(ctx, x, y, r, style, lineWidth);
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		var textSize = Math.sqrt(2) * r;
+		core.fillText(ctx, "x", x, y, style, core.ui._buildFont(textSize), textSize);
+		core.setTextAlign(ctx, "start");
+		core.setTextBaseline(ctx, "top");
+
+		var todo = function () {
+			core.closePanel();
+		}
+		core.addUIEventListener(x - r, y - r, r * 2, r * 2, todo);
+	}
+
+	this.drawToolbox_setUseBtn = function (ctx, x, y, r, h, style, lineWidth) {
+		core.setTextAlign(ctx, "left");
+		core.setTextBaseline(ctx, "top");
+		var fontSize = h - 4;
+		var font = core.ui._buildFont(fontSize);
+		var text = core.status.event.id == "toolbox" ? "使用" : "装备";
+		if (core.status.thisUIEventInfo.select.action == "unload") text = "卸下";
+		var w = core.calWidth(ctx, text, font) + 2 * r + lineWidth / 2;
+
+		core.strokeRoundRect(ctx, x, y, w, h, r, style, lineWidth);
+		core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
+
+		var todo = function () {
+			core.useSelectItemInBox();
+		}
+		core.addUIEventListener(x, y, w, h, todo);
+	}
+
+	function getSelectedItem() {
+		var info = core.status.thisUIEventInfo;
+		if (!(info && info.select.id && core.status.event.id == "toolbox")) {
+			core.drawFailTip('发生了未知错误！');
+			return;
+		}
+		return info.select.id;
+	}
+
+	function batchUse(item,count){
+		try {
+			const itemCount = core.itemCount(id);
+			if (eval(core.material.items[item].noBatchUse)) {
+				core.drawFailTip('该道具不能被批量使用！');
+				return;
+			}
+			if (count > itemCount) count = itemCount;
+			core.closePanel();
+			for (let i = 0; i < count; i++) {
+				if (core.canUseItem(item)) core.useItem(item);
+				else return;
+			}
+		}
+		catch (e) {
+			console.log(e);
+			core.drawFailTip('批量使用时出现未知错误！');
+		}
+	}
+
+	function drawToolbox_setBatchUseBtn(ctx, x, y, r, h, style, lineWidth) {
+		core.setTextAlign(ctx, "left");
+		core.setTextBaseline(ctx, "top");
+		var fontSize = h - 4;
+		var font = core.ui._buildFont(fontSize);
+		var text = "批量使用";
+		var w = core.calWidth(ctx, text, font) + 2 * r + lineWidth / 2;
+
+		core.strokeRoundRect(ctx, x, y, w, h, r, style, lineWidth);
+		core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
+
+		var todo = function () {
+			core.utils.myprompt('输入要使用该物品的次数(0~99)。 请勿对不适合重复使用的物品这么做。', null, (value) => {
+
+				value = parseInt(value);
+				var id = getSelectedItem();
+
+				if (Number.isNaN(value) || value < 0 || value > 99) {
+					core.drawFailTip('输入不合法！');
+					return;
+				}
+				if (!core.canUseItem(id)) {
+					core.drawFailTip('当前无法使用该道具！');
+					return;
+				}
+				core.closePanel();
+				batchUse(id, value);
+			});
+		}
+		core.addUIEventListener(x, y, w, h, todo);
+	}
+
+	function drawToolbox_setHideBtn(ctx, x, y, r, h, style, lineWidth) {
+		core.setTextAlign(ctx, "left");
+		core.setTextBaseline(ctx, "top");
+		var fontSize = h - 4;
+		var font = core.ui._buildFont(fontSize);
+		var text = "显示/隐藏";
+		var w = core.calWidth(ctx, text, font) + 2 * r + lineWidth / 2;
+
+		core.strokeRoundRect(ctx, x, y, w, h, r, style, lineWidth);
+		core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
+
+		var todo = function () {
+			var id = getSelectedItem();
+			let hideInfo = core.getFlag('hideInfo', {});
+			console.log(id);
+			if (hideInfo.hasOwnProperty(id)) {
+				hideInfo[id] = !hideInfo[id];
+				core.setFlag('hideInfo', hideInfo);
+			}
+			else {
+				hideInfo[id] = !core.material.items[id].hideInToolbox;
+				core.setFlag('hideInfo', hideInfo);
+			}
+			core.plugin.drawToolbox();
+		}
+		core.addUIEventListener(x, y, w, h, todo);
+	}
+
+	ui.prototype.getToolboxItems = function (cls, showHide) {
+		let list = Object.keys(core.status.hero.items[cls] || {});;
+		if (cls === 'all') {
+			for (let name in core.status.hero.items) {
+				if (name == "equips") continue;
+				list = list.concat(Object.keys(core.status.hero.items[name])); // 获取'constants'和'tools'整体的列表
+			}
+			if (!showHide) list = list.filter(function (id) {
+				const hideInfo = core.getFlag('hideInfo',{});
+				//if (id === 'yellowKey') debugger;
+				if (hideInfo.hasOwnProperty(id)) return !hideInfo[id];
+				else return !core.material.items[id].hideInToolbox;
+			})
+			list = list.sort();
+			return list;
+		}
+
+		if (this.uidata.getToolboxItems) {
+			return this.uidata.getToolboxItems(cls, showHide);
+		}
+		if (!showHide) list = list.filter(function (id) {
+			return !core.material.items[id].hideInToolbox;
+		})
+		list = list.sort();
+		return list;
+	}
+
+	function drawToolbox_setShowHideBtn(ctx, x, y, h, style) {
+		core.setTextAlign(ctx, "left");
+		core.setTextBaseline(ctx, "top");
+		var fontSize = h - 6;
+		var font = core.ui._buildFont(fontSize);
+		var text = "显示隐藏";
+		var w = core.calWidth(ctx, text, font)
+		h += 4;
+		const squareSize = h - 6;
+
+		x -= w + squareSize + 26;
+
+		const border = 2;
+		core.fillRect(ctx, x, y, squareSize, squareSize, ' #F5F5F5');
+		if (core.hasFlag('showHideItem')) {
+			core.fillRect(ctx, x + border, y + border, squareSize - 2 * border, squareSize - 2 * border, 'lime');
+		}
+		// core.strokeRect(ctx, x, y, w, h, style);
+		core.fillText(ctx, text, x + squareSize + 2, y + 4, style, font);
+
+		var todo = function () {
+			core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
+			core.plugin.drawToolbox();
+			//core.useSelectItemInBox();
+		}
+		core.addUIEventListener(x, y, w, h, todo);
+	}
+
+	this.drawItemListbox_setPageBtn = function (ctx, left, right, bottom, r, style, lineWidth) {
+		var offset = lineWidth / 2 + r;
+
+		var x = left + offset;
+		var y = bottom - offset;
+		var pos = Math.sqrt(2) / 2 * (r - lineWidth / 2);
+		core.fillPolygon(ctx, [
+			[x - pos, y],
+			[x + pos - 2, y - pos],
+			[x + pos - 2, y + pos]
+		], style);
+		core.strokeCircle(ctx, x, y, r, style, lineWidth);
+		var todo = function () {
+			core.addItemListboxPage(-1);
+		}
+		core.addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
+
+		x = right - offset;
+		core.fillPolygon(ctx, [
+			[x + pos, y],
+			[x - pos + 2, y - pos],
+			[x - pos + 2, y + pos]
+		], style);
+		core.strokeCircle(ctx, x, y, r, style, lineWidth);
+		var todo = function () {
+			core.addItemListboxPage(1);
+		}
+		core.addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
+	}
+
+	this.clickItemFunc = function (id) {
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		if (info.select.id == id) return core.useSelectItemInBox();
+		info.select = {};
+		info.select.id = id;
+		core.setIndexAndSelect('index');
+		core.refreshBox();
+	}
+
+	this.clickOneEquipbox = function (id, type) {
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		if (info.select.id == id && info.select.type == type) core.useSelectItemInBox();
+		else core.status.thisUIEventInfo.select = {
+			id: id,
+			type: type,
+			action: "unload"
+		}
+		return core.refreshBox();
+	}
+
+	// core.ui.getToolboxItems = function (cls) {
+	// 	var list = Object.keys(core.status.hero.items[cls] || {});
+	// 	if (cls == "all") {
+	// 		for (var name in core.status.hero.items) {
+	// 			if (name == "equips") continue;
+	// 			list = list.concat(Object.keys(core.status.hero.items[name]));
+	// 		}
+	// 		return list.filter(function (id) {
+	// 			return !core.material.items[id].hideInToolbox;
+	// 		}).sort();
+	// 	}
+
+	// 	if (this.uidata.getToolboxItems) {
+	// 		return this.uidata.getToolboxItems(cls);
+	// 	}
+	// 	return list.filter(function (id) {
+	// 		return !core.material.items[id].hideInToolbox;
+	// 	}).sort();
+	// }
+
+	this.useSelectItemInBox = function () {
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		if (!info.select.id) return;
+		var id = info.select.id;
+		if (core.status.event.id == "toolbox") {
+			core.events.tryUseItem(id);
+			// core.closePanel();
+		} else if (core.status.event.id == "equipbox") {
+			var action = info.select.action || "load";
+			info.index = 1;
+			if (action == "load") {
+				var type = core.getEquipTypeById(id);
+				core.loadEquip(id, function () {
+					core.status.route.push("equip:" + id);
+					info.select.type = type;
+					core.setIndexAndSelect("select");
+					core.drawEquipbox();
+				});
+			} else {
+				var type = info.select.type;
+				core.unloadEquip(type, function () {
+					core.status.route.push("unEquip:" + type);
+					info.select.type = type;
+					//info.select.action = 'load'
+					core.setIndexAndSelect("select");
+					core.drawEquipbox();
+				});
+			}
+		}
+	}
+
+	this.setIndexAndSelect = function (toChange) {
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		core.setPageItems(info.page);
+		var index = info.index || 1;
+		var items = info.pageItems;
+		if (info.select.type != null) {
+			var type = info.select.type;
+			id = core.getEquip(type);
+			info.index = null;
+			info.select = {
+				id: id,
+				action: "unload",
+				type: type
+			};
+			return;
+		} else {
+			info.select.action = null;
+			info.select.type = null;
+			if (toChange == "index") info.index = items.indexOf(info.select.id) + 1;
+			info.select.id = items[info.index - 1];
+		}
+
+	}
+
+	this.addItemListboxPage = function (num) {
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		var maxPage = info.maxPage || 1;
+		info.page = info.page || 1;
+		info.page += num;
+		if (info.page <= 0) info.page = maxPage;
+		if (info.page > maxPage) info.page = 1;
+		info.index = 1;
+		core.setPageItems(info.page);
+		core.setIndexAndSelect("select");
+		core.refreshBox();
+	}
+
+	this.addItemListboxIndex = function (num) {
+		var info = core.status.thisUIEventInfo;
+		if (!info) return;
+		var maxItem = info.maxItem || 0;
+		info.index = info.index || 0;
+		info.index += num;
+		if (info.index <= 0) info.index = 1;
+		if (info.index > maxItem) info.index = maxItem;
+		core.setIndexAndSelect("select");
+		core.refreshBox();
+	}
+
+	this.addEquipboxType = function (num) {
+		var info = core.status.thisUIEventInfo;
+		var type = info.select.type;
+		if (type == null && num > 0) info.select.type = 0;
+		else info.select.type = type + num;
+		var max = core.status.globalAttribute.equipName.length;
+		if (info.select.type >= max) {
+			info.select = {};
+			core.setIndexAndSelect("select")
+			return core.addItemListboxPage(0);
+		} else {
+			var m = Math.abs(info.select.type);
+			if (info.select.type < 0) info.select.type = max - m;
+			core.setIndexAndSelect("select")
+			core.refreshBox();
+			return;
+		}
+	}
+
+	core.actions._keyDownToolbox = function (keycode) {
+		if (!core.status.thisEventClickArea) return;
+		if (keycode == 37) { // left
+			core.addItemListboxPage(-1);
+			return;
+		}
+		if (keycode == 38) { // up
+			core.addItemListboxIndex(-1);
+			return;
+		}
+		if (keycode == 39) { // right
+			core.addItemListboxPage(1);
+			return;
+		}
+		if (keycode == 40) { // down
+			core.addItemListboxIndex(1);
+			return;
+		}
+	}
+
+	////// 工具栏界面时，放开某个键的操作 //////
+	core.actions._keyUpToolbox = function (keycode) {
+		if (keycode == 81) {
+			core.ui.closePanel();
+			if (core.isReplaying())
+				core.control._replay_equipbox();
+			else
+				core.openEquipbox();
+			return;
+		}
+		if (keycode == 84 || keycode == 27 || keycode == 88) {
+			core.closePanel();
+			return;
+		}
+		if (keycode == 13 || keycode == 32 || keycode == 67) {
+			var info = core.status.thisUIEventInfo;
+			if (info.select) {
+				core.useSelectItemInBox();
+			}
+			return;
+		}
+	}
+
+	core.actions._keyDownEquipbox = function (keycode) {
+		if (!core.status.thisEventClickArea) return;
+		if (keycode == 37) { // left
+			var info = core.status.thisUIEventInfo;
+			if (info.index != null) return core.addItemListboxPage(-1);
+			return core.addEquipboxType(-1);
+		}
+		if (keycode == 38) { // up
+			var info = core.status.thisUIEventInfo;
+			if (info.index == 1) {
+				info.select.type = core.status.globalAttribute.equipName.length - 1;
+				core.setIndexAndSelect();
+				return core.refreshBox();
+			}
+			if (info.index) return core.addItemListboxIndex(-1);
+			return core.addEquipboxType(-1 * info.equips);
+		}
+		if (keycode == 39) { // right
+			var info = core.status.thisUIEventInfo;
+			if (info.index != null) return core.addItemListboxPage(1);
+			return core.addEquipboxType(1);
+		}
+		if (keycode == 40) { // down
+			var info = core.status.thisUIEventInfo;
+			if (info.index) return core.addItemListboxIndex(1);
+			return core.addEquipboxType(info.equips);
+		}
+	}
+
+	core.actions._keyUpEquipbox = function (keycode, altKey) {
+		if (altKey && keycode >= 48 && keycode <= 57) {
+			core.items.quickSaveEquip(keycode - 48);
+			return;
+		}
+		if (keycode == 84) {
+			core.ui.closePanel();
+			if (core.isReplaying())
+				core.control._replay_toolbox();
+			else
+				core.openToolbox();
+			return;
+		}
+		if (keycode == 81 || keycode == 27 || keycode == 88) {
+			core.closePanel();
+			return;
+		}
+		if (keycode == 13 || keycode == 32 || keycode == 67) {
+			var info = core.status.thisUIEventInfo;
+			if (info.select) core.useSelectItemInBox();
+			return;
+		}
+	}
+
+	core.registerAction("ondown", "inEventClickAction", function (x, y, px, py) {
+		if (!core.status.thisEventClickArea) return false;
+		var info = core.status.thisEventClickArea;
+		for (var i = 0; i < info.length; i++) {
+			var obj = info[i];
+			if (px >= obj.x && px <= obj.x + obj.width && py > obj.y && py < obj.y + obj.height) {
+				if (obj.todo) obj.todo();
+				break;
+			}
+		}
+		return true;
+	}, 51);
+	core.registerAction("onclick", "stopClick", function () {
+		if (core.status.thisEventClickArea) return true;
+	}, 51);
+
+	this.addUIEventListener = function (x, y, width, height, todo) {
+		if (!core.status.thisEventClickArea) return;
+		var obj = {
+			x: x,
+			y: y,
+			width: width,
+			height: height,
+			todo: todo
+		}
+		core.status.thisEventClickArea.push(obj);
+	}
+
+	this.initThisEventInfo = function () {
+		core.status.thisUIEventInfo = {
+			page: 1,
+			select: {}
+		};
+		core.status.thisEventClickArea = [];
+	}
+
+	this.refreshBox = function () {
+		if (!core.status.event.id) return;
+		if (core.status.event.id == "toolbox") core.drawToolbox();
+		else core.drawEquipbox();
+	}
+
+	core.ui.closePanel = function () {
+		if (core.status.hero && core.status.hero.flags) {
+			// 清除全部临时变量
+			Object.keys(core.status.hero.flags).forEach(function (name) {
+				if (name.startsWith("@temp@") || /^arg\d+$/.test(name)) {
+					delete core.status.hero.flags[name];
+				}
+			});
+		}
+		this.clearUI();
+		core.maps.generateGroundPattern();
+		core.updateStatusBar(true);
+		core.unlockControl();
+		core.status.event.data = null;
+		core.status.event.id = null;
+		core.status.event.selection = null;
+		core.status.event.ui = null;
+		core.status.event.interval = null;
+		core.status.thisUIEventInfo = null;
+		core.status.thisEventClickArea = null
+	}
+
+	this.getItemClsName = function (item) {
+		if (item == null) return itemClsName;
+		if (item.cls == "equips") {
+			if (typeof item.equip.type == "string") return item.equip.type;
+			var type = core.getEquipTypeById(item.id);
+			return core.status.globalAttribute.equipName[type];
+		} else return itemClsName[item.cls] || item.cls;
+	}
+
+	core.events.openToolbox = function (fromUserAction) {
+		if (core.isReplaying()) return;
+		if (!this._checkStatus('toolbox', fromUserAction)) return;
+		core.initThisEventInfo();
+		let info = core.status.thisUIEventInfo
+		info.index = 1
+		core.setIndexAndSelect('select')
+		core.drawToolbox();
+	}
+
+	core.events.openEquipbox = function (fromUserAction) {
+		if (core.isReplaying()) return;
+		if (!this._checkStatus('equipbox', fromUserAction)) return;
+		core.initThisEventInfo();
+		let info = core.status.thisUIEventInfo
+		info.select.type = 0
+		core.setIndexAndSelect('select')
+		core.drawEquipbox();
+	}
+
+	core.control._replay_toolbox = function () {
+		if (!core.isPlaying() || !core.isReplaying()) return;
+		if (!core.status.replay.pausing) return core.drawTip("请先暂停录像");
+		if (core.isMoving() || core.status.replay.animate || core.status.event.id)
+			return core.drawTip("请等待当前事件的处理结束");
+
+		core.lockControl();
+		core.status.event.id = 'toolbox';
+		core.drawToolbox();
+	}
+
+	core.control._replay_equipbox = function () {
+		if (!core.isPlaying() || !core.isReplaying()) return;
+		if (!core.status.replay.pausing) return core.drawTip("请先暂停录像");
+		if (core.isMoving() || core.status.replay.animate || core.status.event.id)
+			return core.drawTip("请等待当前事件的处理结束");
+
+		core.lockControl();
+		core.status.event.id = 'equipbox';
+		core.drawEquipbox();
+	}
+
+	core.control._replayAction_item = function (action) {
+		if (action.indexOf("item:") != 0) return false;
+		var itemId = action.substring(5);
+		if (!core.canUseItem(itemId)) return false;
+		if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
+			core.useItem(itemId, false, core.replay);
+			return true;
+		}
+		core.status.event.id = "toolbox";
+		core.initThisEventInfo();
+		var info = core.status.thisUIEventInfo;
+		var items = core.getToolboxItems("all", core.getFlag('showHideItem', false));
+		core.setPageItems(1);
+		var index = items.indexOf(itemId) + 1;
+		info.page = Math.ceil(index / info.maxItem);
+		info.index = index % info.maxItem || info.maxItem;
+		core.setIndexAndSelect("select");
+		core.setPageItems(info.page);
+		core.drawToolbox();
+		setTimeout(function () {
+			core.ui.closePanel();
+			core.useItem(itemId, false, core.replay);
+		}, core.control.__replay_getTimeout());
+		return true;
+	}
+
+	core.control._replayAction_equip = function (action) {
+		if (action.indexOf("equip:") != 0) return false;
+		var itemId = action.substring(6);
+		var items = core.getToolboxItems('equips');
+		var index = items.indexOf(itemId) + 1;
+		if (index < 1) {
+			core.removeFlag('__doNotCheckAutoEvents__');
+			return false;
+		}
+
+		var cb = function () {
+			var next = core.status.replay.toReplay[0] || "";
+			if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+				core.removeFlag('__doNotCheckAutoEvents__');
+				core.checkAutoEvents();
+			}
+			core.replay();
+		}
+		core.setFlag('__doNotCheckAutoEvents__', true);
+
+		core.status.route.push(action);
+		if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
+			core.loadEquip(itemId, cb);
+			return true;
+		}
+		core.status.event.id = "equipbox";
+		core.initThisEventInfo();
+		var info = core.status.thisUIEventInfo;
+		core.setPageItems(1);
+		info.page = Math.ceil(index / info.maxItem);
+		info.index = index % info.maxItem || info.maxItem;
+		core.setIndexAndSelect("select");
+		core.setPageItems(info.page);
+		core.drawEquipbox();
+		setTimeout(function () {
+			core.ui.closePanel();
+			core.loadEquip(itemId, cb);
+		}, core.control.__replay_getTimeout());
+		return true;
+	}
+
+	core.control._replayAction_unEquip = function (action) {
+		if (action.indexOf("unEquip:") != 0) return false;
+		var equipType = parseInt(action.substring(8));
+		if (!core.isset(equipType)) {
+			core.removeFlag('__doNotCheckAutoEvents__');
+			return false;
+		}
+
+		var cb = function () {
+			var next = core.status.replay.toReplay[0] || "";
+			if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+				core.removeFlag('__doNotCheckAutoEvents__');
+				core.checkAutoEvents();
+			}
+			core.replay();
+		}
+		core.setFlag('__doNotCheckAutoEvents__', true);
+
+		core.status.route.push(action);
+		if (core.status.replay.speed == 24) {
+			core.unloadEquip(equipType, cb);
+			return true;
+		}
+		core.status.event.id = "equipbox";
+		core.initThisEventInfo();
+		var info = core.status.thisUIEventInfo;
+		core.setPageItems(1);
+		info.select.type = equipType;
+		core.setIndexAndSelect();
+		core.drawEquipbox();
+		setTimeout(function () {
+			core.ui.closePanel();
+			core.unloadEquip(equipType, cb);
+		}, core.control.__replay_getTimeout());
+		return true;
+	}
+	core.registerReplayAction("item", core.control._replayAction_item);
+	core.registerReplayAction("equip", core.control._replayAction_equip);
+	core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
+},
+    "setting": function () {
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方
 
@@ -4535,12 +4720,352 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏 手动hide无用道具
 		// todolist 内置ATRI 解决连通性问题
 		// todolist 血瓶宝石显示数据 解决浏览地图和楼传显示错误 引入自动配置值的块 √
-		// todolist 存读档过程保存图块连通性（可选）
-		// todolist 清怪检测，重开杖，吸噬 × 有人需要？？
+		// todolist 存读档过程保存图块连通性（可选）√
+		// todolist 清怪检测，重开杖，吸噬 × 有人需要？？不需要
 		// todolist 修复已知的插件bug
 		// todolist 添加鸽窝样板的快速读取撤回 和 优化美工
 		// todolist 音效连续播放的优化（与自动清有关）
 		// todolist 新的临界计算
 		// todolist 微调BGM播放
+	},
+    "temp1": function () {
+	return;
+	// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
+	// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
+
+	///// *** 道具类型
+	// cls对应name
+	const itemClsName = {
+		"constants": "永久道具",
+		"tools": "消耗道具",
 	}
+	// 一页最大放的道具数量 将把整个道具左栏分成num份 每份是一个道具项
+	const itemNum = 12;
+	///// ***
+
+	class ButtonBase {
+		constructor(x, y, w, h) {
+			this.x = x;
+			this.y = y;
+			this.w = w;
+			this.h = h;
+			this.disable = false;
+
+			/** 所在的Menu，用于触发重绘等事件 */
+			this.menu;
+
+			this.draw = (ctx) => {};
+			this.event = (x, y, px, py) => {};
+			this.status;
+		}
+	}
+
+	class MenuBase {
+		constructor(name) {
+			/** name */
+			this.name = name;
+			/** btnList */
+			this.btnList = new Map();
+			/** keyEvent */
+			this.keyEvent = () => {};
+			/** clickEvent */
+			this.clickEvent = (x, y, px, py) => {
+				this.btnList.forEach((btn) => {
+					if (btn.disable) return;
+					if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+						btn.event(x, y, px, py);
+					}
+				});
+			}
+		}
+
+		initBtnList(arr) {
+			this.btnList = new Map(arr);
+			this.btnList.forEach((button) => {
+				button.menu = this;
+			})
+		}
+
+		drawButtonContent() {
+			this.btnList.forEach((button) => {
+				if (!button.disable) button.draw(this.name);
+			})
+		}
+
+		drawContent() {
+			core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
+			this.drawButtonContent(this.name);
+		}
+
+		beginListen() {
+			core.registerAction('keyDown', this.name, this.keyEvent, 100);
+			core.registerAction('ondown', this.name, this.clickEvent, 100);
+
+		}
+
+		endListen() {
+			core.unregisterAction('keyDown', this.name);
+			core.unregisterAction('ondown', this.name);
+		}
+
+		clear() {
+			this.endListen();
+			core.deleteCanvas(this.name);
+		}
+
+		init() {
+			this.beginListen();
+			this.drawContent();
+		}
+	}
+	class MenuPage extends MenuBase {
+		constructor(pageList, currPage, ctx) {
+			super(ctx);
+			/**
+			 * 当前页面列表
+			 * @type {Array<MenuBase>}
+			 */
+			this.pageList = pageList;
+			/**
+			 * 当前页的序号
+			 * @type {number}
+			 */
+			this.currPage = currPage | 0;
+		}
+
+		initOnePage(index) {
+			if (!core.isset(index)) index = this.currPage;
+			this.pageList[index].init();
+		}
+
+		changePage(num) {
+			if (num !== this.currPage) {
+				const beforeMenu = this.pageList[this.currPage];
+				beforeMenu.clear();
+			}
+			this.currPage = num;
+			this.initOnePage();
+		}
+
+		pageDown() {
+			if (this.currPage > 0) this.changePage(this.currPage - 1);
+		}
+
+		pageUp() {
+			if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
+		}
+
+		clear() {
+			this.pageList.forEach((page) => page.clear());
+			super.clear();
+		}
+	}
+
+	// 绘制道具栏的共用背景
+	function drawBoxBackground(ctx) {
+		core.setTextAlign(ctx, "left");
+		core.clearMap(ctx);
+		core.deleteCanvas("_selector"); ///!!!// ?这是什么？
+
+		///// *** 背景设置
+		const max = core.__PIXELS__;
+		const x = 2,
+			y = x,
+			w = max - x * 2,
+			h = w;
+		const [borderWidth, borderRadius, borderStyle] = [2, 5, "#fff"]; // radius:圆角矩形的圆角半径
+		const [backgroundColor, backgroundAlpha] = ["gray", 0.85]; // 设置背景不透明度(0.85)
+		///// ***
+		const [start_x, start_y] = [x + borderWidth / 2, y + borderWidth / 2];
+		const [width, height] = [max - start_x * 2, max - start_y * 2];
+
+		// 渐变色背景的一个例子(黑色渐变白色)：
+		// 有关渐变色的具体知识请网上搜索canvas createGradient了解
+		/*
+		   var grd = ctx.createLinearGradient(x, y, x + w, y);
+		   grd.addColorStop(0, "black");
+		   grd.addColorStop(1, "white");
+		   backgroundColor = grd;
+		*/
+		// 使用图片背景要注释掉下面的strokeRect和fillRoundRect
+		// 图片背景的一个例子：
+		/*
+		   core.drawImage(ctx, "xxx.png", x, y, w, h);
+		   core.strokeRect(ctx, x, y, w, h, borderStyle, borderWidth);
+		*/
+
+		core.setAlpha(ctx, backgroundAlpha); // 不透明度暂时设为backgroundAlpha
+		core.strokeRoundRect(ctx, x, y, w, h, borderRadius, borderStyle, borderWidth); // 绘制大边框
+		core.fillRoundRect(ctx, start_x, start_y, width, height, borderRadius, backgroundColor); // 绘制大边框中的灰色背景
+		core.setAlpha(ctx, 1); // 恢复不透明度
+
+		///// *** 左栏配置
+		const [leftbar_height, leftbar_width] = [height, width * 0.6];
+		// 左边栏宽度(width*0.6) 本身仅为坐标使用 需要与底下的rightbar_width(width*0.4)同时更改
+		///// ***
+		// xxx_right参数 代表最右侧坐标
+		// 
+		const [leftbar_right, leftbar_bottom, leftbar_x, leftbar_y] = [start_x + leftbar_width - borderWidth / 2, start_y + leftbar_height, start_x, start_y];
+
+		///// *** 道具栏配置
+
+		const [boxName_color, boxName_fontSize] = ['#fff', 15];
+		const boxName_font = core.ui._buildFont(boxName_fontSize, true);
+
+		const [arrow_x, arrow_y, arrow_width, arrow_style] = [10 + start_x, 10 + start_y, 20, "white"];
+		const arrow_lineWidth = 2;
+		const rightArrow_right = leftbar_right - 10;
+		// 道具内栏顶部坐标 本质是通过该项 控制(道具栏顶部文字和箭头)与道具内栏顶部的间隔
+		///// ***
+
+		const boxName = core.status.event.id == "toolbox" ? "\r[yellow]道具栏\r | 装备栏" : "道具栏 | \r[yellow]装备栏\r"; ///!!!//
+
+		// 绘制左右两个箭头
+		core.drawArrow(ctx, arrow_x + arrow_width, arrow_y, arrow_x, arrow_y, arrow_style, arrow_lineWidth);
+		core.drawArrow(ctx, rightArrow_right - arrow_width, arrow_y, rightArrow_right, arrow_y, arrow_style, arrow_lineWidth);
+
+		core.setTextAlign(ctx, "center");
+		core.setTextBaseline(ctx, "middle");
+		core.fillText(ctx, boxName, (leftbar_right + leftbar_x) / 2, arrow_y + 2, boxName_color, boxName_font); // 绘制道具栏?装备栏的字样 ///!!!//
+
+		///// *** 底栏按钮
+		const [pageBtn_left, pageBtn_right, pageBtn_bottom] = [leftbar_x + 3, leftbar_right - 3, leftbar_bottom - 2];
+		// xxx_bottom 最底部坐标
+		const [pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth, pageText_color] = [8, "#fff", 2, "#fff"];
+		///// ***
+
+		return {
+			pageBtn_radius, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_borderStyle, pageBtn_borderWidth, pageText_color
+		};
+		// 绘制底部的两个箭头（切换道具栏的左右）///!!!//
+		core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
+
+		const pageFontSize = pageBtn_radius * 2 - 4;
+		const pageFont = core.ui._buildFont(pageFontSize);
+
+		///!!!// core.setPageItems(page); // 修改core.status.thisUIEventInfo; ///!!!//
+
+		const pageText = this.currPage + " / " + this.pageMax;
+		core.setTextAlign(ctx, "center");
+		core.setTextBaseline(ctx, "bottom");
+
+		// 添加底部"x/y"的字样
+		core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
+
+		///!!!// core.addUIEventListener(start_x, start_y, leftbar_right - start_x, arrow_y - start_y + 13, changeBox); ///!!!//与监听有关
+		// var itembar_height = Math.ceil(pageBtn_bottom - pageBtn_radius * 2 - pageBtn_borderWidth / 2 - bottomSpace - itembar_top);
+		// var oneItemHeight = (itembar_height - 4) / itemNum;
+		// return {
+		// 	x: start_x,
+		// 	y: start_y,
+		// 	width: width,
+		// 	height: height,
+		// 	leftbar_right: leftbar_right,
+		// 	obj: {
+		// 		x: arrow_x,
+		// 		y: itembar_top,
+		// 		width: itembar_right - arrow_x,
+		// 		height: itembar_height,
+		// 		oneItemHeight: oneItemHeight
+		// 	}
+		// }
+	}
+
+	// 首先抽象一下 思考一下顶层设计
+	// ItemBox类
+	// 需要的属性：当前持有的Item和数量 当前的页数
+
+	class ArrowButton extends ButtonBase{
+		constructor(ctx, left, right, bottom, r, style, lineWidth, direction){
+			const [x, y, pos] = [left + offset, bottom - offset, Math.sqrt(2) / 2 * (r - lineWidth / 2)];
+			super();
+			this.draw = function(ctx, left, right, bottom, r, style, lineWidth){
+				const offset = lineWidth / 2 + r;
+
+				// const [x, y, pos] = [left + offset, bottom - offset, Math.sqrt(2) / 2 * (r - lineWidth / 2)];
+				core.fillPolygon(ctx, [[x - pos, y], [x + pos - 2, y - pos], [x + pos - 2, y + pos]], style);
+				core.strokeCircle(ctx, x, y, r, style, lineWidth);
+		
+				x = right - offset;
+				core.fillPolygon(ctx, [
+					[x + pos, y],
+					[x - pos + 2, y - pos],
+					[x - pos + 2, y + pos]
+				], style);
+				core.strokeCircle(ctx, x, y, r, style, lineWidth);
+			}
+		}
+	}
+
+	class ToolBox extends MenuBase {
+		constructor(name, capacity) {
+			super(name);
+			/** 当前是否要显示隐藏的道具
+				 * @type {boolean}
+				 */
+			this.showHideItem = core.hasFlag('showHideItem');
+			/** 一页显示的道具数量 */
+			this.capacity = capacity;
+			/** 要显示的道具列表 */
+			this.itemList = core.ui.getToolboxItems('all', this.showHideItem);
+			/** 当前页数
+			 * @type {number}
+			 */
+			this.currPage = 0;
+			/** 最大页数 */
+			this.pageMax = this.getPageCount();
+			/** 当前选中的道具的序号
+			 * @type {number}
+			 */
+			this.selectedIndex;
+			/** 绘制参数 */
+			this.drawInfo;
+		}
+
+		drawContent(drawInfo) {
+			const { pageBtn_radius, pageBtn_left, pageBtn_right, pageBtn_bottom,
+				pageBtn_borderStyle, pageBtn_borderWidth, pageText_color } = drawInfo;
+			// 绘制底部的两个箭头（切换道具栏的左右）///!!!//
+			core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
+
+			const pageFontSize = pageBtn_radius * 2 - 4;
+			const pageFont = core.ui._buildFont(pageFontSize);
+
+			///!!!// core.setPageItems(page); // 修改core.status.thisUIEventInfo; ///!!!//
+
+			const pageText = this.currPage + " / " + this.pageMax;
+			core.setTextAlign(ctx, "center");
+			core.setTextBaseline(ctx, "bottom");
+
+			// 添加底部"x/y"的字样
+			core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
+		}
+
+		getPageCount() {
+			return Math.floor(this.itemList.length / this.capacity);
+		}
+	}
+
+	class BoxPage extends MenuPage{
+		drawContent(){
+			this.drawInfo = drawBoxBackground.apply(this, [this.name]);
+			this.pageList.forEach((page) => {
+				page.drawContent(this.drawInfo);
+			})
+		}
+	}
+
+	this.t = function () {
+		const toolBox = new ToolBox('ui', 12);
+		const equipBox = new ToolBox('ui', 7);
+		const boxMenu = new MenuPage([toolBox, equipBox], 0, 'ui');
+		return boxMenu;
+		// boxMenu.init();
+	}
+
+	this.y = function(){
+		// let boxMenu = core.t();
+	}
+
+}
 }
