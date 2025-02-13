@@ -1967,7 +1967,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function canBattle(enemy, x, y) {
 			const loc = `${x},${y}`;
 			const floor = core.floors[core.status.floorId];
-			const e = core.material.enemys[enemy];
+			const e = core.getEnemyValue(enemy, null, x, y);
 			const hasEvent =
 				has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc])
 				|| has(e.beforeBattle) || has(e.afterBattle)

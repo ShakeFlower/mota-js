@@ -1426,8 +1426,15 @@ interface enemys {
      */
     getSpecialHint(enemy: string | Enemy, special: number): string
 
-    /** 获得某个敌人的某项属性值 */
-    getEnemyValue(enemy: string | Enemy, name: string, x?: number, y?: number, floorId?: string): any
+    /** 
+     * 获得某个敌人的某项属性值 
+     * @param enemy 敌人id或敌人对象
+     * @param name 要获取的属性名，不填时获取完整的该敌人数据
+     * @param x 敌人的横坐标，可选，填写时该点属性覆盖core.material.enemys中相应属性
+     * @param y 敌人的纵坐标，可选
+     * @param floorId 敌人所在的地图，可选。
+     */
+    getEnemyValue(enemy: string | Enemy, name?: string, x?: number, y?: number, floorId?: string): any
 
     /**
      * 判定主角当前能否打败某只敌人

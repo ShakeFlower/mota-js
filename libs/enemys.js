@@ -167,17 +167,30 @@ enemys.prototype._calSpecialContent = function (enemy, content) {
 ////// 获得某个点上某个怪物的某项属性 //////
 enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
     floorId = floorId || core.status.floorId;
-    if ((((flags.enemyOnPoint || {})[floorId] || {})[x + "," + y] || {})[name] != null) {
-        return flags.enemyOnPoint[floorId][x + "," + y][name];
+
+    const pointInfo = (((flags.enemyOnPoint || {})[floorId] || {})[x + "," + y] || {});
+
+    if (core.isset(name) && pointInfo[name] != null) {
+        return pointInfo[name];
     }
     if (enemy == null) {
         var block = core.getBlock(x, y, floorId);
-        if (block == null) return null;
+        if (block == null) return null; // 无enemy且无x,y时返回null，无enemy有x,y将读取该点信息
         enemy = core.material.enemys[block.event.id];
     }
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
-    if (enemy == null) return null;
-    return enemy[name];
+    else if (typeof enemy == 'string') {
+        enemy = core.material.enemys[enemy];
+        if (enemy == null) return null;
+    }
+
+    if (!core.isset(name)) { // 仅name不填时返回该enemy的完整数据，有x,y将用该点信息覆盖core.material.enemys相应属性
+        enemy = core.clone(enemy);
+        for (let status in pointInfo) {
+            if (pointInfo.hasOwnProperty(status)) enemy[status] = pointInfo[status];
+        }
+        return enemy;
+    }
+    else return enemy[name];
 }
 
 ////// 能否获胜 //////
