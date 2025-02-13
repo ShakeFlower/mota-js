@@ -2582,6 +2582,12 @@ interface utils {
     /** 深拷贝一个1D或2D的数组 */
     cloneArray(data?: Array<number> | Array<Array<number>>): Array<number> | Array<Array<number>>
 
+    /** 将怪物特殊属性转为升序数组并去零 */
+    parseSpecial(special: null | number | number[]): number[]
+
+    /** 比较两个变量是否值相等 */
+    deepEqual(x: unknown, y: unknown): boolean
+
     /**
      * 等比例切分一张图片
      * @example core.splitImage(core.material.images.images['npc48.png'], 32, 48); // 把npc48.png切分成若干32×48px的小人

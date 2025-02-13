@@ -437,6 +437,11 @@ enemys.prototype.getCurrentEnemys = function (floorId) {
     return this._getCurrentEnemys_sort(enemys);
 }
 
+////// 获得哪些属性不相同时会在手册中显示为两种敌人 //////
+enemys.prototype.getStatusToCompare = function () {
+    return ['hp', 'atk', 'def', 'money', 'exp', 'special'];
+}
+
 enemys.prototype._getCurrentEnemys_getEnemy = function (enemyId) {
     var enemy = core.material.enemys[enemyId];
     if (!enemy) return null;
@@ -446,53 +451,65 @@ enemys.prototype._getCurrentEnemys_getEnemy = function (enemyId) {
 }
 
 enemys.prototype._getCurrentEnemys_addEnemy = function (enemyId, enemys, used, x, y, floorId) {
-    var enemy = this._getCurrentEnemys_getEnemy(enemyId);
+    // 获取原始的core.material.enemys数据
+    const enemy = this._getCurrentEnemys_getEnemy(enemyId);
     if (enemy == null) return;
 
-    var id = enemy.id;
+    const id = enemy.id;
 
-    var enemyInfo = this.getEnemyInfo(enemy, null, null, null, floorId);
-    var locEnemyInfo = this.getEnemyInfo(enemy, null, x, y, floorId);
+    // 获取计算了光环等加成，未计算该点加成的enemyInfo，和也算了该点加成的locEnemyInfo。
+    let enemyInfo = this.getEnemyInfo(enemy, null, null, null, floorId);
+    let locEnemyInfo = this.getEnemyInfo(enemy, null, x, y, floorId);
 
-    if (!core.flags.enableEnemyPoint ||
-        (locEnemyInfo.atk == enemyInfo.atk && locEnemyInfo.def == enemyInfo.def && locEnemyInfo.hp == enemyInfo.hp)) {
+    function statusEqual(enemyInfo, locEnemyInfo) {
+        return core.enemys.getStatusToCompare().every((status) => {
+            if (status === 'special') {
+                enemyInfo[status]= core.utils.parseSpecial(enemyInfo[status]);
+                locEnemyInfo[status] = core.utils.parseSpecial(locEnemyInfo[status]);
+            }
+            return core.utils.deepEqual(enemyInfo[status],locEnemyInfo[status]);
+        });
+    }
+
+    if (!core.flags.enableEnemyPoint || statusEqual(enemyInfo, locEnemyInfo)) {
         x = null;
         y = null;
     } else {
         // 检查enemys里面是否使用了存在的内容
-        for (var i = 0; i < enemys.length; ++i) {
-            var one = enemys[i];
-            if (id == one.id && one.locs != null &&
-                locEnemyInfo.atk == one.atk && locEnemyInfo.def == one.def && locEnemyInfo.hp == one.hp) {
+        for (let i = 0; i < enemys.length; ++i) {
+            const one = enemys[i];
+            if (id === one.id && one.locs != null && statusEqual(one, locEnemyInfo)) {
                 one.locs.push([x, y]);
                 return;
             }
         }
         enemyInfo = locEnemyInfo;
     }
-    var id = enemy.id + ":" + x + ":" + y;
-    if (used[id]) return;
-    used[id] = true;
+    const uniqueId = enemy.id + ":" + x + ":" + y;
+    if (used[uniqueId]) return;
+    used[uniqueId] = true;
 
-    var specialText = core.enemys.getSpecialText(enemy);
-    var specialColor = core.enemys.getSpecialColor(enemy);
+    // 这里只用到了enemy.special属性，填写locEnemyInfo没有问题。
+    const specialText = core.enemys.getSpecialText(locEnemyInfo);
+    const specialColor = core.enemys.getSpecialColor(locEnemyInfo);
 
-    var critical = this.nextCriticals(enemy, 1, x, y, floorId);
-    if (critical.length > 0) critical = critical[0];
+    // 这里输入(x, y, floorId)，在函数内部处理相关信息
+    const critical = this.nextCriticals(enemy, 1, x, y, floorId);
+    let criticalInfo = critical.length > 0 ? critical[0] : null;
 
-    var e = core.clone(enemy);
-    for (var v in enemyInfo) {
-        e[v] = enemyInfo[v];
+    const e = core.clone(enemy);
+    for (let key in enemyInfo) {
+        e[key] = enemyInfo[key];
     }
-    if (x != null && y != null) {
+    if (x !== null && y !== null) {
         e.locs = [[x, y]];
     }
     e.name = core.getEnemyValue(enemy, 'name', x, y, floorId);
     e.specialText = specialText;
     e.specialColor = specialColor;
     e.damage = this.getDamage(enemy, x, y, floorId);
-    e.critical = critical[0];
-    e.criticalDamage = critical[1];
+    e.critical = criticalInfo?.[0];
+    e.criticalDamage = criticalInfo?.[1];
     e.defDamage = this._getCurrentEnemys_addEnemy_defDamage(enemy, x, y, floorId);
     enemys.push(e);
 }

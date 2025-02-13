@@ -456,6 +456,44 @@ utils.prototype.cloneArray = function (data) {
     }
 }
 
+////// 将怪物特殊属性转为升序数组并去零 //////
+utils.prototype.parseSpecial = function (special) {
+    if (special == null) special = [];
+    else if (typeof special === 'number') special = [special];
+    return [...new Set(special.filter(num => num !== 0))].sort((a, b) => a - b);
+}
+
+
+////// 比较两个变量是否值相等 //////
+utils.prototype.deepEqual = function (x, y) {
+    // 是值类型，或引用相同
+    if (x === y) return true;
+
+    if (x == null && y == null) return true;
+
+    if (typeof x != typeof y) return false;
+
+    if (typeof x === 'object') {
+        let xKeys = Object.keys(x), yKeys = Object.keys(y);
+
+        if (xKeys.length !== yKeys.length) return false;
+
+        for (let key of xKeys) {
+            if (!yKeys.includes(key) || !this.deepEqual(x[key], y[key])) return false;
+        }
+        return true;
+    }
+
+    if (Array.isArray(x) && Array.isArray(y)) {
+        if (x.length !== y.length) return false;
+        for (let i = 0; i < x.length; i++) {
+            if (!this.deepEqual(x[i], y[i])) return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 ////// 裁剪图片 //////
 utils.prototype.splitImage = function (image, width, height) {
     if (typeof image == "string") {

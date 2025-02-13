@@ -2387,8 +2387,9 @@ ui.prototype._drawBookDetail_getInfo = function (index) {
     var enemys = core.enemys.getCurrentEnemys(floorId);
     if (enemys.length == 0) return [];
     index = core.clamp(index, 0, enemys.length - 1);
-    var enemy = enemys[index], enemyId = enemy.id;
-    var texts = core.enemys.getSpecialHint(enemyId);
+    // enemys:手册需要显示的敌人合集数组，enemy:当前选中的敌人
+    var enemy = enemys[index];
+    var texts = core.enemys.getSpecialHint(enemy);
     if (texts.length == 0) texts.push("该怪物无特殊属性。");
     if (enemy.description) texts.push(enemy.description + "\r");
     texts.push("");
@@ -2416,8 +2417,8 @@ ui.prototype._drawBookDetail_origin = function (enemy, texts) {
     if (enemy.locs != null && enemy.locs.length >= 0) {
         texts.push("\r[#FF6A6A]\\d怪物坐标：\\d\r[]" + JSON.stringify(enemy.locs));
     }
-    ["hp", "atk", "def", "point", "money", "exp"].forEach(function (one) {
-        if (enemy[one] == null || originEnemy[one] == null) return;
+    core.enemys.getStatusToCompare().forEach(function (one) {
+        // if (enemy[one] == null || originEnemy[one] == null) return;
         if (enemy[one] != originEnemy[one]) {
             content.push(core.getStatusLabel(one) + " " + originEnemy[one]);
         }
