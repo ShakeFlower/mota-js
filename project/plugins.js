@@ -1936,13 +1936,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				destY,
 				ignoreSteps
 			);
+			core.control.updateCheckBlock();
 			core.plugin.autoClear();
 			return res;
 		};
 
 		this.autoClear = function () {
-			if (core.isReplaying()) return;
 			auto();
+			if (core.isReplaying()) return;
 			for (let i = 0; i < transitionList.length; i++) {
 				const t = transitionList[i];
 				let { x, y } = core.status.hero.loc;
@@ -1970,12 +1971,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const hasEvent =
 				has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc])
 				|| has(e.beforeBattle) || has(e.afterBattle)
-				|| has(floor.events[loc] || willLvUp(e.exp) // 防止有升级后事件
-				);
+				|| has(floor.events[loc]) || willLvUp(e.exp); // 防止有升级后事件
+
 			// 有事件，不清
 			if (hasEvent) return false;
-			if (core.hasSpecial(e.special, 19) || core.hasSpecial(e.special, 21)
-				|| core.hasSpecial(e.special, 29)) return false; // 有特定特殊属性的怪不清
+			// 有特定特殊属性的怪不清
+			if (core.hasSpecial(e.special, 12) // 中毒
+				|| core.hasSpecial(e.special, 13) // 衰弱
+				|| core.hasSpecial(e.special, 14) // 诅咒
+				|| core.hasSpecial(e.special, 19) // 自爆
+				|| core.hasSpecial(e.special, 21) // 退化
+				|| core.hasSpecial(e.special, 27) // 捕捉:逻辑上应该让怪物来找角色
+				|| core.hasSpecial(e.special, 28) // 追猎:逻辑上应该让怪物来找角色
+			)
+				return false;
 			const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
 			// 0伤或负伤，清
 			if (has(damage) && damage <= 0) return true;
@@ -2165,8 +2174,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const hasEvent = has(floor.events[loc]);
 			if (hasEvent) return;
 			let deep = Infinity;
-			if (hasBlockDamage(loc) && core.flags.enableGentleClick) { // 有地图伤害允许轻点附近1格
-				deep = 1;
+			if (hasBlockDamage(loc)) {
+				deep = core.flags.enableGentleClick ? 1 : 0; // 有地图伤害允许轻点附近1格
 			}
 			flags.__forbidSave__ = true;
 			flags.__statistics__ = true;
