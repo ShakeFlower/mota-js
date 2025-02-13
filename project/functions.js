@@ -261,7 +261,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
         "afterBattle": function (enemyId, x, y) {
 			// 战斗结束后触发的事件
 
-			var enemy = core.material.enemys[enemyId];
+			var enemy = core.getEnemyValue(enemyId, null, x, y);
 			var special = enemy.special;
 
 			// 播放战斗音效和动画
@@ -302,8 +302,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.status.hero.hp -= damage;
 			core.status.hero.statistics.battleDamage += damage;
 			core.status.hero.statistics.battle++;
-
+			
 			// 计算当前怪物的支援怪物
+			// guard:一个形如[[1, 1, 'greenSlime'], [[2, 2, 'redSlime']]]的数组
 			var guards = [];
 			if (x != null && y != null) {
 				guards = core.getFlag("__guards__" + x + "_" + y, []);
@@ -330,7 +331,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			// 获得金币
 			var money = guards.reduce(function (curr, g) {
-				return curr + core.material.enemys[g[2]].money;
+				return curr + core.getEnemyValue(g[2], "money", g[0], g[1]);
 			}, core.getEnemyValue(enemy, "money", x, y));
 			if (core.hasItem('coin')) money *= 2; // 幸运金币：双倍
 			if (core.hasFlag('curse')) money = 0; // 诅咒效果
@@ -340,8 +341,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			// 获得经验
 			var exp = guards.reduce(function (curr, g) {
-				return curr + core.material.enemys[g[2]].exp;
-			}, core.getEnemyValue(enemy, "exp", x, y));
+				return curr + core.getEnemyValue(g[2], "exp", g[0], g[1]);
+			}, core.getEnemyValue(g[2], "exp", x, y));
 			if (core.hasFlag('curse')) exp = 0;
 			if (failMove) exp = 0; // 败移效果
 			core.status.hero.exp += exp;
@@ -393,7 +394,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			// 加点事件
 			var point = guards.reduce(function (curr, g) {
-				return curr + core.material.enemys[g[2]].point;
+				return curr + core.getEnemyValue(g[2], "point", g[0], g[1]);
 			}, core.getEnemyValue(enemy, "point", x, y)) || 0;
 			if (core.flags.enableAddPoint && point > 0) {
 				core.push(todo, [{ "type": "insert", "name": "加点事件", "args": [point] }]);
