@@ -2002,7 +2002,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const changeFloor = floor.changeFloor[loc];
 			const isEnemy = autoBattle && cls.startsWith('enemy'),
 				isItem = autoGet && cls === 'items';
-
+			if (core.onSki(core.getBgNumber(x, y))) return false;
 			if (has(changeFloor)) {
 				if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
 					return false;
