@@ -342,7 +342,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 获得经验
 			var exp = guards.reduce(function (curr, g) {
 				return curr + core.getEnemyValue(g[2], "exp", g[0], g[1]);
-			}, core.getEnemyValue(g[2], "exp", x, y));
+			}, core.getEnemyValue(enemy, "exp", x, y));
 			if (core.hasFlag('curse')) exp = 0;
 			if (failMove) exp = 0; // 败移效果
 			core.status.hero.exp += exp;
@@ -586,13 +586,14 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				hero_def = core.getRealStatusOrDefault(hero, 'def'),
 				hero_mdef = core.getRealStatusOrDefault(hero, 'mdef');
 
-			var mon_hp = core.getEnemyValue(enemy, 'hp', x, y, floorId),
-				mon_atk = core.getEnemyValue(enemy, 'atk', x, y, floorId),
-				mon_def = core.getEnemyValue(enemy, 'def', x, y, floorId),
-				mon_special = core.getEnemyValue(enemy, 'special', x, y, floorId);
-			var mon_money = core.getEnemyValue(enemy, 'money', x, y, floorId),
-				mon_exp = core.getEnemyValue(enemy, 'exp', x, y, floorId),
-				mon_point = core.getEnemyValue(enemy, 'point', x, y, floorId);
+			const enemyInfo = core.getEnemyValue(enemy, null, x, y, floorId);
+			var mon_hp = enemyInfo.hp,
+				mon_atk = enemyInfo.atk,
+				mon_def = enemyInfo.def,
+				mon_special = enemyInfo.special;
+			var mon_money = enemyInfo.money,
+				mon_exp = enemyInfo.exp,
+				mon_point = enemyInfo.point;
 			// 模仿
 			if (core.hasSpecial(mon_special, 10)) {
 				mon_atk = hero_atk;
@@ -626,7 +627,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 						if (!block.disable) {
 							// 获得该图块的ID
 							var id = block.event.id,
-								enemy = core.material.enemys[id];
+								enemy = core.getEnemyValue(id, null, block.x, block.y, floorId);
 							// 检查【光环】技能，数字25
 							if (enemy && core.hasSpecial(enemy.special, 25)) {
 								// 检查是否是范围光环
@@ -806,8 +807,10 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 						gy = guards[i][1],
 						gid = guards[i][2];
 					// 递归计算支援怪伤害信息，这里不传x,y保证不会重复调用
-					// 这里的mdef传0，因为护盾应该只会被计算一次
-					var info = core.enemys.getDamageInfo(core.material.enemys[gid], { hp: origin_hero_hp, atk: origin_hero_atk, def: origin_hero_def, mdef: 0 });
+					// 这里的mdef传0，因为逻辑上护盾只会在与第一个敌人战斗时被计算一次
+					// 也就是说打支援敌人时护盾视为0。
+					var info = core.enemys.getDamageInfo(core.getEnemyValue(gid, null, gx, gy, floorId),
+						{ hp: origin_hero_hp, atk: origin_hero_atk, def: origin_hero_def, mdef: 0 });
 					if (info == null) { // 小队中任何一个怪物不可战斗，直接返回null
 						core.removeFlag("__extraTurn__");
 						return null;
@@ -1349,7 +1352,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					x = block.x,
 					y = block.y,
 					id = block.event.id,
-					enemy = core.material.enemys[id];
+					enemy = core.getEnemyValue(id, null, x, y, floorId);
 				if (block.disable) continue;
 
 				type[loc] = type[loc] || {};
