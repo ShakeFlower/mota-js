@@ -64,3 +64,7 @@ core.drawItemListbox(ctx, info1.obj);
 core.drawToolboxRightbar(ctx, info1);
 
 ```
+
+!mypromt callback疑似需要改回去
+
+难绷的bug太多了 自动拾取，自动清怪，追猎等等。

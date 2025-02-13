@@ -1145,11 +1145,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		if (main.replayChecking) __enable = false;
 		if (!__enable) {
-			core.plugin.animate = {
-				Ticker: class {
-					add() { }
-				}
-			};
+			core.plugin.animate = {};
 			this.deleteTicker = () => { };
 			this.deleteAllTickers = () => { };
 			this.getAllTickers = () => { };
@@ -1922,9 +1918,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		const ctxName = 'globalAnimate';
 
-		if (!core.isReplaying()) {
+		if (Ticker) {
 			const ticker = new Ticker();
 			ticker.add(() => {
+				if (core.isReplaying()) return;
 				const ctx = core.getContextByName(ctxName);
 				if (!has(ctx)) return;
 				core.clearMap(ctx);
@@ -2123,7 +2120,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const item = core.material.items[block.event.id];
 						if (canGetItem(item, loc, floorId)) {
 							core.getItem(item.id, 1, tx, ty);
-							if (!core.isReplaying()) {
+							if (!core.isReplaying() && Transition) {
 								let px = tx * 32 - core.bigmap.offsetX;
 								let py = ty * 32 - core.bigmap.offsetY;
 								const t = new Transition();
@@ -2184,6 +2181,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
     "FloatingText": function () {
 		// 本插件定义了一些字符绘制相关效果
 
+		return;
+		// 有待调试
 		const { Animation, linear } = core.plugin.animate;
 		const ctx = 'scrollingText';
 
@@ -4675,19 +4674,5 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			settingMenu.init();
 		}
-
-		// todolist 自定义设置界面添加键盘支持 √
-		// todolist 剧情全skip功能 文字-文字+演出(跳跃) √
-		// todolist 批量使用：您当前选定了：xxx。请勿选定不适合批量使用的道具，请勿输入过大的数字。
-		// todolist 道具栏分页，可设定隐藏的道具，及自动查看显隐藏 手动hide无用道具 √
-		// todolist 内置ATRI 解决连通性问题
-		// todolist 血瓶宝石显示数据 解决浏览地图和楼传显示错误 引入自动配置值的块 √
-		// todolist 存读档过程保存图块连通性（可选）√
-		// todolist 清怪检测，重开杖，吸噬 × 有人需要？？不需要
-		// todolist 修复已知的插件bug
-		// todolist 添加鸽窝样板的快速读取撤回 和 优化美工
-		// todolist 音效连续播放的优化（与自动清有关）
-		// todolist 新的临界计算
-		// todolist 微调BGM播放
 	}
 }
