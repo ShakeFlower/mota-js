@@ -4361,7 +4361,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		core.registerReplayAction('cSet', (action) => {
 			const strArr = action.split(':');
-			if (strArr[0] !== 0) return false;
+			if (strArr[0] !== 'cSet') return false;
 			const btn = settingMap.get(strArr[1]);
 			btn.effect();
 			core.status.route.push(action);
