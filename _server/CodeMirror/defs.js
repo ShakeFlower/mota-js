@@ -3470,6 +3470,14 @@ var terndefs_f6783a0a_522d_417e_8407_94c67b692e50 = [
           "!doc": "地图中间绘制一段文字",
           "!type": "fn(contents: string, callback?: fn())"
         },
+        "drawSuccessTip": {
+          "!doc": "绘制提示并播放成功音效",
+          "!type": "fn(text: string, id?: string, frame?: number)"
+        },
+        "drawFailTip": {
+          "!doc": "绘制提示并播放失败音效",
+          "!type": "fn(text: string, id?: string, frame?: number)"
+        },
         "drawConfirmBox": {
           "!doc": "绘制一个确认框<br/>此项会打断事件流，如需不打断版本的请使用core.myconfirm()<br/>text: 要绘制的内容，支持 ${} 语法<br/>yesCallback: 点击确认后的回调<br/>noCallback: 点击取消后的回调",
           "!type": "fn(text: string, yesCallback?: fn(), noCallback?: fn())"
@@ -3665,8 +3673,8 @@ var terndefs_f6783a0a_522d_417e_8407_94c67b692e50 = [
           "!type": "fn()"
         },
         "getEnemyValue": {
-          "!doc": "获得某个点上怪物的某个属性值",
-          "!type": "fn(enemy?: string|enemy, name: string, x?: number, y?: number, floorId?: string)"
+          "!doc": "获得某个点(x,y,floorId)上怪物的某个属性name的值。name不填时，返回该怪物的完整属性列表。",
+          "!type": "fn(enemy?: string|enemy, name?: string, x?: number, y?: number, floorId?: string)"
         },
         "getSpecials": {
           "!doc": "获得所有特殊属性的定义",
