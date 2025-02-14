@@ -173,6 +173,7 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
     if (core.isset(name) && pointInfo[name] != null) {
         return pointInfo[name];
     }
+    // enemy有三种可能，null,字符串，完整的enemy
     if (enemy == null) {
         var block = core.getBlock(x, y, floorId);
         if (block == null) return null; // 无enemy且无x,y时返回null，无enemy有x,y将读取该点信息
@@ -182,9 +183,9 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
         enemy = core.material.enemys[enemy];
         if (enemy == null) return null;
     }
-
+    enemy = core.clone(enemy);
+    
     if (!core.isset(name)) { // 仅name不填时返回该enemy的完整数据，有x,y将用该点信息覆盖core.material.enemys相应属性
-        enemy = core.clone(enemy);
         for (let status in pointInfo) {
             if (pointInfo.hasOwnProperty(status)) enemy[status] = pointInfo[status];
         }
