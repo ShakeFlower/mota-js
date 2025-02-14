@@ -2416,7 +2416,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 	},
     "newBackpackLook": function () {
-	// 这个插件有点离谱 参数过多还不如硬编码
+	// 这个插件有点离谱 个人觉得参数过多只会降低可读性，还不如硬编码
+
 	// 注：///// *** 裹起来的区域： 该区域内参数可以随意更改调整ui绘制 不会影响总体布局
 	// 请尽量修改该区域而不是其他区域 修改的时候最好可以对照现有ui修改
 
@@ -2431,7 +2432,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	///// ***
 
 	// 背景设置
-	this.drawBoxBackground = function (ctx) {
+	function drawBoxBackground(ctx) {
 		core.setTextAlign(ctx, "left");
 		core.clearMap(ctx);
 		core.deleteCanvas("_selector");
@@ -2531,11 +2532,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var bottomSpace = 8;
 		///// ***
 
-		core.drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
+		drawItemListbox_setPageBtn(ctx, pageBtn_left, pageBtn_right, pageBtn_bottom, pageBtn_radius, pageBtn_borderStyle, pageBtn_borderWidth);
 		var page = info.page || 1;
 		var pageFontSize = pageBtn_radius * 2 - 4;
 		var pageFont = core.ui._buildFont(pageFontSize);
-		core.setPageItems(page);
+		setPageItems(page);
 		var num = itemNum;
 		if (core.status.event.id == "equipbox") num -= 5;
 		var maxPage = info.maxPage;
@@ -2543,7 +2544,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.setTextAlign(ctx, "center");
 		core.setTextBaseline(ctx, "bottom");
 		core.fillText(ctx, pageText, (leftbar_x + leftbar_right) / 2, pageBtn_bottom, pageText_color, pageFont);
-		core.addUIEventListener(start_x, start_y, leftbar_right - start_x, arrow_y - start_y + 13, changeBox);
+		addUIEventListener(start_x, start_y, leftbar_right - start_x, arrow_y - start_y + 13, changeBox);
 		var itembar_height = Math.ceil(pageBtn_bottom - pageBtn_radius * 2 - pageBtn_borderWidth / 2 - bottomSpace - itembar_top);
 		var oneItemHeight = (itembar_height - 4) / itemNum;
 		return {
@@ -2562,7 +2563,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 	}
 
-	this.drawItemListbox = function (ctx, obj) {
+	function drawItemListbox(ctx, obj) {
 		ctx = ctx || core.canvas.ui;
 		var itembar_x = obj.x,
 			itembar_y = obj.y,
@@ -2597,7 +2598,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.setAlpha(ctx, itembar_alpha);
 		core.fillRect(ctx, itembar_x, itembar_y, itembar_width, itembar_height, itembar_style);
 		core.setAlpha(ctx, 1);
-		var pageItems = core.setPageItems(page);
+		var pageItems = setPageItems(page);
 		var marginHeight = itembar_marginHeightRatio * oneItemHeight;
 		core.setTextBaseline(ctx, "middle");
 		var originColor = itemName_color;
@@ -2606,13 +2607,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var item = pageItems[i];
 			// 设置某个的字体颜色的一个例子
 			// if (item.id == "xxx") itemName_color = "green";
-			core.drawItemListbox_drawItem(ctx, item_x, item_right, item_y, oneItemHeight, item_marginLeft, marginHeight, itemName_color, pageItems[i]);
+			drawItemListbox_drawItem(ctx, item_x, item_right, item_y, oneItemHeight, item_marginLeft, marginHeight, itemName_color, pageItems[i]);
 			if (index == i + 1) core.ui._drawWindowSelector(item_selector, item_x + 1, item_y - 1, item_right - item_x - 2, oneItemHeight - 2);
 			item_y += oneItemHeight;
 		}
 	}
 
-	this.drawToolboxRightbar = function (ctx, obj) {
+	function drawToolboxRightbar(ctx, obj) {
 		ctx = ctx || core.canvas.ui;
 		var info = core.status.thisUIEventInfo || {};
 		var page = info.page || 1,
@@ -2749,7 +2750,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 获取圆心位置
 		var btn_x = btnRight - btnRadius - btnBorderWidth / 2;
 		btn_y = btnBottom - btnRadius - btnBorderWidth / 2;
-		core.drawToolbox_setExitBtn(ctx, btn_x, btn_y, btnRadius, btnBorderStyle, btnBorderWidth);
+		drawToolbox_setExitBtn(ctx, btn_x, btn_y, btnRadius, btnBorderStyle, btnBorderWidth);
 
 		///// *** 使用按钮设置
 		var useBtnHeight = btnRadius * 2;
@@ -2763,7 +2764,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const hideBtn_y = useBtn_y - useBtnHeight - 8;
 		///// ***
 
-		core.drawToolbox_setUseBtn(ctx, useBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
+		drawToolbox_setUseBtn(ctx, useBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
 		if (core.status.event.id === 'toolbox') {
 			drawToolbox_setBatchUseBtn(ctx, batchUseBtn_x, useBtn_y, useBtnRadius, useBtnHeight, useBtnBorderStyle, useBtnBorderWidth);
 		}
@@ -2771,7 +2772,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		drawToolbox_setShowHideBtn(ctx, rightbar_x, useBtn_y, useBtnHeight, useBtnBorderStyle);
 	}
 
-	this.drawEquipbox_drawOthers = function (ctx, obj) {
+	function drawEquipbox_drawOthers(ctx, obj) {
 		var info = core.status.thisUIEventInfo;
 
 		///// *** 装备格设置
@@ -2825,9 +2826,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var selectBorder = false;
 			if (core.status.thisUIEventInfo.select.type == i) selectBorder = true;
 			var borderStyle = selectBorder ? box_selectBorderStyle : box_borderStyle;
-			core.drawEquipbox_drawOne(ctx, name, id, box_x, box_y, box_width, box_height, boxName_space, boxName_font, boxName_color, borderStyle, box_borderWidth);
+			drawEquipbox_drawOne(ctx, name, id, box_x, box_y, box_width, box_height, boxName_space, boxName_font, boxName_color, borderStyle, box_borderWidth);
 			var todo = new Function("core.clickOneEquipbox('" + id + "'," + i + ")");
-			core.addUIEventListener(box_x - box_borderWidth / 2, box_y - box_borderWidth / 2, oneBoxWidth, oneBoxHeight, todo);
+			addUIEventListener(box_x - box_borderWidth / 2, box_y - box_borderWidth / 2, oneBoxWidth, oneBoxHeight, todo);
 			box_x += space_x + oneBoxWidth;
 			if ((i + 1) % maxItem == 0) {
 				box_x = equipList_x + space_x;
@@ -2840,10 +2841,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		ctx = ctx || core.canvas.ui;
 		core.status.thisEventClickArea = [];
 
-		var info = core.drawBoxBackground(ctx);
+		var info = drawBoxBackground(ctx);
 		info.itemNum = itemNum;
-		core.drawItemListbox(ctx, info.obj);
-		core.drawToolboxRightbar(ctx, info);
+		drawItemListbox(ctx, info.obj);
+		drawToolboxRightbar(ctx, info);
 		core.setTextBaseline(ctx, "alphabetic");
 		core.setTextAlign("left");
 	}
@@ -2852,19 +2853,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	this.drawEquipbox = function (ctx) {
 		ctx = ctx || core.canvas.ui;
 		core.status.thisEventClickArea = [];
-		var info = core.drawBoxBackground(ctx);
+		var info = drawBoxBackground(ctx);
 		info.itemNum = itemNum - reduceItem;
 		info.obj.y += info.obj.oneItemHeight * reduceItem;
 		info.obj.height -= info.obj.oneItemHeight * reduceItem;
-		core.drawItemListbox(ctx, info.obj);
-		core.drawEquipbox_drawOthers(ctx, info);
-		core.drawToolboxRightbar(ctx, info);
+		drawItemListbox(ctx, info.obj);
+		drawEquipbox_drawOthers(ctx, info);
+		drawToolboxRightbar(ctx, info);
 		core.setTextBaseline(ctx, "alphabetic");
 		core.setTextAlign("left");
 	}
 
 
-	this.drawEquipbox_drawOne = function (ctx, name, id, x, y, width, height, space, font, color, style, lineWidth) {
+	function drawEquipbox_drawOne(ctx, name, id, x, y, width, height, space, font, color, style, lineWidth) {
 		if (id) core.drawIcon(ctx, id, x + lineWidth / 2, y + lineWidth / 2, width, height);
 		core.strokeRect(ctx, x, y, width + lineWidth, height + lineWidth, style, lineWidth);
 		core.setTextAlign(ctx, "center");
@@ -2879,7 +2880,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.setTextAlign("left");
 	}
 
-	this.drawItemListbox_drawItem = function (ctx, left, right, top, height, marginLeft, marginHeight, style, id) {
+	function drawItemListbox_drawItem(ctx, left, right, top, height, marginLeft, marginHeight, style, id) {
 		var info = core.status.thisUIEventInfo;
 		var nowClick = info.index;
 		var item = core.material.items[id] || {};
@@ -2901,10 +2902,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.setAlpha(ctx, 1);
 
 		var todo = new Function("core.clickItemFunc('" + id + "');");
-		core.addUIEventListener(left, top, right - left, height, todo);
+		addUIEventListener(left, top, right - left, height, todo);
 	}
 
-	this.setPageItems = function (page) {
+	function setPageItems(page) {
 		var num = itemNum;
 		if (core.status.event.id == "equipbox") num -= reduceItem;
 		var info = core.status.thisUIEventInfo;
@@ -2920,12 +2921,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (items.length == 0 && pageItems.length == 0) info.index = null;
 		if (pageItems.length == 0 && info.page > 1) {
 			info.page = Math.max(1, info.page - 1);
-			return core.setPageItems(info.page);
+			return setPageItems(info.page);
 		}
 		return pageItems;
 	}
 
-	this.drawToolbox_setExitBtn = function (ctx, x, y, r, style, lineWidth) {
+	function drawToolbox_setExitBtn(ctx, x, y, r, style, lineWidth) {
 		core.strokeCircle(ctx, x, y, r, style, lineWidth);
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
@@ -2937,10 +2938,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var todo = function () {
 			core.closePanel();
 		}
-		core.addUIEventListener(x - r, y - r, r * 2, r * 2, todo);
+		addUIEventListener(x - r, y - r, r * 2, r * 2, todo);
 	}
 
-	this.drawToolbox_setUseBtn = function (ctx, x, y, r, h, style, lineWidth) {
+	function drawToolbox_setUseBtn(ctx, x, y, r, h, style, lineWidth) {
 		core.setTextAlign(ctx, "left");
 		core.setTextBaseline(ctx, "top");
 		var fontSize = h - 4;
@@ -2955,7 +2956,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var todo = function () {
 			core.useSelectItemInBox();
 		}
-		core.addUIEventListener(x, y, w, h, todo);
+		addUIEventListener(x, y, w, h, todo);
 	}
 
 	function getSelectedItem() {
@@ -3015,7 +3016,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				batchUse(id, value);
 			});
 		}
-		core.addUIEventListener(x, y, w, h, todo);
+		addUIEventListener(x, y, w, h, todo);
 	}
 
 	function drawToolbox_setHideBtn(ctx, x, y, r, h, style, lineWidth) {
@@ -3044,7 +3045,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.status.event.id === 'toolbox') core.plugin.drawToolbox();
 			else if (core.status.event.id === 'equipbox') core.plugin.drawEquipbox();
 		}
-		core.addUIEventListener(x, y, w, h, todo);
+		addUIEventListener(x, y, w, h, todo);
 	}
 
 	ui.prototype.getToolboxItems = function (cls, showHide) {
@@ -3097,10 +3098,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.status.event.id === 'toolbox') core.plugin.drawToolbox();
 			else if (core.status.event.id === 'equipbox') core.plugin.drawEquipbox();
 		}
-		core.addUIEventListener(x, y, w, h, todo);
+		addUIEventListener(x, y, w, h, todo);
 	}
 
-	this.drawItemListbox_setPageBtn = function (ctx, left, right, bottom, r, style, lineWidth) {
+	function drawItemListbox_setPageBtn(ctx, left, right, bottom, r, style, lineWidth) {
 		var offset = lineWidth / 2 + r;
 
 		var x = left + offset;
@@ -3115,7 +3116,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var todo = function () {
 			core.addItemListboxPage(-1);
 		}
-		core.addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
+		addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
 
 		x = right - offset;
 		core.fillPolygon(ctx, [
@@ -3127,7 +3128,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var todo = function () {
 			core.addItemListboxPage(1);
 		}
-		core.addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
+		addUIEventListener(x - r - 2, y - r - 2, r * 2 + 4, r * 2 + 4, todo);
 	}
 
 	this.clickItemFunc = function (id) {
@@ -3187,7 +3188,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	this.setIndexAndSelect = function (toChange) {
 		var info = core.status.thisUIEventInfo;
 		if (!info) return;
-		core.setPageItems(info.page);
+		setPageItems(info.page);
 		var index = info.index || 1;
 		var items = info.pageItems;
 		if (info.select.type != null) {
@@ -3218,7 +3219,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (info.page <= 0) info.page = maxPage;
 		if (info.page > maxPage) info.page = 1;
 		info.index = 1;
-		core.setPageItems(info.page);
+		setPageItems(info.page);
 		core.setIndexAndSelect("select");
 		core.refreshBox();
 	}
@@ -3366,7 +3367,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (core.status.thisEventClickArea) return true;
 	}, 51);
 
-	this.addUIEventListener = function (x, y, width, height, todo) {
+	function addUIEventListener(x, y, width, height, todo) {
 		if (!core.status.thisEventClickArea) return;
 		var obj = {
 			x: x,
@@ -3477,12 +3478,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.initThisEventInfo();
 		var info = core.status.thisUIEventInfo;
 		var items = core.getToolboxItems("all", core.getFlag('showHideItem', false));
-		core.setPageItems(1);
+		setPageItems(1);
 		var index = items.indexOf(itemId) + 1;
 		info.page = Math.ceil(index / info.maxItem);
 		info.index = index % info.maxItem || info.maxItem;
 		core.setIndexAndSelect("select");
-		core.setPageItems(info.page);
+		setPageItems(info.page);
 		core.drawToolbox();
 		setTimeout(function () {
 			core.ui.closePanel();
@@ -3519,11 +3520,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.status.event.id = "equipbox";
 		core.initThisEventInfo();
 		var info = core.status.thisUIEventInfo;
-		core.setPageItems(1);
+		setPageItems(1);
 		info.page = Math.ceil(index / info.maxItem);
 		info.index = index % info.maxItem || info.maxItem;
 		core.setIndexAndSelect("select");
-		core.setPageItems(info.page);
+		setPageItems(info.page);
 		core.drawEquipbox();
 		setTimeout(function () {
 			core.ui.closePanel();
@@ -3558,7 +3559,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.status.event.id = "equipbox";
 		core.initThisEventInfo();
 		var info = core.status.thisUIEventInfo;
-		core.setPageItems(1);
+		setPageItems(1);
 		info.select.type = equipType;
 		core.setIndexAndSelect();
 		core.drawEquipbox();
