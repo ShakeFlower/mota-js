@@ -1138,26 +1138,6 @@ control.prototype.updateCheckBlock = function (floorId) {
 
 ////// 检查并执行领域、夹击、阻击事件 //////
 
-control.prototype.battleWithChase = function () {
-    const { x: hx, y: hy } = core.status.hero.loc;
-    const scan = core.utils.scan;
-    const actions = [];
-
-    for (const dir in scan) {
-        const [nx, ny] = [hx + scan[dir].x, hy + scan[dir].y];
-        const blockId = core.getBlockId(nx, ny);
-        if (core.hasSpecial(blockId, 28)) {
-            actions.push({
-                "type": "function", "function": "function() { " +
-                    "core.battle('" + blockId + "', " + nx + "," + ny + ", true, core.doAction); " +
-                    "}", "async": true
-            });
-        }
-    }
-    if (actions.length > 0) core.insertAction(actions);
-    core.doAction();
-}
-
 control.prototype.checkBlock = function () {
     var x = core.getHeroLoc('x'), y = core.getHeroLoc('y'), loc = x + "," + y;
     var damage = core.status.checkBlock.damage[loc];
@@ -1188,15 +1168,39 @@ control.prototype.checkBlock = function () {
     // 追猎需要等待阻击完成，避免发生碰撞导致怪物消失 先清理四周追猎，追猎移动，再清理一轮四周的追猎
     const currChase = core.status.checkBlock.chase[loc];
     if (currChase && currChase.length > 0) {
-        core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" });
+        const adjacentChase = core.checkBlock_adjacentChase();
+        if (adjacentChase && adjacentChase.length > 0) core.push(actions, adjacentChase);
+        // core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase();\n}" });
     }
     const chaseAction = this._checkBlock_chase(currChase);
     if (chaseAction.length > 0) core.push(actions, chaseAction);
     if (currChase && currChase.length > 0) {
-        core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.battleWithChase();\n}" });
+        core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase(true);\n}" });
     }
     if (actions.length > 0) core.insertAction(actions, x, y, core.plugin.autoClear);
     else core.plugin.autoClear(); // 阻击结算后执行自动清怪
+}
+
+control.prototype.checkBlock_adjacentChase = function (inAction) {
+    const { x: hx, y: hy } = core.status.hero.loc;
+    const scan = core.utils.scan;
+    const actions = [];
+
+    for (const dir in scan) {
+        const [nx, ny] = [hx + scan[dir].x, hy + scan[dir].y];
+        const blockId = core.getBlockId(nx, ny);
+        const special = core.getEnemyValue(blockId, 'special', nx, ny);
+        if (core.hasSpecial(special, 28)) {
+            actions.push({
+                "type": "function", "function": "function() { " +
+                    "core.battle('" + blockId + "', " + nx + "," + ny + ", true, core.doAction); " +
+                    "}", "async": true
+            });
+        }
+    }
+    if (!inAction) return actions;
+    if (actions.length > 0) core.insertAction(actions);
+    core.doAction();
 }
 
 control.prototype._checkBlock_disableQuickShop = function () {
