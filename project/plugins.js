@@ -1141,7 +1141,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// npm地址：https://www.npmjs.com/package/mutate-animate
 
 		// 是否开启本插件，默认启用；将此改成 false 将禁用本插件。
-		var __enable = false;
+		var __enable = true;
 
 		if (main.replayChecking) __enable = false;
 		if (!__enable) {
@@ -2229,9 +2229,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	},
     "scrollingText": function () {
 		// 本插件用于绘制在线留言
+		// 说明：https://h5mota.com/bbs/thread/?tid=1017
+		// 目前使用core.http代替帖子中提到的axios
 
 		/** 塔的英文名 */
-		const towerName = core.firstData.name;
+		const towerName = 'slmwarbyshadow' || core.firstData.name;
 
 		let [W, H] = [core.__SIZE__, core.__SIZE__];
 		let [WIDTH, HEIGHT] = [core.__PIXELS__, core.__PIXELS__];
@@ -2268,15 +2270,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 						core.setFlag('commentCollection', commentCollection);
 					} catch (err) {
-						core.drawTip('接收失败！' + err.message);
-						core.playSound('error.mp3');
+						core.drawFailTip('接收失败！' + err.message);
 					}
 				},
 				function (err) {
 					err = JSON.parse(err);
 					console.error(err);
-					core.drawTip('接收失败' + err?.message);
-					core.playSound('error.mp3');
+					core.drawFailTip('接收失败' + err?.message);
 				},
 				null, null, null, 1000
 			);
@@ -2286,8 +2286,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.isReplaying()) return;
 			const isEmpty = /^\s*$/;
 			if (isEmpty.test(comment)) {
-				core.drawTip('您输入的消息为空，请重发！');
-				core.playSound('error.mp3');
+				core.drawFailTip('您输入的消息为空，请重发！');
 				return;
 			}
 			let form = new FormData();
@@ -2305,30 +2304,27 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						console.log(res);
 						if (res?.code === 0) {
 							core.drawTip('提交成功！')
-							core.playSound('item.mp3');
 						} else {
 							core.drawTip('提交失败！' + res?.message);
-							core.playSound('error.mp3');
 						}
 					}
 					catch (err) {
-						core.drawTip('提交失败！' + err.message);
-						core.playSound('error.mp3');
+						core.drawFailTip('提交失败！' + err.message);
 					}
 				},
 				function (err) {
 					err = JSON.parse(err);
 					console.error(err);
-					core.drawTip('提交失败！' + err?.message);
-					core.playSound('error.mp3');
+					core.drawFailTip('提交失败！' + err?.message);
 				},
 				null, null, null, 1000
 			);
 		}
 		//#endregion
 
+		/** 若变量comment为真，在每层切换时在地上有弹幕的地方显示相应图标。 */
 		this.drawCommentSign = function () {
-			if (!core.getFlag('comment') || core.isReplaying()) return;
+			if (!core.hasFlag('comment') || core.isReplaying()) return;
 			let commentCollection = core.getFlag('commentCollection', {}),
 				floorId = core.status.floorId;
 			core.createCanvas('sign', 0, 0, WIDTH, HEIGHT, 61);
@@ -2338,15 +2334,33 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const l = commentCollection[floorId][pos].length;
 					for (let i = 0; i <= l - 1; i++) {
 						const [x, y] = pos.split(',');
-						core.drawImage('sign', 'sign.png', 32 * x, 32 * y);
+						core.drawIcon('sign', postman, 32 * x, 32 * y);
 						break;
 					}
 				}
 			}
 		}
 
+		/** 立即清除楼层的弹幕图标。关闭弹幕相关设置时调用。 */
 		this.clearCommentSign = function () {
 			core.deleteCanvas('sign');
+		}
+
+		/** 默认一次显示的弹幕数 */
+		const showNum = 5;
+
+	    // 每走一步或瞬移，调用该函数，若目标点有弹幕，显示之
+		this.showComment = function (x, y) {
+			if (!core.getFlag('comment') || core.isReplaying()) return;
+			const commentCollection = core.getFlag('commentCollection', {});
+			const floorId = core.status.floorId,
+				str = x + ',' + y;
+			if (commentCollection.hasOwnProperty(floorId) &&
+				commentCollection[floorId].hasOwnProperty(str)) {
+				let commentArr = commentCollection[floorId][str].concat();
+				const commentArrPicked = pickComment(commentArr, showNum);
+				drawComment(commentArrPicked);
+			}
 		}
 
 		/** 返回从commentArr中挑选showNum个comment组成的数组*/
@@ -2363,6 +2377,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 			return showList;
+		}
+
+		function drawComment(commentArr) {
+			const l = commentArr.length;
+			let yList = generateCommentYList(20, HEIGHT - 20, showNum);
+			if (l < showNum) yList = getRandomElements(yList, l);
+			for (let i = 0; i <= l - 1; i++) {
+				drawCommentStr(commentArr[i], WIDTH + 20 * Math.random(),
+					yList[i], Math.random() * 0.1 + 0.1);
+			}
 		}
 
 		/** 生成count个随机数，范围从min到max，作为弹幕的y坐标*/
@@ -2388,31 +2412,40 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return result.slice(len - count);
 		}
 
-		/** 默认一次显示的弹幕数 */
-		const showNum = 5;
+		//#region 弹幕绘制部分
+		const { Animation, linear, Ticker } = core.plugin.animate ?? {};
+		const ctxName = 'scrollingText';
 
-		function drawComment(commentArr) {
-			const l = commentArr.length;
-			let yList = generateCommentYList(20, HEIGHT - 20, showNum);
-			if (l < showNum) yList = getRandomElements(yList, l);
-			for (let i = 0; i <= l - 1; i++) {
-				core.plugin.drawCommentStr(commentArr[i], WIDTH + 20 * Math.random(),
-					yList[i], Math.random() * 0.1 + 0.1);
-			}
+		if (Ticker) {
+			const ticker = new Ticker();
+			ticker.add(() => {
+				if (core.isReplaying()) return;
+				core.createCanvas(ctxName, 0, 0, core.__PIXELS__, core.__PIXELS__, 136); //每帧重绘该画布
+			});
 		}
 
-		this.showComment = function (x, y) {
-			if (!core.getFlag('comment') || core.isReplaying()) return;
-			const commentCollection = core.getFlag('commentCollection', {});
-			const floorId = core.status.floorId,
-				str = x + ',' + y;
-			if (commentCollection.hasOwnProperty(floorId) &&
-				commentCollection[floorId].hasOwnProperty(str)) {
-				let commentArr = commentCollection[floorId][str].concat();
-				const commentArrPicked = pickComment(commentArr, showNum);
-				drawComment(commentArrPicked);
-			}
+		/**
+		 * 绘制弹幕 
+		 * @example  
+		 * drawCommentStr('OK', 450, 200, 0.1);
+		 * @param {string} content 弹幕的内容
+		 * @param {number} x 弹幕的初始x坐标
+		 * @param {number} y 弹幕的初始y坐标
+		 * @param {number} vx 弹幕的横向滚动速度
+		 */
+		function drawCommentStr(content, x, y, vx) {
+			if (core.isReplaying() || !Animation) return;
+			const ani = new Animation();
+			ani.ticker.add(() => {
+				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
+			})
+			ani.mode(linear())
+				.time(600 / vx)
+				.absolute()
+				.move(-600, 0)
+			ani.all().then(() => { ani.ticker.destroy(); });
 		}
+		//#endregion 
 
 	},
     "newBackpackLook": function () {
@@ -3927,8 +3960,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				'跳过所有对话（可能跳过重要信息，请慎用）。',
 				true,
 			)],
+			['comment', new Setting(
+				() => '在线留言:' + (core.hasFlag('comment') ? '开' : '关'),
+				() => {
+					if (core.hasFlag('comment')) {
+						core.setFlag('comment', false);
+						core.plugin.clearCommentSign();
+					}
+					else core.setFlag('comment', true);
+				},
+				'在地图上显示玩家的在线留言。',
+				true,
+			)],
 			['itemDetail', new Setting(
-				() => '物品显示数据:' + (core.getFlag('itemDetail', false) ? '开' : '关'),
+				() => '物品显示数据:' + (core.hasFlag('itemDetail') ? '开' : '关'),
 				() => invertFlag('itemDetail'),
 				'在地图上显示即捡即用道具和装备增加的属性值。',
 				true,
@@ -4373,6 +4418,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const strArr = action.split(':');
 			if (strArr[0] !== 'cSet') return false;
 			const btn = settingMap.get(strArr[1]);
+			if (!btn.replay || strArr[1].startsWith('debug')) return false;
 			btn.effect();
 			core.status.route.push(action);
 			core.replay();
@@ -4622,6 +4668,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['3,3', new SettingButton(220, 280, 25, 25, 'floorChangeTimeDown')],
 				['4,3', new SettingButton(340, 280, 25, 25, 'floorChangeTimeUp')],
 				['1,4', new SettingButton(40, 305, 150, 25, 'skip')],
+				['2,4', new SettingButton(220, 305, 150, 25, 'comment')],
 			]);
 
 			const gameViewMenu = new SettingOnePage('gameView');
