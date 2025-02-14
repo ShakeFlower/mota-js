@@ -2419,7 +2419,7 @@ ui.prototype._drawBookDetail_origin = function (enemy, texts) {
     }
     core.enemys.getStatusToCompare().forEach(function (one) {
         // if (enemy[one] == null || originEnemy[one] == null) return;
-        if (enemy[one] != originEnemy[one]) {
+        if (!core.utils.deepEqual(enemy[one], originEnemy[one])) {
             content.push(core.getStatusLabel(one) + " " + originEnemy[one]);
         }
     });
