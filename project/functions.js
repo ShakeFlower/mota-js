@@ -566,9 +566,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				[25, "光环", function (enemy) { return (enemy.range != null ? ((enemy.haloSquare ? "该怪物九宫格" : "该怪物十字") + enemy.haloRange + "格范围内") : "同楼层所有") + "怪物生命提升" + (enemy.hpBuff || 0) + "%，攻击提升" + (enemy.atkBuff || 0) + "%，防御提升" + (enemy.defBuff || 0) + "%，" + (enemy.haloAdd ? "可叠加" : "不可叠加"); }, "#e6e099", 1],
 				[26, "支援", "当周围一圈的怪物受到攻击时将上前支援，并组成小队战斗。", "#77c0b6", 1],
 				[27, "捕捉", function (enemy) { return "当走到怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时会强制进行战斗。"; }, "#c0ddbb"],
-				[28, "追猎", function (enemy) { return ""; }, "#c0ddbb"],
-				[29, "败移", function (enemy) { return ""; }, "#c0ddbb"],
-				[30, "吸噬", function (enemy) { return ""; }, "#c0ddbb"],
+				[28, "追猎", "角色行走一步后若处在怪物视线内，怪物向角色移动一步。怪物走入角色十字1格以内时主动与角色开战。", "#800020"],
+				[29, "败移", "战后若角色面对的行/列有其它怪物，该怪物不会被击败，而是与其中最近的怪物交换位置。", "#c0ddbb"],
 			];
 		},
         "getEnemyInfo": function (enemy, hero, x, y, floorId) {
@@ -1474,7 +1473,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 							const currloc = nx + "," + ny;
 							if (nx < 0 || nx > core.__SIZE__ - 1 || ny < 0 || ny > core.__SIZE__ - 1) break;
 							if (!canSeeThrough(nx, ny)) break;
-							if (i === 1) continue; // 离勇士一格以内的追猎怪不需要移动
 							if (!chase[currloc]) chase[currloc] = [];
 							chase[currloc].push({ x, y, dir });
 						}

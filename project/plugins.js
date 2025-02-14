@@ -1983,6 +1983,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				|| core.hasSpecial(e.special, 21) // 退化
 				|| core.hasSpecial(e.special, 27) // 捕捉:逻辑上应该让怪物来找角色
 				|| core.hasSpecial(e.special, 28) // 追猎:逻辑上应该让怪物来找角色
+				|| core.hasSpecial(e.special, 29) // 败移:特殊战后事件
 			)
 				return false;
 			const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
