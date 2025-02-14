@@ -272,7 +272,8 @@ var icons_4665ee12_3a1f_44a4_bea3_0fccba634dc1 =
 		"shield5": 59,
 		"sword0": 60,
 		"shield0": 61,
-		"setting": 62
+		"setting": 62,
+		"postman": 63
 	},
 	"autotile": {
 		"autotile": 0,

@@ -165,7 +165,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// ...可以新增一些其他内容，比如创建个画布在右上角显示什么内容等等
 
 		},
-        "afterChangeFloor": function (floorId) {
+		"afterChangeFloor": function (floorId) {
 			// 转换楼层结束的事件；此函数会在整个楼层切换完全结束后再执行
 			// floorId是切换到的楼层
 
@@ -183,6 +183,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					core.visitFloor(floorId);
 				}
 			}
+			if (!core.isReplaying()) core.plugin.drawCommentSign();
 		},
         "flyTo": function (toId, callback) {
 			// 楼层传送器的使用，从当前楼层飞往toId
@@ -1619,6 +1620,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			if (!hasTrigger)
 				core.trigger(nowx, nowy, callback);
 
+			// 绘制目标点的弹幕
+			if (!core.isReplaying()) core.plugin.showComment(nowx, nowy);
+			
 			// 检查该点是否是滑冰
 			if (core.onSki()) {
 				// 延迟到事件最后执行，因为这之前可能有阻激夹域动画
@@ -1655,6 +1659,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.status.hero.loc.x = x;
 				core.status.hero.loc.y = y;
 				core.drawHero();
+
+				// 绘制目标点的弹幕
+				if (!core.isReplaying()) core.plugin.showComment(x, y);
 				// 记录录像
 				core.status.route.push("move:" + x + ":" + y);
 				// 统计信息

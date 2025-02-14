@@ -235,5 +235,6 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 	"339": {"cls":"items","id":"silverCoin"},
 	"340": {"cls":"items","id":"orb"},
 	"341": {"cls":"items","id":"bentWand"},
-	"342": {"cls":"items","id":"crossChest"}
+	"342": {"cls":"items","id":"crossChest"},
+	"343": {"cls":"items","id":"postman"}
 }

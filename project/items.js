@@ -509,7 +509,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canBatchUse": "true",
 		"text": "使用后回复100体力。",
 		"canUseItemEffect": "true",
-		"useItemEffect": "core.addStatus('hp', 100);"
+		"useItemEffect": "core.addStatus('hp', 100);",
+		"hideInReplay": true
 	},
 	"pack": {
 		"cls": "items",
@@ -523,19 +524,12 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canUseItemEffect": "true"
 	},
 	"silverCoin": {
-		"cls": "tools",
+		"cls": "items",
 		"name": "新物品",
-		"canUseItemEffect": "true",
-		"useItemEffect": "core.status.hero.hp += 1;",
-		"useItemEvent": [
-			{
-				"type": "setValue",
-				"name": "status:hp",
-				"operator": "+=",
-				"value": "1"
-			}
-		],
-		"canBatchUse": "true"
+		"canUseItemEffect": null,
+		"useItemEffect": null,
+		"useItemEvent": null,
+		"canBatchUse": null
 	},
 	"orb": {
 		"cls": "items",
@@ -601,5 +595,46 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"cls": "items",
 		"name": "新物品",
 		"canUseItemEffect": "true"
+	},
+	"postman": {
+		"cls": "constants",
+		"name": "言灵",
+		"canUseItemEffect": "true",
+		"useItemEvent": [
+			{
+				"type": "choices",
+				"text": "本功能需要您在h5mota.com在线游玩并处于登录状态时使用，可以发送和接受留言。\n发言后需要选择刷新留言才能看到自己新发的留言。",
+				"choices": [
+					{
+						"text": "刷新留言",
+						"action": [
+							{
+								"type": "function",
+								"function": "function(){\nif (!core.isReplaying()) {\n\tcore.plugin.getComment();\n\tsetTimeout(core.plugin.drawCommentSign, 1000);\n}\n}"
+							}
+						]
+					},
+					{
+						"text": "写留言",
+						"action": [
+							{
+								"type": "input2",
+								"text": "请输入要发送的评论，文明友善发言，拒绝放假、剧透。"
+							},
+							{
+								"type": "function",
+								"function": "function(){\nconst input = core.getFlag('input', '');\nconst tags = [core.status.floorId,\n\tcore.getHeroLoc().x.toString(), core.getHeroLoc().y.toString()\n]\nif (!core.isReplaying()) {\n\tcore.plugin.postComment(input, tags);\n}\n}"
+							}
+						]
+					},
+					{
+						"text": "退出",
+						"action": []
+					}
+				]
+			}
+		],
+		"text": "可以发送和接收在线留言。",
+		"hideInReplay": true
 	}
 }
