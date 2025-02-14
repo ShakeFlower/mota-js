@@ -195,13 +195,13 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
 
 ////// 能否获胜 //////
 enemys.prototype.canBattle = function (enemy, x, y, floorId) {
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     var damage = this.getDamage(enemy, x, y, floorId);
     return damage != null && damage < core.status.hero.hp;
 }
 
 enemys.prototype.getDamageString = function (enemy, x, y, floorId) {
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     var damage = this.getDamage(enemy, x, y, floorId);
 
     var color = '#000000';
@@ -234,7 +234,7 @@ enemys.prototype.getDamageString = function (enemy, x, y, floorId) {
 
 ////// 接下来N个临界值和临界减伤计算 //////
 enemys.prototype.nextCriticals = function (enemy, number, x, y, floorId) {
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     number = number || 1;
 
     var specialCriticals = this._nextCriticals_special(enemy, number, x, y, floorId);
@@ -386,7 +386,7 @@ enemys.prototype._nextCriticals_useTurn = function (enemy, info, number, x, y, f
 
 ////// N防减伤计算 //////
 enemys.prototype.getDefDamage = function (enemy, k, x, y, floorId) {
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     k = k || 1;
     var nowDamage = this._getDamage(enemy, null, x, y, floorId);
     var nextDamage = this._getDamage(enemy, { "def": core.status.hero.def + k }, x, y, floorId);
@@ -396,7 +396,7 @@ enemys.prototype.getDefDamage = function (enemy, k, x, y, floorId) {
 
 enemys.prototype.getEnemyInfo = function (enemy, hero, x, y, floorId) {
     if (enemy == null) return null;
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     return this.enemydata.getEnemyInfo(enemy, hero, x, y, floorId)
 }
 
@@ -404,7 +404,7 @@ enemys.prototype.getEnemyInfo = function (enemy, hero, x, y, floorId) {
 enemys.prototype.getDamageInfo = function (enemy, hero, x, y, floorId) {
     if (enemy == null) return null;
     // 移动到了脚本编辑 - getDamageInfo中
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     return this.enemydata.getDamageInfo(enemy, hero, x, y, floorId);
 }
 
@@ -415,7 +415,7 @@ enemys.prototype.getDamage = function (enemy, x, y, floorId) {
 
 enemys.prototype._getDamage = function (enemy, hero, x, y, floorId) {
     if (enemy == null) enemy = core.getBlockId(x, y, floorId);
-    if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
     if (enemy == null) return null;
 
     var info = this.getDamageInfo(enemy, hero, x, y, floorId);
@@ -464,10 +464,10 @@ enemys.prototype._getCurrentEnemys_addEnemy = function (enemyId, enemys, used, x
     function statusEqual(enemyInfo, locEnemyInfo) {
         return core.enemys.getStatusToCompare().every((status) => {
             if (status === 'special') {
-                enemyInfo[status]= core.utils.parseSpecial(enemyInfo[status]);
+                enemyInfo[status] = core.utils.parseSpecial(enemyInfo[status]);
                 locEnemyInfo[status] = core.utils.parseSpecial(locEnemyInfo[status]);
             }
-            return core.utils.deepEqual(enemyInfo[status],locEnemyInfo[status]);
+            return core.utils.deepEqual(enemyInfo[status], locEnemyInfo[status]);
         });
     }
 
