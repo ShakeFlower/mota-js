@@ -675,7 +675,7 @@ maps.prototype.getFgMapArray = function (floorId) {
 maps.prototype._getBgFgNumber = function (name, x, y, floorId) {
     if (x == null) x = core.getHeroLoc('x');
     if (y == null) y = core.getHeroLoc('y');
-    return this._getBgFgMapArray(name, floorId)[x][y];
+    return this._getBgFgMapArray(name, floorId)[y][x];
 }
 
 maps.prototype.getBgNumber = function (x, y, floorId) {

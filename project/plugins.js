@@ -2002,7 +2002,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const changeFloor = floor.changeFloor[loc];
 			const isEnemy = autoBattle && cls.startsWith('enemy'),
 				isItem = autoGet && cls === 'items';
-			if (core.onSki(core.getBgNumber(x, y))) return false;
+
 			if (has(changeFloor)) {
 				if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
 					return false;
@@ -2078,6 +2078,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const ambush = checkblockInfo.ambush[loc];
 			const repulse = checkblockInfo.repulse[loc];
 			const chase = checkblockInfo.chase[loc];
+
 			return (has(damage) && damage > 0) || has(ambush) || has(repulse) || has(chase);
 		}
 
@@ -2088,6 +2089,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function bfs(floorId, deep = Infinity) {
 			core.extractBlocks(floorId);
 			const objs = core.getMapBlocksObj(floorId);
+			const bgMap = core.getBgMapArray(floorId);
 			const { x, y } = core.status.hero.loc;
 			/** @type {[direction, number, number][]} */
 			const dir = Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
@@ -2112,6 +2114,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					const loc = `${tx},${ty}`;
 					if (mapped[loc]) return;
+					if (core.onSki(bgMap[ty][tx])) return; // 寻路不允许穿过滑冰
 					const block = objs[loc];
 					mapped[loc] = true;
 					const type = judge(block, nx, ny, tx, ty, v[0], floorId, autoBattle, autoGet);
@@ -2166,16 +2169,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function auto() {
+			if (!core.status.floorId || !core.status.checkBlock.damage) return; // 这两个条件不知道什么情形下会出现
+			if (core.status.event.id == 'action' || core.events.onSki() || core.status.lockControl) return; // 在冰上不允许触发自动清怪
 			const before = flags.__forbidSave__;
-			// 如果勇士当前点有地图伤害，只清周围，如果有事件，直接不清了
 			const { x, y } = core.status.hero.loc;
 			const floor = core.floors[core.status.floorId];
 			const loc = `${x},${y}`;
 			const hasEvent = has(floor.events[loc]);
-			if (hasEvent) return;
+			if (hasEvent) return; // 如果有事件，直接不清了
 			let deep = Infinity;
 			if (hasBlockDamage(loc)) {
-				deep = core.flags.enableGentleClick ? 1 : 0; // 有地图伤害允许轻点附近1格
+				deep = core.flags.enableGentleClick ? 1 : 0; // 角色站的位置有地图伤害时，仍然允许轻点附近1格
 			}
 			flags.__forbidSave__ = true;
 			flags.__statistics__ = true;
