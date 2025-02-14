@@ -141,7 +141,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 				"constants": {
 					"book": 1,
 					"setting": 1,
-					"postman": 1,
+					"postman": 1
 				},
 				"tools": {},
 				"equips": {}
@@ -728,6 +728,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"enableMoveDirectly": true,
 		"enableRouteFolding": true,
 		"disableShopOnDamage": false,
-		"blurFg": false
+		"blurFg": false,
+		"chaseThroughEnemy": true
 	}
 }

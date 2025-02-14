@@ -1245,6 +1245,13 @@ control.prototype._checkBlock_ambush = function (ambush) {
     return actions;
 }
 
+////// 获取追猎的视野和行动可穿越的图块类型 //////
+control.prototype.getChaseType = function () {
+    let clsList = ['items'];
+    if (core.flags.chaseThroughEnemy) core.push(clsList, ['enemys', 'enemy48']);
+    return clsList;
+}
+
 ////// 追猎 //////
 control.prototype._checkBlock_chase = function (chase) {
     if (!chase || chase.length === 0) return [];
@@ -1259,7 +1266,6 @@ control.prototype._checkBlock_chase = function (chase) {
     chase.forEach((currChaseInfo) => {
         const { x, y, dir } = currChaseInfo;
         const [aimx, aimy] = [x + core.utils.scan[dir].x, y + core.utils.scan[dir].y];
-        // 可与敌人，物品换位
         if (!(aimx === hx && aimy === hy)) {
             actions.push({
                 "type": "if", "condition": "!core.getBlock(" + aimx + "," + aimy + ")",
@@ -1267,14 +1273,27 @@ control.prototype._checkBlock_chase = function (chase) {
                     { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
                 ],
                 "false": [
+                    { "type": "setValue", "name": "flag:chaseAimCls", "value": `core.getBlockCls(${aimx},${aimy})` },
                     {
-                        "type": "if", "condition": "[\"items\",\"enemys\",\"enemy48\"].includes(core.getBlockCls(" + aimx + "," + aimy + "))",
+                        "type": "if", "condition": "core.getChaseType().includes(core.getFlag('chaseAimCls'))",
                         "true": [
-                            { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
-                            { "type": "move", "loc": [aimx, aimy], "time": 100, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
+                            {
+                                "type": "if", "condition": "[\"enemys\",\"enemy48\"].includes(core.getFlag('chaseAimCls'))",
+                                "true": [
+                                    {
+                                        "type": "function", "function": `function () { 
+                                        core.exchangeBlock(${x}, ${y}, ${aimx}, ${aimy}, '${dir}', 100, null); }`
+                                    },
+                                ],
+                                "false": [
+                                    { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
+                                    { "type": "move", "loc": [aimx, aimy], "time": 100, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
+                                ]
+                            },
                             { "type": "waitAsync", "excludeAnimates": true },
                         ]
                     },
+                    { "type": "setValue", "name": "flag:chaseCls", "value": null },
                 ]
             });
         }

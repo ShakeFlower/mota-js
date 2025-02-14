@@ -439,11 +439,13 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				const { aimx, aimy, aimId } = failMoveInfo;
 				if (core.getBlockId(x, y) === enemyId && failMoveInfo
 					&& core.getBlockId(aimx, aimy) === aimId) {
-					const doFailMove =
-						[{ "type": "setBlock", "number": enemyId, "loc": [[aimx, aimy]], "time": 50 },
+					const doFailMove = [
+						{ "type": "setBlock", "number": enemyId, "loc": [[aimx, aimy]], "time": 50 },
 						{ "type": "setBlock", "number": aimId, "loc": [[x, y]], "time": 50 },
-						{ "type": "function", "function": `function () { core.switchEnemyOnPoint(${x},${y},${aimx},${aimy}) }` },
-						]
+						{
+							"type": "function", "function": `function () { core.switchEnemyOnPoint(${x},${y},${aimx},${aimy}) }`
+						},
+					];
 					core.insertAction(doFailMove);
 				}
 			}
@@ -547,7 +549,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				[25, "光环", function (enemy) { return (enemy.range != null ? ((enemy.haloSquare ? "该怪物九宫格" : "该怪物十字") + enemy.haloRange + "格范围内") : "同楼层所有") + "怪物生命提升" + (enemy.hpBuff || 0) + "%，攻击提升" + (enemy.atkBuff || 0) + "%，防御提升" + (enemy.defBuff || 0) + "%，" + (enemy.haloAdd ? "可叠加" : "不可叠加"); }, "#e6e099", 1],
 				[26, "支援", "当周围一圈的怪物受到攻击时将上前支援，并组成小队战斗。", "#77c0b6", 1],
 				[27, "捕捉", function (enemy) { return "当走到怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时会强制进行战斗。"; }, "#c0ddbb"],
-				[28, "追猎", "角色行走一步后若处在怪物视线内，怪物向角色移动一步。怪物走入角色十字1格以内时主动与角色开战。", "#800020"],
+				[28, "追猎", "角色行走一步后若处在怪物视线内，怪物向角色移动一步。怪物走入角色十字1格以内时主动与角色开战。", "#DC143C"],
 				[29, "败移", "战后若角色面对的行/列有其它怪物，该怪物不会被击败，而是与其中最近的怪物交换位置。", "#c0ddbb"],
 			];
 		},
@@ -1439,9 +1441,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				 */
 				function canSeeThrough(x, y) {
 					const block = core.getBlock(x, y);
-					// 空地和道具，敌人（不含普通事件）可被穿过
+					// 空地默认一定可被穿过，有事件不允许穿过
 					if (block === null ||
-						(['items', 'enemys', 'enemy48'].includes(block.event.cls) && !block.event.data)) return true;
+						(core.control.getChaseType().includes(block.event.cls) && !block.event.data)) return true;
 					return false;
 				}
 

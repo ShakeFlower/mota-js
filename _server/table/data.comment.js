@@ -600,6 +600,12 @@ var data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "开启负伤",
 					"_data": "是否支持负伤害（回血）"
 				},
+				"chaseThroughEnemy": {
+					"_leaf": true,
+					"_type": "checkbox",
+					"_docs": "追猎穿怪",
+					"_data": "追猎的视野和行动能否穿越其它怪物"
+				},
 				"betweenAttackMax": {
 					"_leaf": true,
 					"_type": "checkbox",

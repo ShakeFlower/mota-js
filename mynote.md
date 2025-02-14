@@ -68,3 +68,19 @@ core.drawToolboxRightbar(ctx, info1);
 !mypromt callback疑似需要改回去
 
 难绷的bug太多了 自动拾取，自动清怪，追猎等等。
+
+moveBlock:
+```js
+let [x, y, steps, time, keep] = [0,0,['down'],1,false];
+let blockArr = core.maps._getAndRemoveBlock(x, y);
+let block = blockArr[0], blockInfo = blockArr[1];
+let canvases = core.maps._initDetachedBlock(blockInfo, x, y, block.event.animate !== false);
+core.maps._moveDetachedBlock(blockInfo, 32 * x, 32 * y, 1, canvases);
+```
+1.blockArr:[block,blockInfo]组成，同时会removeBlock
+block,blockInfo有一个什么都没有，则blockArr什么都没有，则返回
+接下来处理moveSteps，得到['down',1];
+_initDetachedBlock返回三个canvas的对象 {headCanvas,bodyCanvas,damageCanvas}
+_moveDetachedBlock：疑似是通过该函数不断移动实现移动效果
+
+模板字符串居然不能随意填字符串，逆天
