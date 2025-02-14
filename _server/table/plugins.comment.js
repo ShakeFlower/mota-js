@@ -75,7 +75,7 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "物品数据显示"
 			},
-			"autoGet": {
+			"autoClear": {
 				"_leaf": true,
 				"_type": "textarea",
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
@@ -85,13 +85,25 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_leaf": true,
 				"_type": "textarea",
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
-				"_data": "新版道具栏"
+				"_data": "自绘道具栏"
 			},
 			"scrollingText": {
 				"_leaf": true,
 				"_type": "textarea",
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "接收&发送弹幕"
+			},
+			"autoChangeEquip": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "自动切装"
+			},
+			"setting": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "自绘设置界面"
 			},
 		}
 		if (obj[key]) return obj[key];

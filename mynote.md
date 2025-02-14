@@ -84,3 +84,4 @@ _initDetachedBlock返回三个canvas的对象 {headCanvas,bodyCanvas,damageCanva
 _moveDetachedBlock：疑似是通过该函数不断移动实现移动效果
 
 模板字符串居然不能随意填字符串，逆天
+arguments对象是 JavaScript 中的一个特殊对象，它自动提供给每一个函数作为局部变量。它是类数组对象，但缺少真正数组的许多方法。
