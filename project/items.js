@@ -357,8 +357,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"text": "可以查看当前楼层各怪物属性",
 		"hideInToolbox": true,
 		"useItemEffect": "core.ui.drawBook(0);",
-		"canUseItemEffect": "true",
-		"noBatchUse": "true"
+		"canUseItemEffect": "true"
 	},
 	"fly": {
 		"cls": "constants",
@@ -367,8 +366,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"hideInReplay": true,
 		"hideInToolbox": true,
 		"useItemEffect": "core.ui.drawFly(core.floorIds.indexOf(core.status.floorId));",
-		"canUseItemEffect": "(function () {\n\tif (core.flags.flyNearStair && !core.nearStair()) return false;\n\treturn core.status.maps[core.status.floorId].canFlyFrom;\n})();",
-		"noBatchUse": "true"
+		"canUseItemEffect": "(function () {\n\tif (core.flags.flyNearStair && !core.nearStair()) return false;\n\treturn core.status.maps[core.status.floorId].canFlyFrom;\n})();"
 	},
 	"coin": {
 		"cls": "constants",
@@ -442,8 +440,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "中心对称飞行器",
 		"text": "可以飞向当前楼层中心对称的位置",
 		"useItemEffect": "core.playSound('centerFly.mp3');\ncore.clearMap('hero');\ncore.setHeroLoc('x', core.bigmap.width - 1 - core.getHeroLoc('x'));\ncore.setHeroLoc('y', core.bigmap.height - 1 - core.getHeroLoc('y'));\ncore.drawHero();\ncore.drawTip(core.material.items[itemId].name + '使用成功');",
-		"canUseItemEffect": "(function () {\n\tvar toX = core.bigmap.width - 1 - core.getHeroLoc('x'),\n\t\ttoY = core.bigmap.height - 1 - core.getHeroLoc('y');\n\tvar id = core.getBlockId(toX, toY);\n\treturn id == null;\n})();",
-		"noBatchUse": "true"
+		"canUseItemEffect": "(function () {\n\tvar toX = core.bigmap.width - 1 - core.getHeroLoc('x'),\n\t\ttoY = core.bigmap.height - 1 - core.getHeroLoc('y');\n\tvar id = core.getBlockId(toX, toY);\n\treturn id == null;\n})();"
 	},
 	"upFly": {
 		"cls": "tools",
@@ -507,8 +504,12 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canUseItemEffect": "(function () {\n\tvar nx = core.nextX(2),\n\t\tny = core.nextY(2);\n\treturn nx >= 0 && nx < core.bigmap.width && ny >= 0 && ny < core.bigmap.height && core.getBlockId(nx, ny) == null;\n})();"
 	},
 	"wand": {
-		"cls": "items",
-		"name": "新物品"
+		"cls": "tools",
+		"name": "生命魔杖",
+		"canBatchUse": "true",
+		"text": "使用后回复100体力。",
+		"canUseItemEffect": "true",
+		"useItemEffect": "core.addStatus('hp', 100);"
 	},
 	"pack": {
 		"cls": "items",
@@ -533,7 +534,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 				"operator": "+=",
 				"value": "1"
 			}
-		]
+		],
+		"canBatchUse": "true"
 	},
 	"orb": {
 		"cls": "items",
@@ -550,8 +552,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "设置",
 		"canUseItemEffect": "true",
 		"text": "可以调节设置开关。",
-		"useItemEffect": "core.plugin.openSetting();",
-		"noBatchUse": "true"
+		"useItemEffect": "core.plugin.openSetting();"
 	},
 	"redWand": {
 		"cls": "items",

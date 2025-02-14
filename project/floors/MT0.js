@@ -25,7 +25,18 @@ main.floors.MT0=
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]
 ],
-    "firstArrive": [],
+    "firstArrive": [
+        {
+            "type": "setValue",
+            "name": "item:wand",
+            "value": "99"
+        },
+        {
+            "type": "setValue",
+            "name": "item:silverCoin",
+            "value": "99"
+        }
+    ],
     "parallelDo": "",
     "events": {
         "6,8": [

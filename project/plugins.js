@@ -2971,10 +2971,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	function batchUse(item, count) {
 		try {
 			const itemCount = core.itemCount(item);
-			if (eval(core.material.items[item].noBatchUse)) {
-				core.drawFailTip('该道具不能被批量使用！');
-				return;
-			}
 			if (count > itemCount) count = itemCount;
 			core.closePanel();
 			for (let i = 0; i < count; i++) {
@@ -2982,12 +2978,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				else return;
 			}
 		} catch (e) {
-			console.log(e);
+			console.error(e);
 			core.drawFailTip('批量使用时出现未知错误！');
 		}
 	}
 
 	function drawToolbox_setBatchUseBtn(ctx, x, y, r, h, style, lineWidth) {
+		try {
+			const selectedItem = getSelectedItem();
+			let canBatchUse = eval(core.material.items[selectedItem]?.canBatchUse);
+			if (!canBatchUse) return;
+		}
+		catch (error) {
+			console.error(error);
+			return;
+		}
 		core.setTextAlign(ctx, "left");
 		core.setTextBaseline(ctx, "top");
 		var fontSize = h - 4;
@@ -2999,10 +3004,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
 
 		var todo = function () {
-			core.utils.myprompt('输入要使用该物品的次数(0~99)。 请勿对不适合重复使用的物品这么做。', null, (value) => {
+			core.utils.myprompt('输入要使用该物品的次数(0~99)。', null, (value) => {
 
 				value = parseInt(value);
-				var id = getSelectedItem();
+				const id = getSelectedItem();
 
 				if (Number.isNaN(value) || value < 0 || value > 99) {
 					core.drawFailTip('输入不合法！');
@@ -3138,7 +3143,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		info.select = {};
 		info.select.id = id;
 		core.setIndexAndSelect('index');
-		core.refreshBox();
+		refreshBox();
 	}
 
 	this.clickOneEquipbox = function (id, type) {
@@ -3150,7 +3155,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			type: type,
 			action: "unload"
 		}
-		return core.refreshBox();
+		return refreshBox();
 	}
 
 	this.useSelectItemInBox = function () {
@@ -3221,7 +3226,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		info.index = 1;
 		setPageItems(info.page);
 		core.setIndexAndSelect("select");
-		core.refreshBox();
+		refreshBox();
 	}
 
 	this.addItemListboxIndex = function (num) {
@@ -3233,7 +3238,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (info.index <= 0) info.index = 1;
 		if (info.index > maxItem) info.index = maxItem;
 		core.setIndexAndSelect("select");
-		core.refreshBox();
+		refreshBox();
 	}
 
 	this.addEquipboxType = function (num) {
@@ -3250,7 +3255,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var m = Math.abs(info.select.type);
 			if (info.select.type < 0) info.select.type = max - m;
 			core.setIndexAndSelect("select")
-			core.refreshBox();
+			refreshBox();
 			return;
 		}
 	}
@@ -3310,7 +3315,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (info.index == 1) {
 				info.select.type = core.status.globalAttribute.equipName.length - 1;
 				core.setIndexAndSelect();
-				return core.refreshBox();
+				return refreshBox();
 			}
 			if (info.index) return core.addItemListboxIndex(-1);
 			return core.addEquipboxType(-1 * info.equips);
@@ -3387,7 +3392,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.status.thisEventClickArea = [];
 	}
 
-	this.refreshBox = function () {
+	function refreshBox() {
 		if (!core.status.event.id) return;
 		if (core.status.event.id == "toolbox") core.drawToolbox();
 		else core.drawEquipbox();

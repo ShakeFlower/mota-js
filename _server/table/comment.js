@@ -107,13 +107,13 @@ var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "能否使用或装备",
 					"_data": "当前能否使用或装备该道具，仅对cls不为items有效。null表示始终不可使用但可装备"
 				},
-				"noBatchUse": {
+				"canBatchUse": {
 					"_leaf": true,
 					"_type": "textarea",
 					"_string": true,
 					"_lint": true,
-					"_docs": "不可批量使用",
-					"_data": "该道具是否不允许批量使用，true表示不可批量使用"
+					"_docs": "可批量使用",
+					"_data": "该道具是否允许批量使用，仅对cls为tools或constants有效，true表示可批量使用。建议同时勾选[回放不绘制道具栏]"
 				}
 			}
 		},
