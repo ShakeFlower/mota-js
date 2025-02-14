@@ -3090,7 +3090,7 @@ events.prototype.moveEnemyOnPoint = function (fromX, fromY, toX, toY, floorId, n
 }
 
 ////// 将两个点的怪物属性交换 ////// 
-events.prototype.switchEnemyOnPoint = function (fromX, fromY, toX, toY, floorId, norefresh) {
+events.prototype.exchangeEnemyOnPoint = function (fromX, fromY, toX, toY, floorId, norefresh) {
     floorId = floorId || core.status.floorId;
     const spos = fromX + "," + fromY,
         aimpos = toX + "," + toY;

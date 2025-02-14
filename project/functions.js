@@ -443,7 +443,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 						{ "type": "setBlock", "number": enemyId, "loc": [[aimx, aimy]], "time": 50 },
 						{ "type": "setBlock", "number": aimId, "loc": [[x, y]], "time": 50 },
 						{
-							"type": "function", "function": `function () { core.switchEnemyOnPoint(${x},${y},${aimx},${aimy}) }`
+							"type": "function", "function": `function () { core.exchangeEnemyOnPoint(${x},${y},${aimx},${aimy}) }`
 						},
 					];
 					core.insertAction(doFailMove);

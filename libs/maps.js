@@ -2730,54 +2730,22 @@ maps.prototype._moveBlock_doMove = function (blockInfo, canvases, moveInfo, call
     }
     _run();
 }
-//core.setEnemyOnPoint(5,2,null,'hp',1000,'=') core.exchangeBlock(5, 2, 5, 3, 'down', 100, null)
+
 maps.prototype.exchangeBlock = function (x1, y1, x2, y2, dir, time, callback) {
-    console.log([x1, y1, x2, y2, dir, time, callback])
-    let [block1, block2] = [this.getBlock(x1, y1), this.getBlock(x2, y2)];
-    let [blockInfo1, blockInfo2] = [this.getBlockInfo(block1), this.getBlockInfo(block2)];
-    const [pos1, pos2] = [`${x1},${y1}`, `${x2},${y2}`];
-    let fromInfo, toInfo, enemyOnFloor;
     const floorId = core.status.floorId;
-    if (flags.enemyOnPoint && flags.enemyOnPoint.hasOwnProperty(floorId)) {
-        enemyOnFloor = flags.enemyOnPoint[floorId];
-        if (enemyOnFloor.hasOwnProperty(pos1)) fromInfo = core.clone(enemyOnFloor[pos1]);
-        if (enemyOnFloor.hasOwnProperty(pos2)) toInfo = core.clone(enemyOnFloor[pos2]);
-    }
 
     let callbackCount = 0;
     function myCallback() {
         callbackCount++;
         if (callbackCount === 2) {
-            // 删除旧位置信息
-            if (fromInfo) delete enemyOnFloor[pos1];
-            if (toInfo) delete enemyOnFloor[pos2];
-
-            // 设置新位置信息
-            if (fromInfo) enemyOnFloor[pos2] = fromInfo;
-            if (toInfo) enemyOnFloor[pos1] = toInfo;
-
+            core.exchangeEnemyOnPoint(x1, y1, x2, y2, floorId);
             if (callback) callback();
         }
     }
 
-    switch (dir) {
-        case 'left':
-            this.moveBlock(x1, y1, ['left'], time, true, myCallback, true);
-            this.moveBlock(x2, y2, ['right'], time, true, myCallback, true);
-            break;
-        case 'right':
-            this.moveBlock(x1, y1, ['right'], time, true, myCallback, true);
-            this.moveBlock(x2, y2, ['left'], time, true, myCallback, true);
-            break;
-        case 'up':
-            this.moveBlock(x1, y1, ['up'], time, true, myCallback, true);
-            this.moveBlock(x2, y2, ['down'], time, true, myCallback, true);
-            break;
-        case 'down':
-            this.moveBlock(x1, y1, ['down'], time, true, myCallback, true);
-            this.moveBlock(x2, y2, ['up'], time, true, myCallback, true);
-            break;
-    }
+    const reverseDir = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+    this.moveBlock(x1, y1, [dir], time, true, myCallback, true);
+    this.moveBlock(x2, y2, [reverseDir[dir]], time, true, myCallback, true);
 }
 
 maps.prototype._moveBlock_updateSpeed = function (moveInfo) {
