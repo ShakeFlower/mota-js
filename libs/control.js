@@ -1168,9 +1168,11 @@ control.prototype.checkBlock = function () {
     // 追猎需要等待阻击完成，避免发生碰撞导致怪物消失 先清理四周追猎，追猎移动，再清理一轮四周的追猎
     const currChase = core.status.checkBlock.chase[loc];
     if (currChase && currChase.length > 0) {
-        const adjacentChase = core.checkBlock_adjacentChase();
-        if (adjacentChase && adjacentChase.length > 0) core.push(actions, adjacentChase);
-        // core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase();\n}" });
+        if (actions.length === 0) {
+            const adjacentChase = core.checkBlock_adjacentChase();
+            if (adjacentChase && adjacentChase.length > 0) core.push(actions, adjacentChase);
+        }
+        else core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase(true);\n}" });
     }
     const chaseAction = this._checkBlock_chase(currChase);
     if (chaseAction.length > 0) core.push(actions, chaseAction);
