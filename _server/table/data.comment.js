@@ -288,20 +288,20 @@ var data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 						},
 						"items": {
 							"_type": "object",
-							"_hide": true,
+							"_hide": false,
 							"_data": {
 								"constants": {
 									"_leaf": true,
 									"_type": "textarea",
 									"_range": "thiseval instanceof Object && !(thiseval instanceof Array)",
-									"_docs": "永久道具",
+									"_docs": "初始永久道具",
 									"_data": "初始永久道具个数，例如初始送手册可以写 {\"book\": 1}"
 								},
 								"tools": {
 									"_leaf": true,
 									"_type": "textarea",
 									"_range": "thiseval instanceof Object && !(thiseval instanceof Array)",
-									"_docs": "消耗道具",
+									"_docs": "初始消耗道具",
 									"_data": "初始消耗道具个数，例如初始有两破可以写 {\"pickaxe\": 2}"
 								},
 								"equips": {
