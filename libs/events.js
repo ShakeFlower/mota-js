@@ -3089,6 +3089,31 @@ events.prototype.moveEnemyOnPoint = function (fromX, fromY, toX, toY, floorId, n
     }
 }
 
+////// 将两个点的怪物属性交换 ////// 
+events.prototype.switchEnemyOnPoint = function (fromX, fromY, toX, toY, floorId, norefresh) {
+    floorId = floorId || core.status.floorId;
+    const spos = fromX + "," + fromY,
+        aimpos = toX + "," + toY;
+    if (!flags.enemyOnPoint) return;
+    if (!flags.enemyOnPoint.hasOwnProperty(floorId)) return;
+
+    const enemyOnFloor = flags.enemyOnPoint[floorId];
+    let fromInfo, toInfo;
+    if (enemyOnFloor.hasOwnProperty(spos)) fromInfo = core.clone(enemyOnFloor[spos]);
+    if (enemyOnFloor.hasOwnProperty(aimpos)) toInfo = core.clone(enemyOnFloor[aimpos]);
+
+    // 删除旧位置信息
+    if (fromInfo) delete enemyOnFloor[spos];
+    if (toInfo) delete enemyOnFloor[aimpos];
+
+    // 设置新位置信息
+    if (fromInfo) enemyOnFloor[aimpos] = fromInfo;
+    if (toInfo) enemyOnFloor[spos] = toInfo;
+
+    if (!norefresh) core.updateStatusBar();
+}
+
+
 ////// 设置楼层属性 //////
 events.prototype.setFloorInfo = function (name, value, floorId, prefix) {
     floorId = floorId || core.status.floorId;

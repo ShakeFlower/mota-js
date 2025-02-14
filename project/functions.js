@@ -319,8 +319,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			let failMoveInfo;
 			if (core.enemys.hasSpecial(special, 29)) {
 				for (let i = 2; i < core.__SIZE__ - 1; i++) {
-					const aimx = hx + core.utils.scan[direction] * i,
-						aimy = hy + core.utils.scan[direction] * i;
+					const aimx = hx + core.utils.scan[direction].x * i,
+						aimy = hy + core.utils.scan[direction].y * i;
 					if (aimx < 0 || aimx > core.__SIZE__ - 1 || aimy < 0 || aimy > core.__SIZE__ - 1) break;
 					if (['enemys', 'enemy48'].includes(core.getBlockCls(aimx, aimy))) {
 						failMoveInfo = { aimx, aimy, aimId: core.getBlockId(aimx, aimy) };
@@ -416,25 +416,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 			*/
 
-			function switchEnemyOnPoint(sx, sy, aimx, aimy) {
-				const spos = sx + "," + sy,
-					aimpos = aimx + "," + aimy;
-				if (!flags.enemyOnPoint) return;
-				if (!flags.enemyOnPoint.hasOwnProperty(core.status.floorId)) return;
-				const enemyOnFloor = flags.enemyOnPoint[core.status.floorId];
-				let sinfo, aiminfo;
-				if (enemyOnFloor.hasOwnProperty(spos)) sinfo = core.clone(enemyOnFloor[spos]);
-				if (enemyOnFloor.hasOwnProperty(aimpos)) aiminfo = core.clone(enemyOnFloor[aimpos]);
-				if (sinfo) {
-					delete enemyOnFloor[spos];
-					enemyOnFloor[aimpos] = sinfo;
-				}
-				if (aiminfo) {
-					delete enemyOnFloor[aimpos];
-					enemyOnFloor[spos] = aiminfo;
-				}
-			}
-
 			if (!failMove) {
 				// 如果事件不为空，将其插入
 				if (todo.length > 0) core.insertAction(todo, x, y);
@@ -455,15 +436,15 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				}
 			}
 			else {
+				const { aimx, aimy, aimId } = failMoveInfo;
 				if (core.getBlockId(x, y) === enemyId && failMoveInfo
-					&& core.getBlockId(failMoveInfo.aimx, failMoveInfo.aimy) === failMoveInfo.aimId) {
+					&& core.getBlockId(aimx, aimy) === aimId) {
 					const doFailMove =
-						[{ "type": "setBlock", "number": enemyId, "loc": [[failMoveInfo.aimx, failMoveInfo.aimy]], "time": 50 },
-						{ "type": "setBlock", "number": failMoveInfo.aimId, "loc": [[x, y]], "time": 50 },
+						[{ "type": "setBlock", "number": enemyId, "loc": [[aimx, aimy]], "time": 50 },
+						{ "type": "setBlock", "number": aimId, "loc": [[x, y]], "time": 50 },
+						{ "type": "function", "function": `function () { core.switchEnemyOnPoint(${x},${y},${aimx},${aimy}) }` },
 						]
 					core.insertAction(doFailMove);
-					// to be tested: 怪物残血能否正确迁移数据
-					switchEnemyOnPoint(x, y, failMoveInfo.aimx, failMoveInfo.aimy);
 				}
 			}
 
