@@ -1146,8 +1146,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (main.replayChecking) __enable = false;
 		if (!__enable) {
 			core.plugin.animate = {};
-			this.deleteAllTickers = () => { };
+			this.aniMap = new Map();
+			this.deleteAllAnis = () => { };
 			return;
+		}
+
+		/** 键为一个自建Ticker, 值为摧毁它的事件 */
+		this.aniMap = new Map();
+
+		/** 对Map中所有Ticker执行摧毁事件 */
+		this.deleteAllAnis = function () {
+			core.plugin.aniMap.forEach((destroyEvent, ani) => destroyEvent(ani));
+			core.plugin.aniMap.clear();
 		}
 
 		var M = Object.defineProperty;
@@ -1166,11 +1176,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			requestAnimationFrame(k);
 		};
 		requestAnimationFrame(k);
-
-		/** 摧毁所有有名字的ticker */
-		this.deleteAllTickers = function () {
-			w.forEach((ticker) => ticker.destroy());
-		}
 
 		// I is Ticker
 		class I {
@@ -1900,7 +1905,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		const transitionList = [];
 
-		const ctxName = 'globalAnimate';
+		const ctxName = 'autoClear';
 
 		if (Ticker) {
 			const ticker = new Ticker();
@@ -2121,6 +2126,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								let px = tx * 32 - core.bigmap.offsetX;
 								let py = ty * 32 - core.bigmap.offsetY;
 								const t = new Transition();
+								const onDestory = function (t) {
+									t.ticker.destroy();
+									const index = transitionList.findIndex(v => v === t);
+									transitionList.splice(index, 1);
+								} // 摧毁Transition t
+								core.plugin.aniMap.set(t, onDestory);
 								t.mode(hyper('sin', 'out'))
 									.time(transitionTime)
 									.absolute()
@@ -2136,9 +2147,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 									if (Math.abs(t.value.x - x * 32 + core.bigmap.offsetX) < 0.05 &&
 										Math.abs(t.value.y - y * 32 + core.bigmap.offsetY) < 0.05
 									) {
-										t.ticker.destroy();
-										const index = transitionList.findIndex(v => v === t);
-										transitionList.splice(index, 1);
+										onDestory(t);
 									}
 								});
 							}
@@ -2385,6 +2394,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function drawCommentStr(content, x, y, vx) {
 			if (core.isReplaying() || !Animation) return;
 			const ani = new Animation();
+			core.plugin.aniMap().set(ani, (ani) => ani.ticker.destroy());
 			ani.ticker.add(() => {
 				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
 			})
@@ -2392,9 +2402,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				.time(600 / vx)
 				.absolute()
 				.move(-600, 0)
-			ani.all().then(() => { 
-				ani.ticker.destroy(); 
-			 });
+			ani.all().then(() => {
+				ani.ticker.destroy();
+			});
 		}
 		//#endregion 
 
