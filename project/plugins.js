@@ -2299,7 +2299,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const l = commentCollection[floorId][pos].length;
 					for (let i = 0; i <= l - 1; i++) {
 						const [x, y] = pos.split(',');
-						core.drawIcon('sign', postman, 32 * x, 32 * y);
+						core.drawIcon('sign', 'postman', 32 * x, 32 * y);
 						break;
 					}
 				}
