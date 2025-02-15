@@ -2394,7 +2394,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function drawCommentStr(content, x, y, vx) {
 			if (core.isReplaying() || !Animation) return;
 			const ani = new Animation();
-			core.plugin.aniMap().set(ani, (ani) => ani.ticker.destroy());
+			core.plugin.aniMap.set(ani, (ani) => ani.ticker.destroy());
 			ani.ticker.add(() => {
 				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
 			})
