@@ -940,28 +940,28 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					break;
 				case 49: // 快捷键1: 破
 					{
-						const item = core.getFlag('hotkey1');
+						const item = core.getLocalStorage('hotkey1');
 						if (item) tryUseItem(item);
 						else tryUseItem('pickaxe');
 					}
 					break;
 				case 50: // 快捷键2: 炸
 					{
-						const item = core.getFlag('hotkey2');
+						const item = core.getLocalStorage('hotkey2');
 						if (item) tryUseItem(item);
 						else tryUseItem('bomb');
 					}
 					break;
 				case 51: // 快捷键3: 飞
 					{
-						const item = core.getFlag('hotkey3');
+						const item = core.getLocalStorage('hotkey3');
 						if (item) tryUseItem(item);
 						else tryUseItem('centerFly');
 					}
 					break;
 				case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
 					{
-						const item = core.getFlag('hotkey4');
+						const item = core.getLocalStorage('hotkey4');
 						if (item) tryUseItem(item);
 						else {
 							const list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
@@ -974,21 +974,21 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					break;
 				case 53: // 5：读取自动存档（回退），方便手机版操作
 					{
-						const item = core.getFlag('hotkey5');
+						const item = core.getLocalStorage('hotkey5');
 						if (item) tryUseItem(item);
 						else core.doSL("autoSave", "load");
 					}
 					break;
 				case 54: // 6：撤销回退，方便手机版操作
 					{
-						const item = core.getFlag('hotkey6');
+						const item = core.getLocalStorage('hotkey6');
 						if (item) tryUseItem(item);
 						else core.doSL("autoSave", "reload");
 					}
 					break;
 				case 55: // 快捷键7：绑定为轻按，方便手机版操作
 					{
-						const item = core.getFlag('hotkey71');
+						const item = core.getLocalStorage('hotkey7');
 						if (item) tryUseItem(item);
 						else core.getNextItem();
 					}
