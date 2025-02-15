@@ -1146,33 +1146,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (main.replayChecking) __enable = false;
 		if (!__enable) {
 			core.plugin.animate = {};
-			this.deleteTicker = () => { };
 			this.deleteAllTickers = () => { };
-			this.getAllTickers = () => { };
 			return;
 		}
-
-		// 保存所有Ticker的引用
-		const tickersMap = new Map();
-
-		/** 摧毁指定名字的ticker */
-		this.deleteTicker = function (name) {
-			const ticker = tickersMap.get(name);
-			if (!ticker) return;
-			ticker.destroy();
-			tickersMap.delete(name);
-		}
-
-		/** 摧毁所有有名字的ticker */
-		this.deleteAllTickers = function () {
-			tickersMap.forEach((ticker) => {
-				if (!ticker) return;
-				ticker.destroy();
-			})
-			tickersMap.clear();
-		}
-
-		this.getAllTickers = () => tickersMap;
 
 		var M = Object.defineProperty;
 		var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
@@ -1190,6 +1166,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			requestAnimationFrame(k);
 		};
 		requestAnimationFrame(k);
+
+		/** 摧毁所有有名字的ticker */
+		this.deleteAllTickers = function () {
+			w.forEach((ticker) => ticker.destroy());
+		}
+
+		// I is Ticker
 		class I {
 			constructor() {
 				o(this, "funcs", /* @__PURE__ */ new Set());
@@ -1213,9 +1196,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.status = "stop", w = w.filter((i) => i !== this);
 			}
 		}
-		// F is Ticker
+		// F is AnimationBase
 		class F {
-			constructor(name) {
+			constructor() {
 				o(this, "timing");
 				o(this, "relation", "absolute");
 				o(this, "easeTime", 0);
@@ -1226,7 +1209,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				o(this, "value", {});
 				o(this, "listener", {});
 				this.timing = (i) => i;
-				if (typeof name === 'string') tickersMap.set(name, ticker);
 			}
 			async all() {
 				if (Object.values(this.applying).every((i) => i === !0))
@@ -1292,8 +1274,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		// j is Animation
 		class j extends F {
-			constructor(name) {
-				super(name);
+			constructor() {
+				super();
 				o(this, "shakeTiming");
 				o(this, "path");
 				o(this, "multiTiming");
@@ -2391,7 +2373,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 
-		let commentCount = 0;
 		/**
 		 * 绘制弹幕 
 		 * @example  
@@ -2403,9 +2384,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 */
 		function drawCommentStr(content, x, y, vx) {
 			if (core.isReplaying() || !Animation) return;
-			commentCount++;
-			const aniName = 'comment' + commentCount;
-			const ani = new Animation(aniName);
+			const ani = new Animation();
 			ani.ticker.add(() => {
 				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
 			})
@@ -2413,7 +2392,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				.time(600 / vx)
 				.absolute()
 				.move(-600, 0)
-			ani.all().then(() => { ani.ticker.destroy(); });
+			ani.all().then(() => { 
+				ani.ticker.destroy(); 
+			 });
 		}
 		//#endregion 
 
