@@ -2252,6 +2252,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			form.append('towername', towerName);
 			form.append('comment', comment);
 			form.append('tags', tags);
+			form.append('userid', 2324);
+			form.append('password', '77c8fd5ff49c370342e4472ebdda5903');
 			utils.prototype.http(
 				'POST',
 				'https://h5mota.com/backend/tower/barrage.php',
@@ -2265,8 +2267,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						} else {
 							core.drawTip('提交失败！' + res?.message);
 						}
-					}
-					catch (err) {
+					} catch (err) {
 						core.drawFailTip('提交失败！' + err.message);
 					}
 				},
@@ -3572,249 +3573,248 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.registerReplayAction("equip", core.control._replayAction_equip);
 		core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
 	},
-	"autoChangeEquip":
-		function () {
-			// 调用方法：在合适的位置调用函数figureEquip即可，例如在脚本编辑-按键处理加入case 89: core.plugin.figureEquip(); break;
-			// 即按Y键进入切装模式
+	"autoChangeEquip": function () {
+		// 调用方法：在合适的位置调用函数figureEquip即可，例如在脚本编辑-按键处理加入case 89: core.plugin.figureEquip(); break;
+		// 即按Y键进入切装模式
 
-			let compareMode = false;
-			let equipStatus = [];
-			let equipIncluded;
+		let compareMode = false;
+		let equipStatus = [];
+		let equipIncluded;
 
-			////// 请在[]中填好不参与换装的装备孔的序号。
-			// 例如，0号，4号装备孔不参与换装，则 ignoreList 应设为[0,4]
-			// 所有装备孔都参与换装，则 ignoreList 应设为[]
-			let ignoreList = [];
+		////// 请在[]中填好不参与换装的装备孔的序号。
+		// 例如，0号，4号装备孔不参与换装，则 ignoreList 应设为[0,4]
+		// 所有装备孔都参与换装，则 ignoreList 应设为[]
+		let ignoreList = [];
 
-			////// 请在{}中根据装备的穿脱事件手动填写装备穿脱时要执行的函数，没有则不填。只填写有效的数值变化即可。
-			// 例如:{'sword3':{'equip':function(){core.setFlag('mms3',1);},'unequip':function(){core.setFlag('mms3',0);}}}
-			let equipEvents = {};
+		////// 请在{}中根据装备的穿脱事件手动填写装备穿脱时要执行的函数，没有则不填。只填写有效的数值变化即可。
+		// 例如:{'sword3':{'equip':function(){core.setFlag('mms3',1);},'unequip':function(){core.setFlag('mms3',0);}}}
+		let equipEvents = {};
 
-			function compareEquip() {
+		function compareEquip() {
 
-				return new Promise(function (res) {
+			return new Promise(function (res) {
 
-					const canvas = 'compareEquip',
-						width = core._PX_ || core.__PIXELS__,
-						height = core._PY_ || core.__PIXELS__;
+				const canvas = 'compareEquip',
+					width = core._PX_ || core.__PIXELS__,
+					height = core._PY_ || core.__PIXELS__;
 
-					core.lockControl();
+				core.lockControl();
 
-					function finish() {
-						compareMode = false;
-						core.unregisterAction('onclick', 'bestEquip');
-						core.deleteCanvas(canvas);
-						res();
-					}
+				function finish() {
+					compareMode = false;
+					core.unregisterAction('onclick', 'bestEquip');
+					core.deleteCanvas(canvas);
+					res();
+				}
 
-					core.createCanvas(canvas, 0, 0, width, height, 160);
-					core.setTextAlign(canvas, 'center');
-					core.fillText(canvas, '点击选择一个怪物,点击非怪物图块自动退出', width / 2, 20, 'red', '18px Arial');
+				core.createCanvas(canvas, 0, 0, width, height, 160);
+				core.setTextAlign(canvas, 'center');
+				core.fillText(canvas, '点击选择一个怪物,点击非怪物图块自动退出', width / 2, 20, 'red', '18px Arial');
 
-					core.registerAction('onclick', 'bestEquip', function (x, y, px, py) {
-						const cls = core.getBlockCls(x, y),
-							id = core.getBlockId(x, y);
-						if (!(cls === 'enemys' || cls === "enemy48")) {
-							finish();
-							return false;
-						}
-						figureBestEquip(id, x, y);
-						core.updateDamage();
+				core.registerAction('onclick', 'bestEquip', function (x, y, px, py) {
+					const cls = core.getBlockCls(x, y),
+						id = core.getBlockId(x, y);
+					if (!(cls === 'enemys' || cls === "enemy48")) {
 						finish();
-					}, 100);
-				})
-			}
-
-			function figureBestEquip(id, x, y) {
-				compareMode = true;
-				const equipNum = core.status.globalAttribute.equipName.length; // 装备总数量
-
-				// 角色初始各项数值，用于推算出最优切装后复原初始状态
-				const oriEffect = {
-					'value': { 'atk': core.status.hero.atk, 'def': core.status.hero.def, 'mdef': core.status.hero.mdef, },
-					'percentage': { 'atk': core.getBuff('atk'), 'def': core.getBuff('def'), 'mdef': core.getBuff('mdef'), },
-					'equipment': core.clone(core.status.hero.equipment),
-				}
-
-				if (!equipIncluded) equipIncluded = getEquipIncluded(equipNum);
-
-				const equipIncludedNum = equipIncluded.length;
-				const equipNameList = core.status.globalAttribute.equipName.filter((ele, i) => { return !ignoreList.includes(i); });
-
-				equipStatus = equipIncluded.map((ele) => core.getEquip(ele)); //当前参与计算的各个装备孔的装备
-				const equipOwned = getEquipOwned(equipNum);
-				let equipList = getEquipList(equipIncludedNum, equipOwned, equipNameList);
-
-				const equipCombination = traverseSetCombinations(equipList);
-
-				const bestCombination = findBestEquipComb(equipCombination, equipOwned, id, x, y);
-
-				['atk', 'def', 'mdef'].forEach((ele) => {
-					core.setStatus(ele, oriEffect.value[ele]);
-					core.setBuff(ele, oriEffect.percentage[ele]);
-				});
-				core.status.hero.equipment = core.clone(oriEffect.equipment);
-
-				equipBestComb(bestCombination, equipIncluded, equipNameList);
-			}
-
-			// 返回一个包含所有参与切装计算的装备孔的序号的数组。
-			// 例如，0，2，4号装备孔参与切装计算，则本函数返回[0,2,4]
-			function getEquipIncluded(equipNum) {
-				let equipIncluded = [];
-				for (let i = 0; i < equipNum; i++) {
-					if (!ignoreList.includes(i)) equipIncluded.push(i);
-				}
-				return equipIncluded;
-			}
-
-			function getEquipOwned(equipNum) {
-				// equipOwned:当前拥有的所有装备的数量
-				// 形如{sword1: 2, sword2: 1}
-				let equipOwned = core.clone(core.status.hero.items.equips);
-				for (let i = 0; i < equipNum; i++) {
-					if (ignoreList.includes(i)) continue;
-					const currEquip = core.getEquip(i);
-					if (currEquip !== null)
-						if (equipOwned.hasOwnProperty(currEquip)) equipOwned[currEquip]++;
-						else equipOwned[currEquip] = 1;
-				}
-				return equipOwned;
-			}
-
-			// 生成切装列表，为一个二维数组
-			function getEquipList(equipNum, equipOwned, equipNameList) {
-				// equipNameList:计入切装计算的装备格子的名称列表，可重复
-				// 形如['武器', '武器', '盾牌']
-				let equipList = Array(equipNameList.length).fill().map(() => new Set([null]));
-
-				//对每个装备孔展开
-				for (let i = 0, l = equipNameList.length; i < l; i++) {
-					for (let j in equipOwned) {
-						let equipType = core.material.items[j].equip.type;
-						switch (typeof equipType) {
-							case 'number':
-								for (let k = 0, l = equipOwned[j]; k < l; k++) { equipList[equipIncluded.indexOf(equipType)].add(j); }
-								break;
-							case 'string':
-								if (equipType === equipNameList[i])
-									for (let k = 0, l = equipOwned[j]; k < l; k++) { equipList[i].add(j); }
-								break;
-						}
+						return false;
 					}
-				}
-				return equipList;
+					figureBestEquip(id, x, y);
+					core.updateDamage();
+					finish();
+				}, 100);
+			})
+		}
+
+		function figureBestEquip(id, x, y) {
+			compareMode = true;
+			const equipNum = core.status.globalAttribute.equipName.length; // 装备总数量
+
+			// 角色初始各项数值，用于推算出最优切装后复原初始状态
+			const oriEffect = {
+				'value': { 'atk': core.status.hero.atk, 'def': core.status.hero.def, 'mdef': core.status.hero.mdef, },
+				'percentage': { 'atk': core.getBuff('atk'), 'def': core.getBuff('def'), 'mdef': core.getBuff('mdef'), },
+				'equipment': core.clone(core.status.hero.equipment),
 			}
 
-			function traverseSetCombinations(arr) {
-				const result = [];
-				const currentCombination = [];
+			if (!equipIncluded) equipIncluded = getEquipIncluded(equipNum);
 
-				function backtrack(index) {
-					if (index === arr.length) {
-						result.push([...currentCombination]);
-						return;
-					}
-					const currentSet = Array.from(arr[index]);
-					for (let value of currentSet) {
-						currentCombination[index] = value;
-						backtrack(index + 1);
-					}
-				}
-				backtrack(0);
-				return result;
+			const equipIncludedNum = equipIncluded.length;
+			const equipNameList = core.status.globalAttribute.equipName.filter((ele, i) => { return !ignoreList.includes(i); });
+
+			equipStatus = equipIncluded.map((ele) => core.getEquip(ele)); //当前参与计算的各个装备孔的装备
+			const equipOwned = getEquipOwned(equipNum);
+			let equipList = getEquipList(equipIncludedNum, equipOwned, equipNameList);
+
+			const equipCombination = traverseSetCombinations(equipList);
+
+			const bestCombination = findBestEquipComb(equipCombination, equipOwned, id, x, y);
+
+			['atk', 'def', 'mdef'].forEach((ele) => {
+				core.setStatus(ele, oriEffect.value[ele]);
+				core.setBuff(ele, oriEffect.percentage[ele]);
+			});
+			core.status.hero.equipment = core.clone(oriEffect.equipment);
+
+			equipBestComb(bestCombination, equipIncluded, equipNameList);
+		}
+
+		// 返回一个包含所有参与切装计算的装备孔的序号的数组。
+		// 例如，0，2，4号装备孔参与切装计算，则本函数返回[0,2,4]
+		function getEquipIncluded(equipNum) {
+			let equipIncluded = [];
+			for (let i = 0; i < equipNum; i++) {
+				if (!ignoreList.includes(i)) equipIncluded.push(i);
 			}
+			return equipIncluded;
+		}
 
-			function getEleCount(ele, arr) {
-				let count = 0;
-				for (let i = 0, l = arr.length; i < l; i++) {
-					if (arr[i] === ele) count++;
-				}
-				return count;
+		function getEquipOwned(equipNum) {
+			// equipOwned:当前拥有的所有装备的数量
+			// 形如{sword1: 2, sword2: 1}
+			let equipOwned = core.clone(core.status.hero.items.equips);
+			for (let i = 0; i < equipNum; i++) {
+				if (ignoreList.includes(i)) continue;
+				const currEquip = core.getEquip(i);
+				if (currEquip !== null)
+					if (equipOwned.hasOwnProperty(currEquip)) equipOwned[currEquip]++;
+					else equipOwned[currEquip] = 1;
 			}
+			return equipOwned;
+		}
 
-			function hasEnoughEquip(currComb, equipOwned) {
-				for (let i in equipOwned) {
-					const equipNeed = getEleCount(i, currComb);
-					if (equipOwned[i] < equipNeed) return false;
-				}
-				return true;
-			}
+		// 生成切装列表，为一个二维数组
+		function getEquipList(equipNum, equipOwned, equipNameList) {
+			// equipNameList:计入切装计算的装备格子的名称列表，可重复
+			// 形如['武器', '武器', '盾牌']
+			let equipList = Array(equipNameList.length).fill().map(() => new Set([null]));
 
-			// 按照给定的列表aimStatus，形如['sword1','sword2',null,'sword1'],修改equipStatus进行模拟切装
-			function simulateEquip(equipStatus, aimStatus) {
-				equipIncluded.forEach((ele, i) => { core.status.hero.equipment[ele] = aimStatus[i]; })
-				for (let i = 0, l = equipStatus.length; i < l; i++) {
-					if (equipStatus[i] !== aimStatus[i]) {
-						if (aimStatus[i] === null) {
-							const unequipId = equipStatus[i];
-							if (equipEvents.hasOwnProperty(unequipId) &&
-								equipEvents[unequipId].hasOwnProperty('unequip'))
-								equipEvents[unequipId].unequip();
-							core.items._loadEquipEffect(null, unequipId);
-						} else {
-							const equipId = aimStatus[i];
-							if (equipEvents.hasOwnProperty(equipId) &&
-								equipEvents[equipId].hasOwnProperty('equip'))
-								equipEvents[equipId].equip();
-							core.items._loadEquipEffect(equipId, equipStatus[i]);
-						}
-						equipStatus[i] = aimStatus[i];
+			//对每个装备孔展开
+			for (let i = 0, l = equipNameList.length; i < l; i++) {
+				for (let j in equipOwned) {
+					let equipType = core.material.items[j].equip.type;
+					switch (typeof equipType) {
+						case 'number':
+							for (let k = 0, l = equipOwned[j]; k < l; k++) { equipList[equipIncluded.indexOf(equipType)].add(j); }
+							break;
+						case 'string':
+							if (equipType === equipNameList[i])
+								for (let k = 0, l = equipOwned[j]; k < l; k++) { equipList[i].add(j); }
+							break;
 					}
 				}
 			}
+			return equipList;
+		}
 
-			function findBestEquipComb(equipCombination, equipOwned, id, x, y) {
-				let minDamage = core.getDamage(id, x, y),
-					bestCombination = core.clone(equipStatus);
-				for (let i = 0, l = equipCombination.length; i < l; i++) {
-					const currComb = equipCombination[i];
-					if (!hasEnoughEquip(currComb, equipOwned)) continue;
-					simulateEquip(equipStatus, currComb);
-					let damage = core.getDamage(id, x, y);
-					if (damage !== null && (minDamage === null || damage < minDamage)) {
-						minDamage = damage;
-						bestCombination = core.clone(equipStatus);
-					}
+		function traverseSetCombinations(arr) {
+			const result = [];
+			const currentCombination = [];
+
+			function backtrack(index) {
+				if (index === arr.length) {
+					result.push([...currentCombination]);
+					return;
 				}
-				return bestCombination;
+				const currentSet = Array.from(arr[index]);
+				for (let value of currentSet) {
+					currentCombination[index] = value;
+					backtrack(index + 1);
+				}
 			}
+			backtrack(0);
+			return result;
+		}
 
-			function equipBestComb(bestCombination, equipIncluded, equipNameList) {
-				const duplicatedName = new Set([]),
-					name = core.status.globalAttribute.equipName;
+		function getEleCount(ele, arr) {
+			let count = 0;
+			for (let i = 0, l = arr.length; i < l; i++) {
+				if (arr[i] === ele) count++;
+			}
+			return count;
+		}
 
-				// 脱下重复装备
-				equipNameList.forEach((ele) => {
-					if (getEleCount(ele, equipNameList) > 1) duplicatedName.add(ele);
-				})
-				equipIncluded.forEach((ele) => {
-					if (duplicatedName.has(name[ele]) && core.getEquip(ele) !== null) {
-						core.unloadEquip(ele);
-						core.status.route.push("unEquip:" + ele.toString());
-					}
-				})
+		function hasEnoughEquip(currComb, equipOwned) {
+			for (let i in equipOwned) {
+				const equipNeed = getEleCount(i, currComb);
+				if (equipOwned[i] < equipNeed) return false;
+			}
+			return true;
+		}
 
-				for (let i = 0, l = bestCombination.length; i < l; i++) {
-					const currEquip = bestCombination[i],
-						pos = equipIncluded[i];
-					if (core.getEquip(pos) === currEquip) continue;
-					else if (currEquip === null) {
-						core.unloadEquip(pos);
-						core.status.route.push("unEquip:" + pos.toString());
+		// 按照给定的列表aimStatus，形如['sword1','sword2',null,'sword1'],修改equipStatus进行模拟切装
+		function simulateEquip(equipStatus, aimStatus) {
+			equipIncluded.forEach((ele, i) => { core.status.hero.equipment[ele] = aimStatus[i]; })
+			for (let i = 0, l = equipStatus.length; i < l; i++) {
+				if (equipStatus[i] !== aimStatus[i]) {
+					if (aimStatus[i] === null) {
+						const unequipId = equipStatus[i];
+						if (equipEvents.hasOwnProperty(unequipId) &&
+							equipEvents[unequipId].hasOwnProperty('unequip'))
+							equipEvents[unequipId].unequip();
+						core.items._loadEquipEffect(null, unequipId);
 					} else {
-						core.loadEquip(currEquip);
-						core.status.route.push("equip:" + currEquip.toString());
+						const equipId = aimStatus[i];
+						if (equipEvents.hasOwnProperty(equipId) &&
+							equipEvents[equipId].hasOwnProperty('equip'))
+							equipEvents[equipId].equip();
+						core.items._loadEquipEffect(equipId, equipStatus[i]);
 					}
+					equipStatus[i] = aimStatus[i];
 				}
 			}
+		}
 
-			this.figureEquip = function () {
-				compareEquip().then(function (confirm) {
-					core.unlockControl();
-				})
+		function findBestEquipComb(equipCombination, equipOwned, id, x, y) {
+			let minDamage = core.getDamage(id, x, y),
+				bestCombination = core.clone(equipStatus);
+			for (let i = 0, l = equipCombination.length; i < l; i++) {
+				const currComb = equipCombination[i];
+				if (!hasEnoughEquip(currComb, equipOwned)) continue;
+				simulateEquip(equipStatus, currComb);
+				let damage = core.getDamage(id, x, y);
+				if (damage !== null && (minDamage === null || damage < minDamage)) {
+					minDamage = damage;
+					bestCombination = core.clone(equipStatus);
+				}
 			}
-		},
+			return bestCombination;
+		}
+
+		function equipBestComb(bestCombination, equipIncluded, equipNameList) {
+			const duplicatedName = new Set([]),
+				name = core.status.globalAttribute.equipName;
+
+			// 脱下重复装备
+			equipNameList.forEach((ele) => {
+				if (getEleCount(ele, equipNameList) > 1) duplicatedName.add(ele);
+			})
+			equipIncluded.forEach((ele) => {
+				if (duplicatedName.has(name[ele]) && core.getEquip(ele) !== null) {
+					core.unloadEquip(ele);
+					core.status.route.push("unEquip:" + ele.toString());
+				}
+			})
+
+			for (let i = 0, l = bestCombination.length; i < l; i++) {
+				const currEquip = bestCombination[i],
+					pos = equipIncluded[i];
+				if (core.getEquip(pos) === currEquip) continue;
+				else if (currEquip === null) {
+					core.unloadEquip(pos);
+					core.status.route.push("unEquip:" + pos.toString());
+				} else {
+					core.loadEquip(currEquip);
+					core.status.route.push("equip:" + currEquip.toString());
+				}
+			}
+		}
+
+		this.figureEquip = function () {
+			compareEquip().then(function (confirm) {
+				core.unlockControl();
+			})
+		}
+	},
 	"setting": function () {
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方
@@ -4278,7 +4278,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
 							if (aimItem) {
 								if (['constants', 'tools'].includes(aimItem.cls)) {
-									core.setFlag('hotkey' + num, aimItem.id);
+									core.setLocalStorage('hotkey' + num, aimItem.id);
 									this.menu.drawContent();
 								}
 								else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
@@ -4289,10 +4289,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					});
 				},
 				'给选定的数字键绑定一个可快捷使用的物品。',
-				true,
+				false,
 				function (ctx) {
 					const num = this.eventArgs[0];
-					const item = core.getFlag('hotkey' + num, null);
+					const item = core.getLocalStorage('hotkey' + num, null);
 					let icon, itemName;
 					if (item && core.material.items.hasOwnProperty(item)) {
 						icon = item;
@@ -4300,28 +4300,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					else {
 						switch (num) {
-							case 1:
+							case '1':
 								icon = 'pickaxe';
 								itemName = '破墙镐';
 								break;
-							case 2:
+							case '2':
 								icon = 'bomb';
 								itemName = '炸弹';
 								break;
-							case 3:
+							case '3':
 								icon = 'centerFly';
 								itemName = '中心飞';
 								break;
-							case 4:
+							case '4':
 								itemName = '杂物';
 								break;
-							case 5:
+							case '5':
 								itemName = '回退一步';
 								break;
-							case 6:
+							case '6':
 								itemName = '撤销回退';
 								break;
-							case 7:
+							case '7':
 								itemName = '轻按';
 								break;
 						}
@@ -4338,20 +4338,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				() => '',
 				function () {
 					for (let i = 1; i <= 7; i++) {
-						core.setFlag('hotkey' + i, null);
+						core.setLocalStorage('hotkey' + i, null);
 					}
 					this.menu.drawContent();
 					core.drawSuccessTip('快捷键已重置到默认状态。')
 				},
 				'重置本页面所有快捷键到默认状态。',
-				true,
+				false,
 				function (ctx) {
 					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
 					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
 					core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
 				},
 			)],
-			['wallHacking', new Setting(
+			['debug_wallHacking', new Setting(
 				() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
 				() => {
 					core.setFlag('debug', true);
@@ -4596,7 +4596,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				super(x, y, w, h);
 				this.name = name;
 				/**
-				 * @type {Array<unknown>}
+				 * @type {Array<string>}
 				 */
 				this.eventArgs = eventArgs || [];
 				/**
@@ -4616,7 +4616,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (this.disable) return;
 					this.setting.effect.apply(this, eventArgs);
 					this.menu.drawContent();
-					if (this.setting.replay) core.status.route.push('cSet:' + name);
+					if (this.setting.replay) {
+						let actionString = 'cSet:' + name;
+						if (this.eventArgs.length > 0) {
+							actionString += ':' + this.eventArgs.map(arg => encodeURIComponent(arg)).join(':');
+						}
+						core.status.route.push(actionString);
+					}
 				}
 			}
 		}
@@ -4626,7 +4632,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (strArr[0] !== 'cSet') return false;
 			const btn = settingMap.get(strArr[1]);
 			if (!btn.replay || strArr[1].startsWith('debug')) return false;
-			btn.effect();
+
+			let params = strArr.slice(2);
+
+			if (params.length > 0) {
+				btn.effect.apply(btn, params);
+			} else {
+				btn.effect.call(btn);
+			}
+
 			core.status.route.push(action);
 			core.replay();
 			return true;
@@ -4900,19 +4914,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const keyMenu = new SettingOnePage('key');
 			keyMenu.initBtnList([
 				['1,1', new SettingButton(40, 160, 150, 25, 'leftHand')],
-				['1,2', new SettingButton(40, 220, 150, 25, 'setHotKey', [1])],
-				['2,2', new SettingButton(220, 220, 150, 25, 'setHotKey', [2])],
-				['1,3', new SettingButton(40, 250, 150, 25, 'setHotKey', [3])],
-				['2,3', new SettingButton(220, 250, 150, 25, 'setHotKey', [4])],
-				['1,4', new SettingButton(40, 280, 150, 25, 'setHotKey', [5])],
-				['2,4', new SettingButton(220, 280, 150, 25, 'setHotKey', [6])],
-				['1,5', new SettingButton(40, 310, 150, 25, 'setHotKey', [7])],
+				['1,2', new SettingButton(40, 220, 150, 25, 'setHotKey', ['1'])],
+				['2,2', new SettingButton(220, 220, 150, 25, 'setHotKey', ['2'])],
+				['1,3', new SettingButton(40, 250, 150, 25, 'setHotKey', ['3'])],
+				['2,3', new SettingButton(220, 250, 150, 25, 'setHotKey', ['4'])],
+				['1,4', new SettingButton(40, 280, 150, 25, 'setHotKey', ['5'])],
+				['2,4', new SettingButton(220, 280, 150, 25, 'setHotKey', ['6'])],
+				['1,5', new SettingButton(40, 310, 150, 25, 'setHotKey', ['7'])],
 				['1,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
 			]);
 
 			const consoleMenu = new SettingOnePage('console');
 			consoleMenu.initBtnList([
-				['1,1', new SettingButton(40, 220, 150, 25, 'wallHacking')],
+				['1,1', new SettingButton(40, 220, 150, 25, 'debug_wallHacking')],
 				['1,2', new SettingButton(80, 250, 80, 20, 'debug_statusName')],
 				['2,2', new SettingButton(210, 250, 80, 20, 'debug_statusValue')],
 				['3,2', new SettingButton(340, 250, 40, 20, 'debug_setStatus')],
