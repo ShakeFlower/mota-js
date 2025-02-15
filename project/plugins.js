@@ -1213,6 +1213,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.status = "stop", w = w.filter((i) => i !== this);
 			}
 		}
+		// F is Ticker
 		class F {
 			constructor(name) {
 				o(this, "timing");
@@ -1289,9 +1290,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		async function R(n) {
 			return new Promise((i) => setTimeout(i, n));
 		}
+		// j is Animation
 		class j extends F {
-			constructor() {
-				super();
+			constructor(name) {
+				super(name);
 				o(this, "shakeTiming");
 				o(this, "path");
 				o(this, "multiTiming");
@@ -2389,6 +2391,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 
+		let commentCount = 0;
 		/**
 		 * 绘制弹幕 
 		 * @example  
@@ -2400,7 +2403,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 */
 		function drawCommentStr(content, x, y, vx) {
 			if (core.isReplaying() || !Animation) return;
-			const ani = new Animation();
+			commentCount++;
+			const aniName = 'comment' + commentCount;
+			const ani = new Animation(aniName);
 			ani.ticker.add(() => {
 				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
 			})
@@ -4175,7 +4180,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.setFlag('comment', false);
 						core.plugin.clearCommentSign();
 					}
-					else core.setFlag('comment', true);
+					else {
+						core.setFlag('comment', true);
+						core.plugin.drawCommentSign();
+					}
 				},
 				'在地图上显示玩家的在线留言。',
 				true,
