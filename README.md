@@ -67,6 +67,28 @@ HTML5 canvas制作的魔塔样板，支持全平台游戏！
 
 ## 更新说明
 
+### 2025.2.29 HTML5魔塔样板V2.9.2
+在2.9.1基础上进行了一些小改动，增加了若干bug并预装了多个插件。
+* [x] 参考2.10的commit修复了2.9.1的一些小bug，如：
+开局录像长度为0时点击工具栏的道具/装备再退出会报错。
+* [x] 增加了若干插件。
+* [x] 增加了一个开局默认持有的设置道具，取代了原有的相关系统设置入口。该设置支持1-7自设道具快捷键，简易控制台（方便手机操作）等功能。
+* [x] 任何constants和tools类道具，设置物品属性"canBatchUse-可批量使用"为true后可在道具栏中进行批量使用。
+* [x] 可使用函数maps.prototype.setBlockConnectivity令图块的可通行性修改计入存档。
+* [x] 现在items类道具的数值效果推荐填写事件块形式的"itemEffectEvent-即捡即用效果"来实现。
+* [x] 添加了属性败移和追猎。全塔属性中的开关"chaseThroughEnemy-追猎穿怪"控制追猎的视野和行动能否穿过怪物。
+* [x] 微调和添加了部分API。
+函数```enemys.prototype.getEnemyValue(enemy: string | Enemy, name?: string, x?: number, y?: number, floorId?: string): any```
+name不填, 且enemy为string或空（将使用x,y获取相应点id）时，根据该enemy为索引，返回其在core.material.enemys中的数据，若填写了x,y会考虑该点怪物数据的影响。
+在大部分合理场合下core.material.enemys[enemyId]相应地替换为core.getEnemyValue(enemyId,null,x,y,floorId)，更好地支持单点数据的显示。
+现在除攻防血外支持设置更多单点数据，且它们能正确地在怪物手册中显示，如特殊属性，不可炸等。
+```maps.prototype.setBlockConnectivity```
+修改图块连通性（含可通行性，可入可出方向）并计入存档。
+
+todolist:图块移动整体加速
+todolist:add 工具栏 含单步
+todolist:?ATRI
+
 ### 2022.7.10 HTML5魔塔样板V2.9.1
 
 * [x] 修复更新状态栏延迟到下一动画帧引发的一系列bug，修改为增加一个是否立即更新的参数

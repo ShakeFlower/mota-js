@@ -1748,7 +1748,7 @@ actions.prototype._clickEquipbox = function (x, y) {
     if (x >= this.LAST - 2 && y == this.LAST) {
         core.playSound('取消');
         core.ui.closePanel();
-        var last = core.status.route[core.status.route.length - 1];
+        var last = core.status.route[core.status.route.length - 1] || '';
         if (last.startsWith('equip:') || last.startsWith('unEquip:')) {
             core.status.route.push('no');
         }
