@@ -2419,8 +2419,14 @@ ui.prototype._drawBookDetail_origin = function (enemy, texts) {
     }
     core.enemys.getStatusToCompare().forEach(function (one) {
         // if (enemy[one] == null || originEnemy[one] == null) return;
-        if (!core.utils.deepEqual(enemy[one], originEnemy[one])) {
-            content.push(core.getStatusLabel(one) + " " + originEnemy[one]);
+        let enemy_one = core.clone(enemy[one]),
+            originEnemy_one = core.clone(originEnemy[one]);
+        if (one === 'special') {
+            enemy_one = core.utils.parseSpecial(enemy_one);
+            originEnemy_one = core.utils.parseSpecial(originEnemy_one);
+        }
+        if (!core.utils.deepEqual(enemy_one, originEnemy_one)) {
+            content.push(core.getStatusLabel(one) + " " + originEnemy_one);
         }
     });
     if (content.length > 0) {
