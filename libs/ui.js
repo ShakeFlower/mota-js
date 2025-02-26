@@ -1127,11 +1127,11 @@ ui.prototype.drawTextContent = function (ctx, content, config) {
     config.offsetY = 0;
     config.line = 0;
     config.blocks = [];
-    config.isHD = ctx != null && ctx.canvas.hasAttribute('isHD');
+    config.isHD = config.isHD = ctx == null || ctx.canvas.hasAttribute('isHD');
 
     // 创建一个新的临时画布
     var tempCtx = document.createElement('canvas').getContext('2d');
-    if (config.isHD) {
+    if (config.isHD && ctx) {
         core.maps._setHDCanvasSize(tempCtx, ctx.canvas.width, ctx.canvas.height);
     } else {
         tempCtx.canvas.width = ctx == null ? 1 : ctx.canvas.width;
@@ -1167,10 +1167,20 @@ ui.prototype._drawTextContent_draw = function (ctx, tempCtx, content, config) {
         if (config.index >= config.blocks.length) return false;
         var block = config.blocks[config.index++];
         if (block != null) {
-            var ratio = config.isHD ? core.domStyle.ratio : 1;
-            core.drawImage(ctx, tempCtx.canvas, block.left * ratio, block.top * ratio, block.width * ratio, block.height * ratio,
-                config.left + block.left + block.marginLeft, config.top + block.top + block.marginTop,
-                block.width, block.height);
+            // It works, why?
+            const scale = config.isHD ? devicePixelRatio * core.domStyle.scale : 1;
+            core.drawImage(
+                ctx,
+                tempCtx.canvas,
+                block.left * scale,
+                block.top * scale,
+                block.width * scale,
+                block.height * scale,
+                config.left + block.left + block.marginLeft,
+                config.top + block.top + block.marginTop,
+                block.width,
+                block.height
+            );
         }
         return true;
     }
@@ -2568,7 +2578,8 @@ ui.prototype.drawFly = function (page) {
     }
     var size = this.PIXEL - 143;
     core.strokeRect('ui', 20, 100, size, size, '#FFFFFF', 2);
-    core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
+    core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true, drawSize: 0.6 });
+    // 好像是无法理解的魔数，有待将来研究及优化
 }
 
 ////// 绘制中心对称飞行器
@@ -3082,7 +3093,8 @@ ui.prototype._drawSLPanel_drawRecord = function (title, data, x, y, size, cho, h
         core.extractBlocksForUI(map, data.hero.flags);
         core.drawThumbnail(data.floorId, map.blocks, {
             heroLoc: data.hero.loc, heroIcon: data.hero.image, flags: data.hero.flags,
-            ctx: 'ui', x: x - size / 2, y: y + 15, size: size, centerX: data.hero.loc.x, centerY: data.hero.loc.y, noHD: true
+            ctx: 'ui', x: x - size / 2, y: y + 15, size: size, centerX: data.hero.loc.x, centerY: data.hero.loc.y, noHD: true,
+            drawSize: 0.285, // 完全无法理解的魔数
         });
         if (core.isPlaying() && core.getFlag("hard") != data.hero.flags.hard) {
             core.fillRect('ui', x - size / 2, y + 15, size, size, [0, 0, 0, 0.4]);
@@ -3509,15 +3521,17 @@ ui.prototype.rotateCanvas = function (name, angle, centerX, centerY) {
 }
 
 ////// canvas重置 //////
-ui.prototype.resizeCanvas = function (name, width, height, styleOnly, isTempCanvas) {
+ui.prototype.resizeCanvas = function (name, width, height, styleOnly) {
     var ctx = core.getContextByName(name);
     if (!ctx) return null;
     if (width != null) {
-        if (!styleOnly) core.maps._setHDCanvasSize(ctx, width, null, isTempCanvas);
+        if (!styleOnly && ctx.canvas.hasAttribute('isHD'))
+            core.maps._setHDCanvasSize(ctx, width, null);
         ctx.canvas.style.width = width * core.domStyle.scale + 'px';
     }
     if (height != null) {
-        if (!styleOnly) core.maps._setHDCanvasSize(ctx, null, height, isTempCanvas);
+        if (!styleOnly && ctx.canvas.hasAttribute('isHD'))
+            core.maps._setHDCanvasSize(ctx, null, height)
         ctx.canvas.style.height = height * core.domStyle.scale + 'px';
     }
     return ctx;
