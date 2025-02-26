@@ -1846,7 +1846,6 @@ maps.prototype._drawThumbnail_realDrawTempCanvas = function (floorId, blocks, op
 maps.prototype._drawThumbnail_drawToTarget = function (floorId, options) {
     var ctx = core.getContextByName(options.ctx);
     if (ctx == null) return;
-    console.log(options);
     var x = options.x || 0, y = options.y || 0, size = options.size || core.__PIXELS__;
     var width = core.floors[floorId].width, height = core.floors[floorId].height;
     var centerX = options.centerX, centerY = options.centerY;
@@ -1875,7 +1874,7 @@ maps.prototype._drawThumbnail_drawToTarget = function (floorId, options) {
     }
     else {
         // 只绘制可见窗口
-        // drawSize:默认为1，楼传为3/4，SL界面为0.3
+        // drawSize:默认为1，楼传和SL界面单独判定，意义不明，有待研究
         const drawSize = options.drawSize || 1;
         const [pw, ph] = [core.__PIXELS__, core.__PIXELS__],
             [hw, hh] = [core.__HALF_SIZE__, core.__HALF_SIZE__],
