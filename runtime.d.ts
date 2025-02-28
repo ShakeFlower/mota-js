@@ -1517,7 +1517,7 @@ interface enemys {
     getEnemys(): any
 
     /** 获得所有特殊属性定义 */
-    getSpecials():[number, string | ((enemy: Enemy) => string), string | ((enemy: Enemy) => string),
+    getSpecials(): [number, string | ((enemy: Enemy) => string), string | ((enemy: Enemy) => string),
         string | [number, number, number, number?], number?][]
 
     /** 获得所有特殊属性的颜色 */
@@ -1570,7 +1570,7 @@ interface maps {
             [x: string]: any
         }
     }
-    
+
     /**
      * 根据图块id得到数字（地图矩阵中的值）
      * @example core.getNumberById('yellowWall'); // 1
@@ -2066,6 +2066,14 @@ interface loader {
 
 /** @file items.js 主要负责一切和道具相关的内容。 */
 interface items {
+
+    /**
+     * 获得给定ratio下（不填默认当前地图倍率）该即捡即用类的道具获得时勇士属性的增加效果
+     * @example core.getItemEffectValue('redGem',1) // 获得倍率为1时红宝石增加的属性值
+     * @param itemId 道具id
+     * @param ratio 倍率，不填默认当前地图倍率
+     */
+    getItemEffectValue(itemId: string, ratio?: number): { [key: string]: number }
 
     /**
      * 即捡即用类的道具获得时的效果
@@ -3042,4 +3050,4 @@ interface Main {
 
 declare let core: CoreMixin
 declare let flags: { [x: string]: any }
-declare let hero : CoreMixin['status']['hero']
+declare let hero: CoreMixin['status']['hero']

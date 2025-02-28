@@ -3316,27 +3316,12 @@ ui.prototype._drawStatistics_items = function (floorId, floor, id, obj) {
         core.setFlag("__statistics__", true);
         var ratio = core.status.thisMap.ratio;
         core.status.thisMap.ratio = core.clone(core.status.maps[floorId].ratio);
-        const itemInfo = core.material.items[id];
-        if (itemInfo.hasOwnProperty('itemEffectEvent') && itemInfo.itemEffectEvent.hasOwnProperty('value')) {
-            const values = itemInfo.itemEffectEvent.value;
-            for (let statusName in values) {
-                const getStatusValue = values[statusName];
-                let needRatio, statusValue;
-                if (statusName.endsWith(':o')) {
-                    needRatio = true;
-                    statusName = statusName.slice(0, -2);
-                }
-                if (core.status.hero.hasOwnProperty(statusName)) {
-                    try {
-                        statusValue = eval(getStatusValue);
-                    } catch (error) {
-                        console.log(error);
-                    }
-                    if (needRatio) statusValue *= ratio;
-                    core.addStatus(statusName, statusValue);
-                }
-            }
+
+        const effectObj = core.items.getItemEffectValue(itemId, ratio);
+        for (let statusName in effectObj) {
+            if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
         }
+
         try { eval(core.material.items[id].itemEffect); }
         catch (e) { }
         core.status.thisMap.ratio = ratio;
