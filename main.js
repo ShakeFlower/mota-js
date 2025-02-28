@@ -195,7 +195,8 @@ function main () {
 
 main.prototype.init = function (mode, callback) {
     for (var i = 0; i < main.dom.gameCanvas.length; i++) {
-        main.canvas[main.dom.gameCanvas[i].id] = main.dom.gameCanvas[i].getContext('2d');
+        main.canvas[main.dom.gameCanvas[i].id] =
+            main.dom.gameCanvas[i].getContext('2d');
     }
     main.mode = mode;
 
@@ -213,7 +214,7 @@ main.prototype.init = function (mode, callback) {
             (function (span, str_) {
                 span.onclick = function () {
                     core.events.startGame(str_);
-                }
+                };
             })(span, value.name || '');
             main.dom.levelChooseButtons.appendChild(span);
         });
@@ -231,67 +232,83 @@ main.prototype.init = function (mode, callback) {
 
             main.loadFloors(function () {
                 var coreData = {};
-                ["dom", "statusBar", "canvas", "images", "tilesets", "materials",
-                    "animates", "bgms", "sounds", "floorIds", "floors", "floorPartitions"].forEach(function (t) {
-                        coreData[t] = main[t];
-                    })
+                [
+                    'dom',
+                    'statusBar',
+                    'canvas',
+                    'images',
+                    'tilesets',
+                    'materials',
+                    'animates',
+                    'bgms',
+                    'sounds',
+                    'floorIds',
+                    'floors',
+                    'floorPartitions'
+                ].forEach(function (t) {
+                    coreData[t] = main[t];
+                });
                 main.core.init(coreData, callback);
                 main.core.resize();
                 // 自动放缩最大化
-                if (core.getLocalStorage('autoScale') == null) {
-                    core.setLocalStorage('autoScale', true);
-                }
-                if (
-                    core.getLocalStorage('autoScale') &&
-                    !core.domStyle.isVertical
-                ) {
-                    try {
-                        if (main.core) {
-                            var index =
-                                main.core.domStyle.availableScale.indexOf(
-                                    core.domStyle.scale
+                if (!main.replayChecking) {
+                    if (core.getLocalStorage('autoScale') == null) {
+                        core.setLocalStorage('autoScale', true);
+                    }
+                    if (
+                        core.getLocalStorage('autoScale') &&
+                        !core.domStyle.isVertical
+                    ) {
+                        try {
+                            if (main.core) {
+                                var index =
+                                    main.core.domStyle.availableScale.indexOf(
+                                        core.domStyle.scale
+                                    );
+                                main.core.control.setDisplayScale(
+                                    main.core.domStyle.availableScale.length -
+                                        1 -
+                                        index
                                 );
-                            main.core.control.setDisplayScale(
-                                main.core.domStyle.availableScale.length -
-                                1 -
-                                index
-                            );
-                            if (
-                                !main.core.isPlaying() &&
-                                main.core.flags.enableHDCanvas
-                            ) {
-                                main.core.domStyle.ratio = Math.max(
-                                    window.devicePixelRatio || 1,
-                                    main.core.domStyle.scale
-                                );
-                                main.core.resize();
-                            }
-                            requestAnimationFrame(function () {
-                                var style = getComputedStyle(
-                                    main.dom.gameGroup
-                                );
-                                var height = parseFloat(style.height);
-                                if (height > window.innerHeight * 0.95) {
-                                    main.core.control.setDisplayScale(-1);
-                                    if (
-                                        !main.core.isPlaying() &&
-                                        main.core.flags.enableHDCanvas
-                                    ) {
-                                        main.core.domStyle.ratio = Math.max(
-                                            window.devicePixelRatio || 1,
-                                            main.core.domStyle.scale
-                                        );
-                                        main.core.resize();
-                                    }
+                                if (
+                                    !main.core.isPlaying() &&
+                                    main.core.flags.enableHDCanvas
+                                ) {
+                                    main.core.domStyle.ratio = Math.max(
+                                        window.devicePixelRatio || 1,
+                                        main.core.domStyle.scale
+                                    );
+                                    main.core.resize();
                                 }
-                            });
+                                requestAnimationFrame(function () {
+                                    var style = getComputedStyle(
+                                        main.dom.gameGroup
+                                    );
+                                    var height = parseFloat(style.height);
+                                    if (height > window.innerHeight * 0.95) {
+                                        main.core.control.setDisplayScale(-1);
+                                        if (
+                                            !main.core.isPlaying() &&
+                                            main.core.flags.enableHDCanvas
+                                        ) {
+                                            main.core.domStyle.ratio = Math.max(
+                                                window.devicePixelRatio || 1,
+                                                main.core.domStyle.scale
+                                            );
+                                            main.core.resize();
+                                        }
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.error(e);
                         }
-                    } catch (e) { console.error(e) };
+                    }
                 }
             });
         });
     });
-}
+};
 
 ////// 动态加载所有核心JS文件 //////
 main.prototype.loadJs = function (dir, loadList, callback) {
