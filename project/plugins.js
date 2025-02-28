@@ -4265,7 +4265,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			)],
 			['leftHand', new Setting(
 				() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
-				() => core.flags.leftHandPrefer = !core.flags.leftHandPrefer,
+				() => {
+					core.flags.leftHandPrefer = !core.flags.leftHandPrefer;
+					core.setLocalStorage('leftHandPrefer', core.flags.leftHandPrefer);
+				},
 				'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
 				true,
 			)],
