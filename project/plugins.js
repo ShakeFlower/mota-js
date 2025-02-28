@@ -4186,21 +4186,27 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				true,
 			)],
 			['zoomIn', new Setting(
-				() => ' <   放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
-				() => core.actions._clickSwitchs_display_setSize(-1),
+				() => ' <  放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
+				() => {
+					core.actions._clickSwitchs_display_setSize(-1);
+					core.plugin.settingMenu.drawContent();
+				},
 				'放缩。',
 				false, // 录像中不可录入任何DOM操作
 			)],
 			['zoomOut', new Setting(
 				() => ' > ',
-				() => core.actions._clickSwitchs_display_setSize(1),
+				() => {
+					core.actions._clickSwitchs_display_setSize(1);
+					core.plugin.settingMenu.drawContent();
+				},
 				'放缩。',
 				false,
 			)],
 			['HDCanvas', new Setting(
 				() => '高清画面:' + (core.flags.enableHDCanvas ? '开' : '关'),
 				core.actions._clickSwitchs_display_enableHDCanvas,
-				'高清画面',
+				'高清画面。本功能开关后刷新游戏才能看到效果。',
 				false,
 			)],
 			['enableEnemyPoint', new Setting(
@@ -4235,7 +4241,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			)],
 			['autoScale', new Setting(
 				() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
-				() => core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true),
+				() => {
+					core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true);
+					core.plugin.settingMenu.drawContent();
+				},
 				'自动放缩。',
 				false,
 			)],
@@ -4907,7 +4916,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['2,7', new SettingButton(140, 350, 25, 25, 'increaseVolume')],
 
 				['2,1', new SettingButton(220, 180, 25, 25, 'zoomIn')],
-				['3,1', new SettingButton(320, 180, 25, 25, 'zoomOut')],
+				['3,1', new SettingButton(330, 180, 25, 25, 'zoomOut')],
 				['2,2', new SettingButton(220, 205, 150, 25, 'autoScale')],
 				['2,3', new SettingButton(220, 230, 150, 25, 'enableEnemyPoint')],
 				['2,4', new SettingButton(220, 255, 150, 25, 'displayCritical')],
@@ -4959,6 +4968,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			[2, keyBtn], [3, consoleBtn],
 			['quit', quit]]);
 
+			// 放缩时重绘整个大menu
+			core.plugin.settingMenu = settingMenu;
 			// 设置初始时选中的按键为第一个按键
 			settingMenu.changeBtn(gamePlayBtn);
 
