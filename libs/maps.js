@@ -1874,22 +1874,17 @@ maps.prototype._drawThumbnail_drawToTarget = function (floorId, options) {
     }
     else {
         // 只绘制可见窗口
-        // drawSize:默认为1，楼传和SL界面单独判定，意义不明，有待研究
-        const drawSize = options.drawSize || 1;
-        const [pw, ph] = [core.__PIXELS__, core.__PIXELS__],
-            [hw, hh] = [core.__HALF_SIZE__, core.__HALF_SIZE__],
-            [W, H] = [core.__SIZE__, core.__SIZE__],
-            [w, h] = [core.__PIXELS__ * drawSize, core.__PIXELS__ * drawSize];
+        const pxs = core.__PIXELS__;
         if (options.v2) {
-            if (options.noHD) core.drawImage(ctx, tempCanvas.canvas, 0, 0, pw, ph, x, y, w, h);
-            else core.drawImage(ctx, tempCanvas.canvas, 0, 0, pw * scale, ph * scale, x, y, w, h);
+            if (options.noHD) core.drawImage(ctx, tempCanvas.canvas, 0, 0, pxs, pxs, x, y, size, size);
+            else core.drawImage(ctx, tempCanvas.canvas, 0, 0, pxs * scale, pxs * scale, x, y, size, size);
         } else {
-            const offsetX = core.clamp(centerX - hw, 0, width - W),
-                offsetY = core.clamp(centerY - hh, 0, height - H);
+            const offsetX = core.clamp(centerX - core.__HALF_SIZE__, 0, width - core.__SIZE__),
+                offsetY = core.clamp(centerY - core.__HALF_SIZE__, 0, height - core.__SIZE__);
             if (options.noHD) {
-                core.drawImage(ctx, tempCanvas.canvas, offsetX * 32, offsetY * 32, pw, ph, x, y, w, h);
+                core.drawImage(ctx, tempCanvas.canvas, offsetX * 32, offsetY * 32, pxs, pxs, x, y, size, size);
             } else {
-                core.drawImage(ctx, tempCanvas.canvas, offsetX * 32 * scale, offsetY * 32 * scale, pw * scale, ph * scale, x, y, w, h);
+                core.drawImage(ctx, tempCanvas.canvas, offsetX * 32 * scale, offsetY * 32 * scale, pxs * scale, pxs * scale, x, y, size, size);
             }
         }
     }

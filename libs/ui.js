@@ -2578,8 +2578,7 @@ ui.prototype.drawFly = function (page) {
     }
     var size = this.PIXEL - 143;
     core.strokeRect('ui', 20, 100, size, size, '#FFFFFF', 2);
-    core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true, drawSize: 0.6 });
-    // 好像是无法理解的魔数，有待将来研究及优化
+    core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
 }
 
 ////// 绘制中心对称飞行器
@@ -3094,7 +3093,6 @@ ui.prototype._drawSLPanel_drawRecord = function (title, data, x, y, size, cho, h
         core.drawThumbnail(data.floorId, map.blocks, {
             heroLoc: data.hero.loc, heroIcon: data.hero.image, flags: data.hero.flags,
             ctx: 'ui', x: x - size / 2, y: y + 15, size: size, centerX: data.hero.loc.x, centerY: data.hero.loc.y, noHD: true,
-            drawSize: 0.285, // 完全无法理解的魔数
         });
         if (core.isPlaying() && core.getFlag("hard") != data.hero.flags.hard) {
             core.fillRect('ui', x - size / 2, y + 15, size, size, [0, 0, 0, 0.4]);
@@ -3318,27 +3316,12 @@ ui.prototype._drawStatistics_items = function (floorId, floor, id, obj) {
         core.setFlag("__statistics__", true);
         var ratio = core.status.thisMap.ratio;
         core.status.thisMap.ratio = core.clone(core.status.maps[floorId].ratio);
-        const itemInfo = core.material.items[id];
-        if (itemInfo.hasOwnProperty('itemEffectEvent') && itemInfo.itemEffectEvent.hasOwnProperty('value')) {
-            const values = itemInfo.itemEffectEvent.value;
-            for (let statusName in values) {
-                const getStatusValue = values[statusName];
-                let needRatio, statusValue;
-                if (statusName.endsWith(':o')) {
-                    needRatio = true;
-                    statusName = statusName.slice(0, -2);
-                }
-                if (core.status.hero.hasOwnProperty(statusName)) {
-                    try {
-                        statusValue = eval(getStatusValue);
-                    } catch (error) {
-                        console.log(error);
-                    }
-                    if (needRatio) statusValue *= ratio;
-                    core.addStatus(statusName, statusValue);
-                }
-            }
+
+        const effectObj = core.items.getItemEffectValue(itemId, ratio);
+        for (let statusName in effectObj) {
+            if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
         }
+
         try { eval(core.material.items[id].itemEffect); }
         catch (e) { }
         core.status.thisMap.ratio = ratio;

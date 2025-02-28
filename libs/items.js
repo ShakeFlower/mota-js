@@ -26,37 +26,53 @@ items.prototype.getItems = function () {
     return items;
 }
 
+///// 根据道具id，返回属性名：属性值的键值对
+items.prototype.getItemEffectValue = function (itemId, ratio) {
+    let effectObj = {};
+    const itemEffectEvent = core.material.items[itemId].itemEffectEvent;
+    if (!itemEffectEvent) return effectObj;
+    const value = itemEffectEvent.value;
+    if (!ratio && ratio !== 0) {
+        ratio = core.status.thisMap.ratio;
+        if (!ratio && ratio !== 0) {
+            ratio = 1;
+        }
+    }
+    for (let statusName in value) {
+        let statusValue, needRatio;
+        const effect = value[statusName];
+        if (statusName.endsWith(':o')) {
+            needRatio = true;
+            statusName = statusName.slice(0, -2);
+        }
+        if (core.status.hero.hasOwnProperty(statusName)) {
+            for (var i = 0; i < itemNum; ++i) {
+                try {
+                    statusValue = eval(effect);
+                }
+                catch (e) {
+                    console.error(e);
+                }
+                if (needRatio) statusValue *= ratio;
+                effectObj[statusName] = statusValue;
+            }
+        }
+    }
+    return effectObj;
+}
+
+
 ////// “即捡即用类”道具的使用效果 //////
 items.prototype.getItemEffect = function (itemId, itemNum) {
     const itemCls = core.material.items[itemId].cls;
     // 消耗品
     if (itemCls === 'items') {
         const curr_hp = core.status.hero.hp;
-        const itemEffectEvent = core.material.items[itemId].itemEffectEvent;
-        if (itemEffectEvent) {
-            const { value } = itemEffectEvent;
-            for (let statusName in value) {
-                let statusValue, ratio, needRatio;
-                const effect = value[statusName];
-                if (statusName.endsWith(':o')) {
-                    needRatio = true;
-                    statusName = statusName.slice(0, -2);
-                }
-                ratio = core.status.thisMap.ratio || 1;
-                if (core.status.hero.hasOwnProperty(statusName)) {
-                    for (var i = 0; i < itemNum; ++i) {
-                        try {
-                            statusValue = eval(effect);
-                        }
-                        catch (e) {
-                            console.error(e);
-                        }
-                        if (needRatio) statusValue *= ratio;
-                        core.addStatus(statusName, statusValue);
-                    }
-                }
-            }
+        const effectObj = this.getItemEffectValue(itemId);
+        for (let statusName in effectObj) {
+            if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
         }
+
         const itemEffect = core.material.items[itemId].itemEffect;
         if (itemEffect) {
             try {
