@@ -3,6 +3,10 @@
  * 在这里可以对表格中的各项显示进行配置，包括表格项、提示内容等内容。具体写法照葫芦画瓢即可。
  * 本配置项包括：道具、怪物、图块属性、楼层属性等内容。
  * 相关文档 _docs/editor.md ~ http://127.0.0.1:1055/_docs/#/editor?id=修改表格
+ * 
+ * 注意：本样板禁止添加以下名字的怪物属性，否则将影响手册绘制的准确性：
+ * specialText, specialColor, damage, critical, criticalDamage, defDamage
+ * 原固伤damage已改名为fixedDamage
  */
 
 var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
@@ -354,7 +358,7 @@ var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "退化扣防",
 					"_data": "退化时勇士下降的防御力点数"
 				},
-				"damage": {
+				"fixedDamage": {
 					"_leaf": true,
 					"_type": "textarea",
 					"_range": "thiseval==~~thiseval||thiseval==null",

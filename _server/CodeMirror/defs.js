@@ -1604,7 +1604,7 @@ var terndefs_f6783a0a_522d_417e_8407_94c67b692e50 = [
           "!type": "number",
           "!doc": "破甲比例；退化扣除防御；光环增加防御"
         },
-        "damage": {
+        "fixedDamage": {
           "!type": "number",
           "!doc": "固伤值"
         },
