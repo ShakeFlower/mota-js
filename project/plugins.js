@@ -3808,7 +3808,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 		}
-
+		
 		this.figureEquip = function () {
 			compareEquip().then(function (confirm) {
 				core.unlockControl();
@@ -3820,34 +3820,71 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 请保持本插件在所有插件的最下方
 
 		/**
-		 * 本插件的修改方法：如果您了解样板的绘制API，基础的JS和面向对象，您可以轻松读懂和修改本插件。
+		 * 本插件的修改方法：如果您了解样板的绘制API，基础的JS和面向对象，您可以轻松读懂和修改本插件。否则，您可以借助AI辅助阅读。
 		 * 以下给出一些快速修改的参考
 		 * 1.如何了解选项的效果，及修改已有的选项：找到下方如下代码段:
-				const settingMap = new Map([
-			['autoGet', new Setting(  
+			const settingMap = new Map([
+			['autoGet', new Setting(   // 'autoGet'为其在settingMap中对应的键名
 				() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),  // 此项填一个函数，返回一个字符串，为该选项显示的文字内容
 				() => invertFlag('autoGet'),  // 此项填一个函数，为点击该选项执行的效果
 				'每走一步，自动拾取当前层可获得的道具。',  // 此项填一个字符串，为该选项的说明文本
 				true,  // 此项控制点击该选项的操作是否计入录像。请勿计入任何DOM操作。
 			)],
-			//...
+			// ...some Content
 			]);
-			将对应位置修改为
+			将对应位置的数组修改为
 			['autoGet', new Setting(  
 				() => '点我加100血',  
-				() => {core.status.hero.hp+=100;},  
+				() => { core.status.hero.hp += 100; core.updateStatusBar(); },  
 				'点击该选项加100血',  
 				true,  // 此项控制点击该选项的操作是否计入录像。请勿计入任何DOM操作。
 			)],
 			应用该修改后，选项“自动拾取”效果改为点1次加100血。
 		 * 2.如何删除和添加已有的选项
-			以删除“自动拾取”这个选项为例。您需要先找到“自动拾取”所在的子菜单，为"功能"菜单。
+			以删除“自动拾取”这个选项为例。查找可知，“自动拾取”在settingMap中对应的键名为'autoGet'
 			在本插件最下方找到如下代码段
 				gamePlayMenu.initBtnList([
-				['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')],
-				// ...
+				['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 
+				// ...some Content
 			]);
+			该按钮在此被添加到子菜单gamePlayMenu（功能）中
+			删除 ['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 这一行，自动拾取按钮将消失。
+			但同时，相应按钮的位置将会空缺。
+			如果想要添加按钮，上面的数组中，第一项'1,1'表示按钮所在的行和列，仅影响按下方向键时光标的移动
+			按钮在画面中视觉上所处的位置为(40, 180), 尺寸为(150, 30),对应的settingMap中的数据索引为'autoGet'
+			根据以上原则来修改和添加自己的按钮
+		 * 3.如何删除和添加子菜单
+			下列代码段控制子菜单的绘制：
+			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu], 0, ctx);
 
+			const gamePlayBtn = new ChoiceButton(32, 40, 46, 24, '功能', 0),
+				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1),
+				keyBtn = new ChoiceButton(152, 40, 46, 24, '按键', 2),
+				consoleBtn = new ChoiceButton(212, 40, 66, 24, '控制台', 3);
+			settingMenu.initBtnList([
+			[0, gamePlayBtn],
+			[1, gameViewBtn],
+			[2, keyBtn],
+			[3, consoleBtn],
+			['quit', quit]
+			]);
+			删除consoleBtn的声明和引用，就能从设置界面中去掉控制台菜单。
+			下面演示如何添加一个自己的菜单，添加下列代码段：
+			const myMenu = new SettingOnePage('myContent');
+
+			然后在settingMenu中加入该子菜单，如下：
+			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu, myMenu], 0, ctx);
+
+			在画面中添加该菜单的入口：
+			const myBtn = new ChoiceButton(272, 40, 86, 24, '我的菜单', 4);
+			settingMenu.initBtnList([...
+			,[4, myBtn],
+			['quit', quit]
+			]);
+			但该菜单还没有任何内容，添加一个按钮，如下：
+			myMenu.initBtnList([
+			['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 
+			]);
 		 */
 
 		class ButtonBase {
