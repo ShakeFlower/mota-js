@@ -602,34 +602,54 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canUseItemEffect": "true",
 		"useItemEvent": [
 			{
-				"type": "choices",
-				"text": "本功能需要您在h5mota.com在线游玩并处于登录状态时使用，可以发送和接受留言。\n发言后需要选择\"获取最新留言\"才能看到自己新发的留言。\n您当前\"在地图上显示在线留言\"功能处于${flag:comment?'打开状态':'关闭状态，在设置中可打开。'}",
-				"choices": [
+				"type": "while",
+				"condition": "true",
+				"data": [
 					{
-						"text": "获取最新留言",
-						"action": [
+						"type": "choices",
+						"text": "本功能需要您在h5mota.com在线游玩并处于登录状态时使用，可以发送和接受留言。\n发言后需要选择\"获取最新留言\"才能看到自己新发的留言。",
+						"choices": [
 							{
-								"type": "function",
-								"function": "function(){\nif (!core.isReplaying()) {\n\tcore.plugin.getComment();\n\tsetTimeout(core.plugin.drawCommentSign, 1000);\n}\n}"
-							}
-						]
-					},
-					{
-						"text": "写留言",
-						"action": [
-							{
-								"type": "input2",
-								"text": "请输入要发送的评论，文明友善发言，拒绝放假、剧透。"
+								"text": "地图上显示在线留言:${flag:comment?'开':'关'}",
+								"icon": "postman",
+								"action": [
+									{
+										"type": "function",
+										"function": "function(){\nif (core.hasFlag('comment')) {\n\tcore.setFlag('comment', false);\n\tcore.plugin.clearCommentSign();\n} else {\n\tcore.setFlag('comment', true);\n\tcore.plugin.drawCommentSign();\n}\n}"
+									}
+								]
 							},
 							{
-								"type": "function",
-								"function": "function(){\nconst input = core.getFlag('input', '');\nconst tags = [core.status.floorId,\n\tcore.getHeroLoc().x.toString(), core.getHeroLoc().y.toString()\n]\nif (!core.isReplaying()) {\n\tcore.plugin.postComment(input, tags);\n}\n}"
+								"text": "写留言",
+								"action": [
+									{
+										"type": "input2",
+										"text": "请输入要发送的评论，文明友善发言，拒绝放假、剧透。"
+									},
+									{
+										"type": "function",
+										"function": "function(){\nconst input = core.getFlag('input', '');\nconst tags = [core.status.floorId,\n\tcore.getHeroLoc().x.toString(), core.getHeroLoc().y.toString()\n]\nif (!core.isReplaying()) {\n\tcore.plugin.postComment(input, tags);\n}\n}"
+									}
+								]
+							},
+							{
+								"text": "获取最新留言",
+								"action": [
+									{
+										"type": "function",
+										"function": "function(){\nif (!core.isReplaying()) {\n\tcore.plugin.getComment();\n\tsetTimeout(core.plugin.drawCommentSign, 1000);\n}\n}"
+									}
+								]
+							},
+							{
+								"text": "退出",
+								"action": [
+									{
+										"type": "exit"
+									}
+								]
 							}
 						]
-					},
-					{
-						"text": "退出",
-						"action": []
 					}
 				]
 			}
