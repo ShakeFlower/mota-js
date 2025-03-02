@@ -2848,8 +2848,13 @@ interface utils {
     /** 是否满足正则表达式 */
     matchRegex(pattern: string, string: string): string
 
-    /** 让用户输入一段文字 */
-    myprompt(hint: string, value: string, callback?: (data?: string) => any): void
+    /** 让用户输入一段文字 
+     * @param hint 输入框的提示语
+     * @param value 输入值为null时的默认值
+     * @param callback 确认时的回调
+     * @param failCallback 取消时的回调，不填则默认与确认时的回调相同
+     */
+    myprompt(hint: string, value: string, callback?: (data?: string) => any, failCallback?: (data?: string) => any): void
 
     /** 动画显示某对象 */
     showWithAnimate(obj?: any, speed?: number, callback?: () => any): void

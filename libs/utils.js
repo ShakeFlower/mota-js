@@ -1202,7 +1202,7 @@ utils.prototype.myconfirm = function (hint, yesCallback, noCallback) {
 }
 
 ////// 让用户输入一段文字 //////
-utils.prototype.myprompt = function (hint, value, callback) {
+utils.prototype.myprompt = function (hint, value, callback, failCallback) {
     main.dom.inputDiv.style.display = 'block';
     main.dom.inputMessage.innerHTML = hint.replace(/\n/g, '<br/>');
     main.dom.inputBox.style.display = 'block';
@@ -1214,7 +1214,7 @@ utils.prototype.myprompt = function (hint, value, callback) {
     });
     core.status.holdingKeys = [];
     core.platform.successCallback = callback;
-    core.platform.errorCallback = () => { };
+    core.platform.errorCallback = failCallback || callback;
 }
 
 ////// 动画显示某对象 //////

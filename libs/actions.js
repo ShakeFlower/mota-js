@@ -2029,7 +2029,7 @@ actions.prototype._clickSL_favorite = function (page, offset) {
             } else if (value) {
                 alert("无效的输入！");
             }
-        });
+        }, () => { });
     } else {
         var v = core.saves.favorite.indexOf(index);
         core.playSound('确定');
@@ -2591,7 +2591,7 @@ actions.prototype._clickNotes_new = function () {
         } else {
             core.ui.closePanel();
         }
-    });
+    }, () => { });
 }
 
 actions.prototype._clickNotes_show = function () {
@@ -2630,7 +2630,7 @@ actions.prototype._clickNotes_edit = function () {
                     }
                 });
             }
-        })
+        }, () => { })
     }
 }
 
@@ -2662,7 +2662,7 @@ actions.prototype._clickNotes_delete = function () {
                     core.drawText("已删除 " + data.sort().join(",") + " 号笔记");
                 }
             }
-        })
+        }, () => { });
     }
 }
 

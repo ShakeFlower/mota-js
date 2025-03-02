@@ -3014,7 +3014,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					core.closePanel();
 					batchUse(id, value);
-				});
+				}, () => { });
 			}
 			addUIEventListener(x, y, w, h, todo);
 		}
@@ -3823,7 +3823,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * 本插件的修改方法：如果您了解样板的绘制API，基础的JS和面向对象，您可以轻松读懂和修改本插件。
 		 * 以下给出一些快速修改的参考
 		 * 1.如何了解选项的效果，及修改已有的选项：找到下方如下代码段:
-		  	const settingMap = new Map([
+				const settingMap = new Map([
 			['autoGet', new Setting(  
 				() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),  // 此项填一个函数，返回一个字符串，为该选项显示的文字内容
 				() => invertFlag('autoGet'),  // 此项填一个函数，为点击该选项执行的效果
@@ -4329,7 +4329,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							else core.drawFailTip('错误：找不到该名称的物品!');
 						}
 						else core.drawFailTip('未知错误：core.material.items不存在!');
-					});
+					}, () => { });
 				},
 				'给选定的数字键绑定一个可快捷使用的物品。',
 				false,
@@ -4427,7 +4427,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						else {
 							core.drawFailTip('错误：不合法的名称!');
 						}
-					});
+					}, () => { });
 				},
 				'',
 				false,
@@ -4451,7 +4451,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						else {
 							core.drawFailTip('错误：不合法的值!');
 						}
-					});
+					}, () => { });
 				},
 				'',
 				false,
@@ -4499,7 +4499,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							}
 						}
 						core.drawFailTip('错误：不合法的名称!');
-					});
+					}, () => { });
 				},
 				'',
 				false,
@@ -4520,7 +4520,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						else {
 							core.drawFailTip('错误：不合法的值!');
 						}
-					});
+					}, () => { });
 				},
 				'',
 				false,
@@ -4576,7 +4576,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						else {
 							core.drawFailTip('错误：不合法的名称!');
 						}
-					});
+					}, () => { });
 				},
 				'',
 				false,
@@ -4599,7 +4599,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 						core.setFlag('debug_flagValue', newValue);
 						this.menu.drawContent();
-					});
+					}, () => { });
 				},
 				'',
 				false,

@@ -2316,7 +2316,7 @@ control.prototype.syncLoad = function () {
         } else {
             core.control._syncLoad_http(idpassword.substring(0, 6), idpassword.substring(6));
         }
-    });
+    }, () => { });
 }
 
 control.prototype._syncLoad_http = function (id, password) {
