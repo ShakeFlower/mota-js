@@ -1834,7 +1834,7 @@ control.prototype._replay_drawProgress = function () {
 
 control.prototype.__replay_getTimeout = function () {
     if (core.status.replay.speed == 24) return 0;
-    return 750 / Math.max(1, core.status.replay.speed);
+    return 100 / Math.max(1, core.status.replay.speed);
 }
 
 control.prototype._replayAction_move = function (action) {
