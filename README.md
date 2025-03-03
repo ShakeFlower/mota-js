@@ -88,6 +88,7 @@ name不填, 且enemy为string或空（将使用x,y获取相应点id）时，根�
 todolist:图块移动整体加速
 todolist:add 工具栏 含单步
 todolist:?ATRI
+todolist:楼传/浏览地图界面 添加有怪/有宝石标记（可选），显示/隐藏楼层功能，楼层笔记（本存档/跨存档）支持emoji
 
 ### 2022.7.10 HTML5魔塔样板V2.9.1
 
