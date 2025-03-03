@@ -291,7 +291,7 @@ actions.prototype._clickToolbox
 controls中的函数_updateStatusBar_setToolboxIcon也很重要，该函数调控进/出录像模式的图标变化
 setToolbarButton 改变工具栏为按钮1-8
 
-todo:长弹幕显示不全
-todo:点取消卡死
-todo:未知的自动拾取导致bug 为什么其它塔没有bug?
+todo:长弹幕显示不全 done
+todo:点取消卡死 done
+todo:未知的自动拾取导致bug 为什么其它塔没有bug? 有待将来观察
 todo:2.10其它改动
