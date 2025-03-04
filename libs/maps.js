@@ -2668,7 +2668,7 @@ maps.prototype._getAndRemoveBlock = function (x, y) {
 }
 
 ////// 显示移动某块的动画，达到{“type”:”move”}的效果 //////
-maps.prototype.moveBlock = function (x, y, steps, time, keep, callback, noMoveInfo) {
+maps.prototype.moveBlock = function (x, y, steps, time, keep, callback, noMoveEInfo) {
     if (core.status.replay.speed == 24) time = 1;
     time = time || 500;
     var blockArr = this._getAndRemoveBlock(x, y);
@@ -2690,10 +2690,10 @@ maps.prototype.moveBlock = function (x, y, steps, time, keep, callback, noMoveIn
         sx: x, sy: y, x: x, y: y, px: 32 * x, py: 32 * y, opacity: 1, keep: keep, lastDirection: null, offset: 1,
         moveSteps: moveSteps, step: 0, per_time: time / 16 / core.status.replay.speed
     }
-    this._moveBlock_doMove(blockInfo, canvases, moveInfo, callback, noMoveInfo);
+    this._moveBlock_doMove(blockInfo, canvases, moveInfo, callback, noMoveEInfo);
 }
 
-maps.prototype._moveBlock_doMove = function (blockInfo, canvases, moveInfo, callback, noMoveInfo) {
+maps.prototype._moveBlock_doMove = function (blockInfo, canvases, moveInfo, callback, noMoveEInfo) {
     var animateTotal = blockInfo.animate, animateTime = 0;
     // 强制npc48行走时使用四帧动画
     if (!blockInfo.doorInfo && !blockInfo.bigImage && blockInfo.cls == 'npc48') animateTotal = 4;
@@ -2704,7 +2704,7 @@ maps.prototype._moveBlock_doMove = function (blockInfo, canvases, moveInfo, call
             if (moveInfo.keep) {
                 core.setBlock(blockInfo.number, moveInfo.x, moveInfo.y);
                 core.showBlock(moveInfo.x, moveInfo.y);
-                if (!noMoveInfo) core.moveEnemyOnPoint(moveInfo.sx, moveInfo.sy, moveInfo.x, moveInfo.y);
+                if (!noMoveEInfo) core.moveEnemyOnPoint(moveInfo.sx, moveInfo.sy, moveInfo.x, moveInfo.y);
             }
             if (callback) callback();
         }
@@ -2809,6 +2809,7 @@ maps.prototype._moveBlock_updateDirection = function (blockInfo, moveInfo) {
         moveInfo.moveSteps.shift();
         return false;
     }
+    // 这段不知道是干什么的
     moveInfo.x += core.utils.scan2[curr[0]].x * moveInfo.offset;
     moveInfo.y += core.utils.scan2[curr[0]].y * moveInfo.offset;
     return true;
@@ -2823,7 +2824,7 @@ maps.prototype._moveBlock_moving = function (blockInfo, canvases, moveInfo) {
     moveInfo.px += core.utils.scan2[curr[0]].x * 2 * moveInfo.offset;
     moveInfo.py += core.utils.scan2[curr[0]].y * 2 * moveInfo.offset;
     this._moveDetachedBlock(blockInfo, moveInfo.px, moveInfo.py, moveInfo.opacity, canvases);
-    if (moveInfo.step == 16) {
+    if (moveInfo.step == Math.round(32 / (moveInfo.offset * 2))) {
         moveInfo.step = 0;
         moveInfo.moveSteps[0][1]--;
         if (moveInfo.moveSteps[0][1] <= 0) {
