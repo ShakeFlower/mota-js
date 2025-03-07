@@ -46,16 +46,14 @@ items.prototype.getItemEffectValue = function (itemId, ratio) {
             statusName = statusName.slice(0, -2);
         }
         if (core.status.hero.hasOwnProperty(statusName)) {
-            for (var i = 0; i < itemNum; ++i) {
-                try {
-                    statusValue = eval(effect);
-                }
-                catch (e) {
-                    console.error(e);
-                }
-                if (needRatio) statusValue *= ratio;
-                effectObj[statusName] = statusValue;
+            try {
+                statusValue = eval(effect);
             }
+            catch (e) {
+                console.error(e);
+            }
+            if (needRatio) statusValue *= ratio;
+            effectObj[statusName] = statusValue;
         }
     }
     return effectObj;
