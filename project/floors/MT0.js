@@ -7,9 +7,9 @@ main.floors.MT0=
     "canFlyFrom": true,
     "canUseQuickShop": true,
     "cannotViewMap": false,
-    "defaultGround": "X10036",
+    "defaultGround": "ground",
     "images": [],
-    "ratio": 2,
+    "ratio": 1,
     "map": [
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
     [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
