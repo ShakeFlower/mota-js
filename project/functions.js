@@ -52,6 +52,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.showStatusBar();
 			// 隐藏右下角的音乐按钮
 			core.dom.musicBtn.style.display = 'none';
+
+			// 清空录像暂停点
+			core.setFlag('replayValve', null);
 		},
 		"win": function (reason, norank, noexit) {
 			// 游戏获胜事件

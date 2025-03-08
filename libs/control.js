@@ -1514,6 +1514,32 @@ control.prototype.stepReplay = function () {
     core.replay(true);
 }
 
+////// 拦截录像，在运行到指定步数时暂停 //////
+control.prototype.interceptReplay = function () {
+    if (!core.isPlaying() || !core.isReplaying()) return;
+    if (!core.status.replay.pausing) {
+        core.playSound('操作失败');
+        return core.drawTip("请先暂停录像");
+    }
+    if (core.isMoving() || core.status.replay.animate || core.status.event.id) {
+        core.playSound('操作失败');
+        return core.drawTip("请等待当前事件的处理结束");
+    }
+    core.myprompt("请输入一个自然数，这将设置一个临时拦截点，录像将在运行到该步数时自动暂停。设为0将取消该拦截。", null, function (value) {
+        value = parseInt(value);
+        if (Number.isNaN(value) || value < 0) {
+            core.drawFailTip('错误：不合法的输入!');
+            return;
+        }
+        else if (value === 0) {
+            core.setFlag('replayValve', null);
+        }
+        else {
+            core.setFlag('replayValve', value);
+        }
+    }, () => { });
+}
+
 ////// 加速播放 //////
 control.prototype.speedUpReplay = function () {
     if (!core.isPlaying() || !core.isReplaying()) return;
@@ -1559,6 +1585,7 @@ control.prototype.stopReplay = function (force) {
     core.status.replay.speed = 1.0;
     core.status.replay.steps = 0;
     core.status.replay.save = [];
+    core.setFlag('replayValve', null);
     core.deleteCanvas('replay');
     core.updateStatusBar(false, true);
     core.drawTip("停止播放并恢复游戏");
@@ -1713,6 +1740,12 @@ control.prototype.replay = function (force) {
     if (!core.isPlaying() || !core.isReplaying()
         || core.status.replay.animate || core.status.event.id || core.status.replay.failed) return;
     if (core.status.replay.pausing && !force) return;
+    
+    const valve = core.getFlag('replayValve', -1);
+    if (!main.replayChecking && core.status.route.length === valve) {
+        core.pauseReplay(); // 非线上录像验证时，截停录像。
+        core.drawFailTip('录像已运行到指定的暂停点第' + valve + '步，自动暂停。');
+    }
     this._replay_drawProgress();
     if (core.status.replay.toReplay.length == 0)
         return this._replay_finished();
