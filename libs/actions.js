@@ -1291,20 +1291,13 @@ function _hideFly(floorId) {
         core.setFlag('hideFloors', hideFloors);
     }
     else {
-        if (Object.keys(hideFloors).length <= 1) {
-            core.drawFailTip('当前无法执行隐藏操作!');
-            return;
-        }
         hideFloors[floorId] = true;
     }
     core.setFlag('hideFloors', hideFloors);
 }
 
-function _hideFlyMode() {
-    core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
-}
-
 function _isFloorHided(floorId) {
+    if (floorId === core.status.floorId) return false; // 当前所在层需要无条件显示
     return !core.hasFlag('noHideFly') && core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
 }
 
@@ -1318,8 +1311,14 @@ actions.prototype._clickFly = function (x, y) {
     const floorId = core.floorIds[core.status.event.data];
     if (x >= 0 && x <= this.HSIZE + 3 && y >= 3 && y <= this.LAST - 1)
         core.flyTo(floorId);
-    if (x >= 1 && x <= 2 && y === 2) _hideFly(floorId);
-    if (x >= 3 && x <= 6 && y === 2) _hideFlyMode();
+    if (x >= 1 && x <= 2 && y === 2) {
+        _hideFly(floorId);
+        core.ui.drawFly(core.status.event.data);
+    }
+    if (x >= 3 && x <= 6 && y === 2) {
+        core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
+        core.ui.drawFly(core.status.event.data);
+    }
     if (x >= 7 && x <= 8 && y === 2) {
         core.myprompt("请输入一段笔记，字数不要过多。", null, function (data) {
             if (data) {

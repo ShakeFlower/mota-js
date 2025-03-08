@@ -2564,7 +2564,7 @@ ui.prototype.drawFly = function (page) {
     const noHideFly = core.hasFlag('noHideFly');
 
     core.fillText('ui', isHide ? '[显示本层]' : '[隐藏本层]', 60, 80, '#EEEEEE', this._buildFont(12, false));
-    core.fillText('ui', '[显示隐藏层:' + noHideFly ? 'ON' : 'OFF' + ']', 160, 80, '#EEEEEE', this._buildFont(12, false));
+    core.fillText('ui', '[显示隐藏层:' + (noHideFly ? 'ON' : 'OFF') + ']', 160, 80, '#EEEEEE', this._buildFont(12, false));
     core.fillText('ui', '[楼层笔记]', 260, 80, '#EEEEEE', this._buildFont(12, false));
 
     var middle = this.HPIXEL + 39;
@@ -2592,7 +2592,7 @@ ui.prototype.drawFly = function (page) {
     var size = this.PIXEL - 143;
 
     core.strokeRect('ui', 20, 100, size, size, '#FFFFFF', 2);
-    if (isHide) core.setAlpha('ui', 0.8);
+    if (isHide) core.setAlpha('ui', 0.6);
     core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
     if (isHide) core.setAlpha('ui', 1);
 
