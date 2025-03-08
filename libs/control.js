@@ -3218,6 +3218,8 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
         core.statusBar.image.save.style.opacity = 1;
         core.statusBar.image.load.src = core.statusBar.icons.speedUp.src;
         core.statusBar.image.settings.src = core.statusBar.icons.save.src;
+        core.statusBar.image.rollback.src = core.statusBar.icons.single.src;
+        core.statusBar.image.undoRollback.src = core.statusBar.icons.valve.src;
     }
     else {
         core.statusBar.image.book.src = core.statusBar.icons.book.src;
@@ -3237,6 +3239,8 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
         core.statusBar.image.save.style.opacity = core.hasFlag('__forbidSave__') ? 0.3 : 1;
         core.statusBar.image.load.src = core.statusBar.icons.load.src;
         core.statusBar.image.settings.src = core.statusBar.icons.settings.src;
+        core.statusBar.image.rollback.src = core.statusBar.icons.rollback.src;
+        core.statusBar.image.undoRollback.src = core.statusBar.icons.undoRollback.src;
     }
 }
 
@@ -3320,6 +3324,9 @@ control.prototype.setToolbarButton = function (useButton) {
         ["book", "fly", "toolbox", "keyboard", "shop", "save", "load", "settings"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
+        ["rollback", "undoRollback"].forEach(function (t) {
+            core.statusBar.image[t].style.display = 'none';
+        });
         ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btn8"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         })
@@ -3332,8 +3339,17 @@ control.prototype.setToolbarButton = function (useButton) {
         ["book", "fly", "toolbox", "save", "load", "settings"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         });
+        if (core.domStyle.isVertical || core.flags.extendToolbar || !core.flags.showHard) {
+            core.statusBar.image.shop.style.display = "block";
+        }
+        else core.statusBar.image.shop.style.display = "none";
+
+        if (!core.flags.showHard) {
+            ["rollback", "undoRollback"].forEach(function (t) {
+                core.statusBar.image[t].style.display = 'block';
+            });
+        }
         core.statusBar.image.keyboard.style.display
-            = core.statusBar.image.shop.style.display
             = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
     }
 }
@@ -3671,7 +3687,7 @@ control.prototype._resize_tools = function (obj) {
     var toolsHeight = 32 * core.domStyle.scale * ((core.domStyle.isVertical || obj.extendToolbar) && !obj.is15x15 ? 0.95 : 1);
     var toolsMarginLeft;
     if (core.domStyle.isVertical || obj.extendToolbar)
-        toolsMarginLeft = (core.__HALF_SIZE__ - 3) * 3 * core.domStyle.scale;
+        toolsMarginLeft = (core.__HALF_SIZE__ - 3) * 3 * core.domStyle.scale - 1;
     else
         toolsMarginLeft = (obj.BAR_WIDTH * core.domStyle.scale - 9 - toolsHeight * 3) / 4;
     for (var i = 0; i < core.dom.tools.length; ++i) {
@@ -3682,7 +3698,8 @@ control.prototype._resize_tools = function (obj) {
     }
     core.dom.hard.style.lineHeight = toolsHeight + "px";
     if (core.domStyle.isVertical || obj.extendToolbar) {
-        core.dom.hard.style.width = obj.outerSize - 9 * toolsMarginLeft - 8.5 * toolsHeight - 12 + "px";
+        if (core.flags.showHard) core.dom.hard.style.width = obj.outerSize - 9 * toolsMarginLeft - 8.5 * toolsHeight - 22 + "px";
+        else core.dom.hard.style.width = "10px";
     }
     else {
         core.dom.hard.style.width = obj.BAR_WIDTH * core.domStyle.scale - 9 - 2 * toolsMarginLeft + "px";

@@ -122,6 +122,10 @@ function main () {
             'btn6': document.getElementById("img-btn6"),
             'btn7': document.getElementById("img-btn7"),
             'btn8': document.getElementById("img-btn8"),
+            'rollback': document.getElementById("img-rollback"),
+            'undoRollback': document.getElementById("img-undoRollback"),
+            'single': document.getElementById("img-single"),
+            'valve': document.getElementById("img-valve"),
         },
         'icons': {
             'floor': 0,
@@ -159,7 +163,11 @@ function main () {
             'btn5': 31,
             'btn6': 32,
             'btn7': 33,
-            'btn8': 34
+            'btn8': 34,
+            'rollback': 35,
+            'undoRollback': 36,
+            'single': 37,
+            'valve': 38,
         },
         'floor': document.getElementById('floor'),
         'name': document.getElementById('name'),
@@ -762,6 +770,33 @@ main.prototype.listen = function () {
 
         if (main.core.isPlaying())
             main.core.openSettings(true);
+    }
+
+    ////// 点击状态栏中的回退菜单时 //////
+    main.statusBar.image.rollback.onclick = function (e) {
+        e.stopPropagation();
+
+        // 单步播放录像
+        if (core.isReplaying()) {
+            core.control.stepReplay();
+            return;
+        }
+
+        if (main.core.isPlaying())
+            core.doSL("autoSave", "load");
+    }
+
+    ////// 点击状态栏中的取消回退菜单时 //////
+    main.statusBar.image.undoRollback.onclick = function (e) {
+        e.stopPropagation();
+
+        if (core.isReplaying()) {
+            core.control.interceptReplay();
+            return;
+        }
+
+        if (main.core.isPlaying())
+            core.doSL("autoSave", "reload");
     }
 
     ////// 点击工具栏时 //////
