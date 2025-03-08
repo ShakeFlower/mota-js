@@ -1122,7 +1122,7 @@ control.prototype._moveDirectyFollowers = function (x, y) {
 }
 
 ////// 获取某层的阻激夹域信息 //////
-control.prototype.getCheckBlock = function (floorId){
+control.prototype.getCheckBlock = function (floorId) {
     return this.controldata.getCheckBlock(floorId);
 }
 

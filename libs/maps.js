@@ -2510,7 +2510,7 @@ maps.prototype.setBlockConnectivity = function (num, statusName, statusValue) {
         mapBlockObjs = core.status.mapBlockObjs,
         blocksInfo = core.maps.blocksInfo,
         number2Block = core.status.number2Block;
-        core.maps.blocksInfo = core.clone(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
+    core.maps.blocksInfo = core.clone(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
     if (statusName === 'noPass') {
         floorIds.forEach((floorId) => {
             if (maps.hasOwnProperty(floorId)) {

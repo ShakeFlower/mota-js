@@ -184,7 +184,7 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
         if (enemy == null) return null;
     }
     enemy = core.clone(enemy);
-    
+
     if (!core.isset(name)) { // 仅name不填时返回该enemy的完整数据，有x,y将用该点信息覆盖core.material.enemys相应属性
         for (let status in pointInfo) {
             if (pointInfo.hasOwnProperty(status)) enemy[status] = pointInfo[status];
