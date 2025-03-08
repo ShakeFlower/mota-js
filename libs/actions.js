@@ -1284,6 +1284,30 @@ actions.prototype._clickBookDetail = function () {
     core.status.event.id = 'book';
 }
 
+function _hideFly(floorId) {
+    const hideFloors = core.getFlag('hideFloors', {});
+    if (hideFloors.hasOwnProperty(floorId)) {
+        delete hideFloors[floorId];
+        core.setFlag('hideFloors', hideFloors);
+    }
+    else {
+        if (Object.keys(hideFloors).length <= 1) {
+            core.drawFailTip('当前无法执行隐藏操作!');
+            return;
+        }
+        hideFloors[floorId] = true;
+    }
+    core.setFlag('hideFloors', hideFloors);
+}
+
+function _hideFlyMode() {
+    core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
+}
+
+function _isFloorHided(floorId) {
+    return !core.hasFlag('noHideFly') && core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+}
+
 ////// 楼层传送器界面时的点击操作 //////
 actions.prototype._clickFly = function (x, y) {
     if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE + 3) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(-1)); }
@@ -1291,8 +1315,24 @@ actions.prototype._clickFly = function (x, y) {
     if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE + 4) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(-10)); }
     if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE - 2) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(10)); }
     if (x >= this.HSIZE - 1 && x <= this.HSIZE + 1 && y == this.LAST) { core.playSound('取消'); core.ui.closePanel(); }
+    const floorId = core.floorIds[core.status.event.data];
     if (x >= 0 && x <= this.HSIZE + 3 && y >= 3 && y <= this.LAST - 1)
-        core.flyTo(core.floorIds[core.status.event.data]);
+        core.flyTo(floorId);
+    if (x >= 1 && x <= 2 && y === 2) _hideFly(floorId);
+    if (x >= 3 && x <= 6 && y === 2) _hideFlyMode();
+    if (x >= 7 && x <= 8 && y === 2) {
+        core.myprompt("请输入一段笔记，字数不要过多。", null, function (data) {
+            if (data) {
+                const flyNotes = core.getFlag('flyNotes', {});
+                flyNotes[floorId] = data;
+                core.setFlag('flyNotes', flyNotes);
+                core.ui.drawFly(core.status.event.data);
+                core.drawSuccessTip("楼层笔记新增成功！");
+            } else {
+                core.ui.closePanel();
+            }
+        }, () => { });
+    }
     return;
 }
 
@@ -1315,7 +1355,8 @@ actions.prototype._getNextFlyFloor = function (delta, index) {
         index += sign;
         if (index < 0 || index >= core.floorIds.length) break;
         var floorId = core.floorIds[index];
-        if (core.status.maps[floorId].canFlyTo && core.hasVisitedFloor(floorId)) {
+        if (core.status.maps[floorId].canFlyTo && core.hasVisitedFloor(floorId)
+            && !_isFloorHided(floorId)) {
             delta--;
             ans = index;
         }

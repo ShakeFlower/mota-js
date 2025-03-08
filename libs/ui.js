@@ -2553,12 +2553,19 @@ ui.prototype.drawFly = function (page) {
     core.fillRect('ui', 0, 0, this.PIXEL, this.PIXEL, '#000000');
     core.setAlpha('ui', 1);
     core.setTextAlign('ui', 'center');
-    core.fillText('ui', '楼层跳跃', this.HPIXEL, 60, '#FFFFFF', this._buildFont(28, true));
+    core.fillText('ui', '楼层跳跃', this.HPIXEL, 40, '#FFFFFF', this._buildFont(28, true));
     core.fillText('ui', '返回游戏', this.HPIXEL, this.PIXEL - 13, null, this._buildFont(15, true))
     core.setTextAlign('ui', 'right');
     core.fillText('ui', '浏览地图时也', this.PIXEL - 10, this.PIXEL - 23, '#aaaaaa', this._buildFont(10, false));
     core.fillText('ui', '可楼层跳跃！', this.PIXEL - 10, this.PIXEL - 11, null, this._buildFont(10, false));
     core.setTextAlign('ui', 'center');
+
+    const isHide = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+    const noHideFly = core.hasFlag('noHideFly');
+
+    core.fillText('ui', isHide ? '[显示本层]' : '[隐藏本层]', 60, 80, '#EEEEEE', this._buildFont(12, false));
+    core.fillText('ui', '[显示隐藏层:' + noHideFly ? 'ON' : 'OFF' + ']', 160, 80, '#EEEEEE', this._buildFont(12, false));
+    core.fillText('ui', '[楼层笔记]', 260, 80, '#EEEEEE', this._buildFont(12, false));
 
     var middle = this.HPIXEL + 39;
 
@@ -2583,8 +2590,18 @@ ui.prototype.drawFly = function (page) {
         core.fillText('ui', '▼', this.PIXEL - 60, middle + 96 + 7);
     }
     var size = this.PIXEL - 143;
+
     core.strokeRect('ui', 20, 100, size, size, '#FFFFFF', 2);
+    if (isHide) core.setAlpha('ui', 0.8);
     core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
+    if (isHide) core.setAlpha('ui', 1);
+
+    const flyNotes = core.getFlag('flyNotes', {});
+    if (flyNotes.hasOwnProperty(floorId)) {
+        core.ui.drawTextContent('ui', flyNotes[floorId], {
+            left: 50, top: 120, color: 'white', align: 'center', fontSize: 12, maxWidth: size - 50,
+        });
+    }
 }
 
 ////// 绘制中心对称飞行器
