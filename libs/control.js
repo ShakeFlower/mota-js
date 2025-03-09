@@ -3352,11 +3352,10 @@ control.prototype.setToolbarButton = function (useButton) {
         }
         else core.statusBar.image.shop.style.display = "none";
 
-        if (!core.flags.showHard) {
-            ["rollback", "undoRollback"].forEach(function (t) {
-                core.statusBar.image[t].style.display = 'block';
-            });
-        }
+        ["rollback", "undoRollback"].forEach(function (t) {
+            core.statusBar.image[t].style.display = core.flags.showHard ? "none" : "block";
+        });
+        
         core.statusBar.image.keyboard.style.display
             = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
     }
@@ -3484,6 +3483,14 @@ control.prototype.resize = function () {
         extendToolbar: extendToolbar,
         is15x15: core.__SIZE__ == 15
     };
+
+    // 横屏且非底部工具栏，则商店调整到回退按键之前
+    if (!core.domStyle.isVertical && !core.flags.extendsToolBar) {
+        if (core.statusBar.image.shop.nextElementSibling !== core.statusBar.image.rollback)
+            core.dom.toolBar.insertBefore(core.statusBar.image.shop, core.statusBar.image.rollback);
+    }
+    else if (core.statusBar.image.shop.nextElementSibling !== core.statusBar.image.save)
+        core.dom.toolBar.insertBefore(core.statusBar.image.shop, core.statusBar.image.save);
 
     this._doResize(obj);
     this.setToolbarButton();
@@ -3707,7 +3714,10 @@ control.prototype._resize_tools = function (obj) {
     core.dom.hard.style.lineHeight = toolsHeight + "px";
     if (core.domStyle.isVertical || obj.extendToolbar) {
         if (core.flags.showHard) core.dom.hard.style.width = obj.outerSize - 9 * toolsMarginLeft - 8.5 * toolsHeight - 22 + "px";
-        else core.dom.hard.style.width = "10px";
+        else {
+            core.dom.hard.style.width = "15px";
+            core.dom.hard.style.marginLeft = "1px";
+        }
     }
     else {
         core.dom.hard.style.width = obj.BAR_WIDTH * core.domStyle.scale - 9 - 2 * toolsMarginLeft + "px";
