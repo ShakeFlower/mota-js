@@ -4406,6 +4406,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							case '7':
 								itemName = '轻按';
 								break;
+							case '8':
+								itemName = '空白';
+								break;
+							case '9':
+								itemName = '空白';
+								break;
 						}
 					}
 					let text = '\\i[btn' + num + ']: ';
@@ -4419,7 +4425,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['clearHotKeys', new Setting(
 				() => '',
 				function () {
-					for (let i = 1; i <= 7; i++) {
+					for (let i = 1; i <= 9; i++) {
 						core.setLocalStorage('hotkey' + i, null);
 					}
 					this.menu.drawContent();
@@ -5003,7 +5009,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,4', new SettingButton(40, 280, 150, 25, 'setHotKey', ['5'])],
 				['2,4', new SettingButton(220, 280, 150, 25, 'setHotKey', ['6'])],
 				['1,5', new SettingButton(40, 310, 150, 25, 'setHotKey', ['7'])],
-				['1,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
+				['2,5', new SettingButton(220, 310, 150, 25, 'setHotKey', ['8'])],
+				['1,6', new SettingButton(40, 340, 150, 25, 'setHotKey', ['9'])],
+				['2,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
 			]);
 
 			const consoleMenu = new SettingOnePage('console');

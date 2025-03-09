@@ -995,6 +995,18 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 						else core.getNextItem();
 					}
 					break;
+				case 56: // 快捷键8：空白
+					{
+						const item = core.getLocalStorage('hotkey8');
+						if (item) tryUseItem(item);
+					}
+					break;
+				case 57: // 快捷键9：空白
+					{
+						const item = core.getLocalStorage('hotkey9');
+						if (item) tryUseItem(item);
+					}
+					break;
 				case 118: // F7：开启debug模式
 				case 119: // F8：由于F7与部分浏览器有冲突，故新增F8
 					core.debug();

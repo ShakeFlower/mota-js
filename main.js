@@ -122,6 +122,8 @@ function main () {
             'btn6': document.getElementById("img-btn6"),
             'btn7': document.getElementById("img-btn7"),
             'btn8': document.getElementById("img-btn8"),
+            'btn9': document.getElementById("img-btn9"),
+            'btnAlt': document.getElementById("img-btnAlt"),
             'rollback': document.getElementById("img-rollback"),
             'undoRollback': document.getElementById("img-undoRollback"),
             'single': document.getElementById("img-single"),
@@ -164,10 +166,12 @@ function main () {
             'btn6': 32,
             'btn7': 33,
             'btn8': 34,
-            'rollback': 35,
-            'undoRollback': 36,
-            'single': 37,
-            'valve': 38,
+            'btn9': 35,
+            'btnAlt': 36,
+            'rollback': 37,
+            'undoRollback': 38,
+            'single': 39,
+            'valve': 40,
         },
         'floor': document.getElementById('floor'),
         'name': document.getElementById('name'),
@@ -844,15 +848,25 @@ main.prototype.listen = function () {
 
     main.statusBar.image.btn8.onclick = function (e) {
         e.stopPropagation();
+        main.core.onkeyUp({ "keyCode": 56, "altKey": core.getLocalStorage('altKey') });
+    };
+
+    main.statusBar.image.btn9.onclick = function (e) {
+        e.stopPropagation();
+        main.core.onkeyUp({ "keyCode": 57, "altKey": core.getLocalStorage('altKey') });
+    };
+
+    main.statusBar.image.btnAlt.onclick = function (e) {
+        e.stopPropagation();
         if (core.getLocalStorage('altKey')) {
             core.removeLocalStorage('altKey');
             core.drawTip("Alt模式已关闭。");
-            main.statusBar.image.btn8.style.filter = '';
+            main.statusBar.image.btnAlt.style.filter = '';
         }
         else {
             core.setLocalStorage('altKey', true);
             core.drawTip("Alt模式已开启；此模式下1~7按钮视为Alt+1~7。");
-            main.statusBar.image.btn8.style.filter = 'sepia(1) contrast(1.5)';
+            main.statusBar.image.btnAlt.style.filter = 'sepia(1) contrast(1.5)';
         }
     };
 

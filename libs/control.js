@@ -3327,13 +3327,21 @@ control.prototype.setToolbarButton = function (useButton) {
         ["rollback", "undoRollback"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
-        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btn8"].forEach(function (t) {
+        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btnAlt"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         })
-        main.statusBar.image.btn8.style.filter = core.getLocalStorage('altKey') ? 'sepia(1) contrast(1.5)' : '';
+        if (!core.flags.showHard) {
+            ["btn8", "btn9"].forEach(function (t) {
+                core.statusBar.image[t].style.display = 'block';
+            });
+        }
+        main.statusBar.image.btnAlt.style.filter = core.getLocalStorage('altKey') ? 'sepia(1) contrast(1.5)' : '';
     }
     else {
-        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btn8"].forEach(function (t) {
+        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btnAlt"].forEach(function (t) {
+            core.statusBar.image[t].style.display = 'none';
+        });
+        ["btn8", "btn9"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
         ["book", "fly", "toolbox", "save", "load", "settings"].forEach(function (t) {
