@@ -286,6 +286,11 @@ core.prototype.init = function (coreData, callback) {
         });
     });
     core.dom.musicBtn.style.display = 'block';
+
+    // 横屏且非底部工具栏，则商店调整到回退按键之前
+    if (!core.domStyle.isVertical && !core.flags.extendsToolBar) {
+        core.dom.toolBar.insertBefore(core.statusBar.image.shop, core.statusBar.image.rollback)
+    }
     core.setMusicBtn();
 }
 
