@@ -69,12 +69,12 @@ ActionParser.prototype.parse = function (obj,type) {
       return MotaActionBlocks['floorPartition_m'].xmlText([text_choices]);
 
     case 'equip':
-      if(!obj) obj={};
+      if (!obj) obj = {};
       var buildEquip = function (obj) {
         obj = obj || {};
         var text_choices = null;
-        var knownEquipListKeys = MotaActionBlocks['Equip_List'].options.map(function (one) {return one[1];})
-        Object.keys(obj).sort().forEach(function (key) {
+        var knownEquipListKeys = MotaActionBlocks['Equip_List'].options.map(function (one) { return one[1]; })
+        Object.keys(obj).sort((a, b) => b.localeCompare(a)).forEach(function (key) {
           var one = knownEquipListKeys.indexOf(key) >= 0 ? 'equipKnown' : 'equipUnknown';
           text_choices = MotaActionBlocks[one].xmlText([
             key, obj[key], text_choices
@@ -83,7 +83,7 @@ ActionParser.prototype.parse = function (obj,type) {
         return text_choices;
       }
       return MotaActionBlocks['equip_m'].xmlText([obj.type, obj.animate, buildEquip(obj.value), buildEquip(obj.percentage),
-        this.parseList(obj.equipEvent), this.parseList(obj.unequipEvent)]);
+      this.parseList(obj.equipEvent), this.parseList(obj.unequipEvent)]);
 
     case 'itemEffect':
       if (!obj) obj = {};
@@ -91,7 +91,7 @@ ActionParser.prototype.parse = function (obj,type) {
         obj = obj || {};
         var text_choices = null;
         var knownItemListKeys = MotaActionBlocks['ItemEffect_List'].options.map(function (one) { return one[1]; })
-        Object.keys(obj).sort().forEach(function (key) {
+        Object.keys(obj).sort((a, b) => b.localeCompare(a)).forEach(function (key) {
           var addValue = obj[key];
           var noNeed = key.endsWith(':o');
           if (noNeed) key = key.substring(0, key.length - 2);

@@ -113,9 +113,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"itemEffectEvent": {
 			"sound": "gem.mp3",
 			"value": {
-				"mdef:o": "core.values.greenGem",
+				"atk:o": "core.values.redGem",
 				"def:o": "core.values.blueGem",
-				"atk:o": "core.values.redGem"
+				"mdef:o": "core.values.greenGem"
 			}
 		}
 	},
