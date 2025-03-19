@@ -2958,10 +2958,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function getSelectedItem() {
 			var info = core.status.thisUIEventInfo;
-			if (!(info && info.select.id && ["toolbox", "equipbox"].includes(core.status.event.id))) {
+			if (!(info && info.select && ["toolbox", "equipbox"].includes(core.status.event.id))) {
 				core.drawFailTip('发生了未知错误！');
 				return;
 			}
+			// info.select.id可以不存在，当一个可显示都没有时就会出现该情况
 			return info.select.id;
 		}
 
