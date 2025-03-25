@@ -4031,9 +4031,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		const perform = {
-			jumpBlock: core.jumpBlock, jumpHero: core.jumpHero, moveBlock: core.moveBlock,
-			drawAnimate: core.drawAnimate, drawHeroAnimate: core.drawHeroAnimate,
-			vibrate: core.vibrate, _action_sleep: core.events._action_sleep,
+			jumpBlock: core.maps.jumpBlock, jumpHero: core.maps.jumpHero, moveBlock: core.maps.moveBlock,
+			drawAnimate: core.maps.drawAnimate, drawHeroAnimate: core.maps.drawHeroAnimate,
+			vibrate: core.events.vibrate, _action_sleep: core.events._action_sleep,
 			__action_checkReplaying: core.events.__action_checkReplaying,
 		};
 
@@ -4058,10 +4058,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function skipPeformOn() {
-			core.jumpBlock = maps.prototype.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {
+			maps.prototype.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {
 				return instantMove(sx, sy, ex, ey, keep, callback);
 			}
-			core.jumpHero = maps.prototype.jumpHero = function (ex, ey, time, callback) {
+			maps.prototype.jumpHero = function (ex, ey, time, callback) {
 				core.setHeroLoc('x', ex);
 				core.setHeroLoc('y', ey);
 				core.clearMap('hero');
@@ -4069,21 +4069,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (callback) callback();
 			}
 
-			core.moveBlock = maps.prototype.moveBlock = function (x, y, steps, time, keep, callback) {
+			maps.prototype.moveBlock = function (x, y, steps, time, keep, callback) {
 				perform.moveBlock(x, y, steps, 1, keep, callback);
 			}
 
-			core.drawAnimate = maps.prototype.drawAnimate = function (name, x, y, alignWindow, callback) {
+			maps.prototype.drawAnimate = function (name, x, y, alignWindow, callback) {
 				if (callback) callback();
 				return -1;
 			}
 
-			core.drawHeroAnimate = maps.prototype.drawHeroAnimate = function (name, callback) {
+			maps.prototype.drawHeroAnimate = function (name, callback) {
 				if (callback) callback();
 				return -1;
 			}
 
-			core.vibrate = events.prototype.vibrate = function () {
+			events.prototype.vibrate = function () {
 				if (callback) callback();
 				return;
 			}
@@ -4099,12 +4099,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function skipPeformOff() {
-			core.jumpBlock = maps.prototype.jumpBlock = perform.jumpBlock;
-			core.jumpHero = maps.prototype.jumpHero = perform.jumpHero;
-			core.moveBlock = maps.prototype.moveBlock = perform.moveBlock;
-			core.drawAnimate = maps.prototype.drawAnimate = perform.drawAnimate;
-			core.drawHeroAnimate = maps.prototype.drawHeroAnimate = perform.drawHeroAnimate;
-			core.vibrate = events.prototype.vibrate = perform.vibrate;
+			maps.prototype.jumpBlock = perform.jumpBlock;
+			maps.prototype.jumpHero = perform.jumpHero;
+			maps.prototype.moveBlock = perform.moveBlock;
+			maps.prototype.drawAnimate = perform.drawAnimate;
+			maps.prototype.drawHeroAnimate = perform.drawHeroAnimate;
+			events.prototype.vibrate = perform.vibrate;
 			events.prototype._action_sleep = perform._action_sleep;
 			events.prototype.__action_checkReplaying = perform.__action_checkReplaying;
 		}
