@@ -2442,7 +2442,12 @@ ui.prototype._drawBookDetail_origin = function (enemy, texts) {
             originEnemy_one = core.utils.parseSpecial(originEnemy_one);
         }
         if (!core.utils.deepEqual(enemy_one, originEnemy_one)) {
-            content.push(core.getStatusLabel(one) + " " + originEnemy_one);
+            if (!core.utils.deepEqual(enemy_one, originEnemy_one)) {
+                let statusName = core.getStatusLabel(one),
+                    statusValue = originEnemy_one;
+                if (originEnemy_one instanceof Array) statusValue = '[' + originEnemy_one + ']';
+                content.push(statusName + " " + statusValue);
+            }
         }
     });
     if (content.length > 0) {
