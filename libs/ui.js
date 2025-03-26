@@ -3345,7 +3345,7 @@ ui.prototype._drawStatistics_items = function (floorId, floor, id, obj) {
         var ratio = core.status.thisMap.ratio;
         core.status.thisMap.ratio = core.clone(core.status.maps[floorId].ratio);
 
-        const effectObj = core.items.getItemEffectValue(itemId, ratio);
+        const effectObj = core.items.getItemEffectValue(id, ratio);
         for (let statusName in effectObj) {
             if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
         }
