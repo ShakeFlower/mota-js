@@ -4031,10 +4031,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		const perform = {
-			jumpBlock: core.maps.jumpBlock, jumpHero: core.maps.jumpHero, moveBlock: core.maps.moveBlock,
-			drawAnimate: core.maps.drawAnimate, drawHeroAnimate: core.maps.drawHeroAnimate,
-			vibrate: core.events.vibrate, _action_sleep: core.events._action_sleep,
-			__action_checkReplaying: core.events.__action_checkReplaying,
+			jumpBlock: maps.prototype.jumpBlock,
+			jumpHero: maps.prototype.jumpHero,
+			moveBlock: maps.prototype.moveBlock,
+			drawAnimate: maps.prototype.drawAnimate,
+			drawHeroAnimate: maps.prototype.drawHeroAnimate,
+			vibrate: events.prototype.vibrate,
+			_action_sleep: events.prototype._action_sleep,
+			__action_checkReplaying: events.prototype.__action_checkReplaying,
 		};
 
 		function instantMove(fromX, fromY, aimX, aimY, keep, callback) {
@@ -4046,67 +4050,98 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (callback) callback();
 		}
 
+		// 这里是为了方便读档来回切换的情况
 		function skipTextOn() {
-			events.prototype.__action_checkReplaying = function () {
+			core.events.__action_checkReplaying = function () {
 				core.doAction();
 				return true;
 			}
+			core.maps.jumpBlock = perform.jumpBlock;
+			core.maps.jumpHero = perform.jumpHero;
+			core.maps.moveBlock = perform.moveBlock;
+			core.maps.drawAnimate = perform.drawAnimate;
+			core.maps.drawHeroAnimate = perform.drawHeroAnimate;
+			core.events.vibrate = perform.vibrate;
+			core.events._action_sleep = perform._action_sleep;
 		}
 
 		function skipTextOff() {
-			events.prototype.__action_checkReplaying = perform.__action_checkReplaying;
+			core.maps.jumpBlock = perform.jumpBlock;
+			core.maps.jumpHero = perform.jumpHero;
+			core.maps.moveBlock = perform.moveBlock;
+			core.maps.drawAnimate = perform.drawAnimate;
+			core.maps.drawHeroAnimate = perform.drawHeroAnimate;
+			core.events.vibrate = perform.vibrate;
+			core.events._action_sleep = perform._action_sleep;
+			core.events.__action_checkReplaying = perform.__action_checkReplaying;
 		}
 
 		function skipPeformOn() {
-			maps.prototype.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {
+			core.maps.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {
 				return instantMove(sx, sy, ex, ey, keep, callback);
 			}
-			maps.prototype.jumpHero = function (ex, ey, time, callback) {
+			core.maps.jumpHero = function (ex, ey, time, callback) {
 				core.setHeroLoc('x', ex);
 				core.setHeroLoc('y', ey);
 				core.clearMap('hero');
 				core.drawHero();
 				if (callback) callback();
 			}
-
-			maps.prototype.moveBlock = function (x, y, steps, time, keep, callback) {
+	
+			core.maps.moveBlock = function (x, y, steps, time, keep, callback) {
 				perform.moveBlock(x, y, steps, 1, keep, callback);
 			}
-
-			maps.prototype.drawAnimate = function (name, x, y, alignWindow, callback) {
+	
+			core.maps.drawAnimate = function (name, x, y, alignWindow, callback) {
 				if (callback) callback();
 				return -1;
 			}
-
-			maps.prototype.drawHeroAnimate = function (name, callback) {
+	
+			core.maps.drawHeroAnimate = function (name, callback) {
 				if (callback) callback();
 				return -1;
 			}
-
-			events.prototype.vibrate = function () {
+	
+			core.events.vibrate = function () {
 				if (callback) callback();
 				return;
 			}
-
-			events.prototype._action_sleep = function (data, x, y, prefix) {
+	
+			core.events._action_sleep = function (data, x, y, prefix) {
 				core.doAction();
 			}
-
-			events.prototype.__action_checkReplaying = function () {
+	
+			core.events.__action_checkReplaying = function () {
 				core.doAction();
 				return true;
 			}
 		}
 
 		function skipPeformOff() {
-			maps.prototype.jumpBlock = perform.jumpBlock;
-			maps.prototype.jumpHero = perform.jumpHero;
-			maps.prototype.moveBlock = perform.moveBlock;
-			maps.prototype.drawAnimate = perform.drawAnimate;
-			maps.prototype.drawHeroAnimate = perform.drawHeroAnimate;
-			events.prototype.vibrate = perform.vibrate;
-			events.prototype._action_sleep = perform._action_sleep;
-			events.prototype.__action_checkReplaying = perform.__action_checkReplaying;
+			core.maps.jumpBlock = perform.jumpBlock;
+			core.maps.jumpHero = perform.jumpHero;
+			core.maps.moveBlock = perform.moveBlock;
+			core.maps.drawAnimate = perform.drawAnimate;
+			core.maps.drawHeroAnimate = perform.drawHeroAnimate;
+			core.events.vibrate = perform.vibrate;
+			core.events._action_sleep = perform._action_sleep;
+			core.events.__action_checkReplaying = perform.__action_checkReplaying;
+		}
+
+		// 每次读档时执行下列函数，避免不同存档的设置相互干扰
+		this.skipTextOn = function () {
+			skipTextOn();
+			core.setFlag('skip', 'text');
+		}
+	
+		this.skipPerformOn = function () {
+			skipPeformOn();
+			core.setFlag('skip', 'perform');
+		}
+	
+		this.skipPerformOff = function () {
+			skipPeformOff();
+			core.setFlag('skip', null);
 		}
 
 		const settingMap = new Map([
