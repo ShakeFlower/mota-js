@@ -32,11 +32,8 @@ items.prototype.getItemEffectValue = function (itemId, ratio) {
     const itemEffectEvent = core.material.items[itemId].itemEffectEvent;
     if (!itemEffectEvent) return effectObj;
     const value = itemEffectEvent.value;
-    if (!ratio && ratio !== 0) {
-        ratio = core.status.thisMap.ratio;
-        if (!ratio && ratio !== 0) {
-            ratio = 1;
-        }
+    if (ratio == null) {
+        ratio = (core.status.thisMap?.ratio) ?? 1;
     }
     for (let statusName in value) {
         let statusValue, needRatio;

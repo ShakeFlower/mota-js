@@ -1793,30 +1793,37 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				diff = {};
 				const id = block.event.id;
 				const item = core.material.items[id];
-				if (item.cls === 'items' && item.hasOwnProperty('itemEffectEvent') && item.itemEffectEvent.hasOwnProperty('value')) {
-					const values = item.itemEffectEvent.value;
-					for (let statusName in values) {
-						const getStatusValue = values[statusName];
-						let ratio, needRatio, statusValue;
-						if (statusName.endsWith(':o')) {
-							needRatio = true;
-							statusName = statusName.slice(0, -2);
-						}
-						ratio = getRatio();
-						if (core.status.hero.hasOwnProperty(statusName)) {
-							if (!diff.hasOwnProperty(statusName)) {
-								diff[statusName] = 0;
-							}
-							try {
-								statusValue = eval(getStatusValue);
-							} catch (error) {
-								console.log(error);
-							}
-							if (needRatio) statusValue *= ratio;
-							diff[statusName] += statusValue || 0;
-						}
+				if (item.cls === 'items'){
+					const ratio = getRatio();
+					const effectObj = core.getItemEffectValue(item.id, ratio);
+					for (let statusName in effectObj) {
+						diff[statusName] = statusValue || 0;
 					}
 				}
+				// if (item.cls === 'items' && item.hasOwnProperty('itemEffectEvent') && item.itemEffectEvent.hasOwnProperty('value')) {
+				// 	const values = item.itemEffectEvent.value;
+				// 	for (let statusName in values) {
+				// 		const getStatusValue = values[statusName];
+				// 		let ratio, needRatio, statusValue;
+				// 		if (statusName.endsWith(':o')) {
+				// 			needRatio = true;
+				// 			statusName = statusName.slice(0, -2);
+				// 		}
+				// 		ratio = getRatio();
+				// 		if (core.status.hero.hasOwnProperty(statusName)) {
+				// 			if (!diff.hasOwnProperty(statusName)) {
+				// 				diff[statusName] = 0;
+				// 			}
+				// 			try {
+				// 				statusValue = eval(getStatusValue);
+				// 			} catch (error) {
+				// 				console.log(error);
+				// 			}
+				// 			if (needRatio) statusValue *= ratio;
+				// 			diff[statusName] += statusValue || 0;
+				// 		}
+				// 	}
+				// }
 				if (item.cls === 'equips') {
 					// 装备也显示
 					const diff = item.equip.value ?? {};
