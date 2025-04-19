@@ -1811,6 +1811,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const ratio = getRatio();
 						const effectObj = core.getItemEffectValue(id, ratio);
 						for (let statusName in effectObj) {
+							if (!effectObj.hasOwnProperty(statusName)) continue;
+							if (!diff.hasOwnProperty(statusName)) diff[statusName] = 0;
 							diff[statusName] += effectObj[statusName];
 						}
 						break;
