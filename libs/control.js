@@ -2171,8 +2171,25 @@ control.prototype._doSL_save = function (id) {
     return;
 }
 
+control.prototype.compareSave = function (data1, data2) {
+    for (let status in data1) {
+        if (data1.hasOwnProperty(status) && !['hero', 'time'].includes(status)) {
+            if (!core.utils.deepEqual(data1[status], data2[status])) return false;
+        }
+    }
+    const hero1 = data1.hero,
+        hero2 = data2.hero;
+    for (let status in hero1) {
+        if (hero1.hasOwnProperty(status) && status !== 'statistics') {
+            if (!core.utils.deepEqual(hero1[status], hero2[status])) return false;
+        }
+    }
+    return true;
+}
+
 control.prototype._doSL_load = function (id, callback) {
     if (id == 'autoSave' && core.saves.autosave.data != null) {
+        let tip = '读档成功';
         core.saves.autosave.now -= 1;
         var data = core.saves.autosave.data.splice(core.saves.autosave.now, 1)[0];
         if (core.isPlaying() && !core.status.gameOver) {
@@ -2180,10 +2197,15 @@ control.prototype._doSL_load = function (id, callback) {
             core.saves.autosave.now -= 1;
         }
         if (core.saves.autosave.now == 0) {
-            core.saves.autosave.data.unshift(core.clone(data));
+            if (core.compareSave(core.saves.autosave.data[0], data)) {
+                tip = '没有更早的自动存档';
+            }
+            else {
+                core.saves.autosave.data.unshift(core.clone(data));
+            }
             core.saves.autosave.now += 1;
         }
-        callback(id, data);
+        callback(id, data, tip);
     }
     else {
         core.getLocalForage(id == 'autoSave' ? id : "save" + id, null, function (data) {
@@ -2210,10 +2232,11 @@ control.prototype._doSL_reload = function (id, callback) {
         core.control.autosave(false);
         callback(id, data);
     }
+    else core.drawFailTip('当前不能再继续向后回溯自动存档');
     return;
 }
 
-control.prototype._doSL_load_afterGet = function (id, data) {
+control.prototype._doSL_load_afterGet = function (id, data, tip = "读档成功") {
     if (!data) return alert("无效的存档");
     var _replay = function () {
         core.startGame(data.hard, data.hero.flags.__seed__, core.decodeRoute(data.route));
@@ -2229,7 +2252,7 @@ control.prototype._doSL_load_afterGet = function (id, data) {
     core.ui.closePanel();
     core.loadData(data, function () {
         core.removeFlag('__fromLoad__');
-        core.drawTip("读档成功");
+        core.drawTip(tip);
         if (id != "autoSave") {
             core.saves.saveIndex = id;
             core.setLocalStorage('saveIndex', core.saves.saveIndex);
@@ -3233,6 +3256,7 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
             core.statusBar.image.fly.src = core.statusBar.icons.equipbox.src;
             core.statusBar.image.fly.style.opacity = 1;
         }
+        core.statusBar.image.undoRollback.style.opacity = (core.saves.autosave.now === core.saves.autosave.data.length) ? 0.3 : 1;
         core.statusBar.image.toolbox.src = core.statusBar.icons.toolbox.src;
         core.statusBar.image.keyboard.src = core.statusBar.icons.keyboard.src;
         core.statusBar.image.shop.src = core.statusBar.icons.shop.src;
