@@ -53,6 +53,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 隐藏右下角的音乐按钮
 			core.dom.musicBtn.style.display = 'none';
 
+			/** 以下为新增 */
 			// 同步剧情跳过设置
 			switch (core.getFlag('skip')) {
 				case 'text':

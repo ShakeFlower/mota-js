@@ -513,9 +513,26 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 				"text": "初始剧情"
 			},
 			{
+				"type": "comment",
+				"text": "血瓶宝石数据默认显示"
+			},
+			{
 				"type": "setValue",
 				"name": "flag:itemDetail",
 				"value": "true"
+			},
+			{
+				"type": "comment",
+				"text": "如果不需要显示弹幕，可去除comment相关事件块"
+			},
+			{
+				"type": "setValue",
+				"name": "flag:comment",
+				"value": "true"
+			},
+			{
+				"type": "function",
+				"function": "function(){\n// 默认读取弹幕数据\nif (core.hasFlag('comment') && !core.isReplaying()) {\n\tcore.plugin.getComment();\n\tsetTimeout(core.plugin.drawCommentSign, 1000);\n}\n}"
 			}
 		],
 		"shops": [
