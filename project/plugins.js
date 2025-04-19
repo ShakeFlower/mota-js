@@ -1729,13 +1729,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 			this._updateDamage_damage(floorId, onMap);
 			this._updateDamage_extraDamage(floorId, onMap);
-			if (core.status.thisMap) core.getItemDetail(floorId); // 宝石血瓶详细信息
+			if (!core.isReplaying()) core.getItemDetail(floorId); // 宝石血瓶详细信息
 			this.drawDamage(ctx);
 		};
 
 		function getRatio() {
-			let ratio = core.status.thisMap.ratio;
-			if (!core.isset(ratio)) ratio = 1;
+			let ratio = (core.status.thisMap?.ratio) ?? 1;
 			const currEvent = core.status.event;
 			if (!currEvent) return ratio;
 			switch (currEvent.id) {
@@ -1793,52 +1792,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				diff = {};
 				const id = block.event.id;
 				const item = core.material.items[id];
-				if (item.cls === 'items'){
-					const ratio = getRatio();
-					const effectObj = core.getItemEffectValue(item.id, ratio);
-					for (let statusName in effectObj) {
-						diff[statusName] = statusValue || 0;
+				switch (item.cls) {
+					case 'equips': {
+						// 装备也显示
+						diff = item.equip.value ?? {};
+						const per = item.equip.percentage ?? {};
+						for (const name in per) {
+							diff[name + 'per'] = per[name].toString() + '%';
+						}
+						break;
+					}
+					case 'items': {
+						// 跟数据统计原理一样 执行效果 前后比较
+						core.setFlag('__statistics__', true);
+						try {
+							eval(item.itemEffect);
+						} catch (error) { }
+						const ratio = getRatio();
+						const effectObj = core.getItemEffectValue(id, ratio);
+						for (let statusName in effectObj) {
+							diff[statusName] += effectObj[statusName];
+						}
+						break;
 					}
 				}
-				// if (item.cls === 'items' && item.hasOwnProperty('itemEffectEvent') && item.itemEffectEvent.hasOwnProperty('value')) {
-				// 	const values = item.itemEffectEvent.value;
-				// 	for (let statusName in values) {
-				// 		const getStatusValue = values[statusName];
-				// 		let ratio, needRatio, statusValue;
-				// 		if (statusName.endsWith(':o')) {
-				// 			needRatio = true;
-				// 			statusName = statusName.slice(0, -2);
-				// 		}
-				// 		ratio = getRatio();
-				// 		if (core.status.hero.hasOwnProperty(statusName)) {
-				// 			if (!diff.hasOwnProperty(statusName)) {
-				// 				diff[statusName] = 0;
-				// 			}
-				// 			try {
-				// 				statusValue = eval(getStatusValue);
-				// 			} catch (error) {
-				// 				console.log(error);
-				// 			}
-				// 			if (needRatio) statusValue *= ratio;
-				// 			diff[statusName] += statusValue || 0;
-				// 		}
-				// 	}
-				// }
-				if (item.cls === 'equips') {
-					// 装备也显示
-					const diff = item.equip.value ?? {};
-					const per = item.equip.percentage ?? {};
-					for (const name in per) {
-						diff[name + 'per'] = per[name].toString() + '%';
-					}
-					drawItemDetail(diff, x, y);
-					return;
-				}
-				// 跟数据统计原理一样 执行效果 前后比较
-				core.setFlag('__statistics__', true);
-				try {
-					eval(item.itemEffect);
-				} catch (error) { }
 				drawItemDetail(diff, x, y);
 			});
 			core.status.thisMap.ratio = beforeRatio;
