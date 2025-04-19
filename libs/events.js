@@ -3807,8 +3807,10 @@ events.prototype.tryUseItem = function (itemId) {
         return core.ui._drawCenterFly();
     }
     if (core.canUseItem(itemId)) {
+        const noRouteList = ['setting'];
+        // setting使用不计入录像。弹幕机postman需要计入，因为它带有后续选项
         core.ui.closePanel();
-        core.useItem(itemId);
+        core.useItem(itemId, noRouteList.includes(itemId));
     } else {
         core.playSound('操作失败');
         core.drawTip("当前无法使用" + core.material.items[itemId].name, itemId);
