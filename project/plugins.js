@@ -2194,7 +2194,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					try {
 						res = JSON.parse(res);
 						console.log(res);
-						core.drawTip('接收成功！')
+						core.drawTip('接收成功！', 'postman');
 						core.playSound('item.mp3');
 						let commentCollection = {};
 						const commentList = res?.list;
@@ -2212,13 +2212,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 						core.setFlag('commentCollection', commentCollection);
 					} catch (err) {
-						core.drawFailTip('接收失败！' + err.message);
+						core.drawFailTip('在线留言接收失败！' + err.message, 'postman');
 					}
 				},
 				function (err) {
-					err = JSON.parse(err);
-					console.error(err);
-					core.drawFailTip('接收失败' + err?.message);
+					console.log(err);
+					if (['Abort', 'Timeout', 'Error on Connection'].includes(err)) err = { message: '连接异常' };
+					else if (err.startsWith('HTTP ')) err = { message: '连接异常, 状态码:' + err.replace('HTTP ', '') };
+					else err = JSON.parse(err);
+					core.drawFailTip('在线留言接收失败' + err?.message, 'postman');
 				},
 				null, null, null, 1000
 			);
@@ -2228,7 +2230,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.isReplaying()) return;
 			const isEmpty = /^\s*$/;
 			if (isEmpty.test(comment)) {
-				core.drawFailTip('您输入的消息为空，请重发！');
+				core.drawFailTip('您输入的消息为空，请重发！', 'postman');
 				return;
 			}
 			let form = new FormData();
@@ -2247,18 +2249,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						res = JSON.parse(res);
 						console.log(res);
 						if (res?.code === 0) {
-							core.drawTip('提交成功！')
+							core.drawTip('提交成功！', 'postman')
 						} else {
-							core.drawTip('提交失败！' + res?.message);
+							core.drawTip('提交失败！' + res?.message, 'postman');
 						}
 					} catch (err) {
-						core.drawFailTip('提交失败！' + err.message);
+						core.drawFailTip('提交失败！' + err.message, 'postman');
 					}
 				},
 				function (err) {
-					err = JSON.parse(err);
-					console.error(err);
-					core.drawFailTip('提交失败！' + err?.message);
+					console.log(err);
+					if (['Abort', 'Timeout', 'Error on Connection'].includes(err)) err = { message: '连接异常' };
+					else if (err.startsWith('HTTP ')) err = { message: '连接异常, 状态码:' + err.replace('HTTP ', '') };
+					else err = JSON.parse(err);
+					core.drawFailTip('提交失败！' + err?.message, 'postman');
 				},
 				null, null, null, 1000
 			);
