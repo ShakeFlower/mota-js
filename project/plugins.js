@@ -3896,6 +3896,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.name = name;
 				this.btnList = new Map();
 				this.keyEvent = () => { };
+				this.onMoveEvent = undefined;
 				this.clickEvent = (x, y, px, py) => {
 					this.btnList.forEach((btn) => {
 						if (btn.disable) return;
@@ -3925,12 +3926,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			beginListen() {
+				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
 				core.registerAction('keyDown', this.name, this.keyEvent, 100);
 				core.registerAction('ondown', this.name, this.clickEvent, 100);
-
 			}
 
 			endListen() {
+				core.unregisterAction('onmove', this.name);
 				core.unregisterAction('keyDown', this.name);
 				core.unregisterAction('ondown', this.name);
 			}
@@ -4805,6 +4807,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							else {
 								this.focus(btn, pos);
 							}
+						}
+					});
+				}
+				this.onMoveEvent = (x, y, px, py) => {
+					if (!core.platform.isPC) return;
+					const btnNow = this.selectedBtn;
+					if (btnNow) {
+						if (px >= btnNow.x && px <= btnNow.x + btnNow.w && py > btnNow.y && py <= btnNow.y + btnNow.h)
+							return;
+					}
+					this.btnList.forEach((btn, pos) => {
+						if (btn.disable) return;
+						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+							if (btnNow !== btn) this.focus(btn, pos);
 						}
 					});
 				}
