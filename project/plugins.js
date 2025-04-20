@@ -3024,7 +3024,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.fillText(ctx, text, x + r, y + lineWidth / 2 + 2, style, font);
 
 			var todo = function () {
-				//debugger;
 				var id = getSelectedItem();
 				let hideInfo = core.getFlag('hideInfo', {});
 				console.log(id);

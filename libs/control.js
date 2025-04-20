@@ -2171,50 +2171,30 @@ control.prototype._doSL_save = function (id) {
     return;
 }
 
-control.prototype.compareSave = function (data1, data2) {
-    for (let status in data1) {
-        if (data1.hasOwnProperty(status) && !['hero', 'time'].includes(status)) {
-            if (!core.utils.deepEqual(data1[status], data2[status])) return false;
-        }
-    }
-    const hero1 = data1.hero,
-        hero2 = data2.hero;
-    for (let status in hero1) {
-        if (hero1.hasOwnProperty(status) && status !== 'statistics') {
-            if (!core.utils.deepEqual(hero1[status], hero2[status])) return false;
-        }
-    }
-    return true;
-}
-
 control.prototype._doSL_load = function (id, callback) {
-    if (id == 'autoSave' && core.saves.autosave.data != null) {
+    const autosave = core.saves.autosave;
+    if (id == 'autoSave' && autosave.data != null) {
         let tip = '读档成功';
-        core.saves.autosave.now -= 1;
-        var data = core.saves.autosave.data.splice(core.saves.autosave.now, 1)[0];
+        autosave.now -= 1;
+        var data = autosave.data.splice(autosave.now, 1)[0];
         if (core.isPlaying() && !core.status.gameOver) {
             core.control.autosave(0);
-            core.saves.autosave.now -= 1;
+            autosave.now -= 1;
         }
-        if (core.saves.autosave.now == 0) {
-            if (core.compareSave(core.saves.autosave.data[0], data)) {
-                tip = '没有更早的自动存档';
-            }
-            else {
-                core.saves.autosave.data.unshift(core.clone(data));
-            }
-            core.saves.autosave.now += 1;
+        if (autosave.now == 0) {
+            autosave.data.unshift(core.clone(data));
+            autosave.now += 1;
         }
-        callback(id, data, tip);
+        callback(id, data);
     }
     else {
         core.getLocalForage(id == 'autoSave' ? id : "save" + id, null, function (data) {
-            if (id == 'autoSave' && data != null) {
-                core.saves.autosave.data = data;
-                if (!(core.saves.autosave.data instanceof Array)) {
-                    core.saves.autosave.data = [core.saves.autosave.data];
+            if (id == 'autoSave' && data != null) {                
+                autosave.data = data;
+                if (!(autosave.data instanceof Array)) {
+                    autosave.data = [autosave.data];
                 }
-                core.saves.autosave.now = core.saves.autosave.data.length;
+                autosave.now = autosave.data.length;
                 return core.control._doSL_load(id, callback);
             }
             callback(id, data);
@@ -2236,7 +2216,7 @@ control.prototype._doSL_reload = function (id, callback) {
     return;
 }
 
-control.prototype._doSL_load_afterGet = function (id, data, tip = "读档成功") {
+control.prototype._doSL_load_afterGet = function (id, data) {
     if (!data) return alert("无效的存档");
     var _replay = function () {
         core.startGame(data.hard, data.hero.flags.__seed__, core.decodeRoute(data.route));
@@ -2252,7 +2232,7 @@ control.prototype._doSL_load_afterGet = function (id, data, tip = "读档成功"
     core.ui.closePanel();
     core.loadData(data, function () {
         core.removeFlag('__fromLoad__');
-        core.drawTip(tip);
+        core.drawTip("读档成功");
         if (id != "autoSave") {
             core.saves.saveIndex = id;
             core.setLocalStorage('saveIndex', core.saves.saveIndex);
@@ -3256,7 +3236,7 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
             core.statusBar.image.fly.src = core.statusBar.icons.equipbox.src;
             core.statusBar.image.fly.style.opacity = 1;
         }
-        core.statusBar.image.undoRollback.style.opacity = (core.saves.autosave.now === core.saves.autosave.data.length) ? 0.3 : 1;
+        core.statusBar.image.undoRollback.style.opacity = (core.saves.autosave.now === core.saves.autosave.data?.length) ? 0.3 : 1;
         core.statusBar.image.toolbox.src = core.statusBar.icons.toolbox.src;
         core.statusBar.image.keyboard.src = core.statusBar.icons.keyboard.src;
         core.statusBar.image.shop.src = core.statusBar.icons.shop.src;
