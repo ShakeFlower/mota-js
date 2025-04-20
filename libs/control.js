@@ -3236,7 +3236,8 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
             core.statusBar.image.fly.src = core.statusBar.icons.equipbox.src;
             core.statusBar.image.fly.style.opacity = 1;
         }
-        core.statusBar.image.undoRollback.style.opacity = (core.saves.autosave.now === core.saves.autosave.data?.length) ? 0.3 : 1;
+        core.statusBar.image.undoRollback.style.opacity = (core.saves.autosave.data != null 
+            && core.saves.autosave.now < core.saves.autosave.data.length) ? 1 : 0.3;
         core.statusBar.image.toolbox.src = core.statusBar.icons.toolbox.src;
         core.statusBar.image.keyboard.src = core.statusBar.icons.keyboard.src;
         core.statusBar.image.shop.src = core.statusBar.icons.shop.src;
