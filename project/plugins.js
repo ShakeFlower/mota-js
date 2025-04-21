@@ -2240,8 +2240,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			form.append('towername', towerName);
 			form.append('comment', comment);
 			form.append('tags', tags);
-			form.append('userid', 2324);
-			form.append('password', '77c8fd5ff49c370342e4472ebdda5903');
 			utils.prototype.http(
 				'POST',
 				'https://h5mota.com/backend/tower/barrage.php',
