@@ -52,10 +52,10 @@ type ResolvedMap = {
     afterBattle: { [x: string]: Events }
     afterOpenDoor: { [x: string]: Events }
     afterGetItem: { [x: string]: Events }
-    autoEvent: Event
+    autoEvent: { [x: string]: autoEvent }
     beforeBattle: { [x: string]: Events }
     canFlyFrom: boolean
-    canFltTo: boolean
+    canFlyTo: boolean
     canUseQuickShop: boolean
     cannotMove: Object
     cannotMoveIn: Object
@@ -96,6 +96,9 @@ type ResolvedMap = {
     title: string
     weather: [string, number]
     blocks: Array<Block>
+    events: { [pos: string]: MotaAction[] },
+    /** 砍层用？ */
+    deleted: boolean
 }
 
 type Enemy = {
@@ -137,6 +140,20 @@ type SystemFlags = {
 }
 
 type event = { type: string, [key: string]: any }
+
+type autoEvent = {
+    condition: string;  
+    currentFloor: boolean;
+    data: MotaAction[];
+    delayExecute: boolean;
+    floorId: string;
+    index: string;
+    multiExecute: boolean;
+    priority: number;
+    symbol: string;
+    x: number;
+    y: number;
+}
 
 type step = 'up' | 'down' | 'left' | 'right' | 'forward' | 'backward'
 
@@ -220,13 +237,12 @@ type gameStatus = {
         posX: number
         posY: number
         data: Array<{
-            [x: string]: {
-                text: string
-                px: number
-                py: number
-                color: string | Array<number>
-            }
-        }>
+            text: string
+            px: number
+            py: number
+            color: string | Array<number>
+        }
+        >
         extraData: Array<{
             [x: string]: {
                 text: string
@@ -265,6 +281,7 @@ type gameStatus = {
     // 按下键的时间：为了判定双击
     downTime: number
     ctrlDown: boolean
+    onShopLongDown: boolean
 
     // 路线&回放
     route: string[],
@@ -288,7 +305,7 @@ type gameStatus = {
         ui: any
         interval?: number | null
     }
-    autoEvents: Events
+    autoEvents: autoEvent[]
     textAttribute: {
         position: string
         offset: number
@@ -323,11 +340,47 @@ type gameStatus = {
     animateObjs: []
 }
 
+type editor = {
+    MAX_NUM: number;
+    bgmap: any[];
+    brushMod: string;
+    config: Object;
+    core: Object;
+    currentFloorData: Object;
+    currentFloorId: string;
+    dom: {
+        canvas: string[],
+        maps: string[],
+        [x: string]: CanvasRenderingContext2D | HTMLCanvasElement
+    };
+    fgmap: any[];
+    file: Object;
+    fs: Object;
+    ids: any[];
+    indexs: any[];
+    info: Object;
+    isMobile: boolean;
+    layerMod: string;
+    loc: Object;
+    main: Object;
+    map: any[];
+    mode: Object;
+    pos: Object;
+    printe: Function;
+    uivalues: Object;
+    useCompress: boolean;
+    used_flags: Object;
+    version: string;
+    viewportLoc: Object;
+    widthsX: Object;
+}
+
 /** @file control.js 主要用来进行游戏控制，比如行走控制、自动寻路、存读档等等游戏核心内容。 */
 interface control {
     
     _updateDamage_damage(floorId: string, onMap: boolean): void
     _updateDamage_extraDamage(floorId: string, onMap: boolean): void
+    _bindRoutePush(): void
     /** 物品数据显示 */ 
     getItemDetail(floorId: string): void
 
@@ -450,7 +503,7 @@ interface control {
      * @param offset 相对主角逻辑位置的偏移量，不填视为无偏移
      * @param frame 绘制第几帧
      */
-    drawHero(status?: 'stop' | 'leftFoot' | 'rightFoot', offset?: number, frame?: number): void
+    drawHero(status?: 'stop' | 'leftFoot' | 'rightFoot' | 'midFoot', offset?: number, frame?: number): void
 
     /**
      * 获取主角面前第n格的横坐标
@@ -904,6 +957,8 @@ interface control {
 
 /**@file events.js将处理所有和事件相关的操作。 */
 interface events {
+    /** 根据难度设置flag:hard */
+    _startGame_setHard():void
 
     /**
      * 开始新游戏
@@ -983,7 +1038,7 @@ interface events {
      * @param callback 新的回调函数，可选
      * @param addToLast 插入的位置，true表示插入到末尾，否则插入到开头
      */
-    insertAction(action: Events, x?: number, y?: number, callback?: () => void, addToLast?: boolean): void
+    insertAction(action: Events | MotaAction, x?: number | null, y?: number | null, callback?: () => void, addToLast?: boolean | null): void
 
     /**
      * 设置一项敌人属性并计入存档
@@ -1145,7 +1200,7 @@ interface events {
     tryUseItem(itemId: string): void
 
     /** 初始化游戏 */
-    resetGame(hero?: HeroStatus, hard?: any, floorId?: string, maps?: any, values?: any): void
+    resetGame(hero?: HeroStatus, hard?: any, floorId?: string | null, maps?: any | null, values?: any | null): void
 
     /** 游戏获胜事件 */
     win(reason?: string, norank?: boolean, noexit?: boolean): void
@@ -1347,6 +1402,16 @@ interface events {
 
 /** @file actions.js 定义了玩家的操作控制 */
 interface actions {
+    SIZE: number
+    HSIZE: number
+    LAST: number
+    CHOICES_LEFT: number
+    CHOICES_RIGHT: number
+    _getChoicesTopIndex(length: number): number
+    _clickAction(x?: number, y?: number, px?: number, py?: number): number
+    /** 获得点击事件相对左上角的坐标 */
+    _getClickLoc(x: number, y: number): { x: number, y: number, size: number }
+
     /**
      * 此函数将注册一个用户交互行为。
      * @param action 要注册的交互类型，如 ondown, onclick, keyDown 等等。
@@ -1440,7 +1505,7 @@ interface enemys {
      * @param y 敌人的纵坐标，可选
      * @param floorId 敌人所在的地图，可选。
      */
-    getEnemyValue(enemy: string | Enemy, name?: string, x?: number, y?: number, floorId?: string): any
+    getEnemyValue(enemy: string | Enemy, name?: string | null, x?: number, y?: number, floorId?: string): any
 
     /**
      * 判定主角当前能否打败某只敌人
@@ -1561,6 +1626,7 @@ interface enemys {
 
 /** @file maps.js负责一切和地图相关的处理内容 */
 interface maps {
+    _loadFloor_doNotCopy(): string[]
 
     /**
      * 获取初始core.maps.blockInfo的一个拷贝
@@ -2250,6 +2316,7 @@ interface items {
 /** @file ui.js 主要用来进行UI窗口的绘制，如对话框、怪物手册、楼传器、存读档界面等等。*/
 interface ui {
     _buildFont(fontSize?: number | string, bold?: boolean, italic?: boolean, font?: string): string
+    _createUIEvent(): void
 
     /**
      * 根据画布名找到一个画布的context；支持系统画布和自定义画布。如果不存在画布返回null。
@@ -2270,7 +2337,7 @@ interface ui {
      * @param style 绘制的样式
      * @param font 绘制的字体
      */
-    fillText(name: CtxRefer, text: string, x: number, y: number, style?: string, font?: string, maxWidth?: number): void
+    fillText(name: CtxRefer, text: string | number, x: number, y: number, style?: string | null, font?: string | null, maxWidth?: number | null): void
 
     /**
      * 在某个画布上绘制一个描黑边的文字
@@ -2329,7 +2396,7 @@ interface ui {
      * @param image 要绘制的图片，可以是一个全塔属性中定义的图片名（会从images中去获取），图片本身，或者一个画布。
      */
     drawImage(name: CtxRefer,
-        image: CanvasImageSource | string, dx: number): void
+        image: CanvasImageSource | string, dx: number, dy: number): void
     drawImage(name: CtxRefer,
         image: CanvasImageSource | string, dx: number, dy: number, dw: number, dh: number): void
     drawImage(name: CtxRefer,
@@ -2413,13 +2480,13 @@ interface ui {
     drawUIEventSelector(code: number, background: string, x: number, y: number, w: number, h: number, z?: number): void
 
     /** 清除一个或多个选择光标 */
-    clearUIEventSelector(code: number | number[]): void
+    clearUIEventSelector(code?: number | number[] | null): void
 
     /** 绘制一个确认框 */
     drawConfirmBox(text: string, yesCallback?: () => void, noCallback?: () => void): void
 
     /** 绘制WindowSkin */
-    drawWindowSkin(background: any, ctx: string | CanvasRenderingContext2D, x: number, y: number, w: string, h: string, direction?: any, px?: any, py?: any): void
+    drawWindowSkin(background: any, ctx: string | CanvasRenderingContext2D, x: number, y: number, w: number, h: number, direction?: any, px?: any, py?: any): void
 
     /** 绘制一个背景图，可绘制winskin或纯色背景；支持小箭头绘制 */
     drawBackground(left: string, top: string, right: string, bottom: string, posInfo?: any): void
@@ -2449,7 +2516,7 @@ interface ui {
     }): any
 
     /** 获得某段文字的预计绘制高度；参见 drawTextContent */
-    getTextContentHeight(content: string, config?: any): void
+    getTextContentHeight(content: string, config?: any): number
 
     /** 绘制一个对话框 */
     drawTextBox(content: string, config?: any): void
@@ -2523,6 +2590,24 @@ interface ui {
 
 /** 工具类 主要用来进行一些辅助函数的计算 */
 interface utils {
+    readonly scan: {
+        'up': { 'x': 0, 'y': -1 },
+        'left': { 'x': -1, 'y': 0 },
+        'down': { 'x': 0, 'y': 1 },
+        'right': { 'x': 1, 'y': 0 }
+    };
+    readonly scan2: {
+        'up': { 'x': 0, 'y': -1 },
+        'left': { 'x': -1, 'y': 0 },
+        'down': { 'x': 0, 'y': 1 },
+        'right': { 'x': 1, 'y': 0 },
+        'leftup': { 'x': -1, 'y': -1 },
+        'leftdown': { 'x': -1, 'y': 1 },
+        'rightup': { 'x': 1, 'y': -1 },
+        'rightdown': { 'x': 1, 'y': 1 }
+    };
+    /** 初始化种子 */
+    __init_seed(): void
 
     /**
      * 将一段文字中的${}（表达式）进行替换。
@@ -2889,7 +2974,35 @@ interface icons {
     getTilesetOffset(id?: string): void
 }
 
+interface plugin {
+    /** 打开一个道具商店 */
+    openItemShop(itemShopId: string): void
+    /** 某个全局商店是否被访问过 */
+    isShopVisited(id: string): boolean
+
+    /** 砍层插件删除fromId到toId间的楼层
+     * @example core.removeMaps("MT1", "MT300") 删除MT1~MT300之间的全部层
+     * @example core.removeMaps("MT10") 只删除MT10层
+     */
+    removeMaps(fromId: string, toId?: string): void
+
+    /** 砍层插件恢复fromId到toId间的楼层 
+     * @example core.resumeMaps("MT1", "MT300") 恢复MT1~MT300之间的全部层
+     * @example core.resumeMaps("MT10") 只恢复MT10层
+     */
+    resumeMaps(fromId: string, toId?: string): void
+
+    /** 多角色插件，初始化各角色属性 */
+    initHeros(): void
+    /** 多角色插件，切换到另一角色 */
+    changeHero(toHeroId: number = 0): void
+}
+
 type CoreMixin = {
+    firstData: { [x: string]: any }
+    // 全塔属性开关
+    flags: { [flagName: string]: boolean }
+
     /** 地图可视部分大小 */
     readonly __SIZE__: number;
     /** 地图像素 */
@@ -2910,7 +3023,26 @@ type CoreMixin = {
         readonly enemys: { [key: string]: Enemy },
         /** 道具信息 */
         readonly items: { [key: string]: Item }
-        readonly icons: {},
+        readonly icons: {
+            animates: { [blockName: string]: number };
+            autotile: { [blockName: string]: number };
+            enemy48: { [blockName: string]: number };
+            enemys: { [blockName: string]: number };
+            hero: {
+                height: number, [dir: string]: {
+                    loc: number;
+                    stop: number;
+                    leftFoot: number;
+                    rightFoot: number;
+                    /** 插件"勇士4帧动画"定义的中间帧动画 */
+                    midFoot: number;
+                }
+            }
+            items: { [blockName: string]: number };
+            npc48: { [blockName: string]: number };
+            npcs: { [blockName: string]: number };
+            terrains: { [blockName: string]: number };
+        }
     }
     readonly timeout: {
         turnHeroTimeout: any,
@@ -2931,7 +3063,8 @@ type CoreMixin = {
         animateTime: number
         moveTime: number
         lastLegTime: number
-        leftLeg: boolean,
+        /** 插件"勇士4帧动画"开启时为number */
+        leftLeg: boolean | number,
         readonly weather: {
             time: number
             type: any
@@ -3025,6 +3158,8 @@ type CoreMixin = {
      */
     readonly floors: { [key: string]: ResolvedMap }
     readonly floorIds: string[]
+    /** 砍层插件使用的分区信息 */
+    readonly floorPartitions: [string, string][]
 
     readonly control: control
     readonly loader: loader
@@ -3038,10 +3173,11 @@ type CoreMixin = {
     readonly actions: actions
     readonly plugin: Record<string, Function>
     readonly statusBar: Main['statusBar']
-
-} & control & events & loader & enemys & items & maps & ui & utils & icons & actions
+} & control & events & loader & enemys & items & maps & ui & utils & icons & actions & plugin
 
 interface Main {
+    /** 是否在进行在线录像验证 */
+    replayChecking: boolean
     readonly core: CoreMixin
     readonly dom: { [key: string]: HTMLElement }
     /** 游戏版本，发布后会被随机，请勿使用该属性 */
@@ -3060,7 +3196,8 @@ interface Main {
     /** 输出内容（极不好用，建议换成console，我甚至不知道样板为什么会有这个东西）*/
     log(e: string | Error, error: boolean): void
 }
-
+declare let main: Main
 declare let core: CoreMixin
 declare let flags: { [x: string]: any }
 declare let hero: CoreMixin['status']['hero']
+declare let editor: editor
