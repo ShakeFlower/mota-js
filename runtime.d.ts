@@ -11,6 +11,7 @@ type rgbarray = [number, number, number, number]
 type Events = MotaAction[] | string
 
 type Block = {
+    disable: boolean,
     x: number,
     y: number,
     id: number,
@@ -281,11 +282,11 @@ type gameStatus = {
     // event事件
     shops: {}
     event: {
-        id: string
+        id?: string | null
         data: any
         selection: any
         ui: any
-        interval: number
+        interval?: number | null
     }
     autoEvents: Events
     textAttribute: {
@@ -324,6 +325,11 @@ type gameStatus = {
 
 /** @file control.js 主要用来进行游戏控制，比如行走控制、自动寻路、存读档等等游戏核心内容。 */
 interface control {
+    
+    _updateDamage_damage(floorId: string, onMap: boolean): void
+    _updateDamage_extraDamage(floorId: string, onMap: boolean): void
+    /** 物品数据显示 */ 
+    getItemDetail(floorId: string): void
 
     /**
      * 开启调试模式, 此模式下可以按Ctrl键进行穿墙, 并忽略一切事件。
@@ -2243,6 +2249,7 @@ interface items {
 
 /** @file ui.js 主要用来进行UI窗口的绘制，如对话框、怪物手册、楼传器、存读档界面等等。*/
 interface ui {
+    _buildFont(fontSize?: number | string, bold?: boolean, italic?: boolean, font?: string): string
 
     /**
      * 根据画布名找到一个画布的context；支持系统画布和自定义画布。如果不存在画布返回null。
@@ -3006,7 +3013,8 @@ type CoreMixin = {
         favorite: []
         readonly favoriteName: {}
     }
-    readonly initStatus: gameStatus;
+    readonly initStatus: gameStatus
+    readonly canvas: { [key: string]: CanvasRenderingContext2D }
     readonly dymCanvas: { [key: string]: CanvasRenderingContext2D }
     /** 游戏状态 */
     readonly status: gameStatus
