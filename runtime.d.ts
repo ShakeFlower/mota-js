@@ -338,6 +338,21 @@ type gameStatus = {
     autotileAnimateObjs: []
     globalAnimateStatus: number
     animateObjs: []
+
+    /** "新版道具栏"插件的状态变量 */
+    thisUIEventInfo: {
+        allItems: string[],
+        maxPage: number,
+        pageItems: string[],
+        maxItem: number,
+        page: number, select: {
+            id?: string,
+            type?: string,
+            action?: string
+        }
+    }
+    /** "新版道具栏"插件的状态变量 */
+    thisEventClickArea: {}
 }
 
 type editor = {
@@ -349,10 +364,10 @@ type editor = {
     currentFloorData: Object;
     currentFloorId: string;
     dom: {
-        canvas: string[],
-        maps: string[],
-        [x: string]: CanvasRenderingContext2D | HTMLCanvasElement
-    };
+        canvas: string[]
+        maps: string[]
+        [x: string]: string[] | CanvasRenderingContext2D | HTMLCanvasElement
+    }
     fgmap: any[];
     file: Object;
     fs: Object;
@@ -2975,6 +2990,7 @@ interface icons {
 }
 
 interface plugin {
+
     /** 打开一个道具商店 */
     openItemShop(itemShopId: string): void
     /** 某个全局商店是否被访问过 */
@@ -2995,7 +3011,7 @@ interface plugin {
     /** 多角色插件，初始化各角色属性 */
     initHeros(): void
     /** 多角色插件，切换到另一角色 */
-    changeHero(toHeroId: number = 0): void
+    changeHero(toHeroId?: number): void
 }
 
 type CoreMixin = {
@@ -3029,7 +3045,7 @@ type CoreMixin = {
             enemy48: { [blockName: string]: number };
             enemys: { [blockName: string]: number };
             hero: {
-                height: number, [dir: string]: {
+                [dir: string]: {
                     loc: number;
                     stop: number;
                     leftFoot: number;
@@ -3037,7 +3053,7 @@ type CoreMixin = {
                     /** 插件"勇士4帧动画"定义的中间帧动画 */
                     midFoot: number;
                 }
-            }
+            } & { height: number }, 
             items: { [blockName: string]: number };
             npc48: { [blockName: string]: number };
             npcs: { [blockName: string]: number };
