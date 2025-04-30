@@ -3999,7 +3999,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		class Setting {
 			/**
-			 * @param {(ctx:string)=>void} draw 
+			 * @param {(ctx:string)=>void} [draw]  
 			 */
 			constructor(name, effect, text, replay, draw) {
 				/** 获取选项界面显示的名称 */
@@ -4013,7 +4013,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				 */
 				this.replay = replay;
 				/** 除名称外的绘制内容
-				 * @type {(ctx:string)=>void}
+				 * @type {((ctx:string)=>void )| undefined}
 				 */
 				this.draw = draw;
 			}
@@ -4025,7 +4025,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		const perform = {
 			jumpBlock: maps.prototype.jumpBlock,
-			jumpHero: maps.prototype.jumpHero,
+			jumpHero: events.prototype.jumpHero,
 			moveBlock: maps.prototype.moveBlock,
 			drawAnimate: maps.prototype.drawAnimate,
 			drawHeroAnimate: maps.prototype.drawHeroAnimate,
@@ -4035,7 +4035,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		};
 
 		function instantMove(fromX, fromY, aimX, aimY, keep, callback) {
-			const [block, blockInfo] = _getAndRemoveBlock(fromX, fromY);
+			const [block, blockInfo] = core.maps._getAndRemoveBlock(fromX, fromY);
 			if (keep) {
 				core.setBlock(blockInfo.number, aimX, aimY);
 				core.showBlock(aimX, aimY);
@@ -4050,7 +4050,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return true;
 			}
 			core.maps.jumpBlock = perform.jumpBlock;
-			core.maps.jumpHero = perform.jumpHero;
+			core.events.jumpHero = perform.jumpHero;
 			core.maps.moveBlock = perform.moveBlock;
 			core.maps.drawAnimate = perform.drawAnimate;
 			core.maps.drawHeroAnimate = perform.drawHeroAnimate;
@@ -4060,7 +4060,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function skipTextOff() {
 			core.maps.jumpBlock = perform.jumpBlock;
-			core.maps.jumpHero = perform.jumpHero;
+			core.events.jumpHero = perform.jumpHero;
 			core.maps.moveBlock = perform.moveBlock;
 			core.maps.drawAnimate = perform.drawAnimate;
 			core.maps.drawHeroAnimate = perform.drawHeroAnimate;
@@ -4073,7 +4073,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.maps.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {
 				return instantMove(sx, sy, ex, ey, keep, callback);
 			}
-			core.maps.jumpHero = function (ex, ey, time, callback) {
+			core.events.jumpHero = function (ex, ey, time, callback) {
+				const { x: sx, y: sy } = core.status.hero.loc;
+				if (ex == null) ex = sx;
+				if (ey == null) ey = sy;
 				core.setHeroLoc('x', ex);
 				core.setHeroLoc('y', ey);
 				core.clearMap('hero');
@@ -4095,7 +4098,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return -1;
 			}
 	
-			core.events.vibrate = function () {
+			core.events.vibrate = function (direction, time, speed, power, callback) {
 				if (callback) callback();
 				return;
 			}
@@ -4707,7 +4710,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		class SettingButton extends ButtonBase {
 			/**
-			 * @param {unknown[]} eventArgs 
+			 * @param {string[]} [eventArgs]
 			 */
 			constructor(x, y, w, h, name, eventArgs) {
 				super(x, y, w, h);

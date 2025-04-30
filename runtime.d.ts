@@ -843,7 +843,7 @@ interface control {
      *              需要接受一个action参数，代表录像回放时的下一个操作
      *              func返回true代表成功处理了此录像行为，false代表没有处理此录像行为。
      */
-    registerReplayAction(name: string, func: (action?: string) => boolean): void
+    registerReplayAction(name: string, func: ((action: string) => boolean) | (() => boolean)): void
 
     /** 注销一个录像行为 */
     unregisterReplayAction(name: string): void
@@ -976,6 +976,7 @@ interface events {
     _startGame_setHard(): void
     _eventMoveHero_moving(step: number, moveSteps: [direction | 'forward' | 'backward' |
         'leftup' | 'leftdown' | 'rightup' | 'rightdown', number][]): boolean
+    __action_checkReplaying(): boolean
 
     /**
      * 开始新游戏
@@ -1644,6 +1645,7 @@ interface enemys {
 /** @file maps.js负责一切和地图相关的处理内容 */
 interface maps {
     _loadFloor_doNotCopy(): string[]
+    _getAndRemoveBlock(x: number, y: number): [Block, any]
 
     /**
      * 获取初始core.maps.blockInfo的一个拷贝
@@ -2491,6 +2493,14 @@ interface ui {
      */
     drawFailTip(text: string, id?: string, frame?: number): void
 
+    /** 
+     * 左上角绘制一段提示同时播放成功音效
+     * @param text 要提示的文字内容，支持 ${} 语法
+     * @param id 要绘制的图标ID
+     * @param frame 要绘制图标的第几帧
+     */
+    drawSuccessTip(text: string, id?: string, frame?: number): void
+
     /** 地图中间绘制一段文字 */
     drawText(contents: string, callback?: () => any): void
 
@@ -2522,7 +2532,7 @@ interface ui {
         left?: number
         top?: number
         maxWidth?: number
-        color?: number
+        color?: number | string
         align?: 'left' | 'center' | 'right'
         fontSize: number
         lineHeight?: number
