@@ -973,7 +973,9 @@ interface control {
 /**@file events.js将处理所有和事件相关的操作。 */
 interface events {
     /** 根据难度设置flag:hard */
-    _startGame_setHard():void
+    _startGame_setHard(): void
+    _eventMoveHero_moving(step: number, moveSteps: [direction | 'forward' | 'backward' |
+        'leftup' | 'leftdown' | 'rightup' | 'rightdown', number][]): boolean
 
     /**
      * 开始新游戏
@@ -2332,6 +2334,7 @@ interface items {
 interface ui {
     _buildFont(fontSize?: number | string, bold?: boolean, italic?: boolean, font?: string): string
     _createUIEvent(): void
+    _drawBook_drawName(index: number, enemy: Enemy, top: number, left: number, width: number): void
 
     /**
      * 根据画布名找到一个画布的context；支持系统画布和自定义画布。如果不存在画布返回null。
@@ -3012,19 +3015,49 @@ interface plugin {
     initHeros(): void
     /** 多角色插件，切换到另一角色 */
     changeHero(toHeroId?: number): void
+    
+    [x: string]: () => void
 }
 
 type CoreMixin = {
     firstData: { [x: string]: any }
-    // 全塔属性开关
-    flags: { [flagName: string]: boolean }
+    /** 全塔属性开关 */flags: { [flagName: string]: boolean }
+    /** 全局数值 */values:
+    {
+        /** 全局帧动画时间 */animateSpeed: number;
+        floorChangeTime: number;
+        /** 勇士移速 */moveSpeed: number;
+        statusCanvasRowsOnMobile: number;
 
+        redGem: number;
+        blueGem: number;
+        greenGem: number;
+        redPotion: number;
+        bluePotion: number;
+        yellowPotion: number;
+        greenPotion: number;
+
+        breakArmor: number;
+        counterAttack: number;
+        hatred: number;
+        lavaDamage: number;
+        poisonDamage: number;
+        purify: number;
+        weakValue: number;
+    }
+    
     /** 地图可视部分大小 */
     readonly __SIZE__: number;
     /** 地图像素 */
     readonly __PIXELS__: number;
     /** 地图像素的一半 */
     readonly __HALF_SIZE__: number;
+
+    /** 地图长度，仅2.10有效 */
+    readonly _PX_: number;
+    /** 地图宽度，仅2.10有效 */
+    readonly _PY_: number;
+
     /** 游戏素材 */
     readonly material: {
         readonly animates: { [key: string]: Animate },
@@ -3214,6 +3247,8 @@ interface Main {
 }
 declare let main: Main
 declare let core: CoreMixin
+
 declare let flags: { [x: string]: any }
 declare let hero: CoreMixin['status']['hero']
 declare let editor: editor
+

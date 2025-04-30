@@ -462,7 +462,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		var shopId = null; // 当前商店ID
 		var type = 0; // 当前正在选中的类型，0买入1卖出
-		var selectItem = 0; // 当前正在选中的道具
+		/** 当前正在选中的道具
+		 * @type {number | null} 
+		 */
+		var selectItem = 0;
 		var selectCount = 0; // 当前已经选中的数量
 		var page = 0;
 		var totalPage = 0;
@@ -1024,7 +1027,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// ------ 前进/后退
 			var o = direction == 'backward' ? -1 : 1;
 			if (direction == 'forward' || direction == 'backward') direction = core.getHeroLoc('direction');
-			var faceDirection = direction;
+			/** @type {direction} */var faceDirection = direction;
 			if (direction == 'leftup' || direction == 'leftdown') faceDirection = 'left';
 			if (direction == 'rightup' || direction == 'rightdown') faceDirection = 'right';
 			core.setHeroLoc('direction', direction);
@@ -1163,7 +1166,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		var M = Object.defineProperty;
 		var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
-		var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
+		// var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
 		let w = [];
 		const k = (n) => {
 			for (const i of w)
@@ -1178,12 +1181,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		};
 		requestAnimationFrame(k);
 
-		// I is Ticker
+		/** Ticker类 */
 		class I {
 			constructor() {
-				o(this, "funcs", /* @__PURE__ */ new Set());
-				o(this, "status", "stop");
-				o(this, "startTime", 0);
+				this.funcs = /* @__PURE__ */ new Set();
+				this.status = "stop";
+				this.startTime = 0;
 				this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
 			}
 			add(i) {
@@ -1202,18 +1205,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.status = "stop", w = w.filter((i) => i !== this);
 			}
 		}
-		// F is AnimationBase
+		/** AnimationBase类 */
 		class F {
 			constructor() {
-				o(this, "timing");
-				o(this, "relation", "absolute");
-				o(this, "easeTime", 0);
-				o(this, "applying", {});
-				o(this, "getTime", Date.now);
+				this.timing = Date.now;
+				this.relation = "absolute";
+				this.easeTime = 0;
+				this.applying = {};
+				this.getTime = Date.now;
 				const ticker = new I();
-				o(this, "ticker", ticker);
-				o(this, "value", {});
-				o(this, "listener", {});
+				this.ticker = ticker;
+				this.value = {};
+				this.listener = {};
 				this.timing = (i) => i;
 			}
 			async all() {
@@ -1278,17 +1281,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		async function R(n) {
 			return new Promise((i) => setTimeout(i, n));
 		}
-		// j is Animation
+		/** Animation类 */
 		class j extends F {
 			constructor() {
 				super();
-				o(this, "shakeTiming");
-				o(this, "path");
-				o(this, "multiTiming");
-				o(this, "value", {});
-				o(this, "size", 1);
-				o(this, "angle", 0);
-				o(this, "targetValue", {
+				this.shakeTiming;
+				this.path;
+				this.multiTiming;
+				this.value = {};
+				this.size = 1;
+				this.angle = 0;
+				this.targetValue = {
 					system: {
 						move: [0, 0],
 						moveAs: [0, 0],
@@ -1298,8 +1301,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						"@@bind": []
 					},
 					custom: {}
-				});
-				o(this, "animateFn", {
+				};
+				this.animateFn = {
 					system: {
 						move: [() => 0, () => 0],
 						moveAs: () => 0,
@@ -1309,12 +1312,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						"@@bind": () => 0
 					},
 					custom: {}
-				});
-				o(this, "ox", 0);
-				o(this, "oy", 0);
-				o(this, "sx", 0);
-				o(this, "sy", 0);
-				o(this, "bindInfo", []);
+				};
+				this.ox = 0;
+				this.oy = 0;
+				this.sx = 0;
+				this.sy = 0;
+				this.bindInfo = [];
 				this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
 					move: !1,
 					scale: !1,
@@ -1507,12 +1510,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class O extends F {
 			constructor() {
 				super();
-				o(this, "now", {});
-				o(this, "target", {});
-				o(this, "transitionFn", {});
-				o(this, "value");
-				o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
-				o(this, "handleGet", (t, e) => this.now[e]);
+				this.now = {};
+				this.target = {};
+				this.transitionFn = {};
+				this.value = undefined;
+				this.handleSet = (t, e, s) => (this.transition(e, s), !0);
+				this.handleGet = (t, e) => this.now[e];
 				this.timing = (t) => t, this.value = new Proxy(this.target, {
 					set: this.handleSet,
 					get: this.handleGet
@@ -3595,7 +3598,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					compareMode = false;
 					core.unregisterAction('onclick', 'bestEquip');
 					core.deleteCanvas(canvas);
-					res();
+					res(void 0);
 				}
 
 				core.createCanvas(canvas, 0, 0, width, height, 160);
@@ -3677,7 +3680,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function getEquipList(equipNum, equipOwned, equipNameList) {
 			// equipNameList:计入切装计算的装备格子的名称列表，可重复
 			// 形如['武器', '武器', '盾牌']
-			let equipList = Array(equipNameList.length).fill().map(() => new Set([null]));
+			let equipList = Array(equipNameList.length).fill(void 0).map(() => new Set([null]));
 
 			//对每个装备孔展开
 			for (let i = 0, l = equipNameList.length; i < l; i++) {
