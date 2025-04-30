@@ -962,8 +962,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			// 设置角色的属性值
 			saveList.forEach(function (name) {
-				if (name == "floorId");
-				else if (name == "items") {
+				if (name == "items") {
 					Object.keys(core.status.hero.items).forEach(function (one) {
 						if (data.items[one]) core.status.hero.items[one] = core.clone(data.items[one]);
 					});
@@ -1027,7 +1026,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// ------ 前进/后退
 			var o = direction == 'backward' ? -1 : 1;
 			if (direction == 'forward' || direction == 'backward') direction = core.getHeroLoc('direction');
-			/** @type {direction} */var faceDirection = direction;
+			var faceDirection = direction;
 			if (direction == 'leftup' || direction == 'leftdown') faceDirection = 'left';
 			if (direction == 'rightup' || direction == 'rightdown') faceDirection = 'right';
 			core.setHeroLoc('direction', direction);
@@ -1164,8 +1163,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.plugin.aniMap.clear();
 		}
 
-		var M = Object.defineProperty;
-		var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
+		// var M = Object.defineProperty;
+		// var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
 		// var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
 		let w = [];
 		const k = (n) => {
@@ -2192,7 +2191,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			let form = new FormData();
 			form.append('type', 1);
 			form.append('towername', towerName);
-			utils.prototype.http(
+			core.utils.http(
 				'POST',
 				'https://h5mota.com/backend/tower/barrage.php',
 				form,
@@ -2244,7 +2243,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			form.append('towername', towerName);
 			form.append('comment', comment);
 			form.append('tags', tags);
-			utils.prototype.http(
+			core.utils.http(
 				'POST',
 				'https://h5mota.com/backend/tower/barrage.php',
 				form,
@@ -5092,6 +5091,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			[2, keyBtn], [3, consoleBtn],
 			['quit', quit]]);
 
+			core.plugin
 			// 放缩时重绘整个大menu
 			core.plugin.settingMenu = settingMenu;
 			// 设置初始时选中的按键为第一个按键
@@ -5101,3 +5101,4 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 	}
 }
+/** @todo 自动存档相关 同步存档到本地/服务器增加存档确认 */

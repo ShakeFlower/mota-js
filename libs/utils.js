@@ -1357,7 +1357,7 @@ utils.prototype._unzip_readEntries = function (entries, success, convertToText) 
 utils.prototype.http = function (type, url, formData, success, error, mimeType, responseType, onprogress, timeout) {
     var xhr = new XMLHttpRequest();
     xhr.open(type, url, true);
-    xhr.timeout = timeout;
+    xhr.timeout = timeout | 1000;
     if (mimeType) xhr.overrideMimeType(mimeType);
     if (responseType) xhr.responseType = responseType;
     xhr.onload = function (e) {

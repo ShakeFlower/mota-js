@@ -977,6 +977,8 @@ interface events {
     _eventMoveHero_moving(step: number, moveSteps: [direction | 'forward' | 'backward' |
         'leftup' | 'leftdown' | 'rightup' | 'rightdown', number][]): boolean
     __action_checkReplaying(): boolean
+    _action_sleep(data: { time: number }, x?: undefined, y?: undefined, prefix?: undefined): void
+    _startGame_start(hard: string, seed: number, route: string, callback: Function): void
 
     /**
      * 开始新游戏
@@ -2914,7 +2916,8 @@ interface utils {
      * @param timeout 超时时间
      */
     http(type: 'GET' | 'POST', url: string, formData: FormData, success: () => void, error: () => void,
-        mimeType: string, responseType: XMLHttpRequestResponseType, onprogress: boolean, timeout: number): void
+        mimeType?: string | null, responseType?: XMLHttpRequestResponseType | null,
+        onprogress?: boolean | null, timeout?: number | null): void
 
     /** 获得浏览器唯一的guid */
     getGuid(): string
@@ -3003,6 +3006,7 @@ interface icons {
 }
 
 interface plugin {
+    // aniMap: Map<any, Function>
 
     /** 打开一个道具商店 */
     openItemShop(itemShopId: string): void
@@ -3025,7 +3029,7 @@ interface plugin {
     initHeros(): void
     /** 多角色插件，切换到另一角色 */
     changeHero(toHeroId?: number): void
-    
+
     [x: string]: () => void
 }
 
@@ -3230,7 +3234,7 @@ type CoreMixin = {
     readonly utils: utils
     readonly icons: icons
     readonly actions: actions
-    readonly plugin: Record<string, Function>
+    readonly plugin: plugin
     readonly statusBar: Main['statusBar']
 } & control & events & loader & enemys & items & maps & ui & utils & icons & actions & plugin
 
