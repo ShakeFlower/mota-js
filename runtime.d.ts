@@ -979,6 +979,7 @@ interface events {
     __action_checkReplaying(): boolean
     _action_sleep(data: { time: number }, x?: undefined, y?: undefined, prefix?: undefined): void
     _startGame_start(hard: string, seed: number, route: string, callback: Function): void
+    _startGame_afterStart(callback: Function): void
 
     /**
      * 开始新游戏
@@ -1644,10 +1645,19 @@ interface enemys {
     }
 }
 
+type mapsConfig = {
+    onMap: boolean, ctx?: CanvasRenderingContext2D,
+    redraw?: boolean, postDraw?: (() => void)[]
+}
+
 /** @file maps.js负责一切和地图相关的处理内容 */
 interface maps {
     _loadFloor_doNotCopy(): string[]
     _getAndRemoveBlock(x: number, y: number): [Block, any]
+    _drawBg_draw(floorId: string, toDrawCtx: CanvasRenderingContext2D, cacheCtx: CanvasRenderingContext2D,
+        config: mapsConfig): void
+    _drawBgFgMap(floorId: string, name: string, config: mapsConfig): void
+    _drawBg_drawBackground(floorId: string, config: mapsConfig): void
 
     /**
      * 获取初始core.maps.blockInfo的一个拷贝
@@ -2339,6 +2349,7 @@ interface ui {
     _buildFont(fontSize?: number | string, bold?: boolean, italic?: boolean, font?: string): string
     _createUIEvent(): void
     _drawBook_drawName(index: number, enemy: Enemy, top: number, left: number, width: number): void
+    _drawBook_drawRow1(index: number, enemy: Enemy, top: number, left: number, width: number, position: number): void
 
     /**
      * 根据画布名找到一个画布的context；支持系统画布和自定义画布。如果不存在画布返回null。
