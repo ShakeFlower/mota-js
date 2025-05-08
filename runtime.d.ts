@@ -396,6 +396,7 @@ interface control {
     _updateDamage_damage(floorId: string, onMap: boolean): void
     _updateDamage_extraDamage(floorId: string, onMap: boolean): void
     _bindRoutePush(): void
+    __replay_getTimeout(): number
     /** 物品数据显示 */ 
     getItemDetail(floorId: string): void
 
@@ -1432,6 +1433,8 @@ interface actions {
     _clickAction(x?: number, y?: number, px?: number, py?: number): number
     /** 获得点击事件相对左上角的坐标 */
     _getClickLoc(x: number, y: number): { x: number, y: number, size: number }
+    _clickSwitchs_action_moveSpeed(delta: number): void
+    _clickSwitchs_action_floorChangeTime(delta: number): void
 
     /**
      * 此函数将注册一个用户交互行为。
@@ -3020,7 +3023,7 @@ interface plugin {
     // aniMap: Map<any, Function>
 
     /** 打开一个道具商店 */
-    openItemShop(itemShopId: string): void
+    openItemShop: (itemShopId: string) => void
     /** 某个全局商店是否被访问过 */
     isShopVisited(id: string): boolean
 
@@ -3041,7 +3044,8 @@ interface plugin {
     /** 多角色插件，切换到另一角色 */
     changeHero(toHeroId?: number): void
 
-    [x: string]: () => void
+    // core.plugin.xxx 可能是任意签名和返回值的函数
+    [x: string]: Function
 }
 
 type CoreMixin = {

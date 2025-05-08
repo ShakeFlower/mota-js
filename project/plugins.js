@@ -3932,7 +3932,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			drawContent() {
 				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
-				this.drawButtonContent(this.name);
+				this.drawButtonContent();
 			}
 
 			beginListen() {
@@ -4118,10 +4118,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function skipPeformOff() {
 			core.maps.jumpBlock = perform.jumpBlock;
-			core.maps.jumpHero = perform.jumpHero;
 			core.maps.moveBlock = perform.moveBlock;
 			core.maps.drawAnimate = perform.drawAnimate;
 			core.maps.drawHeroAnimate = perform.drawHeroAnimate;
+			core.events.jumpHero = perform.jumpHero;
 			core.events.vibrate = perform.vibrate;
 			core.events._action_sleep = perform._action_sleep;
 			core.events.__action_checkReplaying = perform.__action_checkReplaying;

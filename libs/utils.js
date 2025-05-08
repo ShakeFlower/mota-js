@@ -1357,7 +1357,7 @@ utils.prototype._unzip_readEntries = function (entries, success, convertToText) 
 utils.prototype.http = function (type, url, formData, success, error, mimeType, responseType, onprogress, timeout) {
     var xhr = new XMLHttpRequest();
     xhr.open(type, url, true);
-    xhr.timeout = timeout | 1000;
+    if (typeof timeout === 'number') xhr.timeout = timeout; // 加载大资源不能有超时值，否则会导致加载不出来
     if (mimeType) xhr.overrideMimeType(mimeType);
     if (responseType) xhr.responseType = responseType;
     xhr.onload = function (e) {
