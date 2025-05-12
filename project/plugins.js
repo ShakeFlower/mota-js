@@ -1,6 +1,6 @@
 // @ts-check
 /// <reference path="../runtime.d.ts" />
-var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = 
+var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 {
 	"init": function () {
 
@@ -2981,8 +2981,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const selectedItem = getSelectedItem();
 				let canBatchUse = eval(core.material.items[selectedItem]?.canBatchUse);
 				if (!canBatchUse) return;
-			}
-			catch (error) {
+			} catch (error) {
 				console.error(error);
 				return;
 			}
@@ -3054,7 +3053,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 				if (!showHide) list = list.filter(function (id) {
 					const hideInfo = core.getFlag('hideInfo', {});
-					if (hideInfo.hasOwnProperty(id)) return !hideInfo[id];
+					if (hideInfo[id]) return false;
 					else return !core.material.items[id].hideInToolbox;
 				})
 				list = list.sort();
@@ -3065,6 +3064,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return this.uidata.getToolboxItems(cls, showHide);
 			}
 			if (!showHide) list = list.filter(function (id) {
+				const hideInfo = core.getFlag('hideInfo', {});
+				if (hideInfo[id]) return false;
 				return !core.material.items[id].hideInToolbox;
 			})
 			list = list.sort();
@@ -3474,7 +3475,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.status.event.id = "toolbox";
 			core.initThisEventInfo();
 			var info = core.status.thisUIEventInfo;
-			var items = core.getToolboxItems("all", core.getFlag('showHideItem', false));
+			var items = core.getToolboxItems("all", core.hasFlag('showHideItem'));
 			setPageItems(1);
 			var index = items.indexOf(itemId) + 1;
 			info.page = Math.ceil(index / info.maxItem);
@@ -3492,7 +3493,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.control._replayAction_equip = function (action) {
 			if (action.indexOf("equip:") != 0) return false;
 			var itemId = action.substring(6);
-			var items = core.getToolboxItems('equips');
+			var items = core.getToolboxItems('equips', core.hasFlag('showHideItem'));
 			var index = items.indexOf(itemId) + 1;
 			if (index < 1) {
 				core.removeFlag('__doNotCheckAutoEvents__');
@@ -3805,7 +3806,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 		}
-		
+
 		this.figureEquip = function () {
 			compareEquip().then(function (confirm) {
 				core.unlockControl();
@@ -4086,30 +4087,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.drawHero();
 				if (callback) callback();
 			}
-	
+
 			core.maps.moveBlock = function (x, y, steps, time, keep, callback) {
 				perform.moveBlock(x, y, steps, 1, keep, callback);
 			}
-	
+
 			core.maps.drawAnimate = function (name, x, y, alignWindow, callback) {
 				if (callback) callback();
 				return -1;
 			}
-	
+
 			core.maps.drawHeroAnimate = function (name, callback) {
 				if (callback) callback();
 				return -1;
 			}
-	
+
 			core.events.vibrate = function (direction, time, speed, power, callback) {
 				if (callback) callback();
 				return;
 			}
-	
+
 			core.events._action_sleep = function (data, x, y, prefix) {
 				core.doAction();
 			}
-	
+
 			core.events.__action_checkReplaying = function () {
 				core.doAction();
 				return true;
@@ -4132,12 +4133,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			skipTextOn();
 			core.setFlag('skip', 'text');
 		}
-	
+
 		this.skipPerformOn = function () {
 			skipPeformOn();
 			core.setFlag('skip', 'perform');
 		}
-	
+
 		this.skipPerformOff = function () {
 			skipPeformOff();
 			core.setFlag('skip', null);
@@ -5105,4 +5106,3 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 	}
 }
-/** @todo 自动存档相关 同步存档到本地/服务器增加存档确认 */

@@ -1713,6 +1713,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 			let list = Object.keys(core.status.hero.items[cls] || {});
 			if (!showHide) list = list.filter(function (id) {
+				const hideInfo = core.getFlag('hideInfo', {});
+				if (hideInfo[id]) return false;
 				return !core.material.items[id].hideInToolbox;
 			})
 			list = list.sort( /*function (id1, id2) { return core.material.items[id1].name <= core.material.items[id2].name ? -1 : 1 }*/);
