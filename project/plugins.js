@@ -2193,7 +2193,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		this.getComment = function () {
 			if (core.isReplaying()) return;
 			let form = new FormData();
-			form.append('type', 1);
+			form.append('type', '1');
 			form.append('towername', towerName);
 			core.utils.http(
 				'POST',
@@ -2221,7 +2221,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 						core.setFlag('commentCollection', commentCollection);
 					} catch (err) {
-						core.drawFailTip('在线留言接收失败！' + err.message, 'postman');
+						core.drawFailTip('在线留言接收失败！ ' + err.message, 'postman');
 					}
 				},
 				function (err) {
@@ -2229,7 +2229,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (['Abort', 'Timeout', 'Error on Connection'].includes(err)) err = { message: '连接异常' };
 					else if (err.startsWith('HTTP ')) err = { message: '连接异常, 状态码:' + err.replace('HTTP ', '') };
 					else err = JSON.parse(err);
-					core.drawFailTip('在线留言接收失败' + err?.message, 'postman');
+					core.drawFailTip('在线留言接收失败! ' + err?.message, 'postman');
 				},
 				null, null, null, 1000
 			);
@@ -2243,7 +2243,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return;
 			}
 			let form = new FormData();
-			form.append('type', 2);
+			form.append('type', '2');
 			form.append('towername', towerName);
 			form.append('comment', comment);
 			form.append('tags', tags);
@@ -2256,12 +2256,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						res = JSON.parse(res);
 						console.log(res);
 						if (res?.code === 0) {
-							core.drawTip('提交成功！', 'postman')
+							core.drawTip('提交成功！ ', 'postman')
 						} else {
-							core.drawTip('提交失败！' + res?.message, 'postman');
+							core.drawTip('提交失败！ ' + res?.message, 'postman');
 						}
 					} catch (err) {
-						core.drawFailTip('提交失败！' + err.message, 'postman');
+						core.drawFailTip('提交失败！ ' + err.message, 'postman');
 					}
 				},
 				function (err) {
@@ -2269,7 +2269,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (['Abort', 'Timeout', 'Error on Connection'].includes(err)) err = { message: '连接异常' };
 					else if (err.startsWith('HTTP ')) err = { message: '连接异常, 状态码:' + err.replace('HTTP ', '') };
 					else err = JSON.parse(err);
-					core.drawFailTip('提交失败！' + err?.message, 'postman');
+					core.drawFailTip('提交失败！ ' + err?.message, 'postman');
 				},
 				null, null, null, 1000
 			);
@@ -2287,7 +2287,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				for (let pos in commentCollection[floorId]) {
 					const l = commentCollection[floorId][pos].length;
 					for (let i = 0; i <= l - 1; i++) {
-						const [x, y] = pos.split(',');
+						const [x, y] = pos.split(',').map(x => Number(x));
 						core.drawIcon('sign', 'postman', 32 * x, 32 * y);
 						break;
 					}
