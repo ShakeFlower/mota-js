@@ -3851,6 +3851,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			如果想要添加按钮，上面的数组中，第一项'1,1'表示按钮所在的行和列，仅影响按下方向键时光标的移动
 			按钮在画面中视觉上所处的位置为(40, 180), 尺寸为(150, 30),对应的settingMap中的数据索引为'autoGet'
 			根据以上原则来修改和添加自己的按钮
+			重要：为保险起见，您应当不仅删除按钮的入口，还删除按钮的效果，方法见上一条
 		 * 3.如何删除和添加子菜单
 			下列代码段控制子菜单的绘制：
 			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu], 0, ctx);
@@ -5096,7 +5097,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			[2, keyBtn], [3, consoleBtn],
 			['quit', quit]]);
 
-			core.plugin
 			// 放缩时重绘整个大menu
 			core.plugin.settingMenu = settingMenu;
 			// 设置初始时选中的按键为第一个按键
