@@ -873,19 +873,24 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				return;
 			}
 
-			function tryUseItem(item) {
+			function useSingleItem(item) {
 				if (core.hasItem(item)) {
-					switch (item) {
-						case 'centerFly':
-							core.ui._drawCenterFly(); // 中心对称飞行器需要特殊判断
-							break;
-						default:
-							core.useItem(item);
-							break;
-					}
+					core.tryUseItem(item);
 				} else {
 					core.drawFailTip('当前未持有对应道具！');
 				}
+			}
+
+			function useItems(itemList) {
+				for (let i = 0, l = itemList.length; i < l; i++) {
+					const item = itemList[i];
+					if (!core.canUseItem(item)) continue;
+					else {
+						core.tryUseItem(item);
+						return;
+					}
+				}
+				core.drawFailTip('当前未持有对应道具！');
 			}
 
 			// 根据keyCode值来执行对应操作
@@ -957,68 +962,66 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				case 49: // 快捷键1: 破
 					{
 						const item = core.getLocalStorage('hotkey1');
-						if (item) tryUseItem(item);
-						else tryUseItem('pickaxe');
+						if (item) useSingleItem(item);
+						else useSingleItem('pickaxe');
 					}
 					break;
 				case 50: // 快捷键2: 炸
 					{
 						const item = core.getLocalStorage('hotkey2');
-						if (item) tryUseItem(item);
-						else tryUseItem('bomb');
+						if (item) useSingleItem(item);
+						else useSingleItem('bomb');
 					}
 					break;
 				case 51: // 快捷键3: 飞
 					{
 						const item = core.getLocalStorage('hotkey3');
-						if (item) tryUseItem(item);
-						else tryUseItem('centerFly');
+						if (item) useSingleItem(item);
+						else useSingleItem('centerFly');
 					}
 					break;
 				case 52: // 快捷键4：破冰/冰冻/地震/上下楼器/... 其他道具依次判断
 					{
 						const item = core.getLocalStorage('hotkey4');
-						if (item) tryUseItem(item);
+						if (item) useSingleItem(item);
 						else {
-							const list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes", "lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
-							for (var i = 0; i < list.length; i++) {
-								var itemId = list[i];
-								tryUseItem(itemId);
-							}
+							const list = ["icePickaxe", "freezeBadge", "earthquake", "upFly", "downFly", "jumpShoes",
+								"lifeWand", "poisonWine", "weakWine", "curseWine", "superWine"];
+							useItems(list);
 						}
 					}
 					break;
 				case 53: // 5：读取自动存档（回退），方便手机版操作
 					{
 						const item = core.getLocalStorage('hotkey5');
-						if (item) tryUseItem(item);
+						if (item) useSingleItem(item);
 						else core.doSL("autoSave", "load");
 					}
 					break;
 				case 54: // 6：撤销回退，方便手机版操作
 					{
 						const item = core.getLocalStorage('hotkey6');
-						if (item) tryUseItem(item);
+						if (item) useSingleItem(item);
 						else core.doSL("autoSave", "reload");
 					}
 					break;
 				case 55: // 快捷键7：绑定为轻按，方便手机版操作
 					{
 						const item = core.getLocalStorage('hotkey7');
-						if (item) tryUseItem(item);
+						if (item) useSingleItem(item);
 						else core.getNextItem();
 					}
 					break;
 				case 56: // 快捷键8：空白
 					{
 						const item = core.getLocalStorage('hotkey8');
-						if (item) tryUseItem(item);
+						if (item) useSingleItem(item);
 					}
 					break;
 				case 57: // 快捷键9：空白
 					{
 						const item = core.getLocalStorage('hotkey9');
-						if (item) tryUseItem(item);
+						if (item) useSingleItem(item);
 					}
 					break;
 				case 118: // F7：开启debug模式
