@@ -4028,14 +4028,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		const perform = {
-			jumpBlock: maps.prototype.jumpBlock,
-			jumpHero: events.prototype.jumpHero,
-			moveBlock: maps.prototype.moveBlock,
-			drawAnimate: maps.prototype.drawAnimate,
-			drawHeroAnimate: maps.prototype.drawHeroAnimate,
-			vibrate: events.prototype.vibrate,
-			_action_sleep: events.prototype._action_sleep,
-			__action_checkReplaying: events.prototype.__action_checkReplaying,
+			jumpBlock: maps.prototype.jumpBlock.bind(maps.prototype),
+			jumpHero: events.prototype.jumpHero.bind(events.prototype),
+			moveBlock: maps.prototype.moveBlock.bind(maps.prototype),
+			drawAnimate: maps.prototype.drawAnimate.bind(maps.prototype),
+			drawHeroAnimate: maps.prototype.drawHeroAnimate.bind(maps.prototype),
+			vibrate: events.prototype.vibrate.bind(events.prototype),
+			_action_sleep: events.prototype._action_sleep.bind(events.prototype),
+			__action_checkReplaying: events.prototype.__action_checkReplaying.bind(events.prototype),
 		};
 
 		function instantMove(fromX, fromY, aimX, aimY, keep, callback) {
