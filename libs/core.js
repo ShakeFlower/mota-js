@@ -495,6 +495,7 @@ core.prototype._init_plugins = function () {
     core._forwardFunc("plugin");
 }
 
+
 core.prototype._forwardFuncs = function () {
     for (var i = 0; i < main.loadList.length; ++i) {
         var name = main.loadList[i];
@@ -502,7 +503,10 @@ core.prototype._forwardFuncs = function () {
         this._forwardFunc(name);
     }
 }
-
+/** 将core[name][funcname] 转发到 core[name]中 
+ * @param {string} name 模块名，例如events, ui, plugin
+ * @param {string} funcname 函数名，例如drawTextBox
+ */
 core.prototype._forwardFunc = function (name, funcname) {
     if (funcname == null) {
         for (funcname in core[name]) {

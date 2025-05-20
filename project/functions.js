@@ -53,19 +53,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 隐藏右下角的音乐按钮
 			core.dom.musicBtn.style.display = 'none';
 
-			/** 以下为新增 */
+			/** 以下为2.92样板新增内容的处理 */
 			// 同步剧情跳过设置
-			switch (core.getFlag('skip')) {
-				case 'text':
-					core.plugin.skipTextOn();
-					break;
-				case 'perform':
-					core.plugin.skipPerformOn();
-					break;
-				default:
-					core.plugin.skipPerformOff();
-					break;
-			}
+			core.plugin.checkSkipFuncs();
 
 			// 清空录像暂停点
 			core.setFlag('replayValve', null);
@@ -1707,19 +1697,13 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		}
 	},
 	"ui": {
-		"getToolboxItems": function (cls, showHide) {
+		"getToolboxItems": function (cls) {
 			// 获得道具栏中当前某类型道具的显示项和显示顺序
 			// cls为道具类型，只可能是 tools, constants 和 equips
 			// 返回一个数组，代表当前某类型道具的显示内容和顺序
 			// 默认按id升序排列，您可以取消下面的注释改为按名称排列
-			// showHide 是否显示隐藏的道具
 
 			let list = Object.keys(core.status.hero.items[cls] || {});
-			if (!showHide) list = list.filter(function (id) {
-				const hideInfo = core.getFlag('hideInfo', {});
-				if (hideInfo[id]) return false;
-				return !core.material.items[id].hideInToolbox;
-			})
 			list = list.sort( /*function (id1, id2) { return core.material.items[id1].name <= core.material.items[id2].name ? -1 : 1 }*/);
 			return list;
 		},

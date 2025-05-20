@@ -2309,7 +2309,7 @@ interface items {
      * @param beComparedEquipId 装备乙的id
      * @returns 两装备的各属性差，甲减乙，0省略
      */
-    compareEquipment(compareEquipId: string, beComparedEquipId: string): { [key: string]: number }
+    compareEquipment(compareEquipId?: string | null, beComparedEquipId?: string | null): { [key: string]: number }
 
     /**
      * 保存当前套装
@@ -2590,7 +2590,7 @@ interface ui {
      * @param cls 道具类型
      * @param cls 是否显示隐藏的道具
     */
-    getToolboxItems(cls: 'tools' | 'constants' | 'all', showHide: boolean): string[]
+    getToolboxItems(cls: 'equips' | 'tools' | 'constants' | 'all', showHide?: boolean): string[]
 
     /** 绘制状态栏 */
     drawStatusBar(): void
@@ -2749,7 +2749,7 @@ interface utils {
      * @param onMap 可选，true表示用于地图显伤，结果总字符数最多为5，否则最多为6
      * @returns 格式化结果
      */
-    formatBigNumber(x: number, onMap?: boolean): string
+    formatBigNumber(x: number, onMap?: boolean | number): string
 
     /** 变速移动 */
     applyEasing(mode?: string): (number) => number;
@@ -3280,4 +3280,15 @@ declare let core: CoreMixin
 declare let flags: { [x: string]: any }
 declare let hero: CoreMixin['status']['hero']
 declare let editor: editor
+
+declare let control: () => control
+declare let events: () => events
+declare let loader: () => loader
+declare let enemys: () => enemys
+declare let items: () => items
+declare let maps: () => maps
+declare let ui: () => ui
+declare let utils: () => utils
+declare let icons: () => icons
+declare let actions: () => actions
 

@@ -279,7 +279,7 @@ items.prototype.getEquipTypeById = function (equipId) {
     return type;
 }
 
-// 当前能否撞上某装备
+// 当前能否装上某装备
 items.prototype.canEquip = function (equipId, hint) {
     // 装备是否合法
     var equip = core.material.items[equipId] || {};
