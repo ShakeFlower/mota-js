@@ -2417,18 +2417,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 本插件全部使用自定义的布局和监听事件
 		// 函数core.events._checkStatus('toolbox', fromUserAction)会导致core.status.event.id被修改，从而触发actions中的样板自带系统监听事件。
 		// 不知道怎么处理，所以暂时不作相应检查，直接画，出了问题再说。
+		// 复写events.openToolbox
 		core.events.openToolbox = function (fromUserAction) {
 			if (core.isReplaying()) return;
 			drawItemBox('all');
 		}
-
+		// 复写events.openEquipbox
 		core.events.openEquipbox = function (fromUserAction) {
 			if (core.isReplaying()) return;
 			drawItemBox('equips');
 		}
 
 		// 复写items._afterUseItem
-		// flag:itemsUsedCount {[x:string]:boolean} 成功使用了的道具的计数
+		// flag:itemsUsedCount {[itemId:string]:boolean} 成功使用了的道具的计数
 		const origin__afterUseItem = items.prototype._afterUseItem;
 		items.prototype._afterUseItem = function (itemId) {
 			const itemsUsedCount = core.getFlag('itemsUsedCount', {});
@@ -2440,7 +2441,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		// 复写ui.getToolboxItems
 		// flag:markedItems string[] 在道具栏中置顶的道具的列表
-		// flag:hideInfo {[x:string]:boolean} 手动选择了显示/隐藏的道具的列表
+		// flag:hideInfo {[itemId:string]:boolean} 手动选择了显示/隐藏的道具的列表
 
 		core.ui.getToolboxItems = function (cls, showHide, sortFunc) {
 			const markedItems = core.getFlag('markedItems', []);
@@ -2552,30 +2553,33 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// #endregion
 		// #region 绘制用到的按钮类
 		class ChoiceButton extends ButtonBase {
-			constructor(x, y, w, h, text) {
+			constructor(x, y, w, h, text, config) {
 				super(x, y, w, h);
-				/** @type {'clicked'|undefined} */this.status;
+				/** @type {'selected'|'none'} */this.status = 'none';
 				this.text = text;
+				const { fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
+					selectedFillStyle = 'rgb(255, 51, 153)', selectedstrokeStyle = 'black', selectedFontStyle = 'white',
+					radius = 3, lineWidth = 2 } = config || {};
 				this.draw = () => {
 					const ctx = this.ctx;
 					core.setTextAlign(ctx, 'center');
 					core.setTextBaseline(ctx, 'alphabetic');
-					if (this.status === 'clicked') {
-						core.fillRoundRect(ctx, x, y, w, h, 3, ' #ADD8E6');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #FFFF00');
-						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, ' #555555', '16px Verdana');
+					if (this.status === 'selected') {
+						core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle);
+						core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth);
+						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, '16px Verdana');
 					} else {
-						core.fillRoundRect(ctx, x, y, w, h, 3, 'rgb(204, 204, 204)');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, 'rgb(51, 102, 153)');
-						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, ' #333333', '16px Verdana');
+						core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
+						core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth);
+						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, '16px Verdana');
 					}
 				};
 			}
 		}
 
 		class HideBtn extends ChoiceButton {
-			constructor(x, y, w, h) {
-				super(x, y, w, h, '隐藏');
+			constructor(x, y, w, h, config) {
+				super(x, y, w, h, '隐藏', config);
 				const oriDraw = this.draw;
 				this.draw = () => {
 					if (core.material.items[itemId]) {
@@ -2589,14 +2593,42 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		class MarkBtn extends ChoiceButton {
-			constructor(x, y, w, h) {
-				super(x, y, w, h, '隐藏');
+			constructor(x, y, w, h, config) {
+				super(x, y, w, h, '隐藏', config);
 				const oriDraw = this.draw;
 				this.draw = () => {
 					const markedItems = core.getFlag('markedItems', []);
 					this.text = markedItems.includes(itemId) ? "取消" : "置顶";
 					oriDraw();
 				}
+			}
+		}
+
+		class ClassifyBtn extends ChoiceButton {
+			constructor(x, y, w, h, text, subType, config) {
+				super(x, y, w, h, text, config);
+				this.subType = subType;
+				const oriDraw = this.draw;
+				this.draw = () => {
+					if (type === 'equips') return;
+					if (itemBoard.subType === this.subType) this.status = 'selected';
+					else this.status = "none";
+					oriDraw();
+				}
+				this.event = () => {
+					if (type === 'equips') return;
+					if (itemBoard.subType !== this.subType) {
+						const oldConfig = itemBoard.cache[itemBoard.subType],
+							newConfig = itemBoard.cache[this.subType];
+						oldConfig.page = itemBoard.page;
+						oldConfig.index = itemBoard.index;
+						itemBoard.page = newConfig.page;
+						itemBoard.index = newConfig.index;
+						itemBoard.subType = this.subType;
+						itemBoard.refreshItemList();
+						redraw(true);
+					}
+				};
 			}
 		}
 	
@@ -2683,8 +2715,57 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// #region 绘制用到的菜单类
 
 		class ItemBoxBack extends MenuBase {
-			constructor(type) {
-				super('itemBoxBase');
+			constructor() {
+				super('itemBoxBase'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
+				this.keyEvent = (keyCode) => {
+					if ([37, 38, 39, 40].includes(keyCode) && selectType === '') { // 未选中的情况下按方向s键先选择物品栏第一格
+						selectType = 'toolBox';
+						itemBoard.index = 0;
+						return;
+					}
+					if (keyCode === 37) { // left	
+						if (selectType === 'toolBox') itemBoard.pgDown();
+						else if (selectType === 'equipBox') equipTable.pgDown();
+						redraw();
+					}
+					if (keyCode === 39) { // right		
+						if (selectType === 'toolBox') itemBoard.pgUp();
+						else if (selectType === 'equipBox') equipTable.pgUp();
+						redraw();
+					}
+					if (keyCode === 38) { // up
+						if (selectType === 'toolBox') {
+							if (itemBoard.index === 0) {
+								let newIndex = Math.min(equipTable.pageCap - 1,
+									core.status.globalAttribute.equipName.length - equipTable.page * equipTable.pageCap);
+								equipTable.select(newIndex);
+								redraw();
+							}
+							else {
+								itemBoard.select(itemBoard.index - 1);
+								redraw();
+							}
+						}
+						else if (selectType === 'equipBox') {
+							if (equipTable.index >= equipTable.rowMax) {
+								equipTable.index -= equipTable.rowMax;
+								redraw();
+							}
+						}
+					}
+					if (keyCode === 40) { // down
+						if (selectType === 'toolBox') {
+							if (itemBoard.index >= itemBoard.currItemList.length - 1) { }
+							else {
+								itemBoard.select(itemBoard.index + 1);
+								redraw();
+							}
+						}
+						else if (selectType === 'equipBox') {
+							let newIndex = equipTable.index + 1;
+						}
+					}
+				}
 			}
 
 			drawContent() {
@@ -2702,17 +2783,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
 			}
 		}
-	
+
 		class EquipBox extends MenuBase {
 			constructor(x, y, w, h) {
 				super('equipBox');
 				this.page = 0;
-				this.column = 0;
 				this.columnMax = 4;
-				this.row = 0;
 				this.rowMax = 2;
-				this.onePageEquips = this.columnMax * this.rowMax;
-				this.index = 0;
+				this.pageCap = this.columnMax * this.rowMax;
+				
+				/** 选中了当前页面上的第几个装备格*/ this.index = 0; 
 				// 尺寸
 				this.x = x;
 				this.y = y;
@@ -2727,23 +2807,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					for (let i = 0, l = this.equipPosList.length; i < l; i++) {
 						const { x, y, index } = this.equipPosList[i];
 						if (px > x && px < x + 32 && py > y && py < y + 32) {
-							selectType = 'equipBox';
-							itemBoard.index = -1;
+							let needRedraw = this.index !== index || selectType !== 'equipBox';
 							if (this.index === index) {
 								if (core.status.hero.equipment[index])
 									core.unloadEquip(index, () => {
 										core.status.route.push("unEquip:" + index);
 									});
 								itemId = '';
-								redraw();
-								return;
 							}
 							else {
-								this.index = index;
-								itemId = (core.getEquip(index) == null) ? '' : core.getEquip(index);
-								redraw();
-								return;
+								this.select(index);
 							}
+							if (needRedraw) redraw();
 						}
 					}
 				};
@@ -2755,18 +2830,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						for (let i = 0, l = this.equipPosList.length; i < l; i++) {
 							const { x, y, index } = this.equipPosList[i];
 							if (px > x && px < x + 32 && py > y && py < y + 32) {
-								selectType = 'equipBox';
-								itemBoard.index = -1;
-								if (this.index !== index) {
-									this.index = index;
-									itemId = (core.getEquip(index) == null) ? '' : core.getEquip(index);
-									redraw();
-									return;
-								}
+								let needRedraw = this.index !== index;
+								this.select(index);
+								if (needRedraw) redraw();
 							}
 						}
 					};
 				}
+			}
+
+			getCurrPageCap() {
+				const equipNameCount = core.status.globalAttribute.equipName.length;
+				return Math.min(equipNameCount - this.page * this.pageCap, this.pageCap);
 			}
 
 			drawContent() {
@@ -2779,8 +2854,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
 					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
 				let [x, y] = [spaceX, spaceY];
-				for (let i = 0; i < this.onePageEquips; i++) {
-					const currEquipIndex = this.page * this.onePageEquips + i;
+				for (let i = 0; i < this.pageCap; i++) {
+					const currEquipIndex = this.page * this.pageCap + i;
 					if (currEquipIndex >= equipNameList.length) break;
 
 					const currBoxName = equipNameList[currEquipIndex];
@@ -2805,6 +2880,38 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const tx = (x + x + lineWidth / 2 + width) / 2,
 					ty = y + height + lineWidth / 2 * 3 + space;
 				core.fillText(ctx, text, tx, ty, color, '14px Verdana');
+			}
+
+			/** 根据给定的index，重新选中新的装备框 
+			 * @param {number} index
+			 */
+			select(index) {
+				selectType = 'equipBox';
+				this.index = index;
+				itemBoard.index = -1;
+				itemId = (core.getEquip(index) == null) ? '' : core.getEquip(index);
+				const currEquipIndex = this.page * this.pageCap + this.index;
+				const currEquipId = core.getEquip(currEquipIndex);
+				if (core.material.items[currEquipId]) itemId = currEquipId;
+			}
+
+			pgUp() {
+				const equipNameList = core.status.globalAttribute.equipName;
+				const pageMax = Math.ceil(equipNameList.length / this.pageCap);
+				if (this.page < pageMax) {
+					this.page++;
+					let newIndex = this.index;
+					const currEquipIndex = this.page * this.pageCap + newIndex;
+					if (currEquipIndex >= equipNameList.length) newIndex = 0;
+					this.select(newIndex);
+				}
+			}
+
+			pgDown() {
+				if (this.page > 0) {
+					this.page--;
+					this.select(this.index);
+				}
 			}
 		}
 		class ItemInfoBox extends MenuBase {
@@ -2837,11 +2944,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillText(ctx, item.name, 66, 46, 'black', 'bold 18px Verdana', 98); // 物品名字 e.g.护符
 				core.fillText(ctx, "类型", 20, 75, 'crimson', '14px Verdana');
 				core.fillText(ctx, "【" + getItemClsName(item) + "】", 50, 75, 'rgb(47, 49, 54)', '14px Verdana'); // 物品类型 e.g.【永久道具】
+
 				core.fillText(ctx, "ID", 20, 95, 'crimson', '14px Verdana');
 				core.fillText(ctx, item.id, 50, 95, 'rgb(47, 49, 54)', '14px Verdana');
-				core.fillText(ctx, "累计使用", 20, 113, 'crimson', '14px Verdana');
-				const itemsUsedCount = core.getFlag('itemsUsedCount', {});
-				core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
+
+				if (type === 'all') { // 显示物品累计使用的次数，将作为排序依据
+					core.fillText(ctx, "累计使用", 20, 113, 'crimson', '14px Verdana');
+					const itemsUsedCount = core.getFlag('itemsUsedCount', {});
+					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
+				}
+
 				const itemText = item.text + ((type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
 				core.drawTextContent(ctx, itemText, {
 					left: 20, top: 125, bold: false, color: "black",
@@ -2882,14 +2994,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				super('toolBox');
 				/** @type {'all'|'equips'} */
 				this.type = type;
+				/** @type {'all'|'tools'|'constants'} 物品栏模式下显示哪个子菜单 */
+				this.subType = 'all';
 
-				/** @type {number} 左侧物品栏左边的位置 */
+				/** @type {number} */
 				this.x = x;
-				/** @type {number} 左侧物品栏顶部的位置，每次refreshItemList时将刷新 */
+				/** @type {number} */
 				this.y = y;
-				/** @type {number} 左侧物品栏的宽度 */
+				/** @type {number} */
 				this.w = w;
-				/** @type {number} 左侧物品栏的高度 */
+				/** @type {number} */
 				this.h = h;
 				/** @type {number} 单个物品占据的列宽 */
 				this.oneItemHeight = 30;
@@ -2902,6 +3016,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.index = 0;
 				/** @type {string} 当前选中的物品Id 有可能不存在，每次调用都要检验*/
 				this.itemId = '';
+				/** 各个子页面当前选中的位置，用于在切换后显示原位置 */
+				this.cache = {
+					all: { page: 0, index: 0 },
+					tools: { page: 0, index: 0 },
+					constants: { page: 0, index: 0 }
+				}
 
 				/** @type {string[]} 所有应当显示的物品的列表*/
 				this.allItemList = [];
@@ -2920,30 +3040,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const currIndex = Math.floor(py / this.oneItemHeight);
 					if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
 					if (this.index === currIndex) {
-						if (this.type === 'all') {
-							if (!core.canUseItem(this.itemId)) {
-								core.drawFailTip("当前无法使用" + core.material.items[this.itemId].name, this.itemId);
-								return;
-							}
-							clearAll();
-							setTimeout(() => {
-								core.unlockControl();
-								core.tryUseItem(this.itemId);
-							}, 0);
-						}
-						else {
-							if (!core.canEquip(this.itemId, true)) return;
-							core.loadEquip(this.itemId);
-							core.status.route.push("equip:" + this.itemId);
-							redraw();
-						}
+						this.useItem(this.itemId);
 					}
 					else {
-						this.index = currIndex;
-						this.itemId = this.currItemList[this.index];
-						itemId = this.itemId;
-						selectType = 'toolBox';
-						equipTable.index = -1;
+						this.select(currIndex);
 						redraw();
 					}
 				}
@@ -2955,11 +3055,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const currIndex = Math.floor(py / this.oneItemHeight);
 						if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
 						if (this.index !== currIndex) {
-							this.index = currIndex;
-							this.itemId = this.currItemList[this.index];
-							itemId = this.itemId;
-							selectType = 'toolBox';
-							equipTable.index = -1;
+							this.select(currIndex);
 							redraw();
 						}
 					}
@@ -2969,7 +3065,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			/*** 每次显示/隐藏道具时，翻页时，及切换道具/装备栏时调用 */
 			refreshItemList() {
-				this.allItemList = core.getToolboxItems(this.type, core.hasFlag('showHideItem'));
+				this.allItemList = core.getToolboxItems((this.type === 'all') ? this.subType : this.type, core.hasFlag('showHideItem'));
 				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
 				this.itemId = this.currItemList[this.index];
 				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap) - 1;
@@ -3017,14 +3113,23 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setAlpha(ctx, 1);
 			}
 
+			/** 选中当前itemList下的指定位置 */ 
+			select(index) {
+				selectType = 'toolBox';
+				equipTable.index = -1;
+				this.index = index;
+				const currItemId = this.currItemList[index];
+				this.itemId = currItemId;
+				if (core.material.items[currItemId]) itemId = currItemId;
+			}
+
 			pgUp() {
 				if (this.page < this.pageMax) {
 					this.page++;
 					this.refreshItemList();
-					if (this.index > this.currItemList.length) this.index = 0;
-					const currItemId = this.currItemList[this.index];
-					if (core.material.items[currItemId]) itemId = currItemId;
-					redraw();
+					let newIndex = this.index;
+					if (newIndex >= this.currItemList.length) newIndex = 0;
+					this.select(newIndex);
 				}
 			}
 
@@ -3032,15 +3137,34 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (this.page > 0) {
 					this.page--;
 					this.refreshItemList();
-					const currItemId = this.currItemList[this.index];
-					if (core.material.items[currItemId]) itemId = currItemId;
-					redraw();
+					this.select(this.index);
 				}
 			}
 
 			clear() {
 				core.clearUIEventSelector(1);
 				super.clear();
+			}
+			/** @param {string} itemId */
+			useItem(itemId) {
+				if (this.type === 'all') {
+					if (!core.canUseItem(itemId)) {
+						core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
+						return;
+					}
+					clearAll();
+					setTimeout(() => {
+						core.unlockControl();
+						core.tryUseItem(itemId);
+					}, 0);
+				}
+				else {
+					if (!core.canEquip(itemId, true)) return;
+					core.loadEquip(itemId);
+					this.refreshItemList(); // 穿上装备会导致道具数量变化
+					core.status.route.push("equip:" + itemId);
+					redraw();
+				}
 			}
 		}
 		// #endregion
@@ -3098,20 +3222,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		let selectType = '';
 		/** 当前选中的物品id */
 		let itemId = '';
-		/** @type {ToolBox} */let toolList;
-		/** @type {ToolBox} */let equipList;
+		/** @type {ToolBox} 左侧物品栏（显示装备） */let toolList;
+		/** @type {ToolBox} 左侧物品栏（显示永久、消耗）*/let equipList;
 
-		/** @type {ItemBoxBack} */ let back;
-		/** @type {ToolBox} */let itemBoard;
-		/** @type {EquipBox} */let equipTable;
-		/** @type {ItemInfoBox} */let infoBoard; 
+		/** @type {ItemBoxBack} 背景 */ let back;
+		/** @type {ToolBox} 左侧物品栏 */let itemBoard;
+		/** @type {EquipBox} 装备切换面板 */let equipTable;
+		/** @type {ItemInfoBox} 右侧物品详细信息面板 */let infoBoard; 
 
 		/** @param {'all'|'equips'} currType  */
 		function drawItemBox(currType) {
 			core.lockControl();
 			
 			type = currType;
-			if (!back) back = new ItemBoxBack(type);
+			if (!back) back = new ItemBoxBack();
 
 			// 切换道具栏和装备栏的按钮 @todo
 			const switchModeBtn = new IconBtn(385, 5, 24, 24, (type === 'all') ? 'toolbox' : 'equipbox',
@@ -3135,8 +3259,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				itemId = itemBoard.itemId;
 				redraw(true);
 			}.bind(switchModeBtn);
+			// 背景上的按钮不需要随着itemId切换
 			const exitBtn = new ExitBtn(385, 385, 24, 24);
-			back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn]]); // 背景上的按钮不需要随着itemId切换
+			const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
+				toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
+				constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
+			back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
+			['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]); 
 
 			if (!equipTable) equipTable = new EquipBox(7, 10, 240, 120);
 			if (!infoBoard) infoBoard = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
@@ -3148,8 +3277,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			[toolList, equipList].forEach((list) => {
 				const dy = (list === toolList) ? 0 : -4 * list.oneItemHeight;
 				const [pgDown, pgUp] = [new ArrowBtn(5, 335 + dy, 20, 20, 'left'), new ArrowBtn(200, 335 + dy, 20, 20, 'right')];
-				pgDown.event = () => list.pgDown();
-				pgUp.event = () => list.pgUp();
+				pgDown.event = () => { list.pgDown(); redraw(); }
+				pgUp.event = () => { list.pgUp(); redraw(); }
 				list.initBtnList([['pgDownBtn', pgDown], ['pgUpBtn', pgUp]]);
 			})
 
@@ -3924,7 +4053,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['setHotKey', new Setting(
 				() => '',
 				function (num) {
-					core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', null, (value) => {
+					core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (value) => {
 						const itemInfo = core.material.items;
 						if (itemInfo) {
 							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
@@ -4029,7 +4158,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						'金币': 'money', '金钱': 'money', '钱': 'money', '经验': 'exp',
 						'魔力': 'mana', '魔': 'mana', '蓝': 'mana',
 					}
-					core.utils.myprompt('输入要修改的属性名称', null, (value) => {
+					core.utils.myprompt('输入要修改的属性名称', '', (value) => {
 						const heroStatus = core.status.hero;
 						if (dictionary.hasOwnProperty(value)) {
 							value = dictionary[value];
@@ -4057,8 +4186,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					else return value;
 				},
 				function () {
-					core.utils.myprompt('输入要修改到的值', null, (value) => {
-						value = parseInt(value);
+					core.utils.myprompt('输入要修改到的值', null, (input) => {
+						const value = parseInt(input);
 						if (!Number.isNaN(value)) {
 							core.setFlag('debug_statusValue', value);
 							this.menu.drawContent();
@@ -4126,8 +4255,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				() => core.getFlag('debug_itemValue', '??'),
 				function () {
 					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改到的值', null, (value) => {
-						value = parseInt(value);
+					core.utils.myprompt('输入要修改到的值', null, (input) => {
+						const value = parseInt(input);
 						if (!Number.isNaN(value)) {
 							core.setFlag('debug_itemValue', value);
 							this.menu.drawContent();

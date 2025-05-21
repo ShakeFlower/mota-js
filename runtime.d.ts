@@ -1435,6 +1435,16 @@ interface actions {
     _getClickLoc(x: number, y: number): { x: number, y: number, size: number }
     _clickSwitchs_action_moveSpeed(delta: number): void
     _clickSwitchs_action_floorChangeTime(delta: number): void
+    _clickSwitchs_display_setSize(delta: number): void
+    /** 高清画面开关 */_clickSwitchs_display_enableHDCanvas(): void
+    /** 定点怪显开关 */_clickSwitchs_display_enableEnemyPoint(): void
+    /** 怪物显伤开关 */_clickSwitchs_display_enemyDamage(): void
+    /** 临界显示开关 */_clickSwitchs_display_critical(): void
+    /** 领域显示开关 */_clickSwitchs_display_extraDamage(): void
+    /** 领域显示模式开关 */_clickSwitchs_display_extraDamageType(): void
+    /** 音乐开关 */_clickSwitchs_sounds_bgm(): void
+    /** 音效开关 */_clickSwitchs_sounds_se(): void
+    /** 音量调节开关 */_clickSwitchs_sounds_userVolume(delta: number): void
 
     /**
      * 此函数将注册一个用户交互行为。
@@ -2991,7 +3001,7 @@ interface utils {
      * @param callback 确认时的回调
      * @param failCallback 取消时的回调，不填则默认与确认时的回调相同
      */
-    myprompt(hint: string, value: string, callback?: (data?: string) => any, failCallback?: (data?: string) => any): void
+    myprompt(hint: string, value?: string | null, callback?: (data: string) => any, failCallback?: (data: string) => any): void
 
     /** 动画显示某对象 */
     showWithAnimate(obj?: any, speed?: number, callback?: () => any): void
@@ -3050,7 +3060,7 @@ interface plugin {
 
 type CoreMixin = {
     firstData: { [x: string]: any }
-    /** 全塔属性开关 */flags: { [flagName: string]: boolean }
+    /** 全塔属性开关 */flags: { [flagName: string]: boolean | number}
     /** 全局数值 */values:
     {
         /** 全局帧动画时间 */animateSpeed: number;
@@ -3170,6 +3180,7 @@ type CoreMixin = {
         /** 音量 */volume: number
         /** 缓存BGM内容 */cachedBgms: string[]
         /** 缓存的bgm数量 */cachedBgmCount: number
+        /** 用户调节的音量 */userVolume: number
     }
     readonly platform: {
         /** 是否http */isOnline: boolean
