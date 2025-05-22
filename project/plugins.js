@@ -1978,33 +1978,29 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * 判断一个点是否能遍历
 		 */
 		function judge(block, nx, ny, tx, ty, dir, floorId, autoBattle, autoGet) {
-			if (!has(block)) return {};
+			if (!has(block)) { // 说明什么都没有，没事件也没图块
+				return { type: "none", canGoThrough: true };
+			}
 			const cls = block.event.cls;
 			const loc = `${tx},${ty}`;
 			const floor = core.floors[floorId];
 			const changeFloor = floor.changeFloor[loc];
 			const isEnemy = autoBattle && cls.startsWith('enemy'),
 				isItem = autoGet && cls === 'items';
-
+			// 因为没有判定往来图块的通行性，这里宁可严格一点，非空地(block.id === 0)一律不给穿
 			if (has(changeFloor)) {
-				if (!core.noPass(tx, ty, floorId) && !core.canMoveHero(nx, ny, dir)) {
-					return false;
+				if ((changeFloor.ignoreChangeFloor ?? core.flags.ignoreChangeFloor) && block.id === 0) {
+					return { type: "unknown", canGoThrough: true };
 				}
-				if (changeFloor.ignoreChangeFloor ?? core.flags.ignoreChangeFloor) {
-					return true;
-				}
-				return false;
+				return { type: "unknown", canGoThrough: false };
 			}
 
-			if (has(core.floors[floorId].events[loc])) return false;
+			if (has(core.floors[floorId].events[loc])) return { type: "unknown", canGoThrough: false };
 
-			if (isEnemy || isItem)
-				return {
-					isEnemy,
-					isItem,
-				};
+			if (isEnemy) return { type: "enemy", canGoThrough: true };
+			if (isItem) return { type: "item", canGoThrough: true };
 
-			return false;
+			return { type: "unknown", canGoThrough: false };
 		}
 
 		/**
@@ -2097,21 +2093,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					const loc = `${tx},${ty}`;
 					if (mapped[loc]) return;
-					if (core.onSki(bgMap[ty][tx])) return; // 寻路不允许穿过滑冰
 					const block = objs[loc];
 					mapped[loc] = true;
-					const type = judge(block, nx, ny, tx, ty, v[0], floorId, autoBattle, autoGet);
-					if (type === false) return;
-					const { isEnemy, isItem } = type;
+					if (core.onSki(bgMap[ty][tx])) return; // bfs不允许穿过滑冰
+					const { type, canGoThrough } = judge(block, nx, ny, tx, ty, v[0], floorId, autoBattle, autoGet);
+					if (!canGoThrough) return;
 
-					if (isEnemy) {
+					if (type === 'enemy') {
 						if (canBattle(block.event.id, tx, ty) && !block.disable) {
 							core.battle(block.event.id, tx, ty);
 							core.updateCheckBlock();
 						} else {
 							return;
 						}
-					} else if (isItem) {
+					} else if (type === 'item') {
 						const item = core.material.items[block.event.id];
 						if (canGetItem(item, loc, floorId)) {
 							core.getItem(item.id, 1, tx, ty);
@@ -2164,6 +2159,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const loc = `${x},${y}`;
 			const hasEvent = has(floor.events[loc]);
 			if (hasEvent) return; // 如果有事件，直接不清了
+			const block = core.getBlock(x,y);
+			if (block != null && block.event.cls !== 'items') return; // 角色站的位置为空地和物品以外的图块，不清（例如箭头，可能无法返回）
+			
 			let deep = Infinity;
 			if (hasBlockDamage(loc)) {
 				deep = core.flags.enableGentleClick ? 1 : 0; // 角色站的位置有地图伤害时，仍然允许轻点附近1格
@@ -2422,7 +2420,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		const oriClosePanel = core.ui.closePanel;
 		core.ui.closePanel = function () {
-			oriClosePanel.apply(core.ui, []);
+			oriClosePanel.apply(core.ui, [arguments]);
 			clearAll();
 		}
 
@@ -2528,7 +2526,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const oriStartReplay = core.control.startReplay; // 进入播放录像模式时清空道具栏选中目标的缓存
 		core.control.startReplay = function (list) {
 			clearItemBoxCache();
-			oriStartReplay.apply(core.control, list);
+			oriStartReplay.apply(core.control, [list, ...arguments]);
 		}
 
 		// 复写items._afterUseItem

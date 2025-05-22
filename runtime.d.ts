@@ -3042,6 +3042,12 @@ interface icons {
 interface plugin {
     // aniMap: Map<any, Function>
 
+    /** 高级动画相关的类 */
+    animate: {
+        Animation: any, AnimationBase: any, Ticker: any, Transition: any, bezier: any, bezierPath: any, circle: any,
+        hyper: any, inverseTrigo: any, linear: any, power: any, shake: any, sleep: any, trigo: any,
+    } & {}
+
     /** 打开一个道具商店 */
     openItemShop: (itemShopId: string) => void
     /** 某个全局商店是否被访问过 */
