@@ -2411,21 +2411,124 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		let __enable = true;
 		if (!__enable) return;
 
-		// @todo 添加按键监听
-		// @todo 自定义快捷键
+		/** @todo 在本界面可自定义物品快捷键，待后续完善 */ 
 		// #region 复写
-		// 本插件全部使用自定义的布局和监听事件
-		// 函数core.events._checkStatus('toolbox', fromUserAction)会导致core.status.event.id被修改，从而触发actions中的样板自带系统监听事件。
-		// 不知道怎么处理，所以暂时不作相应检查，直接画，出了问题再说。
-		// 复写events.openToolbox
-		core.events.openToolbox = function (fromUserAction) {
-			if (core.isReplaying()) return;
-			drawItemBox('all');
+
+		core.ui._drawToolbox = function () { drawItemBox('all'); }.bind(core.ui);
+		core.ui._drawEquipbox = function () { drawItemBox('equips'); }.bind(core.ui);
+		core.actions._keyDownToolbox = function (keyCode) { return true; }.bind(core.actions);
+		core.actions._keyUpToolbox = function (keyCode) { return true; }.bind(core.actions);
+		core.actions._clickToolbox = function (x, y, px, py) { return true; }.bind(core.actions);
+
+		const oriClosePanel = core.ui.closePanel;
+		core.ui.closePanel = function () {
+			oriClosePanel.apply(core.ui, []);
+			clearAll();
 		}
-		// 复写events.openEquipbox
-		core.events.openEquipbox = function (fromUserAction) {
-			if (core.isReplaying()) return;
-			drawItemBox('equips');
+
+		core.control._replayAction_item = function (action) {
+			if (action.indexOf("item:") != 0) return false;
+			const itemId = action.substring(5);
+			if (!core.canUseItem(itemId)) return false;
+			if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
+				core.useItem(itemId, false, core.replay);
+				return true;
+			};
+			core.ui._drawToolbox(0);
+			const totalIndex = itemBoard.allItemList.indexOf(itemId);
+			const page = Math.max(Math.ceil(totalIndex / itemBoard.pageCap) - 1, 0);
+			const currIndex = totalIndex - page * itemBoard.pageCap;
+			itemBoard.page = page;
+			itemBoard.select(currIndex);
+			redraw();
+			setTimeout(function () {
+				core.ui.closePanel();
+				core.useItem(itemId, false, core.replay);
+			}, core.control.__replay_getTimeout());
+			return true;
+		}
+
+		core.control._replayAction_equip = function (action) {
+			if (action.indexOf("equip:") != 0) return false;
+			const equipId = action.substring(6);
+			if (!core.hasItem(equipId)) {
+				core.removeFlag('__doNotCheckAutoEvents__');
+				return false;
+			}
+
+			const callbackFunc = function () {
+				const next = core.status.replay.toReplay[0] || "";
+				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+					core.removeFlag('__doNotCheckAutoEvents__');
+					core.checkAutoEvents();
+				}
+				core.replay();
+			}
+			core.setFlag('__doNotCheckAutoEvents__', true);
+
+			core.status.route.push(action);
+			if (core.material.items[equipId].hideInReplay || core.status.replay.speed == 24) {
+				core.loadEquip(equipId, callbackFunc);
+				return true;
+			}
+			core.ui._drawEquipbox(0);
+			const totalIndex = itemBoard.allItemList.indexOf(itemId);
+			const page = Math.max(Math.ceil(totalIndex / itemBoard.pageCap) - 1, 0);
+			const currIndex = totalIndex - page * itemBoard.pageCap;
+			itemBoard.page = page;
+			itemBoard.select(currIndex);
+			redraw();
+			setTimeout(function () {
+				core.ui.closePanel();
+				core.loadEquip(equipId, callbackFunc);
+			}, core.control.__replay_getTimeout());
+			return true;
+		}
+
+		core.control._replayAction_unEquip = function (action) {
+			if (action.indexOf("unEquip:") != 0) return false;
+			const equipType = parseInt(action.substring(8));
+			if (!core.isset(equipType)) {
+				core.removeFlag('__doNotCheckAutoEvents__');
+				return false;
+			}
+
+			const callback = function () {
+				redraw();
+				core.ui.closePanel();
+				const next = core.status.replay.toReplay[0] || "";
+				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+					core.removeFlag('__doNotCheckAutoEvents__');
+					core.checkAutoEvents();
+				}
+				core.replay();
+			}
+			core.setFlag('__doNotCheckAutoEvents__', true);
+
+			core.status.route.push(action);
+			if (core.status.replay.speed == 24) {
+				core.unloadEquip(equipType, callback);
+				return true;
+			}
+			const page = Math.max(Math.ceil(equipType / equipBoard.pageCap) - 1, 0);
+			const currIndex = equipType - page * equipBoard.pageCap;
+			equipBoard.page = page;
+			equipBoard.select(currIndex);
+			core.ui._drawEquipbox(0);
+			setTimeout(function () {
+				core.unloadEquip(equipType, callback);
+			}, core.control.__replay_getTimeout());
+			return true;
+		}
+		core.registerReplayAction("item", core.control._replayAction_item);
+		core.registerReplayAction("equip", core.control._replayAction_equip);
+		core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
+
+		// 复写control.startReplay
+		const oriStartReplay = core.control.startReplay; // 进入播放录像模式时清空道具栏选中目标的缓存
+		core.control.startReplay = function (list) {
+			clearItemBoxCache();
+			oriStartReplay.apply(core.control, list);
 		}
 
 		// 复写items._afterUseItem
@@ -2442,7 +2545,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 复写ui.getToolboxItems
 		// flag:markedItems string[] 在道具栏中置顶的道具的列表
 		// flag:hideInfo {[itemId:string]:boolean} 手动选择了显示/隐藏的道具的列表
-
 		core.ui.getToolboxItems = function (cls, showHide, sortFunc) {
 			const markedItems = core.getFlag('markedItems', []);
 			const itemsUsedCount = core.getFlag('itemsUsedCount', {});
@@ -2487,7 +2589,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 				/** @type {MenuBase} 所在的Menu，用于触发重绘等事件 */
 				this.menu;
-				/** @type {string} 所在的Menu的画布名称 */this.ctx = '';
+				/** @type {string} 所在的Menu的画布名称 */
+				this.ctx = '';
 
 				this.draw = (ctx) => { };
 				this.event = (x, y, px, py) => { };
@@ -2497,9 +2600,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class MenuBase {
 			constructor(name) {
 				this.name = name;
-				/** @type {Map<any, ButtonBase>} */this.btnList = new Map();
-				this.keyEvent = () => { };
-				this.onMoveEvent = undefined;
+				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
+				this.btnList = new Map();
+
+				/** @type {((x:number,y:number,px:number,py:number)=>void)} 屏幕被按下时触发的事件 */
 				this.clickEvent = (x, y, px, py) => {
 					this.btnList.forEach((btn) => {
 						if (btn.disable) return;
@@ -2508,8 +2612,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 					});
 				}
+				/** @type {((keycode:number)=>void) | undefined} 按键被按下时触发的事件 */
+				this.keyEvent = undefined;
+				/** @type {((keycode:number,altkey?:boolean,fromReplay?:boolean)=>void) | undefined} 按键被放开时触发的事件 */
+				this.keyUpEvent = undefined;
+				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 屏幕被鼠标滑动或手指拖动时触发的事件 */
+				this.onMoveEvent = undefined;
+				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 当屏幕被鼠标或手指放开时触发的事件 */
+				this.onUpEvent = undefined;
+				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
+				this.onMouseWheelEvent = undefined;
+				
 			}
-
+			/** @param {[any, ButtonBase][]} arr */
 			initBtnList(arr) {
 				this.btnList = new Map(arr);
 				this.btnList.forEach((button) => {
@@ -2529,15 +2644,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			beginListen() {
-				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
-				core.registerAction('keyDown', this.name, this.keyEvent, 100);
 				core.registerAction('ondown', this.name, this.clickEvent, 100);
+				if (this.keyEvent) core.registerAction('keyDown', this.name, this.keyEvent, 100);
+				if (this.keyUpEvent) core.registerAction('keyUp', this.name, this.keyUpEvent, 100);
+				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
+				if (this.onUpEvent) core.registerAction('onup', this.name, this.onUpEvent, 100);
+				if (core.platform.isPC && this.onMouseWheelEvent) core.registerAction('onmousewheel', this.name, this.onMouseWheelEvent, 100);
 			}
 
 			endListen() {
-				core.unregisterAction('onmove', this.name);
-				core.unregisterAction('keyDown', this.name);
 				core.unregisterAction('ondown', this.name);
+				core.unregisterAction('keyDown', this.name);
+				core.unregisterAction('keyUp', this.name);
+				core.unregisterAction('onmove', this.name);
+				core.unregisterAction('onup', this.name);
+				core.unregisterAction('onmousewheel', this.name);
 			}
 
 			clear() {
@@ -2659,35 +2780,48 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor(x, y, w, h, icon, config) {
 				super(x, y, w, h);
 				this.icon = icon;
-				const { strokeStyle = 'black', fillStyle = 'white' } = config;
-				this.strokeStyle = strokeStyle;
-				this.fillStyle = fillStyle;
+				const { strokeStyle = 'black', fillStyle = 'white' } = config || {};
 				this.draw = () => {
 					const ctx = this.ctx;
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, this.strokeStyle);
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, this.fillStyle);
-					core.drawIcon(ctx, icon, this.x, this.y, this.w, this.h);
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, strokeStyle);
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, fillStyle);
+					core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
 				};
 				this.event = () => { };
 			}
 		}
 
+		class SwitchBtn extends IconBtn {
+			constructor(x, y, w, h, config) {
+				super(x, y, w, h, '', config);
+				const oriDraw = this.draw;
+				this.draw = () => {
+					this.icon = (type === 'all') ? 'toolbox' : 'equipbox';
+					oriDraw();
+				}
+				this.event = () => {
+					switchType();
+					redraw(true);
+				}
+			}
+		}
+
 		class ArrowBtn extends ButtonBase {
-			constructor(x, y, w, h, dir) {
+			constructor(x, y, w, h, dir, config) {
 				super(x, y, w, h);
-				this.alpha = 1;
+				const { marginLeft = 6, marginTop = 5, marginRight = 4,
+					backStyle = 'gray', arrowStyle = 'black'
+				} = config || {};
 				/** @type {'left'|'right'} */this.dir = dir;
 				this.draw = () => {
 					const ctx = this.ctx;
-					if (this.alpha < 1) core.setAlpha(ctx, this.alpha);
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, 'gray');
-					const [marginLeft, marginTop, marginRight] = [6, 5, 4];
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, backStyle);
 					if (this.dir === 'left')
 						core.fillPolygon(ctx, [[this.x + this.w - marginLeft, this.y + marginTop], [this.x + this.w - marginLeft, this.y + this.h - marginTop],
-						[this.x + marginRight, this.y + this.h / 2]], 'black');
+						[this.x + marginRight, this.y + this.h / 2]], arrowStyle);
 					else if (this.dir === 'right')
 						core.fillPolygon(ctx, [[this.x + marginLeft, this.y + marginTop], [this.x + marginLeft, this.y + this.h - marginTop],
-						[this.x + this.w - marginRight, this.y + this.h / 2]], 'black');
+						[this.x + this.w - marginRight, this.y + this.h / 2]], arrowStyle);
 					core.setAlpha(ctx, 1);
 				};
 				this.event = (x, y, px, py) => { }
@@ -2706,7 +2840,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.drawLine(ctx, x + 5, y + h - 5, x + w - 5, y + 5, 'white', 3);
 				}
 				this.event = () => {
-					clearAll();
+					exit();
 				}
 			}
 		}
@@ -2718,28 +2852,34 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor() {
 				super('itemBoxBase'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
 				this.keyEvent = (keyCode) => {
-					if ([37, 38, 39, 40].includes(keyCode) && selectType === '') { // 未选中的情况下按方向s键先选择物品栏第一格
-						selectType = 'toolBox';
-						itemBoard.index = 0;
+					if ([37, 38, 39, 40].includes(keyCode) && selectType === '') { // 未选中的情况下按方向键先选择物品栏第一格
+						itemBoard.select(0);
+						redraw();
 						return;
 					}
 					if (keyCode === 37) { // left	
 						if (selectType === 'toolBox') itemBoard.pgDown();
-						else if (selectType === 'equipBox') equipTable.pgDown();
+						else if (selectType === 'equipBox') equipBoard.pgDown();
 						redraw();
 					}
-					if (keyCode === 39) { // right		
+					else if (keyCode === 39) { // right		
 						if (selectType === 'toolBox') itemBoard.pgUp();
-						else if (selectType === 'equipBox') equipTable.pgUp();
+						else if (selectType === 'equipBox') equipBoard.pgUp();
 						redraw();
 					}
-					if (keyCode === 38) { // up
+					else if (keyCode === 38) { // up
 						if (selectType === 'toolBox') {
 							if (itemBoard.index === 0) {
-								let newIndex = Math.min(equipTable.pageCap - 1,
-									core.status.globalAttribute.equipName.length - equipTable.page * equipTable.pageCap);
-								equipTable.select(newIndex);
-								redraw();
+								if (type === 'equips') { // 在仅物品栏模式下点上键到顶，切换到上一页，否则会切换到装备栏
+									let newIndex = Math.min(equipBoard.pageCap - 1,
+										core.status.globalAttribute.equipName.length - equipBoard.page * equipBoard.pageCap);
+									equipBoard.select(newIndex);
+									redraw();
+								}
+								else {
+									itemBoard.pgDown(); // 向上到顶将翻到上一页
+									redraw();
+								}
 							}
 							else {
 								itemBoard.select(itemBoard.index - 1);
@@ -2747,22 +2887,65 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							}
 						}
 						else if (selectType === 'equipBox') {
-							if (equipTable.index >= equipTable.rowMax) {
-								equipTable.index -= equipTable.rowMax;
+							if (equipBoard.index >= equipBoard.rowMax) {
+								equipBoard.index -= equipBoard.rowMax;
 								redraw();
 							}
 						}
 					}
-					if (keyCode === 40) { // down
+					else if (keyCode === 40) { // down
 						if (selectType === 'toolBox') {
-							if (itemBoard.index >= itemBoard.currItemList.length - 1) { }
-							else {
+							if (itemBoard.index < itemBoard.currItemList.length - 1) {
 								itemBoard.select(itemBoard.index + 1);
+								redraw();
+							}
+							else {
+								itemBoard.pgUp(); // 向下到底将翻到下一页
 								redraw();
 							}
 						}
 						else if (selectType === 'equipBox') {
-							let newIndex = equipTable.index + 1;
+							let newIndex = equipBoard.index + equipBoard.rowMax;
+							const newTotalIndex = equipBoard.page * equipBoard.pageCap + newIndex;
+							if (newTotalIndex < core.status.globalAttribute.equipName.length) {
+								equipBoard.select(newIndex);
+							}
+							else {
+								itemBoard.select(0);
+							}
+							redraw();
+						}
+					}
+					else if (keyCode === 8 || keyCode === 27 || keyCode === 81) { // Q/Esc/BackSpace
+						exit();
+					}
+					else if (keyCode === 13 || keyCode === 32 || keyCode === 67) { // Enter/SpaceBar/C
+						if (selectType === "toolBox") {
+							if (core.material.items[itemId]) itemBoard.useItem(itemId);
+						}
+						else if (selectType === "equipBox") {
+							equipBoard.unEquip();
+							redraw();
+						}
+						else {
+							itemBoard.select(0);
+							redraw();
+						}
+					}
+				};
+				this.keyUpEvent = (keyCode) => {
+					if (keyCode === 81) { // Q
+						if (type === "equips") exit();
+						else {
+							switchType();
+							redraw(true);
+						}
+					}
+					else if (keyCode === 84) { // T
+						if (type === "all") exit();
+						else {
+							switchType();
+							redraw(true);
 						}
 					}
 				}
@@ -2791,6 +2974,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.columnMax = 4;
 				this.rowMax = 2;
 				this.pageCap = this.columnMax * this.rowMax;
+				this.pageMax = Math.ceil(core.status.globalAttribute.equipName.length / this.pageCap);
+				this.currPageCap = Math.min(core.status.globalAttribute.equipName.length, this.pageCap);
 				
 				/** 选中了当前页面上的第几个装备格*/ this.index = 0; 
 				// 尺寸
@@ -2800,25 +2985,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.h = h;
 				/** @type {{x:number,y:number,index:number}[]} */
 				this.equipPosList = [];
+				const oriClickEvent = this.clickEvent;
 				this.clickEvent = (x, y, px, py) => {
 					px -= this.x;
 					py -= this.y;
 					if (px < 0 || px > this.w || py < 0 || py > this.h) return;
+					oriClickEvent(x, y, px, py);
 					for (let i = 0, l = this.equipPosList.length; i < l; i++) {
 						const { x, y, index } = this.equipPosList[i];
 						if (px > x && px < x + 32 && py > y && py < y + 32) {
-							let needRedraw = this.index !== index || selectType !== 'equipBox';
 							if (this.index === index) {
-								if (core.status.hero.equipment[index])
-									core.unloadEquip(index, () => {
-										core.status.route.push("unEquip:" + index);
-									});
-								itemId = '';
+								this.unEquip();
 							}
 							else {
 								this.select(index);
 							}
-							if (needRedraw) redraw();
+							redraw();
 						}
 					}
 				};
@@ -2839,13 +3021,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 
-			getCurrPageCap() {
-				const equipNameCount = core.status.globalAttribute.equipName.length;
-				return Math.min(equipNameCount - this.page * this.pageCap, this.pageCap);
-			}
-
 			drawContent() {
 				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 131);
+
+				if (this.pageMax > 1) {
+					core.setTextAlign(ctx, "center");
+					core.setTextBaseline(ctx, "alphabetic");
+					core.fillText(ctx, this.page + 1 + '/' + this.pageMax, this.w / 2, this.h - 2, 'white', '12px Verdana');
+				}
 
 				const equipNameList = core.status.globalAttribute.equipName;
 				const columnCount = Math.min(equipNameList.length, this.columnMax),
@@ -2854,14 +3037,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
 					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
 				let [x, y] = [spaceX, spaceY];
-				for (let i = 0; i < this.pageCap; i++) {
+				for (let i = 0; i < this.currPageCap; i++) {
 					const currEquipIndex = this.page * this.pageCap + i;
 					if (currEquipIndex >= equipNameList.length) break;
 
 					const currBoxName = equipNameList[currEquipIndex];
 					const currEquipId = core.getEquip(currEquipIndex);
 					const borderStyle = (i === this.index) ? 'gold' : 'white';
-					this.equipPosList.push({ x, y, index: currEquipIndex });
+					this.equipPosList.push({ x, y, index: i });
 					this.drawEquipbox_drawOne(ctx, currBoxName, currEquipId, x, y, borderStyle);
 					if ((i + 1) % this.columnMax === 0) {
 						x = spaceX;
@@ -2869,6 +3052,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					else x += spaceX + boxWidth;
 				}
+
+				const [pgDownBtn, pgUpBtn] = [this.btnList.get('pgDownBtn'), this.btnList.get('pgUpBtn')];
+				if (pgDownBtn) pgDownBtn.disable = !this.canPgDown();
+				if (pgUpBtn) pgUpBtn.disable = !this.canPgUp();
+
+				super.drawContent();
 			}
 
 			drawEquipbox_drawOne(ctx, text, equipId, x, y, color) {
@@ -2895,21 +3084,40 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (core.material.items[currEquipId]) itemId = currEquipId;
 			}
 
+			unEquip() {
+				const index = this.index;
+				if (core.status.hero.equipment[index])
+					core.unloadEquip(index, () => {
+						core.status.route.push("unEquip:" + index);
+					});
+				itemBoard.refreshItemList();
+				itemId = '';
+			}
+
+			canPgDown(){
+				return this.page > 0;
+			}
+
+			canPgUp() {
+				return this.page < this.pageMax - 1;
+			}
+
 			pgUp() {
-				const equipNameList = core.status.globalAttribute.equipName;
-				const pageMax = Math.ceil(equipNameList.length / this.pageCap);
-				if (this.page < pageMax) {
+				if (this.canPgUp()) {
 					this.page++;
 					let newIndex = this.index;
-					const currEquipIndex = this.page * this.pageCap + newIndex;
-					if (currEquipIndex >= equipNameList.length) newIndex = 0;
+					if (this.page >= this.pageMax - 1) {
+						this.currPageCap = core.status.globalAttribute.equipName.length - this.page * this.pageCap;
+					}
+					if (newIndex >= this.currPageCap) newIndex = 0;
 					this.select(newIndex);
 				}
 			}
 
 			pgDown() {
-				if (this.page > 0) {
+				if (this.canPgDown()) {
 					this.page--;
+					this.currPageCap = Math.min(core.status.globalAttribute.equipName.length, this.pageCap);
 					this.select(this.index);
 				}
 			}
@@ -3028,7 +3236,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				/** @type {string[]} 当前画面上显示的物品列表*/
 				this.currItemList = [];
 				/** @type {number} 当前物品栏的最大页数 */
-				this.pageMax = 0;
+				this.pageMax = 1;
 				this.refreshItemList();
 
 				const oriClickEvent = this.clickEvent;
@@ -3044,7 +3252,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					else {
 						this.select(currIndex);
-						redraw();
 					}
 				}
 				if (core.platform.isPC) {
@@ -3060,16 +3267,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 					}
 				}
-			}
-
+			}   
 
 			/*** 每次显示/隐藏道具时，翻页时，及切换道具/装备栏时调用 */
 			refreshItemList() {
 				this.allItemList = core.getToolboxItems((this.type === 'all') ? this.subType : this.type, core.hasFlag('showHideItem'));
 				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
 				this.itemId = this.currItemList[this.index];
-				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap) - 1;
-				if (this.pageMax < 0) this.pageMax = 0;
+				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
+				if (this.pageMax < 1) this.pageMax = 1;
 			}
 
 			drawContent() {
@@ -3083,7 +3289,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				for (let i = 0; i < currPageItems.length; i++) {
 					const currItemId = currPageItems[i];
 					this.drawOneItem(ctx, currItemId, i);
-				}
+				}		
+				core.setTextAlign(ctx, "center");
+				core.setTextBaseline(ctx, "alphabetic");
+				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, this.w / 2, this.h - 4, 'white', '12px Verdana');
 				super.drawContent();
 			}
 
@@ -3116,7 +3325,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/** 选中当前itemList下的指定位置 */ 
 			select(index) {
 				selectType = 'toolBox';
-				equipTable.index = -1;
+				equipBoard.index = -1;
 				this.index = index;
 				const currItemId = this.currItemList[index];
 				this.itemId = currItemId;
@@ -3124,7 +3333,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			pgUp() {
-				if (this.page < this.pageMax) {
+				if (this.page < this.pageMax - 1) {
 					this.page++;
 					this.refreshItemList();
 					let newIndex = this.index;
@@ -3202,19 +3411,51 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function initAll() {
 			[back, itemBoard, infoBoard].forEach((menu) => menu.init());
-			if (type === 'equips') equipTable.init();
+			if (type === 'equips') equipBoard.init();
+		}
+		// 彻底退出界面时调用
+		function clearAll() {
+			[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu) menu.clear(); });
+			core.status.event.id = null;
 		}
 
-		function clearAll() {
-			[back, itemBoard, equipTable, infoBoard].forEach((menu) => menu.clear());
+		function exit() {
+			clearAll();
+			setTimeout(core.unlockControl, 0);
 		}
+
+		function clearItemBoxCache() {
+			selectType = itemId = '';
+			[itemBoard_tool, itemBoard_equip, equipBoard].forEach((menu) => { if (menu) menu.index = 0; });
+		} // 每次存读档，及进行录像回放时调用
+		this.clearItemBoxCache = clearItemBoxCache;
 
 		function redraw(all) {
 			itemBoard.drawContent();
 			infoBoard.drawContent();
-			if (type === 'equips') equipTable.drawContent();
+			if (type === 'equips') equipBoard.drawContent();
 			if (all) back.drawContent();
 		}
+
+		function switchType() {
+			type = (type === 'all') ? 'equips' : 'all';
+			if (type === 'all') {
+				equipBoard.clear();
+				itemBoard.clear();
+				if (!itemBoard_tool) itemBoard_tool = new ToolBox('all');
+				itemBoard = itemBoard_tool;
+				itemBoard.beginListen();
+			}
+			else if (type === 'equips') {
+				equipBoard.init();
+				itemBoard.clear();
+				if (!itemBoard_equip) itemBoard_equip = new ToolBox('equips');
+				itemBoard = itemBoard_equip;
+				itemBoard.beginListen();
+			}
+			itemId = itemBoard.itemId;
+		}
+
 		// 以下是本插件范围内的全局变量
 		/** @type {'all'|'equips'} 当前打开的物品栏类型 */
 		let type = 'all';
@@ -3222,12 +3463,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		let selectType = '';
 		/** 当前选中的物品id */
 		let itemId = '';
-		/** @type {ToolBox} 左侧物品栏（显示装备） */let toolList;
-		/** @type {ToolBox} 左侧物品栏（显示永久、消耗）*/let equipList;
+		/** @type {ToolBox} 左侧物品栏（显示装备） */let itemBoard_tool;
+		/** @type {ToolBox} 左侧物品栏（显示永久、消耗）*/let itemBoard_equip;
 
 		/** @type {ItemBoxBack} 背景 */ let back;
 		/** @type {ToolBox} 左侧物品栏 */let itemBoard;
-		/** @type {EquipBox} 装备切换面板 */let equipTable;
+		/** @type {EquipBox} 装备切换面板 */let equipBoard;
 		/** @type {ItemInfoBox} 右侧物品详细信息面板 */let infoBoard; 
 
 		/** @param {'all'|'equips'} currType  */
@@ -3237,28 +3478,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			type = currType;
 			if (!back) back = new ItemBoxBack();
 
-			// 切换道具栏和装备栏的按钮 @todo
-			const switchModeBtn = new IconBtn(385, 5, 24, 24, (type === 'all') ? 'toolbox' : 'equipbox',
-				{ strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
-			switchModeBtn.event = function () {
-				type = (type === 'all') ? 'equips' : 'all';
-				if (type === 'all') {
-					equipTable.clear();
-					itemBoard.clear();
-					if (!toolList) toolList = new ToolBox('all');
-					itemBoard = toolList;
-					itemBoard.beginListen();
-				}
-				else if (type === 'equips') {
-					equipTable.init();
-					itemBoard.clear();
-					if (!equipList) equipList = new ToolBox('equips');
-					itemBoard = equipList;
-					itemBoard.beginListen();
-				}
-				itemId = itemBoard.itemId;
-				redraw(true);
-			}.bind(switchModeBtn);
+			// 切换道具栏和装备栏的按钮
+			const switchModeBtn = new SwitchBtn(385, 5, 24, 24, { strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
 			// 背景上的按钮不需要随着itemId切换
 			const exitBtn = new ExitBtn(385, 385, 24, 24);
 			const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
@@ -3267,20 +3488,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
 			['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]); 
 
-			if (!equipTable) equipTable = new EquipBox(7, 10, 240, 120);
+			if (!equipBoard) equipBoard = new EquipBox(7, 10, 240, 125);
 			if (!infoBoard) infoBoard = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
 
-			if (!toolList) toolList = new ToolBox('all', 15, 40, 225, 360);
-			if (!equipList) equipList = new ToolBox('equips', 15, 160, 225, 240);
-			itemBoard = (type === 'all') ? toolList : equipList;
+			if (!itemBoard_tool) itemBoard_tool = new ToolBox('all', 15, 40, 225, 360);
+			if (!itemBoard_equip) itemBoard_equip = new ToolBox('equips', 15, 160, 225, 240);
+			itemBoard = (type === 'all') ? itemBoard_tool : itemBoard_equip;
+			itemBoard.refreshItemList();
 
-			[toolList, equipList].forEach((list) => {
-				const dy = (list === toolList) ? 0 : -4 * list.oneItemHeight;
+			[itemBoard_tool, itemBoard_equip].forEach((list) => {
+				const dy = (list === itemBoard_tool) ? 0 : -4 * list.oneItemHeight;
 				const [pgDown, pgUp] = [new ArrowBtn(5, 335 + dy, 20, 20, 'left'), new ArrowBtn(200, 335 + dy, 20, 20, 'right')];
 				pgDown.event = () => { list.pgDown(); redraw(); }
 				pgUp.event = () => { list.pgUp(); redraw(); }
 				list.initBtnList([['pgDownBtn', pgDown], ['pgUpBtn', pgUp]]);
 			})
+			{
+				const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
+				const [pgDown, pgUp] = [new ArrowBtn(0, 56, 14, 14, 'left', config), new ArrowBtn(222, 56, 14, 14, 'right', config)];
+				pgDown.event = () => { equipBoard.pgDown(); redraw(); };
+				pgUp.event = () => { equipBoard.pgUp(); redraw(); };
+				equipBoard.initBtnList([['pgDownBtn', pgDown], ['pgUpBtn', pgUp]]);
+			}
 
 			const [hideBtn, markBtn] = [new HideBtn(20, 380, 46, 24), new MarkBtn(80, 380, 46, 24)];
 			hideBtn.event = () => {

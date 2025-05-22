@@ -400,6 +400,10 @@ interface control {
     /** 物品数据显示 */ 
     getItemDetail(floorId: string): void
 
+    _replayAction_item(action: string): boolean
+    _replayAction_equip(action: string): boolean
+    _replayAction_unEquip(action: string): boolean
+
     /**
      * 开启调试模式, 此模式下可以按Ctrl键进行穿墙, 并忽略一切事件。
      * 此模式下不可回放录像和上传成绩。
@@ -1446,6 +1450,10 @@ interface actions {
     /** 音效开关 */_clickSwitchs_sounds_se(): void
     /** 音量调节开关 */_clickSwitchs_sounds_userVolume(delta: number): void
 
+    _keyDownToolbox(keyCode: number): void
+    _keyUpToolbox(keyCode: number): void
+    _clickToolbox(x: number, y: number, px: number, py: number): void
+
     /**
      * 此函数将注册一个用户交互行为。
      * @param action 要注册的交互类型，如 ondown, onclick, keyDown 等等。
@@ -2363,6 +2371,8 @@ interface ui {
     _createUIEvent(): void
     _drawBook_drawName(index: number, enemy: Enemy, top: number, left: number, width: number): void
     _drawBook_drawRow1(index: number, enemy: Enemy, top: number, left: number, width: number, position: number): void
+    _drawToolbox(index: number): void
+    _drawEquipbox(index: number): void
 
     /**
      * 根据画布名找到一个画布的context；支持系统画布和自定义画布。如果不存在画布返回null。

@@ -56,6 +56,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			/** 以下为2.92样板新增内容的处理 */
 			// 同步剧情跳过设置
 			core.plugin.checkSkipFuncs();
+			// 清空自绘道具栏的缓存
+			core.plugin.clearItemBoxCache();
 
 			// 清空录像暂停点
 			core.setFlag('replayValve', null);
