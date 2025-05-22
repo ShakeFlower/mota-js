@@ -3096,10 +3096,17 @@ control.prototype.triggerBgm = function () {
     core.setLocalStorage('bgmStatus', core.musicStatus.bgmStatus);
 }
 
+let playingSoundList = [];
+
 ////// 播放音频 //////
-control.prototype.playSound = function (sound, pitch, callback) {
+control.prototype.playSound = function (sound, pitch, inputCallback) {
     sound = core.getMappedName(sound);
-    if (main.mode != 'play' || !core.musicStatus.soundStatus || !core.material.sounds[sound]) return;
+    if (main.mode != 'play' || !core.musicStatus.soundStatus || !core.material.sounds[sound] || playingSoundList.includes(sound)) return;
+    playingSoundList.push(sound);
+    const callback = () => {
+        playingSoundList = playingSoundList.filter((soundName) => soundName !== sound);
+        inputCallback();
+    }
     try {
         if (core.musicStatus.audioContext != null) {
             var source = core.musicStatus.audioContext.createBufferSource();
