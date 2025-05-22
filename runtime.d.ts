@@ -47,6 +47,20 @@ type Floor = {
     ratio: number
 }
 
+type FloorImage = {
+    canvas: 'bg' | 'auto' | 'fg'
+    name: string
+    x: number
+    y: number
+    reverse?: ':x' | ':y' | ':o'
+    disable?: boolean
+    sx?: number
+    sy?: number
+    w?: number
+    h?: number
+    frame?: number
+}
+
 type ResolvedMap = {
     floorId: string
     afterBattle: { [x: string]: Events }
@@ -78,19 +92,7 @@ type ResolvedMap = {
     fgmap: number[][]
     width: number
     height: number
-    images: Array<{
-        canvas: 'bg' | 'auto' | 'fg'
-        name: string
-        x: number
-        y: number
-        reverse?: ':x' | ':y' | ':o'
-        disable?: boolean
-        sx?: number
-        sy?: number
-        w?: number
-        h?: number
-        frame?: number
-    }>
+    images: FloorImage[]
     name: string
     ratio: number
     title: string
@@ -1677,8 +1679,15 @@ interface maps {
     _getAndRemoveBlock(x: number, y: number): [Block, any]
     _drawBg_draw(floorId: string, toDrawCtx: CanvasRenderingContext2D, cacheCtx: CanvasRenderingContext2D,
         config: mapsConfig): void
-    _drawBgFgMap(floorId: string, name: string, config: mapsConfig): void
+    _drawBgFgMap(floorId: string | null | undefined, name: string, config: mapsConfig): void
     _drawBg_drawBackground(floorId: string, config: mapsConfig): void
+    /** 绘制楼层贴图 */
+    _drawFloorImages(floorId: string | null | undefined, ctx: string | CanvasRenderingContext2D, name: string,
+        images?: FloorImage[] | null, currStatus?: number | null, onMap?: boolean | null): void
+    _drawFg_draw(floorId: string | null | undefined, toDrawCtx: CanvasRenderingContext2D,
+        cacheCtx: CanvasRenderingContext2D, config: mapsConfig): void
+    _getBgFgMapArray(name: string, floorId?: string | null, noCache?: boolean | null): any[]
+    _generateMovableArray_arrays(floorId: string): { bgArray: number[][], fgArray: number[][], eventArray: number[][] }
 
     /**
      * 获取初始core.maps.blockInfo的一个拷贝
@@ -1824,9 +1833,9 @@ interface maps {
      * 绘制前景层（含贴图，其与前景层矩阵的绘制顺序可通过复写此函数来改变）
      * @example core.drawFg(); // 绘制当前地图的前景层
      * @param floorId 地图id，不填视为当前地图
-     * @param ctx 某画布的ctx，用于绘制缩略图，一般不需要
+     * @param config 
      */
-    drawFg(floorId?: string, ctx?: CanvasRenderingContext2D): void
+    drawFg(floorId?: string, config?: mapsConfig): void
 
     /**
      * 绘制缩略图
@@ -3070,8 +3079,8 @@ interface plugin {
     /** 多角色插件，切换到另一角色 */
     changeHero(toHeroId?: number): void
 
-    // core.plugin.xxx 可能是任意签名和返回值的函数
-    [x: string]: Function
+    // core.plugin.xxx 可能是任意变量，任意签名和返回值的函数
+    [x: string]: any
 }
 
 type CoreMixin = {
