@@ -3735,6 +3735,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function equipBestComb(bestCombination, equipIncluded, equipNameList) {
+			/** @type {Set<string>} */
 			const duplicatedName = new Set([]),
 				name = core.status.globalAttribute.equipName;
 

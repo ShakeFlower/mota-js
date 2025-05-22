@@ -160,7 +160,7 @@ type autoEvent = {
 type step = 'up' | 'down' | 'left' | 'right' | 'forward' | 'backward'
 
 type HeroStatus = {
-    equipment: []
+    equipment: string[]
     lv: number
     name: string
     hp: number
@@ -2199,6 +2199,7 @@ interface loader {
 
 /** @file items.js 主要负责一切和道具相关的内容。 */
 interface items {
+    _loadEquipEffect(equipId?: string | null, unloadEquipId?: string | null);
 
     /**
      * 获得给定ratio下（不填默认当前地图倍率）该即捡即用类的道具获得时勇士属性的增加效果
