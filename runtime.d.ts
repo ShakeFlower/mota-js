@@ -2425,7 +2425,7 @@ interface ui {
      * 绘制一个矩形的边框
      * @param style 绘制的样式
      */
-    strokeRect(name: CtxRefer, x: number, y: number, width: number, height: number, style: string, angle?: number): void
+    strokeRect(name: CtxRefer, x: number, y: number, width: number, height: number, style: string, lineWidth?: number, angle?: number): void
 
     /**
      * 动态创建一个画布。name为要创建的画布名，如果已存在则会直接取用当前存在的。

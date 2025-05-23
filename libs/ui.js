@@ -3121,8 +3121,8 @@ ui.prototype._drawSLPanel_drawRecord = function (title, data, x, y, size, cho, h
         if (core.isPlaying() && core.getFlag("hard") != data.hero.flags.hard) {
             core.fillRect('ui', x - size / 2, y + 15, size, size, [0, 0, 0, 0.4]);
             core.fillText('ui', data.hard, x, parseInt(y + 22 + size / 2), data.hero.flags.__hardColor__ || 'red', this._buildFont(30, true));
-        }
-        // 绘制存档笔记
+        } // 存档界面_绘制难度比较
+        // 存档界面_绘制存档笔记
         if (data.hero.notes && data.hero.notes.length > 0) {
             core.setTextAlign('ui', 'left');
             if (data.hero.notes.length >= 2) {

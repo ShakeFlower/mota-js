@@ -2308,11 +2308,39 @@ control.prototype._doSL_replaySince_afterGet = function (id, data) {
 ////// 同步存档到服务器 //////
 control.prototype.syncSave = function (type) {
     core.ui.drawWaiting("正在同步，请稍候...");
-    var callback = function (saves) {
-        core.control._syncSave_http(type, saves);
+    if (type == 'all') {
+        const callback = function (saves) {
+            core.control._syncSave_http(type, saves);
+        };
+        core.ui.drawConfirmBox("您正在试图同步您的\r[Salmon]所有\r存档，\n这可能导致接收方已有的存档被\r[Salmon]覆盖\r。\n确定要这么做？", function () {
+            core.getAllSaves(callback);
+        }, () => { core.ui.closePanel(); });
     }
-    if (type == 'all') core.getAllSaves(callback);
-    else core.getSave(core.saves.saveIndex, callback);
+    else {
+        const index = core.saves.saveIndex;
+        if (!index) return core.drawText("没有要同步的存档");
+        const callback = function (save) {
+            const map = core.maps.loadMap(save.maps, save.floorId);
+            const ctx = core.createCanvas('syncSave', core.__PIXELS__ / 2 - 52, 18, 104, 104, 141);
+            core.strokeRect(ctx, 0, 0, 104, 104, 'yellow', 2);
+            core.drawThumbnail(save.floorId, map.blocks, {
+                heroLoc: save.hero.loc, heroIcon: save.hero.image, flags: save.hero.flags,
+                ctx: ctx, x: 2, y: 2, size: 100, noHD: true,
+            });
+            const autosave = core.saves.autosave;
+            if (autosave.data instanceof Array && autosave.data.length > 0) {
+                core.ui.drawConfirmBox("您正试图同步" + index + "号存档，确定是这个存档吗？\n如果不是，请返回并\r[yellow]保存当前\r状态再同步.", function () {
+                    core.control._syncSave_http(type, save);
+                    core.deleteCanvas("syncSave");
+                }, () => {
+                    core.ui.closePanel();
+                    core.deleteCanvas("syncSave");
+                });
+            }
+            else core.control._syncSave_http(type, save);
+        }
+        core.getSave(index, callback);
+    }
 }
 
 control.prototype._syncSave_http = function (type, saves) {
@@ -2331,7 +2359,7 @@ control.prototype._syncSave_http = function (type, saves) {
         else {
             core.drawText((type == 'all' ? "所有存档" : "存档" + core.saves.saveIndex) + "同步成功！\n\n您的存档编号+密码： \r[yellow]"
                 + response.code + response.msg
-                + "\r\n\n请牢记以上信息（如截图等），在从服务器\n同步存档时使用。\n\r[yellow]另外请注意，存档同步只会保存一个月的时间。\r")
+                + "\r\n\n请牢记以上信息（如截图等），在从服务器\n同步存档时使用。")
         }
     }, function (e) {
         core.drawText("出错啦！\n无法同步存档到服务器。\n错误原因：" + e);

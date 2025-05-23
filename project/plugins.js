@@ -3500,7 +3500,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				pgDown.event = () => { list.pgDown(); redraw(); }
 				pgUp.event = () => { list.pgUp(); redraw(); }
 				list.initBtnList([['pgDownBtn', pgDown], ['pgUpBtn', pgUp]]);
-			})
+			});
 			{
 				const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
 				const [pgDown, pgUp] = [new ArrowBtn(0, 56, 14, 14, 'left', config), new ArrowBtn(222, 56, 14, 14, 'right', config)];
