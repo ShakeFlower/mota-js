@@ -2550,7 +2550,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (!sortFunc) sortFunc = (itemId1, itemId2) => {
 				const item1Count = itemsUsedCount[itemId1] || 0,
 					item2Count = itemsUsedCount[itemId2] || 0;
-				return item1Count - item2Count;
+				return item2Count - item1Count;
 			}
 
 			let list = [];

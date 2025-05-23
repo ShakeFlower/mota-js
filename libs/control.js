@@ -3105,7 +3105,7 @@ control.prototype.playSound = function (sound, pitch, inputCallback) {
     playingSoundList.push(sound);
     const callback = () => {
         playingSoundList = playingSoundList.filter((soundName) => soundName !== sound);
-        inputCallback();
+        if (inputCallback) inputCallback();
     }
     try {
         if (core.musicStatus.audioContext != null) {
