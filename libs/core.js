@@ -97,7 +97,8 @@ function core() {
         availableScale: [],
         isVertical: false,
         showStatusBar: true,
-        toolbarBtn: false,
+        toolbarBtn: "normal",
+        toolsCount: 7,
     }
     this.bigmap = {
         canvas: ["bg", "event", "event2", "fg", "damage"],

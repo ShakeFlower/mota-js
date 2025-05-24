@@ -1852,8 +1852,12 @@ var terndefs_f6783a0a_522d_417e_8407_94c67b692e50 = [
           "!doc": "当前是否显示状态栏"
         },
         "toolbarBtn": {
-          "!type": "bool",
-          "!doc": "当前工具栏是否是1-8的按钮"
+          "!type": "string",
+          "!doc": "当前工具栏的按钮种类"
+        },
+        "toolsCount": {
+          "!type": "number",
+          "!doc": "当前工具栏的按钮数量"
         },
       },
       "bigmap": {

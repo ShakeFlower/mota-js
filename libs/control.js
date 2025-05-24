@@ -1471,6 +1471,7 @@ control.prototype.startReplay = function (list) {
     core.updateStatusBar(false, true);
     core.drawTip("开始播放");
     this.replay();
+    core.setToolbarButton("replay");
 }
 
 ////// 更改播放状态 //////
@@ -1512,32 +1513,6 @@ control.prototype.stepReplay = function () {
         return core.drawTip("请等待当前事件的处理结束");
     }
     core.replay(true);
-}
-
-////// 拦截录像，在运行到指定步数时暂停 //////
-control.prototype.interceptReplay = function () {
-    if (!core.isPlaying() || !core.isReplaying()) return;
-    if (!core.status.replay.pausing) {
-        core.playSound('操作失败');
-        return core.drawTip("请先暂停录像");
-    }
-    if (core.isMoving() || core.status.replay.animate || core.status.event.id) {
-        core.playSound('操作失败');
-        return core.drawTip("请等待当前事件的处理结束");
-    }
-    core.myprompt("请输入一个自然数，这将设置一个临时拦截点，录像将在运行到该步数时自动暂停。设为0将取消该拦截。", null, function (value) {
-        value = parseInt(value);
-        if (Number.isNaN(value) || value < 0) {
-            core.drawFailTip('错误：不合法的输入!');
-            return;
-        }
-        else if (value === 0) {
-            core.setFlag('replayValve', null);
-        }
-        else {
-            core.setFlag('replayValve', value);
-        }
-    }, () => { });
 }
 
 ////// 加速播放 //////
@@ -1585,10 +1560,10 @@ control.prototype.stopReplay = function (force) {
     core.status.replay.speed = 1.0;
     core.status.replay.steps = 0;
     core.status.replay.save = [];
-    core.setFlag('replayValve', null);
     core.deleteCanvas('replay');
     core.updateStatusBar(false, true);
     core.drawTip("停止播放并恢复游戏");
+    core.setToolbarButton('normal');
 }
 
 ////// 回退 //////
@@ -1741,11 +1716,6 @@ control.prototype.replay = function (force) {
         || core.status.replay.animate || core.status.event.id || core.status.replay.failed) return;
     if (core.status.replay.pausing && !force) return;
     
-    const valve = core.getFlag('replayValve', -1);
-    if (!main.replayChecking && core.status.route.length === valve) {
-        core.pauseReplay(); // 非线上录像验证时，截停录像。
-        core.drawFailTip('录像已运行到指定的暂停点第' + valve + '步，自动暂停。');
-    }
     this._replay_drawProgress();
     if (core.status.replay.toReplay.length == 0)
         return this._replay_finished();
@@ -3244,45 +3214,17 @@ control.prototype.updateStatusBar_update = function () {
     core.control.noAutoEvents = true;
 }
 
+/** 切换replay/pause 并刷新工具栏图标的完成度 */
 control.prototype._updateStatusBar_setToolboxIcon = function () {
     if (core.isReplaying()) {
-        core.statusBar.image.book.src = core.status.replay.pausing ? core.statusBar.icons.play.src : core.statusBar.icons.pause.src;
-        core.statusBar.image.book.style.opacity = 1;
-        core.statusBar.image.fly.src = core.statusBar.icons.stop.src;
-        core.statusBar.image.fly.style.opacity = 1;
-        core.statusBar.image.toolbox.src = core.statusBar.icons.rewind.src;
-        core.statusBar.image.keyboard.src = core.statusBar.icons.book.src;
-        core.statusBar.image.shop.src = core.statusBar.icons.floor.src;
-        core.statusBar.image.save.src = core.statusBar.icons.speedDown.src;
-        core.statusBar.image.save.style.opacity = 1;
-        core.statusBar.image.load.src = core.statusBar.icons.speedUp.src;
-        core.statusBar.image.settings.src = core.statusBar.icons.save.src;
-        core.statusBar.image.rollback.src = core.statusBar.icons.single.src;
-        core.statusBar.image.undoRollback.src = core.statusBar.icons.valve.src;
+        main.statusBar.image.play.src = core.status.replay.pausing ? core.statusBar.icons.play.src : core.statusBar.icons.pause.src;
     }
-    else {
-        core.statusBar.image.book.src = core.statusBar.icons.book.src;
-        core.statusBar.image.book.style.opacity = core.hasItem('book') ? 1 : 0.3;
-        if (!core.flags.equipboxButton) {
-            core.statusBar.image.fly.src = core.statusBar.icons.fly.src;
-            core.statusBar.image.fly.style.opacity = core.hasItem('fly') ? 1 : 0.3;
-        }
-        else {
-            core.statusBar.image.fly.src = core.statusBar.icons.equipbox.src;
-            core.statusBar.image.fly.style.opacity = 1;
-        }
-        core.statusBar.image.undoRollback.style.opacity = (core.saves.autosave.data != null 
-            && core.saves.autosave.now < core.saves.autosave.data.length) ? 1 : 0.3;
-        core.statusBar.image.toolbox.src = core.statusBar.icons.toolbox.src;
-        core.statusBar.image.keyboard.src = core.statusBar.icons.keyboard.src;
-        core.statusBar.image.shop.src = core.statusBar.icons.shop.src;
-        core.statusBar.image.save.src = core.statusBar.icons.save.src;
-        core.statusBar.image.save.style.opacity = core.hasFlag('__forbidSave__') ? 0.3 : 1;
-        core.statusBar.image.load.src = core.statusBar.icons.load.src;
-        core.statusBar.image.settings.src = core.statusBar.icons.settings.src;
-        core.statusBar.image.rollback.src = core.statusBar.icons.rollback.src;
-        core.statusBar.image.undoRollback.src = core.statusBar.icons.undoRollback.src;
-    }
+    core.statusBar.image.book.style.opacity = core.hasItem('book') ? 1 : 0.3;
+    core.statusBar.image.fly.style.opacity = core.hasItem('fly') ? 1 : 0.3;
+    core.statusBar.image.undoRollback.style.opacity =
+        (core.saves.autosave.data != null && core.saves.autosave.now < core.saves.autosave.data.length) ? 1 : 0.3;
+    core.statusBar.image.save.style.opacity = core.hasFlag('__forbidSave__') ? 0.3 : 1;
+
 }
 
 control.prototype.showStatusBar = function () {
@@ -3294,7 +3236,8 @@ control.prototype.showStatusBar = function () {
     // 显示
     for (var i = 0; i < statusItems.length; ++i)
         statusItems[i].style.opacity = 1;
-    this.setToolbarButton(false);
+    core.setToolbarButton(core.domStyle.toolbarBtn);
+    // this.setToolbarButton(false);
     core.dom.tools.hard.style.display = 'block';
     core.dom.toolBar.style.display = 'block';
 }
@@ -3314,13 +3257,14 @@ control.prototype.hideStatusBar = function (showToolbox) {
     // 隐藏
     for (var i = 0; i < statusItems.length; ++i)
         statusItems[i].style.opacity = 0;
-    if ((!core.domStyle.isVertical && !core.flags.extendToolbar) || !showToolbox) {
-        for (var i = 0; i < toolItems.length; ++i)
-            toolItems[i].style.display = 'none';
-    }
-    if (!core.domStyle.isVertical && !core.flags.extendToolbar) {
-        core.dom.toolBar.style.display = 'none';
-    }
+    if (!showToolbox) core.setToolbarButton('hide');
+    // if ((!core.domStyle.isVertical && !core.flags.extendToolbar) || !showToolbox) {
+    //     for (var i = 0; i < toolItems.length; ++i)
+    //         toolItems[i].style.display = 'none';
+    // }
+    // if (!core.domStyle.isVertical && !core.flags.extendToolbar) {
+    //     core.dom.toolBar.style.display = 'none';
+    // }
 }
 
 ////// 更新状态栏的勇士图标 //////
@@ -3345,62 +3289,62 @@ control.prototype.updateHeroIcon = function (name) {
 }
 
 ////// 改变工具栏为按钮1-8 //////
-control.prototype.setToolbarButton = function (useButton) {
-    if (!core.domStyle.showStatusBar) {
-        // 隐藏状态栏时检查竖屏
-        if (!core.domStyle.isVertical && !core.flags.extendToolbar) {
-            for (var i = 0; i < core.dom.tools.length; ++i)
-                core.dom.tools[i].style.display = 'none';
-            return;
-        }
-        if (!core.hasFlag('showToolbox')) return;
-        else core.dom.tools.hard.style.display = 'block';
-    }
+// control.prototype.setToolbarButton = function (useButton) {
+//     if (!core.domStyle.showStatusBar) {
+//         // 隐藏状态栏时检查竖屏
+//         if (!core.domStyle.isVertical && !core.flags.extendToolbar) {
+//             for (var i = 0; i < core.dom.tools.length; ++i)
+//                 core.dom.tools[i].style.display = 'none';
+//             return;
+//         }
+//         if (!core.hasFlag('showToolbox')) return;
+//         else core.dom.tools.hard.style.display = 'block';
+//     }
 
-    if (useButton == null) useButton = core.domStyle.toolbarBtn;
-    if ((!core.domStyle.isVertical && !core.flags.extendToolbar) || core.isReplaying()) useButton = false;
-    core.domStyle.toolbarBtn = useButton;
+//     if (useButton == null) useButton = core.domStyle.toolbarBtn;
+//     if ((!core.domStyle.isVertical && !core.flags.extendToolbar) || core.isReplaying()) useButton = false;
+//     core.domStyle.toolbarBtn = useButton;
 
-    if (useButton) {
-        ["book", "fly", "toolbox", "keyboard", "shop", "save", "load", "settings"].forEach(function (t) {
-            core.statusBar.image[t].style.display = 'none';
-        });
-        ["rollback", "undoRollback"].forEach(function (t) {
-            core.statusBar.image[t].style.display = 'none';
-        });
-        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btnAlt"].forEach(function (t) {
-            core.statusBar.image[t].style.display = 'block';
-        })
-        if (!core.flags.showHard) {
-            ["btn8", "btn9"].forEach(function (t) {
-                core.statusBar.image[t].style.display = 'block';
-            });
-        }
-        main.statusBar.image.btnAlt.style.filter = core.getLocalStorage('altKey') ? 'sepia(1) contrast(1.5)' : '';
-    }
-    else {
-        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btnAlt"].forEach(function (t) {
-            core.statusBar.image[t].style.display = 'none';
-        });
-        ["btn8", "btn9"].forEach(function (t) {
-            core.statusBar.image[t].style.display = 'none';
-        });
-        ["book", "fly", "toolbox", "save", "load", "settings"].forEach(function (t) {
-            core.statusBar.image[t].style.display = 'block';
-        });
-        if (core.domStyle.isVertical || core.flags.extendToolbar || !core.flags.showHard) {
-            core.statusBar.image.shop.style.display = "block";
-        }
-        else core.statusBar.image.shop.style.display = "none";
+//     if (useButton) {
+//         ["book", "fly", "toolbox", "keyboard", "shop", "save", "load", "settings"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = 'none';
+//         });
+//         ["rollback", "undoRollback"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = 'none';
+//         });
+//         ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btnAlt"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = 'block';
+//         })
+//         if (!core.flags.showHard) {
+//             ["btn8", "btn9"].forEach(function (t) {
+//                 core.statusBar.image[t].style.display = 'block';
+//             });
+//         }
+//         main.statusBar.image.btnAlt.style.filter = core.getLocalStorage('altKey') ? 'sepia(1) contrast(1.5)' : '';
+//     }
+//     else {
+//         ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btnAlt"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = 'none';
+//         });
+//         ["btn8", "btn9"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = 'none';
+//         });
+//         ["book", "fly", "toolbox", "save", "load", "settings"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = 'block';
+//         });
+//         if (core.domStyle.isVertical || core.flags.extendToolbar || !core.flags.showHard) {
+//             core.statusBar.image.shop.style.display = "block";
+//         }
+//         else core.statusBar.image.shop.style.display = "none";
 
-        ["rollback", "undoRollback"].forEach(function (t) {
-            core.statusBar.image[t].style.display = core.flags.showHard ? "none" : "block";
-        });
+//         ["rollback", "undoRollback"].forEach(function (t) {
+//             core.statusBar.image[t].style.display = core.flags.showHard ? "none" : "block";
+//         });
         
-        core.statusBar.image.keyboard.style.display
-            = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
-    }
-}
+//         core.statusBar.image.keyboard.style.display
+//             = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
+//     }
+// }
 
 ////// ------ resize处理 ------ //
 
@@ -3452,6 +3396,7 @@ control.prototype.unregisterResize = function (name) {
     this.resizes = this.resizes.filter(function (b) { return b.name != name; });
 }
 
+/** 执行所有resize函数 */
 control.prototype._doResize = function (obj) {
     for (var i in this.resizes) {
         try {
@@ -3465,8 +3410,22 @@ control.prototype._doResize = function (obj) {
     return false;
 }
 
+/** 执行单个特定名称的resize函数 */
+control.prototype._doOneResize = function (obj, type) {
+    try {
+        const currEvent = this.resizes.find((resizeEvent) => resizeEvent.name === type);
+        if (!currEvent) return;
+        if (core.doFunc(currEvent.func, this, obj)) return true;
+    } catch (e) {
+        console.error(e);
+        console.error("ERROR in resizes[" + this.resizes[type].name + "]：已自动注销该项。");
+        this.unregisterResize(this.resizes[type].name);
+    }
+    return false;
+}
+
 ////// 屏幕分辨率改变后重新自适应 //////
-control.prototype.resize = function () {
+control.prototype.resize = function (type) {
     if (main.mode == 'editor') return;
     var clientWidth = main.dom.body.clientWidth, clientHeight = main.dom.body.clientHeight;
     var CANVAS_WIDTH = core.__PIXELS__, BAR_WIDTH = Math.round(core.__PIXELS__ * 0.31);
@@ -3525,16 +3484,12 @@ control.prototype.resize = function () {
         is15x15: core.__SIZE__ == 15
     };
 
-    // 横屏且非底部工具栏，则商店调整到回退按键之前
-    if (!core.domStyle.isVertical && !core.flags.extendsToolBar) {
-        if (core.statusBar.image.shop.nextElementSibling !== core.statusBar.image.rollback)
-            core.dom.toolBar.insertBefore(core.statusBar.image.shop, core.statusBar.image.rollback);
+    if (type != null) {
+        if (type instanceof Array) type.forEach((oneType) => this._doOneResize(obj, oneType));
+        else this._doOneResize(obj, type);
     }
-    else if (core.statusBar.image.shop.nextElementSibling !== core.statusBar.image.save)
-        core.dom.toolBar.insertBefore(core.statusBar.image.shop, core.statusBar.image.save);
-
-    this._doResize(obj);
-    this.setToolbarButton();
+    else this._doResize(obj);
+    // this.setToolbarButton();
     core.updateStatusBar();
 }
 
@@ -3700,8 +3655,8 @@ control.prototype._resize_status = function (obj) {
     }
 }
 
+/** toolBar的样式 */
 control.prototype._resize_toolBar = function (obj) {
-    // toolBar
     var toolBar = core.dom.toolBar;
     if (core.domStyle.isVertical) {
         toolBar.style.left = 0;
@@ -3732,6 +3687,7 @@ control.prototype._resize_toolBar = function (obj) {
     toolBar.style.borderRight = toolBar.style.borderBottom = core.domStyle.isVertical || obj.extendToolbar ? obj.border : '';
     toolBar.style.fontSize = 16 * core.domStyle.scale + "px";
 
+    // 本项控制toolBar本身的显示与隐藏
     if (!core.domStyle.showStatusBar && !core.domStyle.isVertical && !obj.extendToolbar) {
         toolBar.style.display = 'none';
     } else {
@@ -3739,6 +3695,7 @@ control.prototype._resize_toolBar = function (obj) {
     }
 }
 
+/** toolBar中各个tools的样式 */
 control.prototype._resize_tools = function (obj) {
     var toolsHeight = 32 * core.domStyle.scale * ((core.domStyle.isVertical || obj.extendToolbar) && !obj.is15x15 ? 0.95 : 1);
     var toolsMarginLeft;
@@ -3754,9 +3711,15 @@ control.prototype._resize_tools = function (obj) {
     }
     core.dom.hard.style.lineHeight = toolsHeight + "px";
     if (core.domStyle.isVertical || obj.extendToolbar) {
-        if (core.flags.showHard) core.dom.hard.style.width = obj.outerSize - 9 * toolsMarginLeft - 8.5 * toolsHeight - 22 + "px";
-        else {
-            core.dom.hard.style.width = "15px";
+        const toolsCount = core.domStyle.toolsCount;
+        if (toolsCount <= 8) {
+            core.dom.hard.style.width = obj.outerSize - (toolsCount + 1) * toolsMarginLeft - (toolsCount + 0.5) * toolsHeight - 22 + "px";
+        }
+        else if (toolsCount === 9) {
+            core.dom.hard.style.width = obj.outerSize - (toolsCount + 1) * toolsMarginLeft - toolsCount * toolsHeight - 22 + "px";
+        }
+        else { // toolsCount is 10
+            core.dom.hard.style.width = obj.outerSize - (toolsCount + 1) * toolsMarginLeft - toolsCount * toolsHeight - 13 + "px";
             core.dom.hard.style.marginLeft = "1px";
         }
     }

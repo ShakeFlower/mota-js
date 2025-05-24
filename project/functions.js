@@ -58,9 +58,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.plugin.checkSkipFuncs();
 			// 清空自绘道具栏的缓存
 			core.plugin.clearItemBoxCache();
-
-			// 清空录像暂停点
-			core.setFlag('replayValve', null);
+			// 设置一次工具栏，统计出元素数量
+			core.setToolbarButton('normal');
 		},
 		"win": function (reason, norank, noexit) {
 			// 游戏获胜事件

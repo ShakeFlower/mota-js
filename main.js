@@ -109,11 +109,14 @@ function main () {
             'book': document.getElementById("img-book"),
             'fly': document.getElementById("img-fly"),
             'toolbox': document.getElementById("img-toolbox"),
+            'equipbox': document.getElementById("img-equipbox"),
             'keyboard': document.getElementById("img-keyboard"),
             'shop': document.getElementById('img-shop'),
             'save': document.getElementById("img-save"),
             'load': document.getElementById("img-load"),
             'settings': document.getElementById("img-settings"),
+            'rollback': document.getElementById("img-rollback"),
+            'undoRollback': document.getElementById("img-undoRollback"),
             'btn1': document.getElementById("img-btn1"),
             'btn2': document.getElementById("img-btn2"),
             'btn3': document.getElementById("img-btn3"),
@@ -124,10 +127,14 @@ function main () {
             'btn8': document.getElementById("img-btn8"),
             'btn9': document.getElementById("img-btn9"),
             'btnAlt': document.getElementById("img-btnAlt"),
-            'rollback': document.getElementById("img-rollback"),
-            'undoRollback': document.getElementById("img-undoRollback"),
+            'play': document.getElementById("img-play"),
+            'pause': document.getElementById("img-pause"),
+            'stop': document.getElementById("img-stop"),
+            'rewind': document.getElementById("img-rewind"),
+            'speedDown': document.getElementById("img-speedDown"),
+            'speedUp': document.getElementById("img-speedUp"),
             'single': document.getElementById("img-single"),
-            'valve': document.getElementById("img-valve"),
+            'view': document.getElementById("img-view"),
         },
         'icons': {
             'floor': 0,
@@ -171,7 +178,7 @@ function main () {
             'rollback': 37,
             'undoRollback': 38,
             'single': 39,
-            'valve': 40,
+            'view': 40,
         },
         'floor': document.getElementById('floor'),
         'name': document.getElementById('name'),
@@ -633,184 +640,111 @@ main.prototype.listen = function () {
             console.error(e);
         }
     }
-
+    // #region 图标点击事件-常规模式
     ////// 点击状态栏中的怪物手册时 //////
     main.statusBar.image.book.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.triggerReplay();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            main.core.openBook(true);
+        if (core.isReplaying()) core.control._replay_book();
+        else if (main.core.isPlaying()) main.core.openBook(true);
     }
 
-    ////// 点击状态栏中的楼层传送器/装备栏时 //////
+    ////// 点击状态栏中的楼层传送器时 //////
     main.statusBar.image.fly.onclick = function (e) {
         e.stopPropagation();
-
-        // 播放录像时
-        if (core.isReplaying()) {
-            core.stopReplay();
-            return;
-        }
-
-        if (main.core.isPlaying()) {
-            if (!main.core.flags.equipboxButton) {
-                main.core.useFly(true);
-            }
-            else {
-                main.core.openEquipbox(true)
-            }
-        }
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) main.core.useFly(true);
     }
 
     ////// 点击状态栏中的工具箱时 //////
     main.statusBar.image.toolbox.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.rewindReplay();
-            return;
-        }
-
-        if (main.core.isPlaying()) {
-            main.core.openToolbox(core.status.event.id != 'equipbox');
-        }
+        if (core.isReplaying()) core.control._replay_toolbox();
+        else if (main.core.isPlaying()) main.core.openToolbox(core.status.event.id != 'equipbox');
     }
 
     ////// 双击状态栏中的工具箱时 //////
     main.statusBar.image.toolbox.ondblclick = function (e) {
         e.stopPropagation();
+        if (core.isReplaying()) return; 
+        else if (main.core.isPlaying()) main.core.openEquipbox(true);
+    }
 
-        if (core.isReplaying()) {
-            return;
-        }
-
-        if (main.core.isPlaying())
-            main.core.openEquipbox(true);
-
+    ////// 点击状态栏中的装备栏图标时 //////
+    main.statusBar.image.toolbox.onclick = function (e) {
+        e.stopPropagation();
+        if (core.isReplaying()) core.control._replay_equipbox();
+        else if (main.core.isPlaying()) main.core.openEquipbox(core.status.event.id != 'equipbox');
     }
 
     ////// 点击状态栏中的虚拟键盘时 //////
     main.statusBar.image.keyboard.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.control._replay_book();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            main.core.openKeyBoard(true);
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) main.core.openKeyBoard(true);
     }
 
     ////// 点击状态栏中的快捷商店时 //////
     main.statusBar.image.shop.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.control._replay_viewMap();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            main.core.openQuickShop(true);
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) main.core.openQuickShop(true);
     }
 
     ////// 点击金币时也可以开启快捷商店 //////
     main.statusBar.image.money.onclick = function (e) {
         e.stopPropagation();
-
-        if (main.core.isPlaying())
-            main.core.openQuickShop(true);
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) main.core.openQuickShop(true);
     }
 
-    ////// 点击楼梯图标也可以浏览地图 //////
-    main.statusBar.image.floor.onclick = function (e) {
+    ////// 楼梯图标代表浏览地图 //////
+    main.statusBar.image.view.onclick = function (e) {
         e.stopPropagation();
-
-        if (main.core && main.core.isPlaying() && !core.isMoving() && !core.status.lockControl) {
-            core.ui._drawViewMaps();
+        if (main.core && !core.isMoving() && !core.status.lockControl) {
+            if (core.isReplaying()) core.control._replay_viewMap();
+            else if (main.core.isPlaying()) core.ui._drawViewMaps();
         }
     }
 
     ////// 点击状态栏中的存档按钮时 //////
     main.statusBar.image.save.onclick = function (e) {
         e.stopPropagation();
-
         if (core.isReplaying()) {
-            core.speedDownReplay();
+            core.control._replay_SL();
             return;
         }
-
-        if (main.core.isPlaying())
-            main.core.save(true);
+        if (main.core.isPlaying()) main.core.save(true);
     }
 
     ////// 点击状态栏中的读档按钮时 //////
     main.statusBar.image.load.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.speedUpReplay();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            main.core.load(true);
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) main.core.load(true);
     }
 
-    ////// 点击状态栏中的系统菜单时 //////
+    ////// 点击状态栏中的系统设置菜单时 //////
     main.statusBar.image.settings.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.control._replay_SL();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            main.core.openSettings(true);
+        if (core.isReplaying()) return;
+        if (main.core.isPlaying()) main.core.openSettings(true);
     }
 
     ////// 点击状态栏中的回退菜单时 //////
     main.statusBar.image.rollback.onclick = function (e) {
         e.stopPropagation();
-
-        // 单步播放录像
-        if (core.isReplaying()) {
-            core.control.stepReplay();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            core.doSL("autoSave", "load");
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) core.doSL("autoSave", "load");
     }
 
     ////// 点击状态栏中的取消回退菜单时 //////
     main.statusBar.image.undoRollback.onclick = function (e) {
         e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.control.interceptReplay();
-            return;
-        }
-
-        if (main.core.isPlaying())
-            core.doSL("autoSave", "reload");
+        if (core.isReplaying()) return;
+        else if (main.core.isPlaying()) core.doSL("autoSave", "reload");
     }
 
-    ////// 点击工具栏时 //////
-    main.dom.hard.onclick = function () {
-        if (core.isReplaying())
-            return;
-        main.core.control.setToolbarButton(!core.domStyle.toolbarBtn);
-    }
-
-    ////// 手机端的按钮1-7 //////
+    // #region 图标点击事件-数字按钮模式
     main.statusBar.image.btn1.onclick = function (e) {
         e.stopPropagation();
         main.core.onkeyUp({ "keyCode": 49, "altKey": core.getLocalStorage('altKey') });
@@ -869,6 +803,59 @@ main.prototype.listen = function () {
             main.statusBar.image.btnAlt.style.filter = 'sepia(1) contrast(1.5)';
         }
     };
+    // #endregion
+
+    // #region 图标点击事件-录像模式
+    // 录像播放/暂停按钮(同一个)
+    // play和pause是一体的，根据core.status.replay.pausing决定
+    main.statusBar.image.play.onclick = function (e) {
+        e.stopPropagation();
+        if (!core.isReplaying()) return;
+        core.control.triggerReplay();
+    }
+
+    // 录像停止按钮
+    main.statusBar.image.stop.onclick = function (e) {
+        e.stopPropagation();
+        if (!core.isReplaying()) return;
+        core.control.stopReplay();
+    }
+
+    // 录像回退按钮
+    main.statusBar.image.rewind.onclick = function (e) {
+        e.stopPropagation();
+        if (!core.isReplaying()) return;
+        core.control.rewindReplay();
+    }
+
+    // 录像减速按钮
+    main.statusBar.image.speedDown.onclick = function (e) {
+        e.stopPropagation();
+        if (!core.isReplaying()) return;
+        core.control.speedDownReplay();
+    }
+
+    // 录像加速按钮
+    main.statusBar.image.speedUp.onclick = function (e) {
+        e.stopPropagation();
+        if (!core.isReplaying()) return;
+        core.control.speedUpReplay();
+    }
+
+    // 录像单步播放按钮
+    main.statusBar.image.single.onclick = function (e) {
+        e.stopPropagation();
+        if (!core.isReplaying()) return;
+        core.control.stepReplay();
+    }
+    // #endregion
+
+    ////// 点击工具栏的难度时 //////
+    main.dom.hard.onclick = function () {
+        if (core.isReplaying()) return;
+        if (core.domStyle.toolbarBtn === 'normal') main.core.setToolbarButton('num');
+        else if (core.domStyle.toolbarBtn === 'num') main.core.setToolbarButton('normal');
+    }
 
     ////// 点击“开始游戏”时 //////
     main.dom.playGame.onclick = function () {

@@ -3770,6 +3770,70 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			})
 		}
 	},
+	"customizableToolBar": function () {
+		// 自定义工具栏显示项
+		// 本插件需要配合main.js, control.js等的修改
+		// 新的逻辑如下：
+		// 函数_updateStatusBar_setToolboxIcon在updateStatusBar中调用，仅用于切换录像replay/pause，和计算几个图标的透明度
+		// setToolbarButton根据输入的类型重新向状态栏填入元素
+		// resize添加一个只刷新工具栏的模式，此外，resize不调用setToolbarButton，相反，setToolbarButton后调用resize
+		// 以下地方调用setToolbarButton: hard的点击事件，回放录像的进入/退出事件
+		// 要注意一点, floor是不能作为toolBar元素的，statuBar具有同id元素，样式会相互冲突 复制了一个外形一样的图标叫view，作为浏览地图按钮
+
+		/**
+		 * PC 默认6个键且不需要切入数字键的模式 最多9个键 手机 默认9个键 最多10个键
+		 * normal:普通模式 num:按下数字键切换到的模式 replay:录像模式 opacity:透明度
+		 */
+		const defaultConfig = {
+			normal: () => isVertical() ? ['book', 'fly', 'toolbox', 'keyboard', 'shop', 'save', 'load', 'settings', 'rollback'] :
+				['book', 'fly', 'toolbox', 'save', 'load', 'settings'],
+			num: () => ['btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btnAlt'],
+			replay: () => isVertical() ? ['play', 'stop', 'rewind', 'book', 'view', 'speedDown', 'speedUp', 'single'] :
+				['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'book'],
+			hide: () => [],
+		};
+
+		function isVertical() {
+			return core.domStyle.isVertical || core.flags.extendToolbar;
+		}
+
+		function getToolBarConfig(type) {
+			return core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]());
+		}
+		this.getToolBarConfig = getToolBarConfig;
+
+		this.setToolBarConfig = function (type, index, value) {
+			const toolBarConfig = getToolBarConfig();
+			if (value == null) toolBarConfig[type].splice(index, 1);
+			core.setLocalStorage('toorBarConfig', toolBarConfig);
+		}
+
+		/**
+		 * 
+		 * @param {'normal'|'num'|'replay'|'hide'} type 
+		 */
+		function setToolbarButton(type) {
+			const currList = getToolBarConfig(type);
+			if (!currList) return;
+			const fragment = document.createDocumentFragment();
+			for (let i = 0, l = currList.length; i < l; i++) {
+				const iconId = currList[i];
+				const currEle = core.statusBar.image[iconId];
+				if (!currEle) continue;
+				currEle.style.display = 'block';
+				fragment.appendChild(currEle);
+			}
+			if (type !== "hide") {
+				core.domStyle.toolbarBtn = type;
+			}
+			core.domStyle.toolsCount = currList.length;
+			fragment.appendChild(core.dom.hard); // 难度一定会显示 因为难度所在位置要用于切换常规模式和数字模式 难度的尺寸是动态决定的
+			core.dom.toolBar.innerHTML = '';
+			core.dom.toolBar.appendChild(fragment);
+			core.control.resize('tools'); // 在这里计算难度的尺寸
+		}
+		this.setToolbarButton = setToolbarButton;
+	},
 	"setting": function () {
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方

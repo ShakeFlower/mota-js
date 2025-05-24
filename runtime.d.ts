@@ -973,8 +973,10 @@ interface control {
     /** 注销一个resize函数 */
     unregisterResize(name: string): void
 
-    /** 屏幕分辨率改变后重新自适应 */
-    resize(): void
+    /** 屏幕分辨率改变后重新自适应
+     * @param type 重新设置指定类型的已注册resize事件
+     */
+    resize(type?:string): void
 }
 
 /**@file events.js将处理所有和事件相关的操作。 */
@@ -3231,7 +3233,8 @@ type CoreMixin = {
         scale: number,
         isVertical: boolean,
         showStatusBar: boolean,
-        toolbarBtn: boolean,
+        toolbarBtn: 'normal' | 'num' | 'replay' | 'hide',
+        toolsCount: number,
     }
     readonly bigmap: {
         canvas: string[],
@@ -3256,6 +3259,7 @@ type CoreMixin = {
             max: number
             storage: true
             time: number
+            now: number
             updated: boolean
         }
         favorite: []
