@@ -670,7 +670,7 @@ main.prototype.listen = function () {
     }
 
     ////// 点击状态栏中的装备栏图标时 //////
-    main.statusBar.image.toolbox.onclick = function (e) {
+    main.statusBar.image.equipbox.onclick = function (e) {
         e.stopPropagation();
         if (core.isReplaying()) core.control._replay_equipbox();
         else if (main.core.isPlaying()) main.core.openEquipbox(core.status.event.id != 'equipbox');

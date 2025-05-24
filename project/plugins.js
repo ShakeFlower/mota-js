@@ -3785,12 +3785,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * normal:普通模式 num:按下数字键切换到的模式 replay:录像模式 opacity:透明度
 		 */
 		const defaultConfig = {
-			normal: () => isVertical() ? ['book', 'fly', 'toolbox', 'keyboard', 'shop', 'save', 'load', 'settings', 'rollback'] :
-				['book', 'fly', 'toolbox', 'save', 'load', 'settings'],
-			num: () => ['btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btnAlt'],
-			replay: () => isVertical() ? ['play', 'stop', 'rewind', 'book', 'view', 'speedDown', 'speedUp', 'single'] :
-				['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'book'],
-			hide: () => [],
+			normal: {
+				vertical: ['book', 'fly', 'toolbox', 'keyboard', 'shop', 'save', 'load', 'settings', 'rollback'],
+				horizontal: ['book', 'fly', 'toolbox', 'save', 'load', 'settings']
+			},
+			num: {
+				vertical: ['btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btnAlt'],
+				horizontal: ['btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btnAlt']
+			},
+			replay: {
+				vertical: ['play', 'stop', 'rewind', 'book', 'view', 'speedDown', 'speedUp', 'single'],
+				horizontal: ['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'book']
+			},
+			hide: {
+				vertical: [], horizontal: [],
+			}
 		};
 
 		function isVertical() {
@@ -3798,14 +3807,34 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function getToolBarConfig(type) {
-			return core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]());
+			const currObj = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
+			return isVertical() ? currObj.vertical : currObj.horizontal;
 		}
 		this.getToolBarConfig = getToolBarConfig;
 
+		/**
+		 * 
+		 * @param {string} type 
+		 * @param {number} index 
+		 * @param {string} value 
+		 * @example core.setToolBarConfig('normal', 3, null)
+		 */
 		this.setToolBarConfig = function (type, index, value) {
-			const toolBarConfig = getToolBarConfig();
-			if (value == null) toolBarConfig[type].splice(index, 1);
-			core.setLocalStorage('toorBarConfig', toolBarConfig);
+			const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
+			const key = isVertical() ? 'vertical' : 'horizontal';
+			if (type === 'replay' && []) {
+				core.drawFailTip('该按钮不允许放在录像模式下！');
+				return;
+			}
+			if (type !== 'replay' && []) {
+				core.drawFailTip('该按钮不允许放在非录像模式下！');
+				return;
+			}
+
+			if (value == null) toorBarConfig[key].splice(index, 1);
+			else toorBarConfig[key][index] = value;
+			core.setLocalStorage('toorBarConfig' + type, toorBarConfig);
+			setToolbarButton(core.domStyle.toolbarBtn);
 		}
 
 		/**
@@ -3915,21 +3944,23 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.h = h;
 				this.disable = false;
 
-				/** 所在的Menu，用于触发重绘等事件 */
+				/** @type {MenuBase} 所在的Menu，用于触发重绘等事件 */
 				this.menu;
+				/** @type {string} 所在的Menu的画布名称 */
+				this.ctx = '';
 
 				this.draw = (ctx) => { };
 				this.event = (x, y, px, py) => { };
-				this.status;
 			}
 		}
 
 		class MenuBase {
 			constructor(name) {
 				this.name = name;
+				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
 				this.btnList = new Map();
-				this.keyEvent = () => { };
-				this.onMoveEvent = undefined;
+
+				/** @type {((x:number,y:number,px:number,py:number)=>void)} 屏幕被按下时触发的事件 */
 				this.clickEvent = (x, y, px, py) => {
 					this.btnList.forEach((btn) => {
 						if (btn.disable) return;
@@ -3938,12 +3969,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 					});
 				}
+				/** @type {((keycode:number)=>void) | undefined} 按键被按下时触发的事件 */
+				this.keyEvent = undefined;
+				/** @type {((keycode:number,altkey?:boolean,fromReplay?:boolean)=>void) | undefined} 按键被放开时触发的事件 */
+				this.keyUpEvent = undefined;
+				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 屏幕被鼠标滑动或手指拖动时触发的事件 */
+				this.onMoveEvent = undefined;
+				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 当屏幕被鼠标或手指放开时触发的事件 */
+				this.onUpEvent = undefined;
+				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
+				this.onMouseWheelEvent = undefined;
+				
 			}
-
+			/** @param {[any, ButtonBase][]} arr */
 			initBtnList(arr) {
 				this.btnList = new Map(arr);
 				this.btnList.forEach((button) => {
 					button.menu = this;
+					button.ctx = this.name;
 				})
 			}
 
@@ -3953,21 +3996,26 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				})
 			}
 
-			drawContent() { 
-				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
+			drawContent() {
 				this.drawButtonContent();
 			}
 
 			beginListen() {
-				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
-				core.registerAction('keyDown', this.name, this.keyEvent, 100);
 				core.registerAction('ondown', this.name, this.clickEvent, 100);
+				if (this.keyEvent) core.registerAction('keyDown', this.name, this.keyEvent, 100);
+				if (this.keyUpEvent) core.registerAction('keyUp', this.name, this.keyUpEvent, 100);
+				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
+				if (this.onUpEvent) core.registerAction('onup', this.name, this.onUpEvent, 100);
+				if (core.platform.isPC && this.onMouseWheelEvent) core.registerAction('onmousewheel', this.name, this.onMouseWheelEvent, 100);
 			}
 
 			endListen() {
-				core.unregisterAction('onmove', this.name);
-				core.unregisterAction('keyDown', this.name);
 				core.unregisterAction('ondown', this.name);
+				core.unregisterAction('keyDown', this.name);
+				core.unregisterAction('keyUp', this.name);
+				core.unregisterAction('onmove', this.name);
+				core.unregisterAction('onup', this.name);
+				core.unregisterAction('onmousewheel', this.name);
 			}
 
 			clear() {
@@ -4246,6 +4294,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				'在地图上显示即捡即用道具和装备增加的属性值。',
 				true,
 			)],
+			/** @todo 该数字可以是小数，需要舍入 */
 			['zoomIn', new Setting(
 				() => ' <  放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
 				() => {
@@ -4844,22 +4893,29 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 
+			/** @todo 需要重构 */ 
 			focus(button, pos) {
 				this.selectedPos = pos;
 				this.selectedBtn = button;
-				this.text = button.setting.text;
-				this.drawEventSelector();
+				if (button instanceof SettingButton) {
+					this.text = button.setting.text;
+					this.drawEventSelector();
+				}
+				else {
+					this.text = button.text;
+				}
 				this.drawContent();
 			}
 
 			drawEventSelector() {
-				if (core.isset(this.selectedBtn)) {
+				if (core.isset(this.selectedBtn) && this.selectedBtn instanceof SettingButton) {
 					core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
 						this.selectedBtn.w, this.selectedBtn.h, 137);
 				}
 			}
 
 			drawContent() {
+				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
 				super.drawContent();
 				if (this.text && this.text.length > 0) {
 					core.ui.drawTextContent(this.name, this.text, {
@@ -4880,6 +4936,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						break;
 					case 'key':
 						core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
+						break;
+					case 'toolBarConfig':
+						core.fillText(this.name, '常规', 40, 175, ' #FFE4B5', '16px Verdana');
+						core.fillText(this.name, '数字', 40, 205, ' #FFE4B5', '16px Verdana');
+						core.fillText(this.name, '录像', 40, 235, ' #FFE4B5', '16px Verdana');
+						core.fillText(this.name, '可选按钮', 40, 265, ' #FFE4B5', '16px Verdana');
 						break;
 					case 'console':
 						const consoleWarnText =
@@ -4917,7 +4979,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						this.drawContent();
 					}
 					if (keyCode === 27) {
-						this.btnList.get('quit').event();
+						this.btnList.get('quit')?.event();
 					}
 				}
 			}
@@ -4954,10 +5016,57 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class TextButton extends ButtonBase {
 			constructor(x, y, w, h, text) {
 				super(x, y, w, h);
+				this.text = text;
 				this.draw = (ctx) => {
 					if (this.disable) return;
-					core.ui.fillText(ctx, text,
+					core.ui.fillText(ctx, this.text,
 						this.x + this.w / 2, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+				}
+			}
+		}
+
+		class ToolBtn extends ButtonBase {
+			constructor(x, y, w, h, icon, text, config) {
+				super(x, y, w, h);
+				this.icon = icon;
+				/** @todo 这里需要重构 */
+				this.text = text;
+				const { strokeStyle = 'white', fillStyle = 'white', selectedStyle = 'gold' } = config || {};
+				this.draw = () => {
+					const ctx = this.ctx;
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, strokeStyle);
+					// core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, fillStyle);
+					core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
+				};
+				this.event = () => {
+					console.log(1);
+				};
+			}
+		}
+
+		class ToolBarBtn extends ButtonBase {
+			constructor(x, y, size, type, length, text) {
+				super(x, y, length * size, size);
+				this.type = type;
+				this.length = length;
+				/** @todo 这里需要重构 */
+				this.text = text;
+				this.draw = () => {
+					const ctx = this.ctx;
+					const squareSize = this.h;
+					const toolBarConfig = core.plugin.getToolBarConfig(type);
+					for (let i = 0; i < this.length; i++) {
+						const style = (this.menu.type === type && this.menu.index === i) ? 'gold' : 'white';
+						core.strokeRoundRect(ctx, this.x + squareSize * i + i, this.y, squareSize, squareSize, 3, style);
+						core.drawIcon(ctx, toolBarConfig[i], this.x + squareSize * i + i, this.y, squareSize, squareSize);
+					}
+				}
+				this.event = (x, y, px, py) => {
+					const squareSize = this.h;
+					const index = Math.floor((px - this.x) / squareSize);
+					this.menu.type = type;
+					this.menu.index = index;
+					this.menu.drawContent();
 				}
 			}
 		}
@@ -5018,6 +5127,42 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,6', new SettingButton(40, 340, 150, 25, 'setHotKey', ['9'])],
 				['2,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
 			]);
+			// 名字不能叫toolBar 被系统占了
+			const toolBarMenu = new SettingOnePage('toolBarConfig');
+			toolBarMenu.initBtnList([
+				['1,1', new ToolBarBtn(80, 158, 24, 'normal', 9, '常规模式下显示在工具栏中的图标。')],
+				['2,1', new ToolBarBtn(80, 188, 24, 'num', 9, '数字模式下显示在工具栏中的图标。')],
+				['3,1', new ToolBarBtn(80, 218, 24, 'replay', 9, '录像模式下显示在工具栏中的图标。')],
+				// ['4,1', new TextButton(160, 218, 45, 25, '执行')],
+				['5,1', new ToolBtn(40, 275, 24, 24, 'book', '打开怪物手册')],
+				['5,2', new ToolBtn(70, 275, 24, 24, 'fly', '进行楼层传送')],
+				['5,3', new ToolBtn(100, 275, 24, 24, 'toolbox', '打开物品背包')],
+				['5,4', new ToolBtn(130, 275, 24, 24, 'equipbox', '打开装备背包')],
+				['5,5', new ToolBtn(160, 275, 24, 24, 'keyboard', '打开虚拟键盘')],
+				['5,6', new ToolBtn(190, 275, 24, 24, 'shop', '打开快捷商店')],
+				['5,7', new ToolBtn(220, 275, 24, 24, 'save', '存档')],
+				['5,8', new ToolBtn(250, 275, 24, 24, 'load', '读档')],
+				['5,9', new ToolBtn(280, 275, 24, 24, 'settings', '打开系统设置')],
+				['5,10', new ToolBtn(310, 275, 24, 24, 'rollback', '读取自动存档')],
+				['5,11', new ToolBtn(340, 275, 24, 24, 'undoRollback', '取消读取自动存档')],
+				['6,1', new ToolBtn(40, 305, 24, 24, 'btn1', '数字键1')],
+				['6,2', new ToolBtn(70, 305, 24, 24, 'btn2', '数字键2')],
+				['6,3', new ToolBtn(100, 305, 24, 24, 'btn3', '数字键3')],
+				['6,4', new ToolBtn(130, 305, 24, 24, 'btn4', '数字键4')],
+				['6,5', new ToolBtn(160, 305, 24, 24, 'btn5', '数字键5')],
+				['6,6', new ToolBtn(190, 305, 24, 24, 'btn6', '数字键6')],
+				['6,7', new ToolBtn(220, 305, 24, 24, 'btn7', '数字键7')],
+				['6,8', new ToolBtn(250, 305, 24, 24, 'btn8', '数字键8')],
+				['6,9', new ToolBtn(280, 305, 24, 24, 'btn9', '数字键9')],
+				['6,10', new ToolBtn(310, 305, 24, 24, 'btnAlt', '开关Alt模式(需要配合数字键使用)')],
+				['7,1', new ToolBtn(40, 335, 24, 24, 'play', '播放/暂停录像')],
+				['7,2', new ToolBtn(70, 335, 24, 24, 'stop', '停止播放录像')],
+				['7,3', new ToolBtn(100, 335, 24, 24, 'rewind', '录像模式下回退')],
+				['7,4', new ToolBtn(130, 335, 24, 24, 'speedDown', '减速录像(最低0.2倍)')],
+				['7,5', new ToolBtn(160, 335, 24, 24, 'speedUp', '加速录像(最高24倍)')],
+				['7,6', new ToolBtn(190, 335, 24, 24, 'single', '单步播放录像')],
+				['7,7', new ToolBtn(220, 335, 24, 24, 'view', '浏览地图')],
+			])
 
 			const consoleMenu = new SettingOnePage('console');
 			consoleMenu.initBtnList([
@@ -5034,13 +5179,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			]);
 
 			// 在此处添加新的菜单页面
-			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu], 0, ctx);
+			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, toolBarMenu, consoleMenu], 0, ctx);
 
 			// 主页面的按钮列表
 			const gamePlayBtn = new ChoiceButton(32, 40, 46, 24, '功能', 0),
 				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1),
 				keyBtn = new ChoiceButton(152, 40, 46, 24, '按键', 2),
-				consoleBtn = new ChoiceButton(212, 40, 66, 24, '控制台', 3);
+				toolBarBtn = new ChoiceButton(212, 40, 66, 24, '工具栏', 3),
+				consoleBtn = new ChoiceButton(292, 40, 66, 24, '控制台', 4);
 			const quit = new TextButton(360, 10, 45, 25, '[退出]');
 			quit.event = () => {
 				settingMenu.clear();
@@ -5048,7 +5194,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			settingMenu.initBtnList([[0, gamePlayBtn], [1, gameViewBtn],
-			[2, keyBtn], [3, consoleBtn],
+			[2, keyBtn], [3, toolBarBtn], [4, consoleBtn],
 			['quit', quit]]);
 
 			// 放缩时重绘整个大menu
@@ -5056,6 +5202,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 设置初始时选中的按键为第一个按键
 			settingMenu.changeBtn(gamePlayBtn);
 
+			/** @todo 修复resize时（尤其有输入框时）自定义画布被破坏的，及擦除不正确问题*/ 
 			settingMenu.init();
 		}
 	}
