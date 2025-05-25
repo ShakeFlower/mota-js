@@ -564,12 +564,6 @@ var data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "横屏底部工具栏",
 					"_data": "在横屏状态下是否将工具栏挪动到游戏画布下方，从而完全解放状态栏空间"
 				},
-				"showHard": {
-					"_leaf": true,
-					"_type": "checkbox",
-					"_docs": "工具栏显示难度",
-					"_data": "工具栏是否显示难度字符。由于空间不足，显示时将隐藏回退等新增按钮。"
-				},
 				"flyNearStair": {
 					"_leaf": true,
 					"_type": "checkbox",

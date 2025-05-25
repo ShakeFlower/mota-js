@@ -3819,23 +3819,40 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @param {string} value 
 		 * @example core.setToolBarConfig('normal', 3, null)
 		 */
-		this.setToolBarConfig = function (type, index, value) {
+		function setToolBarConfig(type, index, value) {
 			const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
 			const key = isVertical() ? 'vertical' : 'horizontal';
-			if (type === 'replay' && []) {
+			if (type === 'replay'
+				&& (['fly', 'shop', 'load', 'settings', 'btnAlt', 'rollback', 'undoRollback', 'btnAlt'].includes(value))) {
 				core.drawFailTip('该按钮不允许放在录像模式下！');
 				return;
-			}
-			if (type !== 'replay' && []) {
+			} // 录像模式下的按键处理有一套专门的逻辑，在_sys_onkeyUp_replay，实际上并不能读取自动档
+			if (type !== 'replay' && ['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'single'].includes(value)) {
 				core.drawFailTip('该按钮不允许放在非录像模式下！');
 				return;
 			}
 
-			if (value == null) toorBarConfig[key].splice(index, 1);
-			else toorBarConfig[key][index] = value;
+			if (value === "delete") toorBarConfig[key].splice(index, 1);
+			else {
+				if (index > toorBarConfig[key].length) {
+					core.drawFailTip('按钮中间不能有空白!');
+					return;
+				}
+				toorBarConfig[key][index] = value;
+			}
 			core.setLocalStorage('toorBarConfig' + type, toorBarConfig);
 			setToolbarButton(core.domStyle.toolbarBtn);
 		}
+		this.setToolBarConfig = setToolBarConfig;
+
+		function resetToolBarConfig() {
+			for (let type in defaultConfig) {
+				if (!defaultConfig.hasOwnProperty(type)) return;
+				const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
+				core.setLocalStorage('toorBarConfig' + type, toorBarConfig);
+			}
+		}
+		this.resetToolBarConfig = resetToolBarConfig;
 
 		/**
 		 * 
@@ -4938,6 +4955,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
 						break;
 					case 'toolBarConfig':
+						core.setTextAlign(this.name, 'left');
 						core.fillText(this.name, '常规', 40, 175, ' #FFE4B5', '16px Verdana');
 						core.fillText(this.name, '数字', 40, 205, ' #FFE4B5', '16px Verdana');
 						core.fillText(this.name, '录像', 40, 235, ' #FFE4B5', '16px Verdana');
@@ -5028,18 +5046,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class ToolBtn extends ButtonBase {
 			constructor(x, y, w, h, icon, text, config) {
 				super(x, y, w, h);
-				this.icon = icon;
+				this.icon = icon; // 特殊icon:delete 用于删除图标
 				/** @todo 这里需要重构 */
 				this.text = text;
 				const { strokeStyle = 'white', fillStyle = 'white', selectedStyle = 'gold' } = config || {};
 				this.draw = () => {
 					const ctx = this.ctx;
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, strokeStyle);
-					// core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, fillStyle);
-					core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, (this.menu.selectedTool === this.icon) ? selectedStyle : strokeStyle);
+					if (this.icon === 'delete') {
+						core.drawLine(ctx, this.x + 2, this.y + 2, this.x + this.w - 2, this.y + this.h - 2, 'red', 2);
+						core.drawLine(ctx, this.x + 2, this.y + this.h - 2, this.x + this.w - 2, this.y + 2, 'red', 2);
+					}
+					else core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
 				};
 				this.event = () => {
-					console.log(1);
+					this.menu.selectedTool = this.icon;
+					this.menu.drawContent();
 				};
 			}
 		}
@@ -5051,6 +5073,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.length = length;
 				/** @todo 这里需要重构 */
 				this.text = text;
+
 				this.draw = () => {
 					const ctx = this.ctx;
 					const squareSize = this.h;
@@ -5129,11 +5152,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			]);
 			// 名字不能叫toolBar 被系统占了
 			const toolBarMenu = new SettingOnePage('toolBarConfig');
+			console.log(toolBarMenu);
+			const changeToolBarBtn = new ChoiceButton(320, 158, 42, 24, '执行', -1);
+			changeToolBarBtn.event = function () {
+				core.setToolBarConfig(this.menu.type, this.menu.index, this.menu.selectedTool);
+				this.menu.drawContent();
+			}.bind(changeToolBarBtn);
 			toolBarMenu.initBtnList([
 				['1,1', new ToolBarBtn(80, 158, 24, 'normal', 9, '常规模式下显示在工具栏中的图标。')],
+				['1,2', changeToolBarBtn],
 				['2,1', new ToolBarBtn(80, 188, 24, 'num', 9, '数字模式下显示在工具栏中的图标。')],
 				['3,1', new ToolBarBtn(80, 218, 24, 'replay', 9, '录像模式下显示在工具栏中的图标。')],
-				// ['4,1', new TextButton(160, 218, 45, 25, '执行')],
 				['5,1', new ToolBtn(40, 275, 24, 24, 'book', '打开怪物手册')],
 				['5,2', new ToolBtn(70, 275, 24, 24, 'fly', '进行楼层传送')],
 				['5,3', new ToolBtn(100, 275, 24, 24, 'toolbox', '打开物品背包')],
@@ -5162,6 +5191,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['7,5', new ToolBtn(160, 335, 24, 24, 'speedUp', '加速录像(最高24倍)')],
 				['7,6', new ToolBtn(190, 335, 24, 24, 'single', '单步播放录像')],
 				['7,7', new ToolBtn(220, 335, 24, 24, 'view', '浏览地图')],
+				['7,8', new ToolBtn(250, 335, 24, 24, 'delete', '删除已有图标')],
 			])
 
 			const consoleMenu = new SettingOnePage('console');

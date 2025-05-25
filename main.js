@@ -853,6 +853,7 @@ main.prototype.listen = function () {
     ////// 点击工具栏的难度时 //////
     main.dom.hard.onclick = function () {
         if (core.isReplaying()) return;
+        if (!core.domStyle.isVertical && !core.flags.extendToolbar) return; // 横屏模式下点击道具栏无反应
         if (core.domStyle.toolbarBtn === 'normal') main.core.setToolbarButton('num');
         else if (core.domStyle.toolbarBtn === 'num') main.core.setToolbarButton('normal');
     }
