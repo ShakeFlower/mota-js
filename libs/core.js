@@ -117,6 +117,7 @@ function core() {
     }
     this.saves = {
         "saveIndex": null,
+        "actionCount": 0, // 每次存读档后进行了几步操作，用于同步存档前的检查
         "ids": {},
         "autosave": {
             "data": null,

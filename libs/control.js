@@ -2060,6 +2060,7 @@ control.prototype._replayAction_no = function (action) {
 ////// 自动存档 //////
 control.prototype.autosave = function (removeLast) {
     if (core.hasFlag('__forbidSave__')) return;
+    core.saves.actionCount ++;
     var x = null;
     if (removeLast) {
         x = core.status.route.pop();
@@ -2127,6 +2128,7 @@ control.prototype._doSL_save = function (id) {
     }
     core.setLocalForage("save" + id, data, function () {
         core.saves.saveIndex = id;
+        core.saves.actionCount = 0;
         core.setLocalStorage('saveIndex', core.saves.saveIndex);
         // 恢复事件
         if (!core.events.recoverEvents(core.status.event.interval))
@@ -2205,8 +2207,10 @@ control.prototype._doSL_load_afterGet = function (id, data) {
         core.drawTip("读档成功");
         if (id != "autoSave") {
             core.saves.saveIndex = id;
+            core.saves.actionCount = 0;
             core.setLocalStorage('saveIndex', core.saves.saveIndex);
         }
+        else core.saves.actionCount = 1;
     });
 }
 
@@ -2286,19 +2290,19 @@ control.prototype.syncSave = function (type) {
             core.getAllSaves(callback);
         }, () => { core.ui.closePanel(); });
     }
-    else {
+    else { // 这里的检测逻辑：每存读档一次actionCount置0, 若读的自动档, actionCount置为1, 每autosave一次actionCount+1。若actionCount不为0就会触发检测。
         const index = core.saves.saveIndex;
         if (!index) return core.drawText("没有要同步的存档");
         const callback = function (save) {
-            const map = core.maps.loadMap(save.maps, save.floorId);
             const ctx = core.createCanvas('syncSave', core.__PIXELS__ / 2 - 52, 18, 104, 104, 141);
             core.strokeRect(ctx, 0, 0, 104, 104, 'yellow', 2);
-            core.drawThumbnail(save.floorId, map.blocks, {
-                heroLoc: save.hero.loc, heroIcon: save.hero.image, flags: save.hero.flags,
-                ctx: ctx, x: 2, y: 2, size: 100, noHD: true,
-            });
             const autosave = core.saves.autosave;
-            if (autosave.data instanceof Array && autosave.data.length > 0) {
+            if (autosave.data instanceof Array && core.saves.actionCount > 0) {
+                const map = core.maps.loadMap(save.maps, save.floorId);
+                core.drawThumbnail(save.floorId, map.blocks, {
+                    heroLoc: save.hero.loc, heroIcon: save.hero.image, flags: save.hero.flags,
+                    ctx: ctx, x: 2, y: 2, size: 100, noHD: true,
+                });
                 core.ui.drawConfirmBox("您正试图同步" + index + "号存档，确定是这个存档吗？\n如果不是，请返回并\r[yellow]保存当前\r状态再同步.", function () {
                     core.control._syncSave_http(type, save);
                     core.deleteCanvas("syncSave");

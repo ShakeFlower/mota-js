@@ -2904,6 +2904,7 @@ actions.prototype._clickStorageRemove_all = function () {
             core.saves.cache = {};
             core.ui.closePanel();
             core.saves.saveIndex = 1;
+            core.saves.actionCount = 0;
             core.saves.favorite = [];
             core.saves.favoriteName = {};
             core.control._updateFavoriteSaves();

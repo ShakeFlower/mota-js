@@ -3385,6 +3385,8 @@ type CoreMixin = {
     }
     readonly saves: {
         saveIndex: number
+        /** 每次存读档后进行了几步操作，用于同步存档前的检查 */
+        actionCount: number
         readonly ids: { [key: number]: boolean }
         autosave: {
             data: Save[]
