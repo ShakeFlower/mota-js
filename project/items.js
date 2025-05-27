@@ -506,7 +506,6 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 	"wand": {
 		"cls": "tools",
 		"name": "生命魔杖",
-		"canBatchUse": "true",
 		"text": "使用后回复100体力。",
 		"canUseItemEffect": "true",
 		"useItemEffect": "core.addStatus('hp', 100);",
@@ -529,7 +528,6 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canUseItemEffect": null,
 		"useItemEffect": null,
 		"useItemEvent": null,
-		"canBatchUse": null
 	},
 	"orb": {
 		"cls": "items",
