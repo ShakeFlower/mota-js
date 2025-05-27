@@ -1153,18 +1153,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		if (main.replayChecking) __enable = false;
 		if (!__enable) {
 			core.plugin.animate = {};
-			this.aniMap = new Map();
+			this.tickerSet = new Set();
 			this.deleteAllAnis = () => { };
 			return;
 		}
 
-		/** 键为一个自建Ticker, 值为摧毁它的事件 */
-		this.aniMap = new Map();
+		/** 该集合中的所有Ticker在跨层时需要被摧毁 */
+		this.tickerSet = new Set();
 
 		/** 对Map中所有Ticker执行摧毁事件 */
 		this.deleteAllAnis = function () {
-			core.plugin.aniMap.forEach((destroyEvent, ani) => destroyEvent(ani));
-			core.plugin.aniMap.clear();
+			core.plugin.tickerSet.forEach((ticker) => ticker.destroy());
 		}
 
 		// var M = Object.defineProperty;
@@ -1202,6 +1201,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.funcs.clear();
 			}
 			destroy() {
+				core.plugin.tickerSet.delete(this);
 				this.clear(), this.stop();
 			}
 			stop() {
@@ -1894,7 +1894,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const { Transition, hyper, Ticker } = core.plugin.animate ?? {};
 
 		// 磁吸特效的时长，单位毫秒
-		const transitionTime = 600;
+		const transitionTime = 400;
 
 		const transitionList = [];
 
@@ -2119,7 +2119,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 									const index = transitionList.findIndex(v => v === t);
 									transitionList.splice(index, 1);
 								} // 摧毁Transition t
-								core.plugin.aniMap.set(t, onDestory);
+								core.plugin.tickerSet.add(t.ticker);
 								t.mode(hyper('sin', 'out'))
 									.time(transitionTime)
 									.absolute()
@@ -2388,12 +2388,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function drawCommentStr(content, x, y, vx) {
 			if (core.isReplaying() || !Animation) return;
 			const ani = new Animation();
-			core.plugin.aniMap.set(ani, (ani) => ani.ticker.destroy());
+			core.plugin.tickerSet.add(ani.ticker);
 			ani.ticker.add(() => {
 				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
 			})
 			// 弹幕的最大长度5600，再长属于异常数据
-			const aim = 600 + Math.min(core.calWidth(ctxName, content, '16px Verdana'), 5000);
+			const aim = 100 + Math.min(core.calWidth(ctxName, content, '16px Verdana'), 5000);
 			ani.mode(linear())
 				.time(aim / vx)
 				.absolute()

@@ -532,7 +532,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			},
 			{
 				"type": "function",
-				"function": "function(){\n// 默认读取弹幕数据\nif (core.hasFlag('comment') && !core.isReplaying()) {\n\tcore.plugin.getComment();\n\tsetTimeout(core.plugin.drawCommentSign, 1000);\n}\n}"
+				"function": "function(){\n// 默认读取弹幕数据\nif (core.hasFlag('comment') && !core.isReplaying()) {\n\tnew Promise(res => {\n\t\t\tsetTimeout(res, 1000);\n\t\t})\n\t\t.then(value => {\n\t\t\treturn new Promise(res => {\n\t\t\t\tcore.plugin.getComment();\n\t\t\t\tsetTimeout(res, 1000);\n\t\t\t})\n\t\t})\n\t\t.then(value => {\n\t\t\tcore.plugin.drawCommentSign();\n\t\t})\n}\n}"
 			}
 		],
 		"shops": [
@@ -746,6 +746,6 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"enableRouteFolding": true,
 		"disableShopOnDamage": false,
 		"blurFg": false,
-		"chaseThroughEnemy": false,
+		"chaseThroughEnemy": false
 	}
 }

@@ -3058,7 +3058,9 @@ interface plugin {
     animate: {
         Animation: any, AnimationBase: any, Ticker: any, Transition: any, bezier: any, bezierPath: any, circle: any,
         hyper: any, inverseTrigo: any, linear: any, power: any, shake: any, sleep: any, trigo: any,
-    } & {}
+    }
+    /** 该集合中的所有Ticker在跨层时需要被摧毁 */
+    tickerSet: Set
 
     /** 打开一个道具商店 */
     openItemShop: (itemShopId: string) => void
