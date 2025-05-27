@@ -99,6 +99,12 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "自动切装"
 			},
+			"customizableToolBar": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "自定义工具栏"
+			},
 			"setting": {
 				"_leaf": true,
 				"_type": "textarea",

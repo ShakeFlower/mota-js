@@ -2511,7 +2511,7 @@ interface ui {
     loadCanvas(name: string | CanvasRenderingContext2D): void
 
     /** 设置某个canvas的baseline */
-    setTextBaseline(name: string | CanvasRenderingContext2D, baseline: any): void
+    setTextBaseline(name: string | CanvasRenderingContext2D, baseline: 'alphabetic' | 'top' | 'hanging' | 'middle' | 'ideographic' | 'bottom'): void
 
     /** 字符串自动换行的分割 */
     splitLines(name: string | CanvasRenderingContext2D, text: string, maxWidth?: number, font?: string): void
@@ -3082,8 +3082,140 @@ interface plugin {
     /** 多角色插件，切换到另一角色 */
     changeHero(toHeroId?: number): void
 
+    uiBase: {
+        ButtonBase: ButtonBase
+        RoundBtn: RoundBtn
+        IconBtn: IconBtn
+        MenuBase: MenuBase
+    }
+
+    /** 设置菜单 */
+    settingMenu: MenuBaseClass | undefined
+
     // core.plugin.xxx 可能是任意变量，任意签名和返回值的函数
     [x: string]: any
+}
+
+/*** 用于绘制的基类 */
+/*** 按钮基类 */
+interface ButtonBase {
+    new(x: number, y: number, w: number, h: number): ButtonBaseClass;
+}
+
+declare class ButtonBaseClass {
+    constructor(x: number, y: number, w: number, h: number);
+    /** 按钮判定区域左上角的X坐标 */
+    x: number;
+    /** 按钮判定区域左上角的Y坐标 */
+    y: number;
+    /** 按钮判定区域的宽度 */
+    w: number;
+    /** 按钮判定区域的高度 */
+    h: number;
+    /** 按钮是否失效。失效时将跳过绘制和监听。 */
+    disable: boolean;
+    /** 按钮是否处于被选中的状态 */
+    status: 'selected' | 'none';
+    /** 按钮所在的菜单 */
+    menu: MenuBaseClass
+    /** 按钮所在的画布 */
+    ctx: string
+    /** 按钮在菜单中的索引 */
+    key: string
+    /** 按钮的绘制方法 */
+    draw: () => void
+    /** 按钮被按下时触发的事件 */
+    event: (x: number, y: number, px: number, py: number) => void
+}
+
+interface RoundBtn {
+    new(x: number, y: number, w: number, h: number, text: string, config?: any): RoundBtnClass;
+}
+
+declare class RoundBtnClass extends ButtonBaseClass {
+    constructor(x: number, y: number, w: number, h: number, text: string, config?: any);
+    /** 按钮绘制的文字 */
+    text: string
+    /** 按钮的绘制属性配置 */
+    config: {
+        fillStyle?: string, strokeStyle?: string, fontStyle?: string,
+        selectedFillStyle?: string, selectedstrokeStyle?: string, selectedFontStyle?: string,
+        radius?: number, lineWidth?: number, angle?: number, font?: string
+    }
+}
+
+interface IconBtn {
+    new(x: number, y: number, w: number, h: number, text: string, config?: any): IconBtnClass;
+}
+
+declare class IconBtnClass extends ButtonBaseClass {
+    constructor(x: number, y: number, w: number, h: number, text: string, config?: any);
+    /** 按钮绘制的图标名称 */
+    icon: string
+    /** 按钮的绘制属性配置 */
+    config: {
+        fillStyle?: string, strokeStyle?: string,
+        radius?: number, lineWidth?: number, angle?: number, font?: number
+    }
+}
+
+interface MenuBase {
+    new(name: string, x?: number, y?: number, w?: number, h?: number, zIndex?: number): MenuBaseClass;
+}
+
+/*** 菜单基类 */
+declare class MenuBaseClass {
+    /**
+     * @param name 该菜单使用的画布的名称
+     */
+    constructor(name: string, x?: number, y?: number, w?: number, h?: number, zIndex?: number);
+    /** 该菜单画布左上角的x坐标 */
+    x: number
+    /** 该菜单画布左上角的y坐标 */
+    y: number
+    /** 该菜单画布的宽度 */
+    w: number
+    /** 该菜单画布的高度 */
+    h: number
+    /** 该菜单画布的z值 */
+    zIndex: number
+    /** 该菜单使用的画布的名称 */
+    name: string
+    /** 该画布是否正在被绘制 */
+    onDraw: boolean
+    /** 该菜单的按钮列表 */
+    btnList: Map<any, ButtonBaseClass>
+    /** 该菜单的点击事件(在此监听按钮的点击事件) */
+    clickEvent: (x: number, y: number, px: number, py: number) => void
+    /** 按键被按下时触发的事件 */
+    keyEvent: ((keycode: number) => void) | undefined
+    /** 按键被放开时触发的事件 */
+    keyUpEvent: ((keycode: number, altkey?: boolean, fromReplay?: boolean) => void) | undefined;
+    /** 屏幕被鼠标滑动或手指拖动时触发的事件 */
+    onMoveEvent: ((x: number, y: number, px: number, py: number) => void) | undefined;
+    /** 当屏幕被鼠标或手指放开时触发的事件 */
+    onUpEvent: ((x: number, y: number, px: number, py: number) => void) | undefined;
+    /** 鼠标滚轮滚动时触发的事件 */
+    onMouseWheelEvent: ((direct: 1 | -1) => void) | undefined;
+
+    /** 返回换算后的画布上的相对坐标 */
+    convertCoordinate(px: number, py: number): [number, number]
+    /** 检查坐标是否在画布范围内 */
+    isPosValid(px: number, py: number): boolean
+    /** 初始化该菜单的按钮列表 */
+    initBtnList(arr: [any, ButtonBaseClass][]): void
+    /** 绘制该菜单上的按钮 */
+    drawButtonContent(): void
+    /** 绘制该菜单上的按钮(需要派生类自行绘制画布和填充内容) */
+    drawContent(): void
+    /** 开始监听该菜单的各个事件 */
+    beginListen(): void
+    /** 取消监听该菜单的各个事件 */
+    endListen(): void
+    /** 取消监听该菜单的各个事件, 并清除该菜单的画布 */
+    clear(): void
+    /** 开始监听和绘制 */
+    init(): void
 }
 
 type CoreMixin = {

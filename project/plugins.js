@@ -2405,11 +2405,177 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		//#endregion 
 
 	},
+	"uiBaseClass": function () {
+		// 本插件定义了一些用于绘制的基类
+
+		/** 按钮基类 */
+		class ButtonBase {
+			constructor(x, y, w, h) {
+				this.x = x;
+				this.y = y;
+				this.w = w;
+				this.h = h;
+				this.disable = false;
+				this.status = 'none';
+
+				// 下面三项在initBtnList时添加
+				/** @type {MenuBase} 所在的Menu，用于触发重绘等事件 */
+				this.menu;
+				/** @type {string} 所在的Menu的画布名称 */
+				this.ctx = '';
+				/** @type {string} 自身在所在的Menu的btnList中的索引 */
+				this.key = '';
+
+				this.draw = () => { };
+				this.event = (x, y, px, py) => { };
+			}
+		}
+
+		class RoundBtn extends ButtonBase {
+			constructor(x, y, w, h, text, config) {
+				super(x, y, w, h);
+				this.text = text;
+				this.config = config || {};
+				this.draw = () => {
+					const ctx = this.ctx;
+					const { fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
+						selectedFillStyle = 'rgb(255, 51, 153)', selectedstrokeStyle = 'black', selectedFontStyle = 'white',
+						radius = 3, lineWidth = 1, angle = null, font = '16px Verdana' } = this.config || {};
+					core.setTextAlign(ctx, 'center');
+					core.setTextBaseline(ctx, 'alphabetic');
+					if (this.status === 'selected') {
+						core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle, angle);
+						core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth, angle);
+						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, font);
+					} else {
+						core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
+						core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
+						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, font);
+					}
+				};
+			}
+		}
+
+		class IconBtn extends ButtonBase {
+			constructor(x, y, w, h, icon, config) {
+				super(x, y, w, h);
+				this.icon = icon;
+				this.config = config || {};
+				this.draw = () => {
+					const ctx = this.ctx;
+					const { strokeStyle = 'black', fillStyle = 'white',
+						radius = 3, lineWidth = 1, angle = null, frame = 0,
+					} = this.config || {};
+					if (fillStyle !== 'none') core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, radius, fillStyle, angle);
+					if (strokeStyle !== 'none') core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, radius, strokeStyle, lineWidth, angle);
+					core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h, frame);
+				};
+			}
+		}
+
+		class MenuBase {
+			constructor(name, x, y, w, h, zIndex) {
+				this.name = name;
+				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
+				this.btnList = new Map();
+				/** 当前画布是否正被绘制 */this.onDraw = false;
+
+				this.x = x ?? 0;
+				this.y = y ?? 0;
+				this.w = w ?? core.__PIXELS__;
+				this.h = h ?? core.__PIXELS__; 
+				this.zIndex = zIndex ?? 136; // 136比uievent大1
+
+				/** 屏幕被按下时触发的事件 */
+				this.clickEvent = (x, y, rawpx, rawpy) => {
+					if (!this.isPosValid(rawpx, rawpy)) return;
+					const [px, py] = this.convertCoordinate(rawpx, rawpy);
+					this.btnList.forEach((btn) => {
+						if (btn.disable) return;
+						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+							btn.event(x, y, px, py);
+						}
+					});
+				}
+				/** @type {((keycode:number)=>void) | undefined} 按键被按下时触发的事件 */
+				this.keyEvent = undefined;
+				/** @type {((keycode:number,altkey?:boolean,fromReplay?:boolean)=>void) | undefined} 按键被放开时触发的事件 */
+				this.keyUpEvent = undefined;
+				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 屏幕被鼠标滑动或手指拖动时触发的事件 */
+				this.onMoveEvent = undefined;
+				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 当屏幕被鼠标或手指放开时触发的事件 */
+				this.onUpEvent = undefined;
+				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
+				this.onMouseWheelEvent = undefined;
+
+			}
+			/** @param {[any, ButtonBase][]} arr */
+			initBtnList(arr) {
+				this.btnList = new Map(arr);
+				this.btnList.forEach((button, key) => {
+					button.menu = this;
+					button.ctx = this.name;
+					button.key = key;
+				})
+			}
+
+			// 返回换算后的画布上的相对坐标
+			convertCoordinate(px, py) {
+				return [px - this.x, py - this.y];
+			}
+
+			// 检查坐标是否在画布范围内
+			isPosValid(px, py) {
+				return (px >= this.x) && (px <= this.x + this.w) && (py >= this.y) && (py <= this.y + this.h);
+			}
+
+			drawButtonContent() {
+				this.btnList.forEach((button) => {
+					if (!button.disable) button.draw();
+				})
+			}
+
+			drawContent() {
+				this.drawButtonContent();
+				this.onDraw = true;
+			}
+
+			beginListen() {
+				core.registerAction('ondown', this.name, this.clickEvent, 100);
+				if (this.keyEvent) core.registerAction('keyDown', this.name, this.keyEvent, 100);
+				if (this.keyUpEvent) core.registerAction('keyUp', this.name, this.keyUpEvent, 100);
+				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
+				if (this.onUpEvent) core.registerAction('onup', this.name, this.onUpEvent, 100);
+				if (core.platform.isPC && this.onMouseWheelEvent) core.registerAction('onmousewheel', this.name, this.onMouseWheelEvent, 100);
+			}
+
+			endListen() {
+				core.unregisterAction('ondown', this.name);
+				core.unregisterAction('keyDown', this.name);
+				core.unregisterAction('keyUp', this.name);
+				core.unregisterAction('onmove', this.name);
+				core.unregisterAction('onup', this.name);
+				core.unregisterAction('onmousewheel', this.name);
+			}
+
+			clear() {
+				this.endListen();
+				core.deleteCanvas(this.name);
+				this.onDraw = false;
+			}
+
+			init() {
+				this.beginListen();
+				this.drawContent();
+			}
+		}
+		this.uiBase = { ButtonBase, RoundBtn, IconBtn, MenuBase };
+	},
 	"newBackpackLook": function () {
 		let __enable = true;
 		if (!__enable) return;
 
-		/** @todo 在本界面可自定义物品快捷键，待后续完善 */ 
+		/** @todo 在本界面可看到和自定义物品快捷键，待后续完善 */
 		// #region 复写
 
 		core.ui._drawToolbox = function () { drawItemBox('all'); }.bind(core.ui);
@@ -2575,128 +2741,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		// #endregion
-		// #region 绘制用到的基类
-
-		class ButtonBase {
-			constructor(x, y, w, h) {
-				this.x = x;
-				this.y = y;
-				this.w = w;
-				this.h = h;
-				this.disable = false;
-
-				/** @type {MenuBase} 所在的Menu，用于触发重绘等事件 */
-				this.menu;
-				/** @type {string} 所在的Menu的画布名称 */
-				this.ctx = '';
-
-				this.draw = (ctx) => { };
-				this.event = (x, y, px, py) => { };
-			}
-		}
-
-		class MenuBase {
-			constructor(name) {
-				this.name = name;
-				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
-				this.btnList = new Map();
-
-				/** @type {((x:number,y:number,px:number,py:number)=>void)} 屏幕被按下时触发的事件 */
-				this.clickEvent = (x, y, px, py) => {
-					this.btnList.forEach((btn) => {
-						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-							btn.event(x, y, px, py);
-						}
-					});
-				}
-				/** @type {((keycode:number)=>void) | undefined} 按键被按下时触发的事件 */
-				this.keyEvent = undefined;
-				/** @type {((keycode:number,altkey?:boolean,fromReplay?:boolean)=>void) | undefined} 按键被放开时触发的事件 */
-				this.keyUpEvent = undefined;
-				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 屏幕被鼠标滑动或手指拖动时触发的事件 */
-				this.onMoveEvent = undefined;
-				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 当屏幕被鼠标或手指放开时触发的事件 */
-				this.onUpEvent = undefined;
-				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
-				this.onMouseWheelEvent = undefined;
-				
-			}
-			/** @param {[any, ButtonBase][]} arr */
-			initBtnList(arr) {
-				this.btnList = new Map(arr);
-				this.btnList.forEach((button) => {
-					button.menu = this;
-					button.ctx = this.name;
-				})
-			}
-
-			drawButtonContent() {
-				this.btnList.forEach((button) => {
-					if (!button.disable) button.draw(this.name);
-				})
-			}
-
-			drawContent() {
-				this.drawButtonContent();
-			}
-
-			beginListen() {
-				core.registerAction('ondown', this.name, this.clickEvent, 100);
-				if (this.keyEvent) core.registerAction('keyDown', this.name, this.keyEvent, 100);
-				if (this.keyUpEvent) core.registerAction('keyUp', this.name, this.keyUpEvent, 100);
-				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
-				if (this.onUpEvent) core.registerAction('onup', this.name, this.onUpEvent, 100);
-				if (core.platform.isPC && this.onMouseWheelEvent) core.registerAction('onmousewheel', this.name, this.onMouseWheelEvent, 100);
-			}
-
-			endListen() {
-				core.unregisterAction('ondown', this.name);
-				core.unregisterAction('keyDown', this.name);
-				core.unregisterAction('keyUp', this.name);
-				core.unregisterAction('onmove', this.name);
-				core.unregisterAction('onup', this.name);
-				core.unregisterAction('onmousewheel', this.name);
-			}
-
-			clear() {
-				this.endListen();
-				core.deleteCanvas(this.name);
-			}
-
-			init() {
-				this.beginListen();
-				this.drawContent();
-			}
-		}
-		// #endregion
+		const { ButtonBase, RoundBtn, IconBtn, MenuBase } = core.plugin.uiBase;
 		// #region 绘制用到的按钮类
-		class ChoiceButton extends ButtonBase {
-			constructor(x, y, w, h, text, config) {
-				super(x, y, w, h);
-				/** @type {'selected'|'none'} */this.status = 'none';
-				this.text = text;
-				const { fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
-					selectedFillStyle = 'rgb(255, 51, 153)', selectedstrokeStyle = 'black', selectedFontStyle = 'white',
-					radius = 3, lineWidth = 2 } = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					core.setTextAlign(ctx, 'center');
-					core.setTextBaseline(ctx, 'alphabetic');
-					if (this.status === 'selected') {
-						core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle);
-						core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth);
-						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, '16px Verdana');
-					} else {
-						core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
-						core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth);
-						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, '16px Verdana');
-					}
-				};
-			}
-		}
 
-		class HideBtn extends ChoiceButton {
+		class HideBtn extends RoundBtn {
 			constructor(x, y, w, h, config) {
 				super(x, y, w, h, '隐藏', config);
 				const oriDraw = this.draw;
@@ -2711,7 +2759,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
-		class MarkBtn extends ChoiceButton {
+		class MarkBtn extends RoundBtn {
 			constructor(x, y, w, h, config) {
 				super(x, y, w, h, '隐藏', config);
 				const oriDraw = this.draw;
@@ -2723,7 +2771,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
-		class ClassifyBtn extends ChoiceButton {
+		class ClassifyBtn extends RoundBtn {
 			constructor(x, y, w, h, text, subType, config) {
 				super(x, y, w, h, text, config);
 				this.subType = subType;
@@ -2750,7 +2798,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				};
 			}
 		}
-	
+
 		class ShowHideBtn extends ButtonBase {
 			constructor(x, y, w, h) {
 				super(x, y, w, h)
@@ -2771,21 +2819,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					itemBoard.refreshItemList();
 					redraw();
 				}
-			}
-		}
-
-		class IconBtn extends ButtonBase {
-			constructor(x, y, w, h, icon, config) {
-				super(x, y, w, h);
-				this.icon = icon;
-				const { strokeStyle = 'black', fillStyle = 'white' } = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, strokeStyle);
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, fillStyle);
-					core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
-				};
-				this.event = () => { };
 			}
 		}
 
@@ -2822,7 +2855,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						[this.x + this.w - marginRight, this.y + this.h / 2]], arrowStyle);
 					core.setAlpha(ctx, 1);
 				};
-				this.event = (x, y, px, py) => { }
 			}
 		}
 
@@ -2950,7 +2982,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawContent() {
-				const ctx = core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 130);
+				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
 				this.drawBackGround(ctx);
 				super.drawContent();
 			}
@@ -2967,28 +2999,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		class EquipBox extends MenuBase {
 			constructor(x, y, w, h) {
-				super('equipBox');
+				super('equipBox', x, y, w, h, 137);
 				this.page = 0;
 				this.columnMax = 4;
 				this.rowMax = 2;
 				this.pageCap = this.columnMax * this.rowMax;
 				this.pageMax = Math.ceil(core.status.globalAttribute.equipName.length / this.pageCap);
 				this.currPageCap = Math.min(core.status.globalAttribute.equipName.length, this.pageCap);
-				
-				/** 选中了当前页面上的第几个装备格*/ this.index = 0; 
-				// 尺寸
-				this.x = x;
-				this.y = y;
-				this.w = w;
-				this.h = h;
+
+				/** 选中了当前页面上的第几个装备格*/ this.index = 0;
 				/** @type {{x:number,y:number,index:number}[]} */
 				this.equipPosList = [];
 				const oriClickEvent = this.clickEvent;
-				this.clickEvent = (x, y, px, py) => {
-					px -= this.x;
-					py -= this.y;
-					if (px < 0 || px > this.w || py < 0 || py > this.h) return;
-					oriClickEvent(x, y, px, py);
+				this.clickEvent = (x, y, rawpx, rawpy) => {
+					if (!this.isPosValid(rawpx, rawpy)) return;
+					oriClickEvent(x, y, rawpx, rawpy);
+					const [px, py] = this.convertCoordinate(rawpx, rawpy);
 					for (let i = 0, l = this.equipPosList.length; i < l; i++) {
 						const { x, y, index } = this.equipPosList[i];
 						if (px > x && px < x + 32 && py > y && py < y + 32) {
@@ -3003,10 +3029,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 				};
 				if (core.platform.isPC) {
-					this.onMoveEvent = (x, y, px, py) => {
-						px -= this.x;
-						py -= this.y;
-						if (px < 0 || px > this.w || py < 0 || py > this.h) return;
+					this.onMoveEvent = (x, y, rawpx, rawpy) => {
+						if (!this.isPosValid(rawpx, rawpy)) return;
+						const [px, py] = this.convertCoordinate(rawpx, rawpy);
 						for (let i = 0, l = this.equipPosList.length; i < l; i++) {
 							const { x, y, index } = this.equipPosList[i];
 							if (px > x && px < x + 32 && py > y && py < y + 32) {
@@ -3020,7 +3045,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawContent() {
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 131);
+				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
 
 				if (this.pageMax > 1) {
 					core.setTextAlign(ctx, "center");
@@ -3092,7 +3117,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				itemId = '';
 			}
 
-			canPgDown(){
+			canPgDown() {
 				return this.page > 0;
 			}
 
@@ -3120,23 +3145,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 		}
+
 		class ItemInfoBox extends MenuBase {
 			constructor(x, y, w, h) {
-				super('itemInfoBox');
-				this.x = x;
-				this.y = y;
-				this.w = w;
-				this.h = h;
-				const oriClickEvent = this.clickEvent;
-				this.clickEvent = (x, y, px, py) => {
-					px -= this.x;
-					py -= this.y;
-					oriClickEvent(x, y, px, py);
-				}
+				super('itemInfoBox', x, y, w, h, 137);
 			}
 
 			drawContent() {
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 131);
+				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
 				core.strokeRoundRect(ctx, 23, 27, 32, 32, 2, 'white', 2);
 				if (itemId) core.drawIcon(ctx, itemId, 24, 28, 30, 30);
 
@@ -3165,7 +3181,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					left: 20, top: 125, bold: false, color: "black",
 					align: "left", fontSize: 15, maxWidth: 150
 				});
-				super.drawButtonContent();
+				super.drawContent();
 			}
 
 			/*** @param {Item} item */
@@ -3197,20 +3213,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		class ToolBox extends MenuBase {
 			constructor(type, x, y, w, h) {
-				super('toolBox');
+				super('toolBox', x, y, w, h, 137);
 				/** @type {'all'|'equips'} */
 				this.type = type;
 				/** @type {'all'|'tools'|'constants'} 物品栏模式下显示哪个子菜单 */
 				this.subType = 'all';
 
-				/** @type {number} */
-				this.x = x;
-				/** @type {number} */
-				this.y = y;
-				/** @type {number} */
-				this.w = w;
-				/** @type {number} */
-				this.h = h;
 				/** @type {number} 单个物品占据的列宽 */
 				this.oneItemHeight = 30;
 				/** @type {number} 单个页面显示的物品数，每次refreshItemList时将刷新 */
@@ -3238,10 +3246,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.refreshItemList();
 
 				const oriClickEvent = this.clickEvent;
-				this.clickEvent = (x, y, px, py) => {
-					px -= this.x;
-					py -= this.y;
-					oriClickEvent(x, y, px, py); // 按钮绘制在menu所属画布上，故其坐标为相对坐标，监听点击事件也要换算为相对坐标
+				this.clickEvent = (x, y, rawpx, rawpy) => {
+					if (!this.isPosValid(rawpx, rawpy)) return;
+					oriClickEvent(x, y, rawpx, rawpy);
+					const [px, py] = this.convertCoordinate(rawpx, rawpy);
 					if (px < 0 || px > this.w || py < 0 || py > this.h) return;
 					const currIndex = Math.floor(py / this.oneItemHeight);
 					if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
@@ -3253,10 +3261,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 				}
 				if (core.platform.isPC) {
-					this.onMoveEvent = (x, y, px, py) => {
-						px -= this.x;
-						py -= this.y;
-						if (px < 0 || px > this.w || py < 0 || py > this.h) return;
+					this.onMoveEvent = (x, y, rawpx, rawpy) => {
+						if (!this.isPosValid(rawpx, rawpy)) return;
+						const [px, py] = this.convertCoordinate(rawpx, rawpy);
 						const currIndex = Math.floor(py / this.oneItemHeight);
 						if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
 						if (this.index !== currIndex) {
@@ -3265,7 +3272,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 					}
 				}
-			}   
+			}
 
 			/*** 每次显示/隐藏道具时，翻页时，及切换道具/装备栏时调用 */
 			refreshItemList() {
@@ -3277,20 +3284,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawContent() {
-				if (selectType === 'toolBox')
-					core.drawUIEventSelector(1, 'winskin.png', this.x, this.y + this.index * this.oneItemHeight, this.w, this.oneItemHeight);
+				const [x, y, w, h, oneH] = [this.x, this.y, this.w, this.h, this.oneItemHeight];
+				const ctx = core.createCanvas(this.name, x, y, w, h, this.zIndex);
+				if (selectType === 'toolBox') {
+					core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * oneH, w, oneH, 138);
+				}
 				else core.clearUIEventSelector(1);
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 131);
-				core.fillRect(ctx, 0, 0, this.w, this.h, 'rgb(0, 105, 148)');
+				core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
 				const currPageItems = this.currItemList;
 				core.setTextBaseline(ctx, "middle");
 				for (let i = 0; i < currPageItems.length; i++) {
 					const currItemId = currPageItems[i];
 					this.drawOneItem(ctx, currItemId, i);
-				}		
+				}
 				core.setTextAlign(ctx, "center");
 				core.setTextBaseline(ctx, "alphabetic");
-				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, this.w / 2, this.h - 4, 'white', '12px Verdana');
+				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, h - 4, 'white', '12px Verdana');
 				super.drawContent();
 			}
 
@@ -3320,7 +3329,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setAlpha(ctx, 1);
 			}
 
-			/** 选中当前itemList下的指定位置 */ 
+			/** 选中当前itemList下的指定位置 */
 			select(index) {
 				selectType = 'toolBox';
 				equipBoard.index = -1;
@@ -3467,12 +3476,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		/** @type {ItemBoxBack} 背景 */ let back;
 		/** @type {ToolBox} 左侧物品栏 */let itemBoard;
 		/** @type {EquipBox} 装备切换面板 */let equipBoard;
-		/** @type {ItemInfoBox} 右侧物品详细信息面板 */let infoBoard; 
+		/** @type {ItemInfoBox} 右侧物品详细信息面板 */let infoBoard;
 
 		/** @param {'all'|'equips'} currType  */
 		function drawItemBox(currType) {
+			clearAll();
 			core.lockControl();
-			
+
 			type = currType;
 			if (!back) back = new ItemBoxBack();
 
@@ -3484,7 +3494,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
 				constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
 			back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
-			['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]); 
+			['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]);
 
 			if (!equipBoard) equipBoard = new EquipBox(7, 10, 240, 125);
 			if (!infoBoard) infoBoard = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
@@ -3781,7 +3791,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 要注意一点, floor是不能作为toolBar元素的，statuBar具有同id元素，样式会相互冲突 复制了一个外形一样的图标叫view，作为浏览地图按钮
 
 		/**
-		 * PC 默认6个键且不需要切入数字键的模式 最多9个键 手机 默认9个键 最多10个键
+		 * PC 默认6个键且不需要切入数字键的模式 最多9个键 手机 默认9个键 最多9个键(手机理论上可以塞10个键，但是懒得判定了)
 		 * normal:普通模式 num:按下数字键切换到的模式 replay:录像模式 opacity:透明度
 		 */
 		const defaultConfig = {
@@ -3820,6 +3830,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @example core.setToolBarConfig('normal', 3, null)
 		 */
 		function setToolBarConfig(type, index, value) {
+			const allToolType = ['normal', 'num', 'replay'];
+			const allTools = ['book', 'fly', 'toolbox', 'keyboard', 'shop', 'save', 'load', 'settings', 'rollback', 'undoRollback',
+				'btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btn9', 'btnAlt',
+				'equipbox', 'floor', 'play', 'rewind', 'speedDown', 'speedUp', 'stop', 'single', 'view'];
+			if (!allToolType.includes(type) || index < 0 || index > 8) {
+				core.drawFailTip('请选中工具栏的一个合法位置作为目标点!');
+				return;
+			}
+			if (value !== 'delete' && !allTools.includes(value)) {
+				core.drawFailTip('请选中一个图标作为替换目标!');
+				return;
+			}
 			const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
 			const key = isVertical() ? 'vertical' : 'horizontal';
 			if (type === 'replay'
@@ -3832,13 +3854,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return;
 			}
 
-			if (value === "delete") toorBarConfig[key].splice(index, 1);
+			if (value === 'delete') toorBarConfig[key].splice(index, 1);
 			else {
 				if (index > toorBarConfig[key].length) {
 					core.drawFailTip('按钮中间不能有空白!');
 					return;
+				} 
+				const oldIndex = toorBarConfig[key].indexOf(value);
+				if (oldIndex !== -1) { // 如果目标位置有图标，两者交换
+					if (toorBarConfig[key][index] === value) return;
+					const aimTool = toorBarConfig[key][index];
+					toorBarConfig[key][index] = value;
+					toorBarConfig[key][oldIndex] = aimTool;
 				}
-				toorBarConfig[key][index] = value;
+				else toorBarConfig[key][index] = value;
 			}
 			core.setLocalStorage('toorBarConfig' + type, toorBarConfig);
 			setToolbarButton(core.domStyle.toolbarBtn);
@@ -3952,105 +3981,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 
 			]);
 		 */
-
-		class ButtonBase {
-			constructor(x, y, w, h) {
-				this.x = x;
-				this.y = y;
-				this.w = w;
-				this.h = h;
-				this.disable = false;
-
-				/** @type {MenuBase} 所在的Menu，用于触发重绘等事件 */
-				this.menu;
-				/** @type {string} 所在的Menu的画布名称 */
-				this.ctx = '';
-
-				this.draw = (ctx) => { };
-				this.event = (x, y, px, py) => { };
-			}
+		
+		// #region 复写
+		// 复写resize，保证屏幕变化时此画布表现正常 
+		const originResize = core.control.resize;
+		core.control.resize = function () {
+			originResize.apply(core.control, arguments);
+			const settingMenu = core.plugin.settingMenu;
+			if (settingMenu && settingMenu.onDraw) settingMenu.drawContent();
 		}
+		// #endregion
 
-		class MenuBase {
-			constructor(name) {
-				this.name = name;
-				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
-				this.btnList = new Map();
-
-				/** @type {((x:number,y:number,px:number,py:number)=>void)} 屏幕被按下时触发的事件 */
-				this.clickEvent = (x, y, px, py) => {
-					this.btnList.forEach((btn) => {
-						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-							btn.event(x, y, px, py);
-						}
-					});
-				}
-				/** @type {((keycode:number)=>void) | undefined} 按键被按下时触发的事件 */
-				this.keyEvent = undefined;
-				/** @type {((keycode:number,altkey?:boolean,fromReplay?:boolean)=>void) | undefined} 按键被放开时触发的事件 */
-				this.keyUpEvent = undefined;
-				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 屏幕被鼠标滑动或手指拖动时触发的事件 */
-				this.onMoveEvent = undefined;
-				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 当屏幕被鼠标或手指放开时触发的事件 */
-				this.onUpEvent = undefined;
-				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
-				this.onMouseWheelEvent = undefined;
-				
-			}
-			/** @param {[any, ButtonBase][]} arr */
-			initBtnList(arr) {
-				this.btnList = new Map(arr);
-				this.btnList.forEach((button) => {
-					button.menu = this;
-					button.ctx = this.name;
-				})
-			}
-
-			drawButtonContent() {
-				this.btnList.forEach((button) => {
-					if (!button.disable) button.draw(this.name);
-				})
-			}
-
-			drawContent() {
-				this.drawButtonContent();
-			}
-
-			beginListen() {
-				core.registerAction('ondown', this.name, this.clickEvent, 100);
-				if (this.keyEvent) core.registerAction('keyDown', this.name, this.keyEvent, 100);
-				if (this.keyUpEvent) core.registerAction('keyUp', this.name, this.keyUpEvent, 100);
-				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
-				if (this.onUpEvent) core.registerAction('onup', this.name, this.onUpEvent, 100);
-				if (core.platform.isPC && this.onMouseWheelEvent) core.registerAction('onmousewheel', this.name, this.onMouseWheelEvent, 100);
-			}
-
-			endListen() {
-				core.unregisterAction('ondown', this.name);
-				core.unregisterAction('keyDown', this.name);
-				core.unregisterAction('keyUp', this.name);
-				core.unregisterAction('onmove', this.name);
-				core.unregisterAction('onup', this.name);
-				core.unregisterAction('onmousewheel', this.name);
-			}
-
-			clear() {
-				this.endListen();
-				core.deleteCanvas(this.name);
-			}
-
-			init() {
-				this.beginListen();
-				this.drawContent();
-			}
-		}
+		const { ButtonBase, RoundBtn, MenuBase } = core.plugin.uiBase;
 		class MenuPage extends MenuBase {
 			constructor(pageList, currPage, ctx) {
 				super(ctx);
 				/**
 				 * 当前页面列表
-				 * @type {Array<MenuBase>}
+				 * @type {Array<MenuBaseClass>}
 				 */
 				this.pageList = pageList;
 				/**
@@ -4061,7 +4009,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			initOnePage(index) {
-				if (!core.isset(index)) index = this.currPage;
+				if (index == null) index = this.currPage;
 				this.pageList[index].init();
 			}
 
@@ -4110,6 +4058,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		// #region 跳过剧情相关设置
 		function invertFlag(name) {
 			core.setFlag(name, !core.getFlag(name, false));
 		}
@@ -4173,7 +4122,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}.bind(core.events) : events.prototype._action_sleep;
 		}
 		this.checkSkipFuncs = checkSkipFuncs;
-
+		// #endregion 
+		// #region 设置的具体内容，与相应的录像注册
 		const settingMap = new Map([
 			['autoGet', new Setting(
 				() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),
@@ -4413,18 +4363,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				function (num) {
 					core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (value) => {
 						const itemInfo = core.material.items;
-						if (itemInfo) {
-							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
-							if (aimItem) {
-								if (['constants', 'tools'].includes(aimItem.cls)) {
-									core.setLocalStorage('hotkey' + num, aimItem.id);
-									this.menu.drawContent();
-								}
-								else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
+						const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+						if (aimItem) {
+							if (['constants', 'tools'].includes(aimItem.cls)) {
+								core.setLocalStorage('hotkey' + num, aimItem.id);
+								this.menu.drawContent();
 							}
-							else core.drawFailTip('错误：找不到该名称的物品!');
+							else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
 						}
-						else core.drawFailTip('未知错误：core.material.items不存在!');
+						else core.drawFailTip('错误：找不到该名称的物品!');
 					}, () => { });
 				},
 				'给选定的数字键绑定一个可快捷使用的物品。',
@@ -4438,45 +4385,23 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						itemName = core.material.items[item].name;
 					}
 					else {
-						switch (num) {
-							case '1':
-								icon = 'pickaxe';
-								itemName = '破墙镐';
-								break;
-							case '2':
-								icon = 'bomb';
-								itemName = '炸弹';
-								break;
-							case '3':
-								icon = 'centerFly';
-								itemName = '中心飞';
-								break;
-							case '4':
-								itemName = '杂物';
-								break;
-							case '5':
-								itemName = '回退一步';
-								break;
-							case '6':
-								itemName = '撤销回退';
-								break;
-							case '7':
-								itemName = '轻按';
-								break;
-							case '8':
-								itemName = '空白';
-								break;
-							case '9':
-								itemName = '空白';
-								break;
+						const itemMap = {
+							'1': { icon: 'pickaxe', itemName: '破墙镐' }, '2': { icon: 'bomb', itemName: '炸弹' },
+							'3': { icon: 'centerFly', itemName: '中心飞' }, '4': { itemName: '杂物' },
+							'5': { itemName: '回退一步' }, '6': { itemName: '撤销回退' },
+							'7': { itemName: '轻按' }
+						};
+						if (num >= '1' && num <= '9') {
+							({ icon, itemName = '无' } = itemMap[num] || {});
 						}
 					}
-					let text = '\\i[btn' + num + ']: ';
-					if (icon) text += '\\i[' + icon + ']';
-					text += itemName;
-					core.ui.drawTextContent(ctx, text, {
-						left: this.x, top: this.y + 2, maxWidth: 200, fontSize: 16,
-					});
+					const keyIcon = 'btn' + num;
+					core.drawIcon(ctx, keyIcon, this.x, this.y, 16, 16);
+					const hasItem = core.material.items.hasOwnProperty(icon);
+					if (hasItem) core.drawIcon(ctx, icon, this.x + 20, this.y, 16, 16);
+					core.setTextAlign(ctx, 'left');
+					core.setTextBaseline(ctx, 'alphabetic');
+					core.fillText(ctx, itemName || '无', this.x + (hasItem ? 40 : 20), this.y + 14, 'white', '16px Verdana');
 				}
 			)],
 			['clearHotKeys', new Setting(
@@ -4733,45 +4658,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			)],
 		])
 
-		class SettingButton extends ButtonBase {
-			/**
-			 * @param {string[]} [eventArgs]
-			 */
-			constructor(x, y, w, h, name, eventArgs) {
-				super(x, y, w, h);
-				this.name = name;
-				/**
-				 * @type {Array<string>}
-				 */
-				this.eventArgs = eventArgs || [];
-				/**
-				 * @type {Setting}
-				 */
-				this.setting = settingMap.get(name);
-				this.draw = (ctx) => {
-					if (this.disable) return;
-					// 取消注释下面这一句将显示所有按钮的判定框
-					// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
-					core.ui.fillText(ctx, this.setting.getName(),
-						this.x, this.y + this.h / 2 + 5, 'white', '16px Verdana');
-					const drawFunc = this.setting.draw;
-					if (drawFunc) drawFunc.apply(this, [ctx]);
-				}
-				this.event = () => {
-					if (this.disable) return;
-					this.setting.effect.apply(this, eventArgs);
-					this.menu.drawContent();
-					if (this.setting.replay) {
-						let actionString = 'cSet:' + name;
-						if (this.eventArgs.length > 0) {
-							actionString += ':' + this.eventArgs.map(arg => encodeURIComponent(arg)).join(':');
-						}
-						core.status.route.push(actionString);
-					}
-				}
-			}
-		}
-
+		// 注册点击SettingButton的行为cSet， 只有replay为真时计入录像
 		core.registerReplayAction('cSet', (action) => {
 			const strArr = action.split(':');
 			if (strArr[0] !== 'cSet') return false;
@@ -4789,11 +4676,126 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.status.route.push(action);
 			core.replay();
 			return true;
-		})
+		});
+		// #endregion
+		// #region 按钮类
+		class SettingButton extends ButtonBase {
+			/**
+			 * @param {string[]} [eventArgs]
+			 */
+			constructor(x, y, w, h, name, eventArgs) {
+				super(x, y, w, h);
+				this.name = name;
+				/*** @type {Array<string>}*/
+				this.eventArgs = eventArgs || [];
+				/** @type {Setting} */
+				this.setting = settingMap.get(name);
+				/** @type {string} 本设置在框中的说明文字*/
+				this.text = this.setting.text;
+				this.draw = () => {
+					if (this.disable) return;
+					const ctx = this.ctx;
+					// 取消注释下面这一句将显示所有按钮的判定框
+					// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
+					core.ui.fillText(ctx, this.setting.getName(),
+						this.x, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+					const drawFunc = this.setting.draw;
+					if (this.status === 'selected'){
+						core.drawUIEventSelector(0, "winskin.png", this.x, this.y, this.w, this.h, 137);
+					}
+					if (drawFunc) drawFunc.apply(this, [ctx]);
+				}
+				this.event = () => {
+					if (this.disable) return;
+					this.setting.effect.apply(this, eventArgs);
+					this.menu.drawContent();
+					if (this.setting.replay) {
+						let actionString = 'cSet:' + name;
+						if (this.eventArgs.length > 0) {
+							actionString += ':' + this.eventArgs.map(arg => encodeURIComponent(arg)).join(':');
+						}
+						core.status.route.push(actionString);
+					}
+				}
+			}
+		}
+
+		class PageChangeBtn extends RoundBtn {
+			constructor(x, y, w, h, text, index) {
+				super(x, y, w, h, text);
+				/** @type {SettingBase} */this.menu;
+				this.index = index;
+			}
+		}
+
+		class TextButton extends ButtonBase {
+			constructor(x, y, w, h, text) {
+				super(x, y, w, h);
+				this.text = text;
+				this.draw = () => {
+					if (this.disable) return;
+					core.ui.fillText(this.ctx, this.text,
+						this.x + this.w / 2, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+				}
+			}
+		}
+
+		class ToolBtn extends ButtonBase {
+			constructor(x, y, w, h, icon, text, config) {
+				super(x, y, w, h);
+				/** @type {ToolBarConfigPage} */this.menu;
+				this.icon = icon; // 特殊icon:delete 用于删除图标
+				/** @todo 这里需要重构 */
+				this.text = text;
+				const { strokeStyle = 'white', fillStyle = 'white', selectedStyle = 'gold' } = config || {};
+				this.draw = () => {
+					const ctx = this.ctx;
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, (this.menu.selectedTool === this.icon) ? selectedStyle : strokeStyle);
+					if (this.icon === 'delete') {
+						core.drawLine(ctx, this.x + 2, this.y + 2, this.x + this.w - 2, this.y + this.h - 2, 'red', 2);
+						core.drawLine(ctx, this.x + 2, this.y + this.h - 2, this.x + this.w - 2, this.y + 2, 'red', 2);
+					}
+					else core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
+				};
+				this.event = () => {
+					this.menu.selectedTool = this.icon;
+					this.menu.drawContent();
+				};
+			}
+		}
+
+		class ToolBarBtn extends ButtonBase {
+			constructor(x, y, size, type, length, text) {
+				super(x, y, length * size, size);
+				/** @type {ToolBarConfigPage} */this.menu;
+				this.type = type;
+				this.length = length;
+				/** @todo 这里需要重构 */
+				this.text = text;
+
+				this.draw = () => {
+					const ctx = this.ctx;
+					const squareSize = this.h;
+					const toolBarConfig = core.plugin.getToolBarConfig(type);
+					for (let i = 0; i < this.length; i++) {
+						const style = (this.menu.type === type && this.menu.index === i) ? 'gold' : 'white';
+						core.strokeRoundRect(ctx, this.x + squareSize * i + i, this.y, squareSize, squareSize, 3, style);
+						core.drawIcon(ctx, toolBarConfig[i], this.x + squareSize * i + i, this.y, squareSize, squareSize);
+					}
+				}
+				this.event = (x, y, px, py) => {
+					const squareSize = this.h;
+					const index = Math.floor((px - this.x) / squareSize);
+					this.menu.type = type;
+					this.menu.index = index;
+					this.menu.drawContent();
+				}
+			}
+		}
 
 		function drawSetting(ctx) {
 			core.setAlpha(ctx, 0.85);
-			core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "#fff", 2);
+			core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "white", 2);
 			core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
 			core.setAlpha(ctx, 1);
 
@@ -4808,26 +4810,60 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setTextAlign(ctx, 'center');
 			core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
 		}
-
-		class ChoiceButton extends ButtonBase {
-			constructor(x, y, w, h, text, index) {
-				super(x, y, w, h);
-				this.index = index;
-				this.draw = (ctx) => {
-					core.setTextAlign(ctx, 'center');
-					if (this.status === 'clicked') {
-						core.fillRoundRect(ctx, x, y, w, h, 3, ' #ADD8E6');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #FFFF00');
-						core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #555555', '16px Verdana');
-					} else {
-						core.fillRoundRect(ctx, x, y, w, h, 3, ' #D3D3D3');
-						core.strokeRoundRect(ctx, x, y, w, h, 3, ' #888888');
-						core.fillText(ctx, text, x + w / 2, y + h / 2 + 5, ' #333333', '16px Verdana');
+		// #endregion
+		// #region 菜单类
+		class SettingBase extends MenuPage {
+			constructor(pageList, currPage, name) {
+				super(pageList, currPage, name);
+				this.keyEvent = (keyCode) => {
+					if (keyCode === 33) this.pageUp();
+					if (keyCode === 34) this.pageDown();
+					if ([33, 34].includes(keyCode)) {
+						const btn = this.btnList.get(this.currPage);
+						this.changeBtn(btn);
+						this.drawContent();
 					}
-				};
+					if (keyCode === 27) {
+						this.quit();
+					}
+				}
+			}
+
+			quit() {
+				this.clear();
+				setTimeout(core.unlockControl, 0); // 消抖，防止点击关闭按钮的一瞬间触发瞬移。
+			}
+
+			initBtnList(arr) {
+				super.initBtnList(arr);
+				this.btnList.forEach((btn) => {
+					if (btn instanceof PageChangeBtn) {
+						btn.event = function () {
+							this.menu.changePage(this.index);
+							this.menu.changeBtn(this);
+							this.menu.drawContent();
+						}
+					}
+				});
+			}
+
+			drawContent() {
+				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 136);
+				drawSetting(ctx);
+				super.drawContent();
+				this.initOnePage();
+			}
+
+			changeBtn(aimBtn) {
+				this.btnList.forEach((btn) => {
+					if (btn instanceof RoundBtn) {
+						btn.status = aimBtn === btn ? 'selected' : 'none';
+					}
+				})
 			}
 		}
 
+		/** 除自定义工具栏外的选项界面 */
 		class SettingOnePage extends MenuBase {
 			constructor(name) {
 				super(name);
@@ -4845,9 +4881,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						}
 					});
 				}
-				this.onMoveEvent = (x, y, px, py) => {
-					if (!core.platform.isPC) return;
+				if (core.platform.isPC) this.onMoveEvent = (x, y, px, py) => {
 					const btnNow = this.selectedBtn;
+					// 先检测，如果还在当前已选中的按钮范围内，则什么也不做
 					if (btnNow) {
 						if (px >= btnNow.x && px <= btnNow.x + btnNow.w && py > btnNow.y && py <= btnNow.y + btnNow.h)
 							return;
@@ -4910,25 +4946,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 
-			/** @todo 需要重构 */ 
 			focus(button, pos) {
 				this.selectedPos = pos;
 				this.selectedBtn = button;
-				if (button instanceof SettingButton) {
-					this.text = button.setting.text;
-					this.drawEventSelector();
-				}
-				else {
-					this.text = button.text;
-				}
+				this.btnList.forEach((currBtn) => {
+					currBtn.status = (currBtn === button) ? 'selected' : 'none';
+				})
+				this.text = button.text;
 				this.drawContent();
-			}
-
-			drawEventSelector() {
-				if (core.isset(this.selectedBtn) && this.selectedBtn instanceof SettingButton) {
-					core.drawUIEventSelector(0, "winskin.png", this.selectedBtn.x, this.selectedBtn.y,
-						this.selectedBtn.w, this.selectedBtn.h, 137);
-				}
 			}
 
 			drawContent() {
@@ -4962,12 +4987,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.fillText(this.name, '可选按钮', 40, 265, ' #FFE4B5', '16px Verdana');
 						break;
 					case 'console':
+						const ctx = this.name;
 						const consoleWarnText =
 							"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
-						core.ui.drawTextContent(this.name, consoleWarnText, {
-							left: 30, top: 158, bold: false, color: " #FFC0CB",
-							align: "left", fontSize: 14, maxWidth: 350
-						});
+						core.setTextAlign(this.name, 'left');
+						core.setTextBaseline(ctx, 'alphabetic');
+						core.fillText(this.name, "本页面的功能仅供调试用。使用后相应存档将变红，录像", 30, 170, " #FFC0CB", '14px Verdana');
+						core.fillText(this.name, "不能通过，且无法提交。请读档到普通存档后正常游玩方", 30, 190, " #FFC0CB", '14px Verdana');
+						core.fillText(this.name, "可提交。", 30, 210, " #FFC0CB", '14px Verdana');
 						core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
 						core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
 						core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
@@ -4976,123 +5003,34 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
 						break;
 				}
-				this.drawEventSelector();
 			}
 
 			clear() {
-				core.clearUIEventSelector(0);
+				core.clearUIEventSelector(0); // 光标的绘制在按钮中进行
 				super.clear();
 			}
 		}
 
-		class SettingMenu extends MenuPage {
-			constructor(pageList, currPage, name) {
-				super(pageList, currPage, name);
-				this.keyEvent = (keyCode) => {
-					if (keyCode === 33) this.pageUp();
-					if (keyCode === 34) this.pageDown();
-					if ([33, 34].includes(keyCode)) {
-						const btn = this.btnList.get(this.currPage);
-						this.changeBtn(btn);
-						this.drawContent();
-					}
-					if (keyCode === 27) {
-						this.btnList.get('quit')?.event();
-					}
-				}
-			}
-
-			initBtnList(arr) {
-				super.initBtnList(arr);
-				this.btnList.forEach((btn) => {
-					if (btn instanceof ChoiceButton) {
-						btn.event = function () {
-							this.menu.changePage(this.index);
-							this.menu.changeBtn(this);
-							this.menu.drawContent();
+		/** 自定义工具栏界面 */
+		class ToolBarConfigPage extends SettingOnePage {
+			constructor(name) {
+				super(name);
+				/** 当前选中的图标 */this.selectedTool = 'none';
+				/** 当前选中了哪个类型的工具栏 */this.type = 'none';
+				/** 当前选中工具栏哪个位置(1-9) */this.index = -1;
+				this.clickEvent = (x, y, px, py) => {
+					this.btnList.forEach((btn, pos) => {
+						if (btn.disable) return;
+						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+							btn.event(x, y, px, py);
 						}
-					}
-				});
-			}
-
-			drawContent() {
-				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
-				drawSetting(this.name);
-				super.drawButtonContent();
-				this.initOnePage();
-			}
-
-			changeBtn(aimBtn) {
-				this.btnList.forEach((btn) => {
-					if (btn instanceof ChoiceButton) {
-						btn.status = aimBtn === btn ? 'clicked' : 'pending';
-					}
-				})
-			}
-		}
-
-		class TextButton extends ButtonBase {
-			constructor(x, y, w, h, text) {
-				super(x, y, w, h);
-				this.text = text;
-				this.draw = (ctx) => {
-					if (this.disable) return;
-					core.ui.fillText(ctx, this.text,
-						this.x + this.w / 2, this.y + this.h / 2 + 5, 'white', '16px Verdana');
+					});
 				}
+				this.keyEvent = () => { }; /** 这个页面没有按键事件，因为有两类按钮可以同时被选中，没想好怎么弄 */
+				if (core.platform.isPC) this.onMoveEvent = () => { }; /** 这里滚轮事件体验过于灵活，不利于选中想要的图标 */
 			}
 		}
-
-		class ToolBtn extends ButtonBase {
-			constructor(x, y, w, h, icon, text, config) {
-				super(x, y, w, h);
-				this.icon = icon; // 特殊icon:delete 用于删除图标
-				/** @todo 这里需要重构 */
-				this.text = text;
-				const { strokeStyle = 'white', fillStyle = 'white', selectedStyle = 'gold' } = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, (this.menu.selectedTool === this.icon) ? selectedStyle : strokeStyle);
-					if (this.icon === 'delete') {
-						core.drawLine(ctx, this.x + 2, this.y + 2, this.x + this.w - 2, this.y + this.h - 2, 'red', 2);
-						core.drawLine(ctx, this.x + 2, this.y + this.h - 2, this.x + this.w - 2, this.y + 2, 'red', 2);
-					}
-					else core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
-				};
-				this.event = () => {
-					this.menu.selectedTool = this.icon;
-					this.menu.drawContent();
-				};
-			}
-		}
-
-		class ToolBarBtn extends ButtonBase {
-			constructor(x, y, size, type, length, text) {
-				super(x, y, length * size, size);
-				this.type = type;
-				this.length = length;
-				/** @todo 这里需要重构 */
-				this.text = text;
-
-				this.draw = () => {
-					const ctx = this.ctx;
-					const squareSize = this.h;
-					const toolBarConfig = core.plugin.getToolBarConfig(type);
-					for (let i = 0; i < this.length; i++) {
-						const style = (this.menu.type === type && this.menu.index === i) ? 'gold' : 'white';
-						core.strokeRoundRect(ctx, this.x + squareSize * i + i, this.y, squareSize, squareSize, 3, style);
-						core.drawIcon(ctx, toolBarConfig[i], this.x + squareSize * i + i, this.y, squareSize, squareSize);
-					}
-				}
-				this.event = (x, y, px, py) => {
-					const squareSize = this.h;
-					const index = Math.floor((px - this.x) / squareSize);
-					this.menu.type = type;
-					this.menu.index = index;
-					this.menu.drawContent();
-				}
-			}
-		}
+		// #endregion
 
 		this.openSetting = function () {
 			if (core.isReplaying()) return;
@@ -5150,10 +5088,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,6', new SettingButton(40, 340, 150, 25, 'setHotKey', ['9'])],
 				['2,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
 			]);
-			// 名字不能叫toolBar 被系统占了
-			const toolBarMenu = new SettingOnePage('toolBarConfig');
+			// 名字不能叫toolBar 画布toolBar被系统占了
+			const toolBarMenu = new ToolBarConfigPage('toolBarConfig');
 			console.log(toolBarMenu);
-			const changeToolBarBtn = new ChoiceButton(320, 158, 42, 24, '执行', -1);
+			const changeToolBarBtn = new RoundBtn(320, 158, 42, 24, '执行', -1);
 			changeToolBarBtn.event = function () {
 				core.setToolBarConfig(this.menu.type, this.menu.index, this.menu.selectedTool);
 				this.menu.drawContent();
@@ -5209,19 +5147,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			]);
 
 			// 在此处添加新的菜单页面
-			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, toolBarMenu, consoleMenu], 0, ctx);
+			const settingMenu = new SettingBase([gamePlayMenu, gameViewMenu, keyMenu, toolBarMenu, consoleMenu], 0, ctx);
 
 			// 主页面的按钮列表
-			const gamePlayBtn = new ChoiceButton(32, 40, 46, 24, '功能', 0),
-				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1),
-				keyBtn = new ChoiceButton(152, 40, 46, 24, '按键', 2),
-				toolBarBtn = new ChoiceButton(212, 40, 66, 24, '工具栏', 3),
-				consoleBtn = new ChoiceButton(292, 40, 66, 24, '控制台', 4);
+			const gamePlayBtn = new PageChangeBtn(32, 40, 46, 24, '功能', 0),
+				gameViewBtn = new PageChangeBtn(92, 40, 46, 24, '音画', 1),
+				keyBtn = new PageChangeBtn(152, 40, 46, 24, '按键', 2),
+				toolBarBtn = new PageChangeBtn(212, 40, 66, 24, '工具栏', 3),
+				consoleBtn = new PageChangeBtn(292, 40, 66, 24, '控制台', 4);
 			const quit = new TextButton(360, 10, 45, 25, '[退出]');
-			quit.event = () => {
-				settingMenu.clear();
-				setTimeout(core.unlockControl, 0); // 消抖，防止点击关闭按钮的一瞬间触发瞬移。
-			}
+			quit.event = () => { settingMenu.quit(); }
 
 			settingMenu.initBtnList([[0, gamePlayBtn], [1, gameViewBtn],
 			[2, keyBtn], [3, toolBarBtn], [4, consoleBtn],
