@@ -3095,6 +3095,7 @@ interface plugin {
         ButtonBase: ButtonBase
         RoundBtn: RoundBtn
         IconBtn: IconBtn
+        ExitBtn: ExitBtn
         MenuBase: MenuBase
     }
 
@@ -3154,17 +3155,30 @@ declare class RoundBtnClass extends ButtonBaseClass {
 }
 
 interface IconBtn {
-    new(x: number, y: number, w: number, h: number, text: string, config?: any): IconBtnClass;
+    new(x: number, y: number, w: number, h: number, icon: string, config?: any): IconBtnClass;
 }
 
 declare class IconBtnClass extends ButtonBaseClass {
-    constructor(x: number, y: number, w: number, h: number, text: string, config?: any);
+    constructor(x: number, y: number, w: number, h: number, icon: string, config?: any);
     /** 按钮绘制的图标名称 */
     icon: string
     /** 按钮的绘制属性配置 */
     config: {
         fillStyle?: string, strokeStyle?: string,
         radius?: number, lineWidth?: number, angle?: number, font?: number
+    }
+}
+
+interface ExitBtn {
+    new(x: number, y: number, w: number, h: number, config?: any): ExitBtnClass;
+}
+
+declare class ExitBtnClass extends ButtonBaseClass {
+    constructor(x: number, y: number, w: number, h: number, config?: any);
+    /** 按钮的绘制属性配置 */
+    config: {
+        fillStyle?: string, strokeStyle?: string, lineStyle?: string
+        radius?: number, lineOffsetX?: number, lineWidthX?: number,
     }
 }
 
@@ -3211,6 +3225,8 @@ declare class MenuBaseClass {
     convertCoordinate(px: number, py: number): [number, number]
     /** 检查坐标是否在画布范围内 */
     isPosValid(px: number, py: number): boolean
+    /** 创建并返回本菜单的画布 */
+    createCanvas(): CanvasRenderingContext2D
     /** 初始化该菜单的按钮列表 */
     initBtnList(arr: [any, ButtonBaseClass][]): void
     /** 绘制该菜单上的按钮 */

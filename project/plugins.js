@@ -2470,6 +2470,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		class ExitBtn extends ButtonBase {
+			constructor(x, y, w, h, config) {
+				super(x, y, w, h);
+				this.config = config || {};
+				this.draw = () => {
+					const ctx = this.ctx;
+					const { strokeStyle = ' #D32F2F', fillStyle = ' #EF5350', lineStyle = 'white',
+						radius = 3, lineOffsetX = 5, lineWidthX = 3,
+					} = this.config || {};
+					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+					core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle);
+					core.fillRoundRect(ctx, x + 1, y + 1, w - 2, h - 2, radius, fillStyle);
+					core.drawLine(ctx, x + lineOffsetX, y + lineOffsetX, x + w - lineOffsetX, y + h - lineOffsetX, lineStyle, lineWidthX);
+					core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
+				}
+			}
+		}
+
 		class MenuBase {
 			constructor(name, x, y, w, h, zIndex) {
 				this.name = name;
@@ -2504,8 +2522,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.onUpEvent = undefined;
 				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
 				this.onMouseWheelEvent = undefined;
-
 			}
+
 			/** @param {[any, ButtonBase][]} arr */
 			initBtnList(arr) {
 				this.btnList = new Map(arr);
@@ -2526,6 +2544,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return (px >= this.x) && (px <= this.x + this.w) && (py >= this.y) && (py <= this.y + this.h);
 			}
 
+			// 创建并返回本菜单的画布
+			createCanvas() {
+				return core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
+			}
+			
 			drawButtonContent() {
 				this.btnList.forEach((button) => {
 					if (!button.disable) button.draw();
@@ -2566,7 +2589,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.drawContent();
 			}
 		}
-		this.uiBase = { ButtonBase, RoundBtn, IconBtn, MenuBase };
+		this.uiBase = { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase };
 	},
 	"newBackpackLook": function () {
 		let __enable = true;
@@ -2738,7 +2761,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		// #endregion
-		const { ButtonBase, RoundBtn, IconBtn, MenuBase } = core.plugin.uiBase;
+		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase } = core.plugin.uiBase;
 		// #region 绘制用到的按钮类
 
 		class HideBtn extends RoundBtn {
@@ -2855,23 +2878,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
-		class ExitBtn extends ButtonBase {
-			constructor(x, y, w, h) {
-				super(x, y, w, h)
-				this.draw = () => {
-					const ctx = this.menu.name;
-					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-					core.strokeRoundRect(ctx, x, y, w, h, 3, ' #D32F2F');
-					core.fillRoundRect(ctx, x + 1, y + 1, w - 2, h - 2, 3, ' #EF5350');
-					core.drawLine(ctx, x + 5, y + 5, x + w - 5, y + h - 5, 'white', 3);
-					core.drawLine(ctx, x + 5, y + h - 5, x + w - 5, y + 5, 'white', 3);
-				}
-				this.event = () => {
-					exit();
-				}
-			}
-		}
-
 		// #endregion
 		// #region 绘制用到的菜单类
 
@@ -2979,16 +2985,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawContent() {
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
+				const ctx = this.createCanvas();
 				this.drawBackGround(ctx);
 				super.drawContent();
 			}
 
 			drawBackGround(ctx) {
-				core.setAlpha(ctx, 0.85);
 				core.strokeRoundRect(ctx, 2, 2, 412, 412, 5, 'white', 2);
 				core.fillRoundRect(ctx, 3, 3, 410, 410, 5, 'rgb(108, 187, 219)');
-				core.setAlpha(ctx, 1);
 				core.drawLine(ctx, 248, 3, 248, 413, 'white', 2); // 左栏和右栏的分界线
 				if (type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
 			}
@@ -3042,7 +3046,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawContent() {
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
+				const ctx = this.createCanvas();
 
 				if (this.pageMax > 1) {
 					core.setTextAlign(ctx, "center");
@@ -3149,7 +3153,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawContent() {
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
+				const ctx = this.createCanvas();
 				core.strokeRoundRect(ctx, 23, 27, 32, 32, 2, 'white', 2);
 				if (itemId) core.drawIcon(ctx, itemId, 24, 28, 30, 30);
 
@@ -3178,6 +3182,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					left: 20, top: 125, bold: false, color: "black",
 					align: "left", fontSize: 15, maxWidth: 150
 				});
+				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId); 
+				// 获取快捷键设置按钮当前的图标
+				/*** @type {IconBtnClass} */
+				const setHotkeyBtn = this.btnList.get('setHotkeyBtn');
+				if (setHotkeyBtn) {
+					setHotkeyBtn.disable = (type === 'equips');
+					setHotkeyBtn.icon = (currItemHotKey == null) ? 'keyboard' : ('btn' + currItemHotKey);
+				}
 				super.drawContent();
 			}
 
@@ -3255,6 +3267,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					else {
 						this.select(currIndex);
+						redraw();
 					}
 				}
 				if (core.platform.isPC) {
@@ -3282,9 +3295,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			drawContent() {
 				const [x, y, w, h, oneH] = [this.x, this.y, this.w, this.h, this.oneItemHeight];
-				const ctx = core.createCanvas(this.name, x, y, w, h, this.zIndex);
+				const ctx = this.createCanvas();
 				if (selectType === 'toolBox') {
-					core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * oneH, w, oneH, 138);
+					core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * oneH, w, oneH, 140);
 				}
 				else core.clearUIEventSelector(1);
 				core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
@@ -3380,6 +3393,108 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 		}
+
+		// 为当前道具设定一个快捷键
+		class HotkeySelect extends MenuBase {
+			constructor(itemId, x, y, w, h, zIndex) {
+				super('hotkeySelect', x, y, w, h, zIndex);
+				this.itemId = itemId;
+				/** @type {number | null} null代表当前道具没有快捷键 */
+				this.hotkeyNum = HotkeySelect.getHotkeyNum(this.itemId);
+			}
+
+			drawContent() {
+				const ctx = this.createCanvas();
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				core.fillRect(ctx, 3, 3, w - 6, h - 6, ' #A8CABA');
+				core.strokeRect(ctx, 0, 0, w, h, ' #004B23', 3);
+				core.setTextAlign(ctx, 'center');
+				core.setTextBaseline(ctx, 'alphabetic');
+				core.fillText(ctx, '为当前道具选择一个快捷键', this.w / 2, 40, 'black', '20px Verdana');
+				core.fillText(ctx, '无自定义设置时样板的默认快捷键', this.w / 2, 60, 'gray', '16px Verdana');
+				core.fillText(ctx, '(如123分别对应破炸飞)不可在此设置', this.w / 2, 80, 'gray', '16px Verdana');
+				// 无自定义设置时样板的默认快捷键（如123分别对应破炸飞），不可在此设置
+				// 绘制指向当前快捷键的监听
+				if (this.hotkeyNum != null) {
+					const btn = this.btnList.get('btn' + this.hotkeyNum);
+					if (btn) {
+						core.fillPolygon(ctx, [[btn.x + 12, btn.y + btn.h + 10], [btn.x + btn.w - 12, btn.y + btn.h + 10],
+						[btn.x + btn.w / 2, btn.y + btn.h + 2]], 'black');
+					}
+				}
+				super.drawContent();
+			}
+			/* @__PURE__ */
+			static getHotkeyNum(itemId) {
+				for (let i = 1; i <= 9; i++) {
+					const currHotkey = core.getLocalStorage('hotkey' + i, null);
+					if (currHotkey === itemId) {
+						return i;
+					}
+				}
+				return null;
+			}
+
+			deleteHotkey() {
+				if (this.hotkeyNum != null) core.setLocalStorage('hotkey' + this.hotkeyNum, null);
+			}
+
+			setHotkey(num) { 
+				this.deleteHotkey();
+				core.setLocalStorage('hotkey' + num, this.itemId);
+				this.hotkeyNum = Number(num);
+			}
+
+			clear() {
+				super.clear();
+				[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu) menu.beginListen(); });
+			}
+		}
+		/** @param {string} itemId */
+		function hotkeySelectFactory(itemId) {
+			const hotkeySelect = new HotkeySelect(itemId, 60, 100, 296, 206, 138);
+			/** @type {[string, ButtonBaseClass][]} */
+			const btnList = [];
+			const setHotkeyNum = function () {
+				const num = this.key.replace('btn', '');
+				hotkeySelect.setHotkey(num);
+				hotkeySelect.clear();
+				infoBoard.drawContent();
+			}
+
+			const [btnSize, btnInterval] = [32, 20];
+			const leftMargin = hotkeySelect.w / 2 - 2.5 * btnSize - 2 * btnInterval;
+			const style = { strokeStyle: 'none', fillStyle: 'none' };
+
+			for (let i = 0; i < 9; i++) {
+				const num = i + 1;
+				const row = (i <= 4) ? 1 : 2;
+				let btn;
+				if (row === 1) btn = new IconBtn(leftMargin + i * (btnSize + btnInterval), 100, btnSize, btnSize, 'btn' + num, style);
+				else btn = new IconBtn(leftMargin + (i - 5) * (btnSize + btnInterval), 150, btnSize, btnSize, 'btn' + num, style);
+				btnList.push(['btn' + num, btn]);
+				btn.event = setHotkeyNum.bind(btn);
+			}
+			const setNullBtn = new ButtonBase(leftMargin + 4 * (btnSize + btnInterval), 150, btnSize, btnSize);
+			setNullBtn.draw = function () {
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				core.strokeRect(this.ctx, x, y, w, h, 'red', 2);
+				core.drawLine(this.ctx, x, y, x + w, y + h, 'red', 2);
+			}.bind(setNullBtn);
+			setNullBtn.event = function () {
+				hotkeySelect.deleteHotkey();
+				hotkeySelect.clear();
+				infoBoard.drawContent();
+			}
+			const exitBtn = new ExitBtn(274, 5, 16, 16, { radius: 1, lineOffsetX: 2, lineWidthX: 2 });
+			exitBtn.event = () => {
+				hotkeySelect.clear();
+			}
+			btnList.push(['setNullBtn', setNullBtn], ['exitBtn', exitBtn]);
+			hotkeySelect.initBtnList(btnList);
+			return hotkeySelect;
+		}
+
 		// #endregion
 		// #region 核心功能函数和全局变量
 		function getItemClsName(item) {
@@ -3490,6 +3605,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
 				toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
 				constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
+			exitBtn.event = () => exit();
 			back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
 			['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]);
 
@@ -3528,8 +3644,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				redraw();
 			}
 			const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
+			const setHotkeyBtn = new IconBtn(145, 40, 24, 24, 'keyboard');
+			setHotkeyBtn.event = () => {
+				if (!itemId) return;
+				[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu) menu.endListen(); });
+				const hotkeySelect = hotkeySelectFactory(itemId);
+				hotkeySelect.init();
+			}
 
-			infoBoard.initBtnList([['hideBtn', hideBtn], ['markBtn', markBtn], ['showHideBtn', showHideBtn]]);
+			infoBoard.initBtnList([['hideBtn', hideBtn], ['markBtn', markBtn], ['showHideBtn', showHideBtn], ['setHotkeyBtn', setHotkeyBtn]]);
 			initAll();
 		}
 		// #endregion
@@ -4360,6 +4483,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
 						if (aimItem) {
 							if (['constants', 'tools'].includes(aimItem.cls)) {
+								for (let i = 1; i <= 9; i++) {
+									if (i !== num && core.getLocalStorage('hotkey' + i) === aimItem.id) {
+										core.setLocalStorage('hotkey' + i, null);
+									} // 除默认外，一个物品只保留一个快捷键即可
+								}
 								core.setLocalStorage('hotkey' + num, aimItem.id);
 								this.menu.drawContent();
 							}
@@ -4788,10 +4916,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function drawSetting(ctx) {
-			core.setAlpha(ctx, 0.85);
 			core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "white", 2);
 			core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
-			core.setAlpha(ctx, 1);
 
 			// 绘制设置说明的文本框
 			core.strokeRoundRect(ctx, 20, 70, core.__PIXELS__ - 40, 70, 3, "white");
@@ -5084,7 +5210,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			]);
 			// 名字不能叫toolBar 画布toolBar被系统占了
 			const toolBarMenu = new ToolBarConfigPage('toolBarConfig');
-			console.log(toolBarMenu);
 			const changeToolBarBtn = new RoundBtn(320, 158, 42, 24, '执行', -1);
 			changeToolBarBtn.event = function () {
 				core.setToolBarConfig(this.menu.type, this.menu.index, this.menu.selectedTool);
