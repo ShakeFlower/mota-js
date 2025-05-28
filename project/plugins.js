@@ -941,7 +941,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var _drawTip = core.ui.drawTip;
 			core.ui.drawTip = function () { };
 			var _playSound = core.control.playSound;
-			core.control.playSound = function () { }
+			core.control.playSound = function () { return undefined; };
 			// 记录当前录像，因为可能存在换装问题
 			core.clearRouteFolding();
 			var routeLength = core.status.route.length;
@@ -1166,9 +1166,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.plugin.tickerSet.forEach((ticker) => ticker.destroy());
 		}
 
-		// var M = Object.defineProperty;
-		// var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
-		// var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
 		let w = [];
 		const k = (n) => {
 			for (const i of w)
@@ -1301,18 +1298,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						resize: 0,
 						rotate: 0,
 						shake: 0,
-						"@@bind": []
+						/** @type {number[]} */"@@bind": []
 					},
 					custom: {}
 				};
 				this.animateFn = {
 					system: {
-						move: [() => 0, () => 0],
-						moveAs: () => 0,
-						resize: () => 0,
-						rotate: () => 0,
-						shake: () => 0,
-						"@@bind": () => 0
+						move: [() => { }, () => { }],
+						moveAs: () => { },
+						resize: () => { },
+						rotate: () => { },
+						shake: () => { },
+						"@@bind": () => { }
 					},
 					custom: {}
 				};
@@ -1651,7 +1648,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				"Unexpected parameters are delivered in inverse trigo timing function."
 			);
 		}
-
+		/** @param {(input:number) => number} [i=() => 1] */
 		function B(n, i = () => 1) {
 			let t = -1;
 			return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
@@ -4266,7 +4263,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				() => ' <  放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
 				() => {
 					core.actions._clickSwitchs_display_setSize(-1);
-					core.plugin.settingMenu.drawContent();
 				},
 				'放缩。',
 				false, // 录像中不可录入任何DOM操作
@@ -4275,7 +4271,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				() => ' > ',
 				() => {
 					core.actions._clickSwitchs_display_setSize(1);
-					core.plugin.settingMenu.drawContent();
 				},
 				'放缩。',
 				false,
@@ -4320,7 +4315,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
 				() => {
 					core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true);
-					core.plugin.settingMenu.drawContent();
 				},
 				'自动放缩。',
 				false,

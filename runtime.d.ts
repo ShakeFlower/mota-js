@@ -217,6 +217,12 @@ type gameStatus = {
     thisMap: ResolvedMap
     bgmaps: { [key: string]: number[][] }
     fgmaps: { [key: string]: number[][] }
+
+    /** 五图层插件增加的背景层2 */
+    bg2maps: { [key: string]: number[][] }
+    /** 五图层插件增加的前景层2 */
+    fg2maps: { [key: string]: number[][] }
+
     mapBlockObjs: { [key: string]: any }
     /** 显伤伤害 */
     checkBlock: {
@@ -368,7 +374,7 @@ type editor = {
     dom: {
         canvas: string[]
         maps: string[]
-        [x: string]: string[] | CanvasRenderingContext2D | HTMLCanvasElement
+        [x: string]: string[] | CanvasRenderingContext2D | HTMLCanvasElement | HTMLInputElement | HTMLOptionElement
     }
     fgmap: any[];
     file: Object;
@@ -384,6 +390,7 @@ type editor = {
     mode: Object;
     pos: Object;
     printe: Function;
+    uifunctions: { [x: string]: Function }
     uivalues: Object;
     useCompress: boolean;
     used_flags: Object;
@@ -934,7 +941,7 @@ interface control {
     triggerBgm(): void
 
     /** 播放一个音效 */
-    playSound(sound: string, pitch?: number, callback?: () => any): number
+    playSound(sound: string, pitch?: number, callback?: () => any): number | undefined
 
     /** 停止（所有）音频 */
     stopSound(id?: number): void
@@ -3056,11 +3063,11 @@ interface plugin {
 
     /** 高级动画相关的类 */
     animate: {
-        Animation: any, AnimationBase: any, Ticker: any, Transition: any, bezier: any, bezierPath: any, circle: any,
-        hyper: any, inverseTrigo: any, linear: any, power: any, shake: any, sleep: any, trigo: any,
+        Animation?: any, AnimationBase?: any, Ticker?: any, Transition?: any, bezier?: any, bezierPath?: any, circle?: any,
+        hyper?: any, inverseTrigo?: any, linear?: any, power?: any, shake?: any, sleep?: any, trigo?: any,
     }
     /** 该集合中的所有Ticker在跨层时需要被摧毁 */
-    tickerSet: Set
+    tickerSet: Set<any>
 
     /** 打开一个道具商店 */
     openItemShop: (itemShopId: string) => void
@@ -3314,7 +3321,7 @@ type CoreMixin = {
         moveTime: number
         lastLegTime: number
         /** 插件"勇士4帧动画"开启时为number */
-        leftLeg: boolean | number,
+        leftLeg: number,
         readonly weather: {
             time: number
             type: any
