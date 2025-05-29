@@ -2156,9 +2156,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const loc = `${x},${y}`;
 			const hasEvent = has(floor.events[loc]);
 			if (hasEvent) return; // 如果有事件，直接不清了
-			const block = core.getBlock(x,y);
+			const block = core.getBlock(x, y);
 			if (block != null && block.event.cls !== 'items') return; // 角色站的位置为空地和物品以外的图块，不清（例如箭头，可能无法返回）
-			
+
 			let deep = Infinity;
 			if (hasBlockDamage(loc)) {
 				deep = core.flags.enableGentleClick ? 1 : 0; // 角色站的位置有地图伤害时，仍然允许轻点附近1格
@@ -2498,7 +2498,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.x = x ?? 0;
 				this.y = y ?? 0;
 				this.w = w ?? core.__PIXELS__;
-				this.h = h ?? core.__PIXELS__; 
+				this.h = h ?? core.__PIXELS__;
 				this.zIndex = zIndex ?? 136; // 136比uievent大1
 
 				/** 屏幕被按下时触发的事件 */
@@ -2548,7 +2548,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			createCanvas() {
 				return core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
 			}
-			
+
 			drawButtonContent() {
 				this.btnList.forEach((button) => {
 					if (!button.disable) button.draw();
@@ -2758,6 +2758,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return !core.material.items[id].hideInToolbox;
 			})
 			return list;
+		}
+
+		// 复写resize，保证屏幕变化时此画布表现正常 
+		const originResize = core.control.resize;
+		core.control.resize = function () {
+			originResize.apply(core.control, arguments);
+			[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
 		}
 
 		// #endregion
@@ -3177,12 +3184,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
 				}
 
-				const itemText = item.text + ((type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
+				const itemText = core.replaceText(item.text) + ((type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
 				core.drawTextContent(ctx, itemText, {
 					left: 20, top: 125, bold: false, color: "black",
 					align: "left", fontSize: 15, maxWidth: 150
 				});
-				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId); 
+				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId);
 				// 获取快捷键设置按钮当前的图标
 				/*** @type {IconBtnClass} */
 				const setHotkeyBtn = this.btnList.get('setHotkeyBtn');
@@ -3439,7 +3446,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (this.hotkeyNum != null) core.setLocalStorage('hotkey' + this.hotkeyNum, null);
 			}
 
-			setHotkey(num) { 
+			setHotkey(num) {
 				this.deleteHotkey();
 				core.setLocalStorage('hotkey' + num, this.itemId);
 				this.hotkeyNum = Number(num);
@@ -3979,7 +3986,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (index > toorBarConfig[key].length) {
 					core.drawFailTip('按钮中间不能有空白!');
 					return;
-				} 
+				}
 				const oldIndex = toorBarConfig[key].indexOf(value);
 				if (oldIndex !== -1) { // 如果目标位置有图标，两者交换
 					if (toorBarConfig[key][index] === value) return;
@@ -4101,7 +4108,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 
 			]);
 		 */
-		
+
 		// #region 复写
 		// 复写resize，保证屏幕变化时此画布表现正常 
 		const originResize = core.control.resize;
@@ -4822,7 +4829,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.ui.fillText(ctx, this.setting.getName(),
 						this.x, this.y + this.h / 2 + 5, 'white', '16px Verdana');
 					const drawFunc = this.setting.draw;
-					if (this.status === 'selected'){
+					if (this.status === 'selected') {
 						core.drawUIEventSelector(0, "winskin.png", this.x, this.y, this.w, this.h, 137);
 					}
 					if (drawFunc) drawFunc.apply(this, [ctx]);
@@ -5286,7 +5293,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 设置初始时选中的按键为第一个按键
 			settingMenu.changeBtn(gamePlayBtn);
 
-			/** @todo 修复resize时（尤其有输入框时）自定义画布被破坏的，及擦除不正确问题*/ 
 			settingMenu.init();
 		}
 	}

@@ -587,12 +587,12 @@ editor_uievent_wrapper = function (editor) {
                 var disabled = _isTileset && value.indexOf(one) >= 0 ? 'disabled' : ''
                 html += `<input type="checkbox" key="${one}" class="materialCheckbox" ${checked} ${disabled}/> ${one}`;
                 // 预览图片
-                if (one.endsWith('.png') || one.endsWith('.jpg') || one.endsWith('.jpeg') || one.endsWith('.gif')) {
+                if (one.endsWith('.png') || one.endsWith('.jpg') || one.endsWith('.jpeg') || one.endsWith('.gif') || one.endsWith('.webp')) {
                     html += "<button onclick='editor.uievent._previewMaterialImage(this)' style='margin-left: 10px'>预览</button>";
                     html += '<br style="display:none"/><img key="' + directory + one + '" style="display:none; max-width: 100%"/>';
                 }
                 // 试听音频
-                if (one.endsWith('.mp3') || one.endsWith('.ogg') || one.endsWith('.wav') || one.endsWith('.m4a') || one.endsWith('.flac')) {
+                if (one.endsWith('.mp3') || one.endsWith('.ogg') || one.endsWith('.wav') || one.endsWith('.m4a') || one.endsWith('.flac') || one.endsWith('.opus')) {
                     html += "<button onclick='editor.uievent._previewMaterialAudio(this)' style='margin-left: 10px'>播放</button>"
                     html += "<small> 音调：<input value='100' style='width:28px' onchange='editor.uievent._previewMaterialAudio_onPitchChange(this)'></small>";
                     html += `<small style='display:none; margin-left: 15px'>0:00 / 0:00</small><br style="display:none"/>
@@ -611,7 +611,7 @@ editor_uievent_wrapper = function (editor) {
                 var disabled = _isTileset && value.indexOf(one) >= 0 ? 'disabled' : '';
                 html += `<input type="checkbox" key="${one}" class="materialCheckbox" ${checked} ${disabled}/> ${one}`;
                 // 预览图片
-                if (one.endsWith('.png') || one.endsWith('.jpg') || one.endsWith('.jpeg') || one.endsWith('.gif')) {
+                if (one.endsWith('.png') || one.endsWith('.jpg') || one.endsWith('.jpeg') || one.endsWith('.gif') || one.endsWith('.webp')) {
                     html += "<button onclick='editor.uievent._previewMaterialImage2(this)' style='margin-left: 10px'>预览</button>";
                     html += '<br style="display:none" key="' + one + '"/><br/>';
                 }
