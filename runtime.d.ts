@@ -1697,6 +1697,8 @@ interface maps {
         cacheCtx: CanvasRenderingContext2D, config: mapsConfig): void
     _getBgFgMapArray(name: string, floorId?: string | null, noCache?: boolean | null): any[]
     _generateMovableArray_arrays(floorId: string): { bgArray: number[][], fgArray: number[][], eventArray: number[][] }
+    _drawFloorImage(ctx: string | CanvasRenderingContext2D, name: string, one: FloorImage,
+        image: any, currStatus: any, onMap: boolean)
 
     /**
      * 获取初始core.maps.blockInfo的一个拷贝
@@ -2405,6 +2407,10 @@ interface ui {
      * 如果name也可以是'all'，若为all则为清空所有系统画布。
      */
     clearMap(name: CtxRefer): void
+    /**
+     * 清空某个画布图层的指定区域
+     */
+    clearMap(name: CtxRefer, x: number, y: number, w: number, h: number): void
 
     /**
      * 在某个画布上绘制一段文字

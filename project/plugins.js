@@ -459,6 +459,39 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				fg2Array: this._getBgFgMapArray('fg2', floorId)
 			};
 		}
+
+		// 楼层贴图绘制
+		core.maps._drawFloorImage = function (ctx, name, one, image, currStatus, onMap) {
+			var height = image.height;
+			var imageName = one.name + (one.reverse || '');
+			var width = parseInt((one.w == null ? image.width : one.w) / (one.frame || 1));
+			var height = one.h == null ? image.height : one.h;
+			var sx = (one.sx || 0) + (currStatus || 0) % (one.frame || 1) * width;
+			var sy = one.sy || 0;
+			var x = one.x || 0, y = one.y || 0;
+			if (onMap && core.bigmap.v2) {
+				if (x > 32 * core.bigmap.posX + core.__PIXELS__ + 32 || x + width < 32 * core.bigmap.posX - 32
+					|| y > 32 * core.bigmap.posX + core.__PIXELS__ + 32 || y + height < 32 * core.bigmap.posY - 32) {
+					return;
+				}
+				x -= 32 * core.bigmap.posX;
+				y -= 32 * core.bigmap.posY;
+			}
+
+			if (one.canvas != 'auto' && one.canvas != name) return;
+			if (one.canvas != 'auto') {
+				if (currStatus != null) core.clearMap(ctx, x, y, width, height);
+				core.drawImage(ctx, imageName, sx, sy, width, height, x, y, width, height);
+			} else {
+				if (name === 'bg' || name === 'bg2') {
+					if (currStatus != null) core.clearMap(ctx, x, y + height - 32, width, 32);
+					core.drawImage(ctx, imageName, sx, sy + height - 32, width, 32, x, y + height - 32, width, 32);
+				} else if (name == 'fg' || name === 'fg2') {
+					if (currStatus != null) core.clearMap(ctx, x, y, width, height - 32);
+					core.drawImage(ctx, imageName, sx, sy, width, height - 32, x, y, width, height - 32);
+				}
+			}
+		}
 	},
 	"itemShop": function () {
 		// 道具商店相关的插件
@@ -2067,8 +2100,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const objs = core.getMapBlocksObj(floorId);
 			const bgMap = core.getBgMapArray(floorId);
 			const { x, y } = core.status.hero.loc;
-			/** @type {[direction, number, number][]} */
-			const dir = Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
+			const dir = /** @type {[direction, number, number][]} */Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
 			const floor = core.status.maps[floorId];
 
 			/** @type {[number, number][]} */
@@ -3191,8 +3223,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				});
 				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId);
 				// 获取快捷键设置按钮当前的图标
-				/*** @type {IconBtnClass} */
-				const setHotkeyBtn = this.btnList.get('setHotkeyBtn');
+				
+				const setHotkeyBtn = /** @type {IconBtnClass} */(this.btnList.get('setHotkeyBtn'));
 				if (setHotkeyBtn) {
 					setHotkeyBtn.disable = (type === 'equips');
 					setHotkeyBtn.icon = (currItemHotKey == null) ? 'keyboard' : ('btn' + currItemHotKey);
