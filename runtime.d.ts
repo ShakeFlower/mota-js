@@ -3137,11 +3137,13 @@ declare class ButtonBaseClass {
     /** 按钮所在的画布 */
     ctx: string
     /** 按钮在菜单中的索引 */
-    key: string
+    key: string | number
     /** 按钮的绘制方法 */
     draw: () => void
     /** 按钮被按下时触发的事件 */
     event: (x: number, y: number, px: number, py: number) => void
+    /** 当前点击坐标是否在该按钮的判定区范围内 */
+    inRange(px, py): boolean;
 }
 
 interface RoundBtn {

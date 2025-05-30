@@ -460,6 +460,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 		}
 
+		// @todo 测试五图层插件在此处是否表现正常
+		// @todo 五图层配合autotile是否有bug 待测试
 		// 楼层贴图绘制
 		core.maps._drawFloorImage = function (ctx, name, one, image, currStatus, onMap) {
 			var height = image.height;
@@ -2458,6 +2460,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.draw = () => { };
 				this.event = (x, y, px, py) => { };
 			}
+
+			/** 默认为矩形判定区 */
+			inRange(px, py) {
+				return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
+			}
 		}
 
 		class RoundBtn extends ButtonBase {
@@ -2525,7 +2532,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.name = name;
 				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
 				this.btnList = new Map();
-				/** 当前画布是否正被绘制 */this.onDraw = false;
+				/** 当前画布是否正被绘制 */
+				this.onDraw = false;
 
 				this.x = x ?? 0;
 				this.y = y ?? 0;
@@ -2539,7 +2547,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const [px, py] = this.convertCoordinate(rawpx, rawpy);
 					this.btnList.forEach((btn) => {
 						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+						if (btn.inRange(px, py)) {
 							btn.event(x, y, px, py);
 						}
 					});
@@ -2627,7 +2635,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		let __enable = true;
 		if (!__enable) return;
 
-		/** @todo 在本界面可看到和自定义物品快捷键，待后续完善 */
 		// #region 复写
 
 		core.ui._drawToolbox = function () { drawItemBox('all'); }.bind(core.ui);
@@ -2651,11 +2658,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return true;
 			};
 			core.ui._drawToolbox(0);
-			const totalIndex = itemBoard.allItemList.indexOf(itemId);
-			const page = Math.max(Math.ceil(totalIndex / itemBoard.pageCap) - 1, 0);
-			const currIndex = totalIndex - page * itemBoard.pageCap;
-			itemBoard.page = page;
-			itemBoard.select(currIndex);
+			const itemInv = globalUI.itemInv;
+			const totalIndex = itemInv.allItemList.indexOf(itemId);
+			const page = Math.max(Math.ceil(totalIndex / itemInv.pageCap) - 1, 0);
+			const currIndex = totalIndex - page * itemInv.pageCap;
+			itemInv.page = page;
+			itemInv.focus(currIndex);
 			redraw();
 			setTimeout(function () {
 				core.ui.closePanel();
@@ -2688,11 +2696,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return true;
 			}
 			core.ui._drawEquipbox(0);
-			const totalIndex = itemBoard.allItemList.indexOf(itemId);
-			const page = Math.max(Math.ceil(totalIndex / itemBoard.pageCap) - 1, 0);
-			const currIndex = totalIndex - page * itemBoard.pageCap;
-			itemBoard.page = page;
-			itemBoard.select(currIndex);
+			const { itemId, itemInv } = globalUI;
+			const totalIndex = itemInv.allItemList.indexOf(itemId);
+			const page = Math.max(Math.ceil(totalIndex / itemInv.pageCap) - 1, 0);
+			const currIndex = totalIndex - page * itemInv.pageCap;
+			itemInv.page = page;
+			itemInv.focus(currIndex);
 			redraw();
 			setTimeout(function () {
 				core.ui.closePanel();
@@ -2726,10 +2735,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.unloadEquip(equipType, callback);
 				return true;
 			}
-			const page = Math.max(Math.ceil(equipType / equipBoard.pageCap) - 1, 0);
-			const currIndex = equipType - page * equipBoard.pageCap;
-			equipBoard.page = page;
-			equipBoard.select(currIndex);
+			const itemInv = globalUI.itemInv;
+			const page = Math.max(Math.ceil(equipType / itemInv.pageCap) - 1, 0);
+			const currIndex = equipType - page * itemInv.pageCap;
+			itemInv.page = page;
+			itemInv.focus(currIndex);
 			core.ui._drawEquipbox(0);
 			setTimeout(function () {
 				core.unloadEquip(equipType, callback);
@@ -2762,6 +2772,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// flag:markedItems string[] 在道具栏中置顶的道具的列表
 		// flag:hideInfo {[itemId:string]:boolean} 手动选择了显示/隐藏的道具的列表
 		core.ui.getToolboxItems = function (cls, showHide, sortFunc) {
+			console.trace(1);
 			const markedItems = core.getFlag('markedItems', []);
 			const itemsUsedCount = core.getFlag('itemsUsedCount', {});
 
@@ -2792,11 +2803,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return list;
 		}
 
-		// 复写resize，保证屏幕变化时此画布表现正常 
+		// 复写resize，保证屏幕变化时此画布表现正常
 		const originResize = core.control.resize;
 		core.control.resize = function () {
 			originResize.apply(core.control, arguments);
-			[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
+			const { _back, _itemInv, _equipChangeBoard, _itemInfoBoard } = globalUI;
+			[_back, _itemInv, _equipChangeBoard, _itemInfoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
 		}
 
 		// #endregion
@@ -2808,6 +2820,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				super(x, y, w, h, '隐藏', config);
 				const oriDraw = this.draw;
 				this.draw = () => {
+					const itemId = globalUI.itemId;
 					if (core.material.items[itemId]) {
 						const hideInfo = core.getFlag('hideInfo', {});
 						if (hideInfo.hasOwnProperty(itemId)) this.text = hideInfo[itemId] ? "显示" : "隐藏";
@@ -2823,6 +2836,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				super(x, y, w, h, '隐藏', config);
 				const oriDraw = this.draw;
 				this.draw = () => {
+					const itemId = globalUI.itemId;
 					const markedItems = core.getFlag('markedItems', []);
 					this.text = markedItems.includes(itemId) ? "取消" : "置顶";
 					oriDraw();
@@ -2836,22 +2850,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.subType = subType;
 				const oriDraw = this.draw;
 				this.draw = () => {
+					const { type, toolInv } = globalUI;
 					if (type === 'equips') return;
-					if (itemBoard.subType === this.subType) this.status = 'selected';
+					if (toolInv.subType === this.subType) this.status = 'selected';
 					else this.status = "none";
 					oriDraw();
 				}
 				this.event = () => {
+					const { type, toolInv } = globalUI;
 					if (type === 'equips') return;
-					if (itemBoard.subType !== this.subType) {
-						const oldConfig = itemBoard.cache[itemBoard.subType],
-							newConfig = itemBoard.cache[this.subType];
-						oldConfig.page = itemBoard.page;
-						oldConfig.index = itemBoard.index;
-						itemBoard.page = newConfig.page;
-						itemBoard.index = newConfig.index;
-						itemBoard.subType = this.subType;
-						itemBoard.refreshItemList();
+					if (toolInv.subType !== this.subType) {
+						const oldConfig = toolInv.cache[toolInv.subType],
+							newConfig = toolInv.cache[this.subType];
+						oldConfig.page = toolInv.page;
+						oldConfig.index = toolInv.index;
+						toolInv.page = newConfig.page;
+						toolInv.index = newConfig.index;
+						toolInv.subType = this.subType;
+						toolInv.updateItemList();
 						redraw(true);
 					}
 				};
@@ -2874,19 +2890,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				};
 
 				this.event = () => {
+					const itemInv = globalUI.itemInv;
 					core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
-					itemBoard.refreshItemList();
+					itemInv.updateItemList();
 					redraw();
 				}
 			}
 		}
 
+		/** 切换道具栏和装备栏的按钮 */
 		class SwitchBtn extends IconBtn {
 			constructor(x, y, w, h, config) {
 				super(x, y, w, h, '', config);
 				const oriDraw = this.draw;
 				this.draw = () => {
-					this.icon = (type === 'all') ? 'toolbox' : 'equipbox';
+					this.icon = (globalUI.type === 'all') ? 'toolbox' : 'equipbox';
 					oriDraw();
 				}
 				this.event = () => {
@@ -2899,11 +2917,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class ArrowBtn extends ButtonBase {
 			constructor(x, y, w, h, dir, config) {
 				super(x, y, w, h);
-				const { marginLeft = 6, marginTop = 5, marginRight = 4,
-					backStyle = 'gray', arrowStyle = 'black'
-				} = config || {};
+				this.config = config || {};
 				/** @type {'left'|'right'} */this.dir = dir;
 				this.draw = () => {
+					const { marginLeft = 6, marginTop = 5, marginRight = 4,
+						backStyle = 'gray', arrowStyle = 'black'
+					} = this.config || {};
 					const ctx = this.ctx;
 					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, backStyle);
 					if (this.dir === 'left')
@@ -2917,73 +2936,130 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		class ItemBox extends ButtonBase {
+			constructor(x, y, w, h) {
+				super(x, y, w, h);
+				/** @type {ItemInventory} */this.menu;
+				this.draw = () => {
+					const menu = this.menu;
+					const ctx = this.ctx;
+					const itemId = menu.currItemList[this.key];
+					const y = this.y;
+
+					const item = core.material.items[itemId] || {};
+					const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
+
+					// 被隐藏的道具在显示时需要半透明
+					const hideInfo = core.getFlag('hideInfo', {});
+					if (item && (hideInfo.hasOwnProperty(itemId) ? hideInfo[itemId] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
+
+					// 绘制物品图标
+					if (core.material.items[itemId]) core.drawIcon(ctx, itemId, 4, this.y + 6, 18, 18);
+
+					core.setTextAlign(ctx, "right");
+					core.setTextBaseline(ctx, "middle");
+					// 绘制物品数量 ×几
+					const numText = "×" + num;
+					core.fillText(ctx, numText, 220, y + menu.oneItemHeight / 2, 'white', '18px Verdana');
+
+					// 绘制物品名称
+					const markedItems = core.getFlag('markedItems', []);
+					const name = item.name || "???";
+					core.setTextAlign(ctx, "left");
+					core.fillText(ctx, name, 24, this.y + menu.oneItemHeight / 2, markedItems.includes(itemId) ? 'gold' : 'white', '18px Verdana', 180);
+					core.setAlpha(ctx, 1);
+				}
+			}
+		}
+
+		class EquipBox extends ButtonBase {
+			constructor(x, y, w, h, index) {
+				super(x, y, w, h);
+				/** @type {EquipChangeBoard} */this.menu;
+				this.draw = () => {
+					const ctx = this.ctx;
+					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+					const space = 2, lineWidth = 2, squareSize = w;
+					const equipId = this.menu.currItemList[this.key];
+					if (equipId) core.drawIcon(ctx, equipId, x, y, squareSize, squareSize);
+					const color = (this.menu.index === this.key) ? 'gold' : 'white';
+					core.strokeRect(ctx, x, y, squareSize, squareSize, color, lineWidth);
+					core.setTextAlign(ctx, "center");
+					core.setTextBaseline(ctx, "top");
+					const tx = x + w / 2,
+						ty = y + squareSize + space;
+					core.fillText(ctx, this.menu.currItemList[this.key], tx, ty, color, '14px Verdana');
+				};
+				this.event = () => {
+					this.menu.triggerItem();
+				};
+			}
+		}
+
 		// #endregion
 		// #region 绘制用到的菜单类
 
+		// 道具栏/装备栏的背景
 		class ItemBoxBack extends MenuBase {
 			constructor() {
 				super('itemBoxBase'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
 				this.keyEvent = (keyCode) => {
-					if ([37, 38, 39, 40].includes(keyCode) && selectType === '') { // 未选中的情况下按方向键先选择物品栏第一格
-						itemBoard.select(0);
-						redraw();
-						return;
-					}
+					const { itemId, type, selectType, itemInv, equipChangeBoard } = globalUI;
 					if (keyCode === 37) { // left	
-						if (selectType === 'toolBox') itemBoard.pgDown();
-						else if (selectType === 'equipBox') equipBoard.pgDown();
+						if (selectType === 'toolBox') itemInv.pageDown();
+						else if (selectType === 'equipBox') equipChangeBoard.pageDown();
 						redraw();
 					}
 					else if (keyCode === 39) { // right		
-						if (selectType === 'toolBox') itemBoard.pgUp();
-						else if (selectType === 'equipBox') equipBoard.pgUp();
+						if (selectType === 'toolBox') itemInv.pageUp();
+						else if (selectType === 'equipBox') equipChangeBoard.pageUp();
 						redraw();
 					}
 					else if (keyCode === 38) { // up
 						if (selectType === 'toolBox') {
-							if (itemBoard.index === 0) {
+							if (itemInv.index === 0) {
 								if (type === 'equips') { // 在仅物品栏模式下点上键到顶，切换到上一页，否则会切换到装备栏
-									let newIndex = Math.min(equipBoard.pageCap - 1,
-										core.status.globalAttribute.equipName.length - equipBoard.page * equipBoard.pageCap);
-									equipBoard.select(newIndex);
+									let newIndex = Math.min(equipChangeBoard.pageCap - 1,
+										core.status.globalAttribute.equipName.length - equipChangeBoard.page * equipChangeBoard.pageCap);
+									equipChangeBoard.focus(newIndex);
 									redraw();
 								}
 								else {
-									itemBoard.pgDown(); // 向上到顶将翻到上一页
+									itemInv.pageDown(); // 向上到顶将翻到上一页
 									redraw();
 								}
 							}
 							else {
-								itemBoard.select(itemBoard.index - 1);
+								itemInv.focus(itemInv.index - 1);
 								redraw();
 							}
 						}
 						else if (selectType === 'equipBox') {
-							if (equipBoard.index >= equipBoard.rowMax) {
-								equipBoard.index -= equipBoard.rowMax;
+							if (equipChangeBoard.index >= equipChangeBoard.rowMax) {
+								equipChangeBoard.index -= equipChangeBoard.rowMax;
 								redraw();
 							}
 						}
 					}
 					else if (keyCode === 40) { // down
 						if (selectType === 'toolBox') {
-							if (itemBoard.index < itemBoard.currItemList.length - 1) {
-								itemBoard.select(itemBoard.index + 1);
+							if (itemInv.index < itemInv.currItemList.length - 1) {
+								itemInv.focus(itemInv.index + 1);
 								redraw();
 							}
 							else {
-								itemBoard.pgUp(); // 向下到底将翻到下一页
+								itemInv.pageUp(); // 向下到底将翻到下一页
 								redraw();
 							}
 						}
 						else if (selectType === 'equipBox') {
-							let newIndex = equipBoard.index + equipBoard.rowMax;
-							const newTotalIndex = equipBoard.page * equipBoard.pageCap + newIndex;
+							let newIndex = equipChangeBoard.index + equipChangeBoard.rowMax;
+							const newTotalIndex = equipChangeBoard.page * equipChangeBoard.pageCap + newIndex;
 							if (newTotalIndex < core.status.globalAttribute.equipName.length) {
-								equipBoard.select(newIndex);
+								equipChangeBoard.focus(newIndex);
 							}
 							else {
-								itemBoard.select(0);
+								equipChangeBoard.focus(0);
 							}
 							redraw();
 						}
@@ -2993,28 +3069,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					else if (keyCode === 13 || keyCode === 32 || keyCode === 67) { // Enter/SpaceBar/C
 						if (selectType === "toolBox") {
-							if (core.material.items[itemId]) itemBoard.useItem(itemId);
+							if (core.material.items[itemId]) itemInv.triggerItem();
 						}
 						else if (selectType === "equipBox") {
-							equipBoard.unEquip();
+							equipChangeBoard.triggerItem();
 							redraw();
 						}
 						else {
-							itemBoard.select(0);
+							itemInv.focus(0);
 							redraw();
 						}
 					}
 				};
 				this.keyUpEvent = (keyCode) => {
 					if (keyCode === 81) { // Q
-						if (type === "equips") exit();
+						if (globalUI.type === "equips") exit();
 						else {
 							switchType();
 							redraw(true);
 						}
 					}
 					else if (keyCode === 84) { // T
-						if (type === "all") exit();
+						if (globalUI.type === "all") exit();
 						else {
 							switchType();
 							redraw(true);
@@ -3033,156 +3109,256 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.strokeRoundRect(ctx, 2, 2, 412, 412, 5, 'white', 2);
 				core.fillRoundRect(ctx, 3, 3, 410, 410, 5, 'rgb(108, 187, 219)');
 				core.drawLine(ctx, 248, 3, 248, 413, 'white', 2); // 左栏和右栏的分界线
-				if (type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
+				if (globalUI.type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
 			}
 		}
 
-		class EquipBox extends MenuBase {
-			constructor(x, y, w, h) {
-				super('equipBox', x, y, w, h, 137);
+		// selectType采用一套新的逻辑来判定 
+
+		// 物品列表和换装界面的共用基类 
+		class ItemBoxBase extends MenuBase {
+			constructor(name, x, y, w, h, zIndex) {
+				super(name, x, y, w, h, zIndex);
+				/** 当前页 */
 				this.page = 0;
+				/** 一页最多可容纳的道具数量 */
+				this.pageCap = 0;
+				/** 当前最大页数，page应小于此值*/
+				this.pageMax = 1;
+				/** @type {string[]} 此界面总的物品列表 */
+				this.allItemList = [];
+				/** @type {string[]} 此界面当前页展示的物品列表 */
+				this.currItemList = [];
+				/** 当前选中了第几个道具 */
+				this.index = 0;
+				/** 当前选中的道具的名称 */
+				this.itemId = '';
+
+				this.clickEvent = (x, y, rawpx, rawpy) => {
+					if (!this.isPosValid(rawpx, rawpy)) return;
+					const [px, py] = this.convertCoordinate(rawpx, rawpy);
+					this.btnList.forEach((btn) => {
+						if (btn.disable) return;
+						if (btn.inRange(px, py)) {
+							if (btn instanceof ItemBox || btn instanceof EquipBox) {
+								if (btn.key !== this.index) this.focus(btn.key);
+								else btn.event(x, y, px, py);
+							}
+							else if (btn instanceof ArrowBtn) btn.event(x, y, px, py);
+						}
+					});
+				}
+				this.onMoveEvent = (x, y, rawpx, rawpy) => {
+					if (!this.isPosValid(rawpx, rawpy)) return;
+					const [px, py] = this.convertCoordinate(rawpx, rawpy);
+					this.btnList.forEach((btn) => {
+						if (btn.disable) return;
+						if (!btn.inRange || !(btn.inRange instanceof Function)) debugger;
+						if (btn.inRange(px, py)) {
+							if (btn instanceof ItemBox || btn instanceof EquipBox) {
+								if (btn.key !== this.index) this.focus(btn.key);
+							}
+						}
+					});
+				}
+			}
+
+			/** 
+			 * @abstract 获取最新的物品列表
+			 * @returns {string[]}
+			 */
+			getItemList() { return []; }
+
+			/** @abstract 尝试使用当前选中的物品 */
+			triggerItem() { }
+
+			/** 更新物品列表 */
+			updateItemList() {
+				this.allItemList = this.getItemList();
+				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
+				if (this.pageMax < 1) this.pageMax = 1;
+				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
+				if (this.index >= this.currItemList.length) this.index = 0;
+				this.itemId = this.currItemList[this.index];
+			}
+
+			/** 聚焦于指定序号的按钮，并重绘画面 */
+			focus(index) {
+				this.index = index;
+				this.itemId = this.currItemList[this.index];
+				this.btnList.forEach(btn => {
+					btn.status = (btn.key === this.index) ? 'selected' : 'none'
+				});
+				globalUI.selectType = (this instanceof EquipChangeBoard) ? 'equipBox' : 'toolBox';
+				globalUI.itemId = this.itemId;
+				redraw();
+			}
+
+			canPageUp(){
+				return this.page < this.pageMax - 1;
+			}
+
+			canPageDown(){
+				return this.page > 0;
+			}
+
+			pageUp() {
+				if (!this.canPageUp()) return;
+				this.page++;
+				this.updateItemList();
+				this.focus((this.index < this.currItemList.length) ? this.index : 0);
+			}
+
+			pageDown() {
+				if (!this.canPageDown()) return;
+				this.page--;
+				this.updateItemList();
+				this.focus(this.index);
+			}
+		}
+
+		/** 展示角色当前已穿戴的装备的面板 */
+		class EquipChangeBoard extends ItemBoxBase {
+			constructor(x, y, w, h, zIndex) {
+				super('equipChangeBoard', x, y, w, h, zIndex);
 				this.columnMax = 4;
 				this.rowMax = 2;
 				this.pageCap = this.columnMax * this.rowMax;
-				this.pageMax = Math.ceil(core.status.globalAttribute.equipName.length / this.pageCap);
-				this.currPageCap = Math.min(core.status.globalAttribute.equipName.length, this.pageCap);
-
-				/** 选中了当前页面上的第几个装备格*/ this.index = 0;
-				/** @type {{x:number,y:number,index:number}[]} */
-				this.equipPosList = [];
-				const oriClickEvent = this.clickEvent;
-				this.clickEvent = (x, y, rawpx, rawpy) => {
-					if (!this.isPosValid(rawpx, rawpy)) return;
-					oriClickEvent(x, y, rawpx, rawpy);
-					const [px, py] = this.convertCoordinate(rawpx, rawpy);
-					for (let i = 0, l = this.equipPosList.length; i < l; i++) {
-						const { x, y, index } = this.equipPosList[i];
-						if (px > x && px < x + 32 && py > y && py < y + 32) {
-							if (this.index === index) {
-								this.unEquip();
-							}
-							else {
-								this.select(index);
-							}
-							redraw();
-						}
-					}
-				};
-				if (core.platform.isPC) {
-					this.onMoveEvent = (x, y, rawpx, rawpy) => {
-						if (!this.isPosValid(rawpx, rawpy)) return;
-						const [px, py] = this.convertCoordinate(rawpx, rawpy);
-						for (let i = 0, l = this.equipPosList.length; i < l; i++) {
-							const { x, y, index } = this.equipPosList[i];
-							if (px > x && px < x + 32 && py > y && py < y + 32) {
-								let needRedraw = this.index !== index;
-								this.select(index);
-								if (needRedraw) redraw();
-							}
-						}
-					};
-				}
+				this.updateItemList();
 			}
 
 			drawContent() {
 				const ctx = this.createCanvas();
-
 				if (this.pageMax > 1) {
 					core.setTextAlign(ctx, "center");
 					core.setTextBaseline(ctx, "alphabetic");
 					core.fillText(ctx, this.page + 1 + '/' + this.pageMax, this.w / 2, this.h - 2, 'white', '12px Verdana');
 				}
-
-				const equipNameList = core.status.globalAttribute.equipName;
-				const columnCount = Math.min(equipNameList.length, this.columnMax),
-					rowCount = equipNameList.length > this.columnMax ? 2 : 1;
+				
+				const currNameList = this.currItemList;
+				const columnCount = Math.min(currNameList.length, this.columnMax),  // 判断装备孔数量是否小于最大列数
+					rowCount = Math.min(Math.ceil(currNameList.length / this.columnMax), this.rowMax);
 				const [boxWidth, boxHeight] = [36, 52];
 				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
 					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
 				let [x, y] = [spaceX, spaceY];
-				for (let i = 0; i < this.currPageCap; i++) {
-					const currEquipIndex = this.page * this.pageCap + i;
-					if (currEquipIndex >= equipNameList.length) break;
+				/** @type {[number, EquipBox][]} */
+				const btnArr = [];
 
-					const currBoxName = equipNameList[currEquipIndex];
-					const currEquipId = core.getEquip(currEquipIndex);
-					const borderStyle = (i === this.index) ? 'gold' : 'white';
-					this.equipPosList.push({ x, y, index: i });
-					this.drawEquipbox_drawOne(ctx, currBoxName, currEquipId, x, y, borderStyle);
+				for (let i = 0; i < this.currItemList.length; i++) {
+					const btn = new EquipBox(x, y, boxWidth, boxHeight);
+					btnArr.push([i, btn]);
 					if ((i + 1) % this.columnMax === 0) {
 						x = spaceX;
 						y += spaceY + boxHeight;
 					}
 					else x += spaceX + boxWidth;
 				}
-
-				const [pgDownBtn, pgUpBtn] = [this.btnList.get('pgDownBtn'), this.btnList.get('pgUpBtn')];
-				if (pgDownBtn) pgDownBtn.disable = !this.canPgDown();
-				if (pgUpBtn) pgUpBtn.disable = !this.canPgUp();
-
+				this.initBtnList(btnArr);
 				super.drawContent();
 			}
 
-			drawEquipbox_drawOne(ctx, text, equipId, x, y, color) {
-				const width = 32, height = 32, space = 2, lineWidth = 2;
-				if (equipId) core.drawIcon(ctx, equipId, x + lineWidth / 2, y + lineWidth / 2, width, height);
-				core.strokeRect(ctx, x, y, width + lineWidth, height + lineWidth, color, lineWidth);
-				core.setTextAlign(ctx, "center");
-				core.setTextBaseline(ctx, "top");
-				const tx = (x + x + lineWidth / 2 + width) / 2,
-					ty = y + height + lineWidth / 2 * 3 + space;
-				core.fillText(ctx, text, tx, ty, color, '14px Verdana');
+			getItemList() {
+				return core.status.globalAttribute.equipName;
 			}
 
-			/** 根据给定的index，重新选中新的装备框 
-			 * @param {number} index
-			 */
-			select(index) {
-				selectType = 'equipBox';
-				this.index = index;
-				itemBoard.index = -1;
-				itemId = (core.getEquip(index) == null) ? '' : core.getEquip(index);
-				const currEquipIndex = this.page * this.pageCap + this.index;
-				const currEquipId = core.getEquip(currEquipIndex);
-				if (core.material.items[currEquipId]) itemId = currEquipId;
+			updateItemList() {
+				super.updateItemList();
 			}
 
-			unEquip() {
+			triggerItem() {
 				const index = this.index;
-				if (core.status.hero.equipment[index])
-					core.unloadEquip(index, () => {
-						core.status.route.push("unEquip:" + index);
-					});
-				itemBoard.refreshItemList();
-				itemId = '';
-			}
-
-			canPgDown() {
-				return this.page > 0;
-			}
-
-			canPgUp() {
-				return this.page < this.pageMax - 1;
-			}
-
-			pgUp() {
-				if (this.canPgUp()) {
-					this.page++;
-					let newIndex = this.index;
-					if (this.page >= this.pageMax - 1) {
-						this.currPageCap = core.status.globalAttribute.equipName.length - this.page * this.pageCap;
-					}
-					if (newIndex >= this.currPageCap) newIndex = 0;
-					this.select(newIndex);
+				if (core.status.hero.equipment[index]) {
+					core.unloadEquip(index);
+					core.status.route.push("unEquip:" + index);
+					this.updateItemList();
+					globalUI.itemInv.updateItemList(); // @ todo 穿脱装备是双向的过程，装备栏和道具栏的物品列表组成都会变
+					redraw();
 				}
 			}
+		}
 
-			pgDown() {
-				if (this.canPgDown()) {
-					this.page--;
-					this.currPageCap = Math.min(core.status.globalAttribute.equipName.length, this.pageCap);
-					this.select(this.index);
+		/** 展示角色当前背包物品的面板，有道具/装备两种模式 */
+		class ItemInventory extends ItemBoxBase {
+			constructor(name, x, y, w, h, zIndex) {
+				super(name, x, y, w, h, zIndex);
+
+				/** @type {number} 单个物品占据的列宽 */
+				this.oneItemHeight = 30;
+				/** @type {number} 单个页面显示的物品数, -1是因为最后一行要留给换行按钮*/
+				this.pageCap = Math.floor(h / this.oneItemHeight) - 1;
+			}
+
+			drawContent() {
+				const ctx = this.createCanvas();
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
+
+				core.setTextBaseline(ctx, "middle");
+				for (let i = 0; i < this.pageCap; i++) {
+					const btn = this.btnList.get(i);
+					if (btn && btn instanceof ItemBox) btn.disable = i >= this.currItemList.length;
 				}
+				core.setTextAlign(ctx, "center");
+				core.setTextBaseline(ctx, "alphabetic");
+				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, h - 4, 'white', '12px Verdana');
+				if (globalUI.type === 'all') { // 光标绘制是绝对坐标
+					core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * this.oneItemHeight, w, this.oneItemHeight, 140);
+				}else core.clearUIEventSelector(1);
+				super.drawContent();
+			}
+		}
+
+		class ToolInventory extends ItemInventory {
+			constructor(x, y, w, h, zIndex) {
+				super('toolInventory', x, y, w, h, zIndex);
+				/** @type {'all'|'tools'|'constants'} 当前显示哪个子菜单 */
+				this.subType = 'all';
+
+				/** 各个子页面当前选中的位置，用于在切换后显示原位置 */
+				this.cache = {
+					all: { page: 0, index: 0 },
+					tools: { page: 0, index: 0 },
+					constants: { page: 0, index: 0 }
+				}
+				this.updateItemList();
+			}
+
+			getItemList() {
+				return core.getToolboxItems(this.subType, core.hasFlag('showHideItem'));
+			}
+
+			triggerItem() {
+				const itemId = globalUI.itemId;
+				if (!core.canUseItem(itemId)) {
+					core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
+					return;
+				}
+				clearAll();
+				setTimeout(() => {
+					core.unlockControl();
+					core.tryUseItem(itemId);
+				}, 0);
+			}
+		}
+
+		class EquipInventory extends ItemInventory {
+			constructor(x, y, w, h, zIndex) {
+				super('equipInventory', x, y, w, h, zIndex);
+				this.updateItemList();
+			}
+
+			getItemList() {
+				return core.getToolboxItems('equips', core.hasFlag('showHideItem'));
+			}
+
+			triggerItem() {
+				if (!core.canEquip(globalUI.itemId, true)) return;
+				core.loadEquip(globalUI.itemId);
+				this.updateItemList(); // 穿上装备会导致道具数量变化
+
+				core.status.route.push("equip:" + globalUI.itemId);
+				redraw();
 			}
 		}
 
@@ -3194,13 +3370,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			drawContent() {
 				const ctx = this.createCanvas();
 				core.strokeRoundRect(ctx, 23, 27, 32, 32, 2, 'white', 2);
+				const itemId = globalUI.itemId;
 				if (itemId) core.drawIcon(ctx, itemId, 24, 28, 30, 30);
 
 				// 修改这里可以编辑未选中道具时的默认值
 				const defaultItem = { cls: "constants", name: "无道具", id: "-", text: "没有道具最永久" };
 				const defaultEquip = { cls: "equips", name: "无装备", id: "-", text: "一无所有，又何尝不是一种装备", equip: { type: "装备" } };
 				let item = core.material.items[itemId];
-				if (!item) item = (type === 'all' ? defaultItem : defaultEquip);
+				if (!item) item = (globalUI.type === 'all' ? defaultItem : defaultEquip);
 				core.setTextAlign(ctx, "left");
 				core.setTextBaseline(ctx, "middle");
 				core.fillText(ctx, item.name, 66, 46, 'black', 'bold 18px Verdana', 98); // 物品名字 e.g.护符
@@ -3210,23 +3387,23 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillText(ctx, "ID", 20, 95, 'crimson', '14px Verdana');
 				core.fillText(ctx, item.id, 50, 95, 'rgb(47, 49, 54)', '14px Verdana');
 
-				if (type === 'all') { // 显示物品累计使用的次数，将作为排序依据
+				if (globalUI.type === 'all') { // 显示物品累计使用的次数，将作为排序依据
 					core.fillText(ctx, "累计使用", 20, 113, 'crimson', '14px Verdana');
 					const itemsUsedCount = core.getFlag('itemsUsedCount', {});
 					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
 				}
 
-				const itemText = core.replaceText(item.text) + ((type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
+				const itemText = core.replaceText(item.text) + ((globalUI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
 				core.drawTextContent(ctx, itemText, {
 					left: 20, top: 125, bold: false, color: "black",
 					align: "left", fontSize: 15, maxWidth: 150
 				});
 				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId);
 				// 获取快捷键设置按钮当前的图标
-				
+
 				const setHotkeyBtn = /** @type {IconBtnClass} */(this.btnList.get('setHotkeyBtn'));
 				if (setHotkeyBtn) {
-					setHotkeyBtn.disable = (type === 'equips');
+					setHotkeyBtn.disable = (globalUI.type === 'equips');
 					setHotkeyBtn.icon = (currItemHotKey == null) ? 'keyboard' : ('btn' + currItemHotKey);
 				}
 				super.drawContent();
@@ -3235,14 +3412,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/*** @param {Item} item */
 			getEquipCompareInfo(item) {
 				let str = '';
-				if (type !== "equips") return str;
+				if (globalUI.type !== "equips") return str;
 
 				let equipType = item.equip?.type;
 				if (!equipType) return str;
 				if (typeof equipType == "string") equipType = core.getEquipTypeByName(equipType);
 				let compare;
 				/** @todo 准备卸下装备时显示卸下的比较信息 */
-				if (selectType == "equipBox") compare = core.compareEquipment(null, item.id);
+				if (globalUI.selectType == "equipBox") compare = core.compareEquipment(null, item.id);
 				else compare = core.compareEquipment(item.id, core.getEquip(equipType));
 				// --- 变化值...
 				for (const name in core.status.hero) {
@@ -3259,179 +3436,179 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
-		class ToolBox extends MenuBase {
-			constructor(type, x, y, w, h) {
-				super('toolBox', x, y, w, h, 137);
-				/** @type {'all'|'equips'} */
-				this.type = type;
-				/** @type {'all'|'tools'|'constants'} 物品栏模式下显示哪个子菜单 */
-				this.subType = 'all';
+		// class ToolBox extends MenuBase {
+		// 	constructor(type, x, y, w, h) {
+		// 		super('toolBox', x, y, w, h, 137);
+		// 		/** @type {'all'|'equips'} */
+		// 		this.type = type;
+		// 		/** @type {'all'|'tools'|'constants'} 物品栏模式下显示哪个子菜单 */
+		// 		this.subType = 'all';
 
-				/** @type {number} 单个物品占据的列宽 */
-				this.oneItemHeight = 30;
-				/** @type {number} 单个页面显示的物品数，每次refreshItemList时将刷新 */
-				this.pageCap = Math.floor(h / this.oneItemHeight) - 1;
+		// 		/** @type {number} 单个物品占据的列宽 */
+		// 		this.oneItemHeight = 30;
+		// 		/** @type {number} 单个页面显示的物品数，每次refreshItemList时将刷新 */
+		// 		this.pageCap = Math.floor(h / this.oneItemHeight) - 1;
 
-				/** @type {number} 当前在物品栏的第几页 */
-				this.page = 0;
-				/** @type {number} 当前选中了物品栏的第几个物品 */
-				this.index = 0;
-				/** @type {string} 当前选中的物品Id 有可能不存在，每次调用都要检验*/
-				this.itemId = '';
-				/** 各个子页面当前选中的位置，用于在切换后显示原位置 */
-				this.cache = {
-					all: { page: 0, index: 0 },
-					tools: { page: 0, index: 0 },
-					constants: { page: 0, index: 0 }
-				}
+		// 		/** @type {number} 当前在物品栏的第几页 */
+		// 		this.page = 0;
+		// 		/** @type {number} 当前选中了物品栏的第几个物品 */
+		// 		this.index = 0;
+		// 		/** @type {string} 当前选中的物品Id 有可能不存在，每次调用都要检验*/
+		// 		this.itemId = '';
+		// 		/** 各个子页面当前选中的位置，用于在切换后显示原位置 */
+		// 		this.cache = {
+		// 			all: { page: 0, index: 0 },
+		// 			tools: { page: 0, index: 0 },
+		// 			constants: { page: 0, index: 0 }
+		// 		}
 
-				/** @type {string[]} 所有应当显示的物品的列表*/
-				this.allItemList = [];
-				/** @type {string[]} 当前画面上显示的物品列表*/
-				this.currItemList = [];
-				/** @type {number} 当前物品栏的最大页数 */
-				this.pageMax = 1;
-				this.refreshItemList();
+		// 		/** @type {string[]} 所有应当显示的物品的列表*/
+		// 		this.allItemList = [];
+		// 		/** @type {string[]} 当前画面上显示的物品列表*/
+		// 		this.currItemList = [];
+		// 		/** @type {number} 当前物品栏的最大页数 */
+		// 		this.pageMax = 1;
+		// 		this.refreshItemList();
 
-				const oriClickEvent = this.clickEvent;
-				this.clickEvent = (x, y, rawpx, rawpy) => {
-					if (!this.isPosValid(rawpx, rawpy)) return;
-					oriClickEvent(x, y, rawpx, rawpy);
-					const [px, py] = this.convertCoordinate(rawpx, rawpy);
-					if (px < 0 || px > this.w || py < 0 || py > this.h) return;
-					const currIndex = Math.floor(py / this.oneItemHeight);
-					if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
-					if (this.index === currIndex) {
-						this.useItem(this.itemId);
-					}
-					else {
-						this.select(currIndex);
-						redraw();
-					}
-				}
-				if (core.platform.isPC) {
-					this.onMoveEvent = (x, y, rawpx, rawpy) => {
-						if (!this.isPosValid(rawpx, rawpy)) return;
-						const [px, py] = this.convertCoordinate(rawpx, rawpy);
-						const currIndex = Math.floor(py / this.oneItemHeight);
-						if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
-						if (this.index !== currIndex) {
-							this.select(currIndex);
-							redraw();
-						}
-					}
-				}
-			}
+		// 		const oriClickEvent = this.clickEvent;
+		// 		this.clickEvent = (x, y, rawpx, rawpy) => {
+		// 			if (!this.isPosValid(rawpx, rawpy)) return;
+		// 			oriClickEvent(x, y, rawpx, rawpy);
+		// 			const [px, py] = this.convertCoordinate(rawpx, rawpy);
+		// 			if (px < 0 || px > this.w || py < 0 || py > this.h) return;
+		// 			const currIndex = Math.floor(py / this.oneItemHeight);
+		// 			if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
+		// 			if (this.index === currIndex) {
+		// 				this.useItem(this.itemId);
+		// 			}
+		// 			else {
+		// 				this.select(currIndex);
+		// 				redraw();
+		// 			}
+		// 		}
+		// 		if (core.platform.isPC) {
+		// 			this.onMoveEvent = (x, y, rawpx, rawpy) => {
+		// 				if (!this.isPosValid(rawpx, rawpy)) return;
+		// 				const [px, py] = this.convertCoordinate(rawpx, rawpy);
+		// 				const currIndex = Math.floor(py / this.oneItemHeight);
+		// 				if (currIndex >= this.currItemList.length) return; // 未选中有效物品时返回
+		// 				if (this.index !== currIndex) {
+		// 					this.select(currIndex);
+		// 					redraw();
+		// 				}
+		// 			}
+		// 		}
+		// 	}
 
-			/*** 每次显示/隐藏道具时，翻页时，及切换道具/装备栏时调用 */
-			refreshItemList() {
-				this.allItemList = core.getToolboxItems((this.type === 'all') ? this.subType : this.type, core.hasFlag('showHideItem'));
-				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
-				this.itemId = this.currItemList[this.index];
-				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
-				if (this.pageMax < 1) this.pageMax = 1;
-			}
+		// 	/*** 每次显示/隐藏道具时，翻页时，及切换道具/装备栏时调用 */
+		// 	refreshItemList() {
+		// 		this.allItemList = core.getToolboxItems((this.type === 'all') ? this.subType : this.type, core.hasFlag('showHideItem'));
+		// 		this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
+		// 		this.itemId = this.currItemList[this.index];
+		// 		this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
+		// 		if (this.pageMax < 1) this.pageMax = 1;
+		// 	}
 
-			drawContent() {
-				const [x, y, w, h, oneH] = [this.x, this.y, this.w, this.h, this.oneItemHeight];
-				const ctx = this.createCanvas();
-				if (selectType === 'toolBox') {
-					core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * oneH, w, oneH, 140);
-				}
-				else core.clearUIEventSelector(1);
-				core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
-				const currPageItems = this.currItemList;
-				core.setTextBaseline(ctx, "middle");
-				for (let i = 0; i < currPageItems.length; i++) {
-					const currItemId = currPageItems[i];
-					this.drawOneItem(ctx, currItemId, i);
-				}
-				core.setTextAlign(ctx, "center");
-				core.setTextBaseline(ctx, "alphabetic");
-				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, h - 4, 'white', '12px Verdana');
-				super.drawContent();
-			}
+		// 	drawContent() {
+		// 		const [x, y, w, h, oneH] = [this.x, this.y, this.w, this.h, this.oneItemHeight];
+		// 		const ctx = this.createCanvas();
+		// 		if (selectType === 'toolBox') {
+		// 			core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * oneH, w, oneH, 140);
+		// 		}
+		// 		else core.clearUIEventSelector(1);
+		// 		core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
+		// 		const currPageItems = this.currItemList;
+		// 		core.setTextBaseline(ctx, "middle");
+		// 		for (let i = 0; i < currPageItems.length; i++) {
+		// 			const currItemId = currPageItems[i];
+		// 			this.drawOneItem(ctx, currItemId, i);
+		// 		}
+		// 		core.setTextAlign(ctx, "center");
+		// 		core.setTextBaseline(ctx, "alphabetic");
+		// 		core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, h - 4, 'white', '12px Verdana');
+		// 		super.drawContent();
+		// 	}
 
-			drawOneItem(ctx, id, itemIndex) {
-				const dy = itemIndex * this.oneItemHeight;
+		// 	drawOneItem(ctx, id, itemIndex) {
+		// 		const dy = itemIndex * this.oneItemHeight;
 
-				const item = core.material.items[id] || {};
-				const num = core.formatBigNumber(core.itemCount(id), 5) || 0; // 道具数量过大时需要format
+		// 		const item = core.material.items[id] || {};
+		// 		const num = core.formatBigNumber(core.itemCount(id), 5) || 0; // 道具数量过大时需要format
 
-				// 被隐藏的道具在显示时需要半透明
-				const hideInfo = core.getFlag('hideInfo', {});
-				if (item && (hideInfo.hasOwnProperty(id) ? hideInfo[id] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
+		// 		// 被隐藏的道具在显示时需要半透明
+		// 		const hideInfo = core.getFlag('hideInfo', {});
+		// 		if (item && (hideInfo.hasOwnProperty(id) ? hideInfo[id] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
 
-				// 绘制物品图标
-				if (core.material.items[id]) core.drawIcon(ctx, id, 4, dy + 6, 18, 18);
+		// 		// 绘制物品图标
+		// 		if (core.material.items[id]) core.drawIcon(ctx, id, 4, dy + 6, 18, 18);
 
-				core.setTextAlign(ctx, "right");
-				// 绘制物品数量 ×几
-				const numText = "×" + num;
-				core.fillText(ctx, numText, 220, dy + this.oneItemHeight / 2, 'white', '18px Verdana');
+		// 		core.setTextAlign(ctx, "right");
+		// 		// 绘制物品数量 ×几
+		// 		const numText = "×" + num;
+		// 		core.fillText(ctx, numText, 220, dy + this.oneItemHeight / 2, 'white', '18px Verdana');
 
-				// 绘制物品名称
-				const markedItems = core.getFlag('markedItems', []);
-				const name = item.name || "???";
-				core.setTextAlign(ctx, "left");
-				core.fillText(ctx, name, 24, dy + this.oneItemHeight / 2, markedItems.includes(id) ? 'gold' : 'white', '18px Verdana', 180);
-				core.setAlpha(ctx, 1);
-			}
+		// 		// 绘制物品名称
+		// 		const markedItems = core.getFlag('markedItems', []);
+		// 		const name = item.name || "???";
+		// 		core.setTextAlign(ctx, "left");
+		// 		core.fillText(ctx, name, 24, dy + this.oneItemHeight / 2, markedItems.includes(id) ? 'gold' : 'white', '18px Verdana', 180);
+		// 		core.setAlpha(ctx, 1);
+		// 	}
 
-			/** 选中当前itemList下的指定位置 */
-			select(index) {
-				selectType = 'toolBox';
-				equipBoard.index = -1;
-				this.index = index;
-				const currItemId = this.currItemList[index];
-				this.itemId = currItemId;
-				if (core.material.items[currItemId]) itemId = currItemId;
-			}
+		// 	/** 选中当前itemList下的指定位置 */
+		// 	select(index) {
+		// 		selectType = 'toolBox';
+		// 		equipBoard.index = -1;
+		// 		this.index = index;
+		// 		const currItemId = this.currItemList[index];
+		// 		this.itemId = currItemId;
+		// 		if (core.material.items[currItemId]) itemId = currItemId;
+		// 	}
 
-			pgUp() {
-				if (this.page < this.pageMax - 1) {
-					this.page++;
-					this.refreshItemList();
-					let newIndex = this.index;
-					if (newIndex >= this.currItemList.length) newIndex = 0;
-					this.select(newIndex);
-				}
-			}
+		// 	pgUp() {
+		// 		if (this.page < this.pageMax - 1) {
+		// 			this.page++;
+		// 			this.refreshItemList();
+		// 			let newIndex = this.index;
+		// 			if (newIndex >= this.currItemList.length) newIndex = 0;
+		// 			this.select(newIndex);
+		// 		}
+		// 	}
 
-			pgDown() {
-				if (this.page > 0) {
-					this.page--;
-					this.refreshItemList();
-					this.select(this.index);
-				}
-			}
+		// 	pgDown() {
+		// 		if (this.page > 0) {
+		// 			this.page--;
+		// 			this.refreshItemList();
+		// 			this.select(this.index);
+		// 		}
+		// 	}
 
-			clear() {
-				core.clearUIEventSelector(1);
-				super.clear();
-			}
-			/** @param {string} itemId */
-			useItem(itemId) {
-				if (this.type === 'all') {
-					if (!core.canUseItem(itemId)) {
-						core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
-						return;
-					}
-					clearAll();
-					setTimeout(() => {
-						core.unlockControl();
-						core.tryUseItem(itemId);
-					}, 0);
-				}
-				else {
-					if (!core.canEquip(itemId, true)) return;
-					core.loadEquip(itemId);
-					this.refreshItemList(); // 穿上装备会导致道具数量变化
-					core.status.route.push("equip:" + itemId);
-					redraw();
-				}
-			}
-		}
+		// 	clear() {
+		// 		core.clearUIEventSelector(1);
+		// 		super.clear();
+		// 	}
+		// 	/** @param {string} itemId */
+		// 	useItem(itemId) {
+		// 		if (this.type === 'all') {
+		// 			if (!core.canUseItem(itemId)) {
+		// 				core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
+		// 				return;
+		// 			}
+		// 			clearAll();
+		// 			setTimeout(() => {
+		// 				core.unlockControl();
+		// 				core.tryUseItem(itemId);
+		// 			}, 0);
+		// 		}
+		// 		else {
+		// 			if (!core.canEquip(itemId, true)) return;
+		// 			core.loadEquip(itemId);
+		// 			this.refreshItemList(); // 穿上装备会导致道具数量变化
+		// 			core.status.route.push("equip:" + itemId);
+		// 			redraw();
+		// 		}
+		// 	}
+		// }
 
 		// 为当前道具设定一个快捷键
 		class HotkeySelect extends MenuBase {
@@ -3486,7 +3663,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			clear() {
 				super.clear();
-				[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu) menu.beginListen(); });
+				const { back, itemInv, equipChangeBoard, itemInfoBoard } = globalUI;
+				[back, itemInv, equipChangeBoard, itemInfoBoard].forEach((menu) => { menu.beginListen(); });
 			}
 		}
 		/** @param {string} itemId */
@@ -3498,7 +3676,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const num = this.key.replace('btn', '');
 				hotkeySelect.setHotkey(num);
 				hotkeySelect.clear();
-				infoBoard.drawContent();
+				globalUI.itemInfoBoard.drawContent();
 			}
 
 			const [btnSize, btnInterval] = [32, 20];
@@ -3523,7 +3701,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			setNullBtn.event = function () {
 				hotkeySelect.deleteHotkey();
 				hotkeySelect.clear();
-				infoBoard.drawContent();
+				globalUI.itemInfoBoard.drawContent();
 			}
 			const exitBtn = new ExitBtn(274, 5, 16, 16, { radius: 1, lineOffsetX: 2, lineWidthX: 2 });
 			exitBtn.event = () => {
@@ -3567,13 +3745,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag('markedItems', markedItems);
 		}
 
+		/** 初始化物品栏的所有菜单 */ 
 		function initAll() {
-			[back, itemBoard, infoBoard].forEach((menu) => menu.init());
-			if (type === 'equips') equipBoard.init();
+			[globalUI.back, globalUI.itemInv, globalUI.itemInfoBoard].forEach((menu) => menu.init());
+			if (globalUI.type === 'equips') globalUI.equipChangeBoard.init();
 		}
-		// 彻底退出界面时调用
+		/** 彻底退出物品栏 */ 
 		function clearAll() {
-			[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu) menu.clear(); });
+			[globalUI._back, globalUI._toolInv, globalUI._equipInv, globalUI._itemInfoBoard, globalUI._equipChangeBoard].forEach((menu) => {
+				if (menu) menu.clear();
+			});
 			core.status.event.id = null;
 		}
 
@@ -3583,115 +3764,153 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function clearItemBoxCache() {
-			selectType = itemId = '';
-			[itemBoard_tool, itemBoard_equip, equipBoard].forEach((menu) => { if (menu) menu.index = 0; });
-		} // 每次存读档，及进行录像回放时调用
+			globalUI.itemId = '';
+			[globalUI._toolInv, globalUI._equipInv, globalUI._equipChangeBoard].forEach((menu) => { if (menu) menu.index = 0; });
+		} // 每次存读档，及进行录像回放时调用，清空之前选中的道具信息
 		this.clearItemBoxCache = clearItemBoxCache;
 
 		function redraw(all) {
-			itemBoard.drawContent();
-			infoBoard.drawContent();
-			if (type === 'equips') equipBoard.drawContent();
-			if (all) back.drawContent();
+			globalUI.itemInv.drawContent();
+			globalUI.itemInfoBoard.drawContent();
+			if (globalUI.type === 'equips') globalUI.equipChangeBoard.drawContent();
+			if (all) globalUI.back.drawContent();
 		}
 
 		function switchType() {
-			type = (type === 'all') ? 'equips' : 'all';
-			if (type === 'all') {
-				equipBoard.clear();
-				itemBoard.clear();
-				if (!itemBoard_tool) itemBoard_tool = new ToolBox('all');
-				itemBoard = itemBoard_tool;
-				itemBoard.beginListen();
+			globalUI.type = (globalUI.type === 'all') ? 'equips' : 'all';
+			if (globalUI.type === 'all') {
+				globalUI.equipChangeBoard.clear();
+				globalUI.equipInv.clear();
 			}
-			else if (type === 'equips') {
-				equipBoard.init();
-				itemBoard.clear();
-				if (!itemBoard_equip) itemBoard_equip = new ToolBox('equips');
-				itemBoard = itemBoard_equip;
-				itemBoard.beginListen();
+			else if (globalUI.type === 'equips') {
+				globalUI.equipChangeBoard.init();
+				globalUI.toolInv.clear();
 			}
-			itemId = itemBoard.itemId;
+			globalUI.itemInv.beginListen(); // 接下来再进行包括此在内全体菜单的重绘
+			globalUI.itemInv.focus(globalUI.itemInv.index);
 		}
 
 		// 以下是本插件范围内的全局变量
-		/** @type {'all'|'equips'} 当前打开的物品栏类型 */
-		let type = 'all';
-		/** @type {'toolBox'|'equipBox'|''} 当前选中的物品所在位置 */
-		let selectType = '';
-		/** 当前选中的物品id */
-		let itemId = '';
-		/** @type {ToolBox} 左侧物品栏（显示装备） */let itemBoard_tool;
-		/** @type {ToolBox} 左侧物品栏（显示永久、消耗）*/let itemBoard_equip;
 
-		/** @type {ItemBoxBack} 背景 */ let back;
-		/** @type {ToolBox} 左侧物品栏 */let itemBoard;
-		/** @type {EquipBox} 装备切换面板 */let equipBoard;
-		/** @type {ItemInfoBox} 右侧物品详细信息面板 */let infoBoard;
+		const globalUI = {
+			/** @type {'all'|'equips'} 当前打开的物品页面是道具页还是装备页 */
+			type: 'all',
+			/** @type {'toolBox'|'equipBox'} 当前选中的物品所在位置 */
+			selectType: 'toolBox',
+			/** @type {string} 当前选中的物品ID */
+			itemId: '',
+			/** @type {undefined|ItemBoxBack} 物品页面的背景 */
+			_back: undefined,
+			/** @type {undefined|ToolInventory} 道具背包 */
+			_toolInv: undefined,
+			/** @type {undefined|EquipInventory} 装备背包 */
+			_equipInv: undefined,
+			/** @type {undefined|ItemInfoBox} 右侧显示选中物品详细信息的页面 */
+			_itemInfoBoard: undefined,
+			/** @type {undefined|EquipChangeBoard} 显示已穿戴装备的面板 */
+			_equipChangeBoard: undefined,
+			/** 物品页面的背景 */
+			get back() {
+				if (!this._back) {
+					this._back = new ItemBoxBack();
+					const switchModeBtn = new SwitchBtn(385, 5, 24, 24, { strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
+					// 背景上的按钮不需要随着itemId切换
+					const exitBtn = new ExitBtn(385, 385, 24, 24);
+					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
+						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
+						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
+					exitBtn.event = () => exit();
+					this._back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
+					['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]);
+				}
+				return this._back;
+			},
+			/** 道具背包 */
+			get toolInv() {
+				if (!this._toolInv) {
+					this._toolInv = new ToolInventory(15, 40, 225, 360, 137);
+					/** @type {[number|string, ButtonBaseClass][]} */const btnArr = [];
+					for (let i = 0; i < this._toolInv.pageCap; i++) {
+						btnArr.push([i, new ItemBox(0, i * this._toolInv.oneItemHeight, this._toolInv.w, this._toolInv.oneItemHeight)])
+					}
+					const [pgDown, pgUp] = [new ArrowBtn(5, 335, 20, 20, 'left'), new ArrowBtn(200, 335, 20, 20, 'right')];
+					pgDown.event = () => { globalUI.toolInv.pageDown(); redraw(); }
+					pgUp.event = () => { globalUI.toolInv.pageUp(); redraw(); }
+					btnArr.push(['pgDownBtn', pgDown]); // 这里不能使用core.push，否则会丢失类的方法 @todo 修复此bug
+					btnArr.push(['pgUpBtn', pgUp]);
+					this._toolInv.initBtnList(btnArr);
+				}
+				return this._toolInv;
+			},
+			/** 装备背包 */
+			get equipInv() {
+				if (!this._equipInv) {
+					this._equipInv = new EquipInventory(15, 160, 225, 240, 137);
+					/** @type {[number|string, ButtonBaseClass][]} */const btnArr = [];
+					for (let i = 0; i < this._equipInv.pageCap; i++) {
+						btnArr.push([i, new ItemBox(0, i * this._equipInv.oneItemHeight, this._equipInv.w, this._equipInv.oneItemHeight)])
+					}
+					const [pgDown, pgUp] = [new ArrowBtn(5, 215, 20, 20, 'left'), new ArrowBtn(200, 215, 20, 20, 'right')];
+					pgDown.event = () => { globalUI.equipInv.pageDown(); redraw(); }
+					pgUp.event = () => { globalUI.equipInv.pageUp(); redraw(); }
+					btnArr.push(['pgDownBtn', pgDown]);
+					btnArr.push(['pgUpBtn', pgUp]);
+					this._equipInv.initBtnList(btnArr);
+				}
+				return this._equipInv;
+			},
+			/** 物品背包 */
+			get itemInv() {
+				return (this.type === 'all') ? this.toolInv : this.equipInv;
+			},
+			/** 右侧显示选中物品详细信息的页面 */
+			get itemInfoBoard() {
+				if (!this._itemInfoBoard) {
+					this._itemInfoBoard = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
+					const [hideBtn, markBtn] = [new HideBtn(20, 380, 46, 24), new MarkBtn(80, 380, 46, 24)];
+					hideBtn.event = () => {
+						hideItem(globalUI.itemId);
+						this.itemInv.updateItemList();
+						redraw();
+					}
+					markBtn.event = () => {
+						markItem(globalUI.itemId);
+						this.itemInv.updateItemList();
+						redraw();
+					}
+					const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
+					const setHotkeyBtn = new IconBtn(145, 40, 24, 24, 'keyboard');
+					setHotkeyBtn.event = () => {
+						if (!globalUI.itemId) return;
+						[globalUI.back, globalUI.itemInv, globalUI.equipChangeBoard, globalUI.itemInfoBoard].forEach((menu) => {
+							if (menu) menu.endListen();
+						});
+						const hotkeySelect = hotkeySelectFactory(globalUI.itemId);
+						hotkeySelect.init();
+					}
+					this._itemInfoBoard.initBtnList([['hideBtn', hideBtn], ['markBtn', markBtn], ['showHideBtn', showHideBtn],
+					['setHotkeyBtn', setHotkeyBtn]]);
+				}
+				return this._itemInfoBoard;
+			},
+			get equipChangeBoard() {
+				if (!this._equipChangeBoard) {
+					this._equipChangeBoard = new EquipChangeBoard(7, 10, 240, 125, 137);
+					const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
+					const [pgDown, pgUp] = [new ArrowBtn(0, 56, 14, 14, 'left', config), new ArrowBtn(222, 56, 14, 14, 'right', config)];
+					pgDown.event = () => { globalUI.equipChangeBoard.pageDown(); redraw(); };
+					pgUp.event = () => { globalUI.equipChangeBoard.pageUp(); redraw(); };
+				}
+				return this._equipChangeBoard;
+			}
+		}
 
 		/** @param {'all'|'equips'} currType  */
 		function drawItemBox(currType) {
 			clearAll();
 			core.lockControl();
-
-			type = currType;
-			if (!back) back = new ItemBoxBack();
-
-			// 切换道具栏和装备栏的按钮
-			const switchModeBtn = new SwitchBtn(385, 5, 24, 24, { strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
-			// 背景上的按钮不需要随着itemId切换
-			const exitBtn = new ExitBtn(385, 385, 24, 24);
-			const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
-				toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
-				constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
-			exitBtn.event = () => exit();
-			back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
-			['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]);
-
-			if (!equipBoard) equipBoard = new EquipBox(7, 10, 240, 125);
-			if (!infoBoard) infoBoard = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
-
-			if (!itemBoard_tool) itemBoard_tool = new ToolBox('all', 15, 40, 225, 360);
-			if (!itemBoard_equip) itemBoard_equip = new ToolBox('equips', 15, 160, 225, 240);
-			itemBoard = (type === 'all') ? itemBoard_tool : itemBoard_equip;
-			itemBoard.refreshItemList();
-
-			[itemBoard_tool, itemBoard_equip].forEach((list) => {
-				const dy = (list === itemBoard_tool) ? 0 : -4 * list.oneItemHeight;
-				const [pgDown, pgUp] = [new ArrowBtn(5, 335 + dy, 20, 20, 'left'), new ArrowBtn(200, 335 + dy, 20, 20, 'right')];
-				pgDown.event = () => { list.pgDown(); redraw(); }
-				pgUp.event = () => { list.pgUp(); redraw(); }
-				list.initBtnList([['pgDownBtn', pgDown], ['pgUpBtn', pgUp]]);
-			});
-			{
-				const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
-				const [pgDown, pgUp] = [new ArrowBtn(0, 56, 14, 14, 'left', config), new ArrowBtn(222, 56, 14, 14, 'right', config)];
-				pgDown.event = () => { equipBoard.pgDown(); redraw(); };
-				pgUp.event = () => { equipBoard.pgUp(); redraw(); };
-				equipBoard.initBtnList([['pgDownBtn', pgDown], ['pgUpBtn', pgUp]]);
-			}
-
-			const [hideBtn, markBtn] = [new HideBtn(20, 380, 46, 24), new MarkBtn(80, 380, 46, 24)];
-			hideBtn.event = () => {
-				hideItem(itemId);
-				itemBoard.refreshItemList();
-				redraw();
-			}
-			markBtn.event = () => {
-				markItem(itemId);
-				itemBoard.refreshItemList();
-				redraw();
-			}
-			const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
-			const setHotkeyBtn = new IconBtn(145, 40, 24, 24, 'keyboard');
-			setHotkeyBtn.event = () => {
-				if (!itemId) return;
-				[back, itemBoard, equipBoard, infoBoard].forEach((menu) => { if (menu) menu.endListen(); });
-				const hotkeySelect = hotkeySelectFactory(itemId);
-				hotkeySelect.init();
-			}
-
-			infoBoard.initBtnList([['hideBtn', hideBtn], ['markBtn', markBtn], ['showHideBtn', showHideBtn], ['setHotkeyBtn', setHotkeyBtn]]);
+			globalUI.type = currType;
+			globalUI.itemInv.focus(globalUI.itemInv.index);
 			initAll();
 		}
 		// #endregion
@@ -5327,5 +5546,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			settingMenu.init();
 		}
+		// @todo 新版存档界面
 	}
 }
