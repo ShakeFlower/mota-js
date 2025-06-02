@@ -81,17 +81,23 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "自动拾取&清怪"
 			},
-			"newBackpackLook": {
-				"_leaf": true,
-				"_type": "textarea",
-				"_range": "typeof(thiseval)=='string' || thiseval==null",
-				"_data": "自绘道具栏"
-			},
 			"scrollingText": {
 				"_leaf": true,
 				"_type": "textarea",
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "接收&发送在线留言"
+			},
+			"uiBaseClass": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "绘制基类"
+			},
+			"newBackpackLook": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "自绘道具栏"
 			},
 			"autoChangeEquip": {
 				"_leaf": true,

@@ -3148,10 +3148,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const [px, py] = this.convertCoordinate(rawpx, rawpy);
 					this.btnList.forEach((btn) => {
 						if (btn.disable) return;
-						if (!btn.inRange || !(btn.inRange instanceof Function)) debugger;
 						if (btn.inRange(px, py)) {
 							if (btn instanceof ItemBox || btn instanceof EquipBox) {
-								if (btn.key !== this.index) this.focus(btn.key);
+								if (btn.key !== this.index || globalUI.selectType !== 'toolBox') this.focus(btn.key);
 							}
 						}
 					});
@@ -3347,12 +3346,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			triggerItem() {
-				if (!core.canEquip(globalUI.itemId, true)) return;
-				core.loadEquip(globalUI.itemId);
-				this.updateItemList(); // 穿上装备会导致道具数量变化，并且需要重新锁定一次当前选中的道具
+				const equip = globalUI.itemId;
+				if (!core.canEquip(equip, true)) return;
+				core.loadEquip(equip);
+				core.status.route.push("equip:" + equip); // 注意focus会导致itemId改变
+				this.updateItemList(); // 穿上装备会导致道具数量变化，并且需要重新锁定当前选中的道具
 				this.focus(this.index);
-
-				core.status.route.push("equip:" + globalUI.itemId);
 			}
 		}
 
