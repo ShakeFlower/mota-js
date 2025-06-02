@@ -3004,7 +3004,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 道具栏/装备栏的背景
 		class ItemBoxBack extends MenuBase {
 			constructor() {
-				super('itemBoxBase'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
+				super('itemBoxBack'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
 				this.keyEvent = (keyCode) => {
 					const { itemId, type, selectType, itemInv, equipChangeBoard } = globalUI;
 					if (keyCode === 37) { // left	
@@ -3150,7 +3150,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						if (btn.disable) return;
 						if (btn.inRange(px, py)) {
 							if (btn instanceof ItemBox || btn instanceof EquipBox) {
-								if (btn.key !== this.index || globalUI.selectType !== 'toolBox') this.focus(btn.key);
+								if (btn.key !== this.index ||
+									(this instanceof EquipChangeBoard && globalUI.type !== 'equips') ||
+									(this instanceof ItemBoxBase && globalUI.type !== 'all')) this.focus(btn.key);
 							}
 						}
 					});
@@ -3323,7 +3325,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			triggerItem() {
-				const itemId = globalUI.itemId;
+				const itemId = this.itemId;
 				if (!core.canUseItem(itemId)) {
 					core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
 					return;
@@ -3346,7 +3348,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			triggerItem() {
-				const equip = globalUI.itemId;
+				const equip = this.itemId;
 				if (!core.canEquip(equip, true)) return;
 				core.loadEquip(equip);
 				core.status.route.push("equip:" + equip); // 注意focus会导致itemId改变
