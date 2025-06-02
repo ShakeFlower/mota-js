@@ -1464,6 +1464,9 @@ interface actions {
     _keyDownToolbox(keyCode: number): void
     _keyUpToolbox(keyCode: number): void
     _clickToolbox(x: number, y: number, px: number, py: number): void
+    _keyDownEquipbox(keyCode: number): void
+    _keyUpEquipbox(keyCode: number): void
+    _clickEquipbox(x: number, y: number, px: number, py: number): void
 
     /**
      * 此函数将注册一个用户交互行为。
