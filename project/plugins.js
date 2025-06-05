@@ -2641,13 +2641,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.ui._drawEquipbox = function () { drawItemBox('equips'); }.bind(core.ui);
 		core.actions._keyDownToolbox = core.actions._keyDownEquipbox = function (keyCode) { return true; }.bind(core.actions);
 		core.actions._clickToolbox = core.actions._clickEquipbox = function (x, y, px, py) { return true; }.bind(core.actions);
-		core.actions._keyUpToolbox = function (keyCode) { return true; }.bind(core.actions);
-		core.actions._keyUpEquipbox = function (keycode, altKey) {
-			if (altKey && keycode >= 48 && keycode <= 57) {
-				core.items.quickSaveEquip(keycode - 48);
-				return;
-			}
-		} // 都有自动切装了还有神人想要这个Alt换装 服了
+		core.actions._keyUpToolbox = core.actions._keyUpEquipbox = function (keyCode) { return true; }.bind(core.actions);
 
 		const oriClosePanel = core.ui.closePanel;
 		core.ui.closePanel = function () {
@@ -3011,7 +3005,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor() {
 				super('itemBoxBack'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
 				this.keyEvent = (keyCode) => {
-					const { itemId, type, selectType, itemInv, equipChangeBoard } = globalUI;
+					const { type, selectType, itemInv, equipChangeBoard } = globalUI;
 					if (keyCode === 37) { // left	
 						if (selectType === 'toolBox') itemInv.pageDown();
 						else if (selectType === 'equipBox') {
@@ -3071,7 +3065,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							}
 						}
 					}
-					else if (keyCode === 8 || keyCode === 27) {
+				};
+				this.keyUpEvent = (keyCode, altKey) => {
+					const { itemId, selectType, itemInv, equipChangeBoard } = globalUI;
+					if (keyCode === 81) { // Q
+						if (globalUI.type === "equips") exit();
+						else switchType();
+					}
+					else if (keyCode === 84) { // T
+						if (globalUI.type === "all") exit();
+						else switchType();
+					}
+					else if (keyCode === 8 || keyCode === 27) { // BackSpace/Esc
 						exit();
 					}
 					else if (keyCode === 13 || keyCode === 32 || keyCode === 67) { // Enter/SpaceBar/C
@@ -3086,15 +3091,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							itemInv.focus(0);
 						}
 					}
-				};
-				this.keyUpEvent = (keyCode) => {
-					if (keyCode === 81) { // Q
-						if (globalUI.type === "equips") exit();
-						else switchType();
-					}
-					else if (keyCode === 84) { // T
-						if (globalUI.type === "all") exit();
-						else switchType();
+					else if (altKey && keyCode >= 48 && keyCode <= 57) { // 都有自动切装了还有神人想要这个Alt换装 服了
+						core.items.quickSaveEquip(keyCode - 48);
+						return;
 					}
 				}
 			}
