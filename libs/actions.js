@@ -2529,7 +2529,7 @@ actions.prototype._clickSettings = function (x, y) {
             case 0:
                 core.status.event.selection = 0;
                 core.playSound('确定');
-                core.tryUseItem('setting');
+                core.plugin.openSetting();
                 break;
             case 1:
                 // core.playSound('确定');
