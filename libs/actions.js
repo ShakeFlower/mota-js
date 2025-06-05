@@ -2528,6 +2528,7 @@ actions.prototype._clickSettings = function (x, y) {
         switch (selection) {
             case 0:
                 core.status.event.selection = 0;
+                core.ui.closePanel();
                 core.playSound('确定');
                 core.plugin.openSetting();
                 break;
