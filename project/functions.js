@@ -58,14 +58,14 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.plugin.checkSkipFuncs();
 			// 清空自绘道具栏的缓存
 			core.plugin.clearItemBoxCache();
-			// 设置一次工具栏，统计出元素数量
-			core.setToolbarButton('normal');
+			// 设置一次工具栏，统计出元素数量 
+			// 注意：录像回退rewindReplay时会调用此函数，此时工具栏应该显示录像图标，所以这里要判定
+			core.setToolbarButton(core.domStyle.toolbarBtn === 'replay' ? 'replay' : 'normal');
 		},
 		"win": function (reason, norank, noexit) {
 			// 游戏获胜事件
 			// 请注意，成绩统计时是按照hp进行上传并排名
-			// 可以先在这里对最终分数进行计算，比如将2倍攻击和5倍黄钥匙数量加到分数上
-			// core.status.hero.hp += 2 * core.getRealStatus('atk') + 5 * core.itemCount('yellowKey');
+			// 因为bug，请不要试图在此处修改生命来修改分数，而是在提交前使用事件块修改生命
 
 			// 如果不退出，则临时存储数据
 			if (noexit) {
