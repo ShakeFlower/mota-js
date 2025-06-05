@@ -2640,9 +2640,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.ui._drawToolbox = function () { drawItemBox('all'); }.bind(core.ui);
 		core.ui._drawEquipbox = function () { drawItemBox('equips'); }.bind(core.ui);
 		core.actions._keyDownToolbox = core.actions._keyDownEquipbox = function (keyCode) { return true; }.bind(core.actions);
-		core.actions._keyUpToolbox = core.actions._keyUpEquipbox = function (keyCode) { return true; }.bind(core.actions);
 		core.actions._clickToolbox = core.actions._clickEquipbox = function (x, y, px, py) { return true; }.bind(core.actions);
-		
+		core.actions._keyUpToolbox = function (keyCode) { return true; }.bind(core.actions);
+		core.actions._keyUpEquipbox = function (keycode, altKey) {
+			if (altKey && keycode >= 48 && keycode <= 57) {
+				core.items.quickSaveEquip(keycode - 48);
+				return;
+			}
+		} // 都有自动切装了还有神人想要这个Alt换装 服了
 
 		const oriClosePanel = core.ui.closePanel;
 		core.ui.closePanel = function () {
