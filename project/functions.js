@@ -1351,6 +1351,17 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			var canGoDeadZone = core.flags.canGoDeadZone;
 			core.flags.canGoDeadZone = true;
 
+			/**
+			 * 追猎的视野能否通过该格子
+			 */
+			function canSeeThrough(x, y) {
+				const block = core.getBlock(x, y);
+				// 空地默认一定可被穿过，有事件不允许穿过
+				if (block === null ||
+					(core.control.getChaseType().includes(block.event.cls) && !block.event.data)) return true;
+				return false;
+			}
+
 			// 计算血网和领域、阻击、激光的伤害，计算捕捉信息
 			for (var loc in blocks) {
 				const block = blocks[loc],
@@ -1458,17 +1469,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					}
 				}
 
-				/**
-				 * 追猎的视野能否通过该格子
-				 */
-				function canSeeThrough(x, y) {
-					const block = core.getBlock(x, y);
-					// 空地默认一定可被穿过，有事件不允许穿过
-					if (block === null ||
-						(core.control.getChaseType().includes(block.event.cls) && !block.event.data)) return true;
-					return false;
-				}
-
 				// 追猎
 				if (enemy && core.hasSpecial(enemy.special, 28)) {
 					let scan = core.utils.scan;
@@ -1532,24 +1532,24 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 
 				if (enemyId1 != null || enemyId2 != null) {
 					var leftHp = core.status.hero.hp - (damage[loc] || 0);
-					if (leftHp > 1) {
-						// 夹击伤害值
-						var value = Math.floor(leftHp / 2);
-						// 是否不超过怪物伤害值
-						if (core.flags.betweenAttackMax) {
-							var enemyDamage1 = core.getDamage(enemyId1, x, y, floorId);
-							if (enemyDamage1 != null && enemyDamage1 < value)
-								value = enemyDamage1;
-							var enemyDamage2 = core.getDamage(enemyId2, x, y, floorId);
-							if (enemyDamage2 != null && enemyDamage2 < value)
-								value = enemyDamage2;
-						}
-						if (value > 0) {
-							damage[loc] = (damage[loc] || 0) + value;
-							type[loc] = type[loc] || {};
-							type[loc]["夹击伤害"] = true;
-						}
+
+					// 夹击伤害值
+					var value = Math.floor(leftHp / 2);
+					// 是否不超过怪物伤害值
+					if (core.flags.betweenAttackMax) {
+						var enemyDamage1 = core.getDamage(enemyId1, x, y, floorId);
+						if (enemyDamage1 != null && enemyDamage1 < value)
+							value = enemyDamage1;
+						var enemyDamage2 = core.getDamage(enemyId2, x, y, floorId);
+						if (enemyDamage2 != null && enemyDamage2 < value)
+							value = enemyDamage2;
 					}
+					if (value > 0) {
+						damage[loc] = (damage[loc] || 0) + value;
+						type[loc] = type[loc] || {};
+						type[loc]["夹击伤害"] = true;
+					}
+
 				}
 			}
 
