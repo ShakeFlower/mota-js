@@ -4099,6 +4099,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @param {'normal'|'num'|'replay'|'hide'} type 
 		 */
 		function setToolbarButton(type) {
+			if (main.replayChecking) return; // 录像验证必须干掉此函数 因为它操作了DOM
 			const currList = getToolBarConfig(type);
 			if (!currList) return;
 			const fragment = document.createDocumentFragment();
