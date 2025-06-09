@@ -2294,10 +2294,10 @@ control.prototype.syncSave = function (type) {
         const index = core.saves.saveIndex;
         if (!index) return core.drawText("没有要同步的存档");
         const callback = function (save) {
-            const ctx = core.createCanvas('syncSave', core.__PIXELS__ / 2 - 52, 18, 104, 104, 141);
-            core.strokeRect(ctx, 0, 0, 104, 104, 'yellow', 2);
             const autosave = core.saves.autosave;
             if (autosave.data instanceof Array && core.saves.actionCount > 0) {
+                const ctx = core.createCanvas('syncSave', core.__PIXELS__ / 2 - 52, 18, 104, 104, 141);
+                core.strokeRect(ctx, 0, 0, 104, 104, 'yellow', 2);
                 const map = core.maps.loadMap(save.maps, save.floorId);
                 core.drawThumbnail(save.floorId, map.blocks, {
                     heroLoc: save.hero.loc, heroIcon: save.hero.image, flags: save.hero.flags,
