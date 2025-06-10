@@ -3194,11 +3194,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				redraw();
 			}
 
-			canPageUp(){
+			canPageUp() {
 				return this.page < this.pageMax - 1;
 			}
 
-			canPageDown(){
+			canPageDown() {
 				return this.page > 0;
 			}
 
@@ -3234,7 +3234,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.setTextBaseline(ctx, "alphabetic");
 					core.fillText(ctx, this.page + 1 + '/' + this.pageMax, this.w / 2, this.h - 2, 'white', '12px Verdana');
 				}
-				
+
 				const currNameList = this.currItemList;
 				const columnCount = Math.min(currNameList.length, this.columnMax),  // 判断装备孔数量是否小于最大列数
 					rowCount = Math.min(Math.ceil(currNameList.length / this.columnMax), this.rowMax);
@@ -3570,12 +3570,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag('markedItems', markedItems);
 		}
 
-		/** 初始化物品栏的所有菜单 */ 
+		/** 初始化物品栏的所有菜单 */
 		function initAll() {
 			[globalUI.back, globalUI.itemInv, globalUI.itemInfoBoard].forEach((menu) => menu.init());
 			if (globalUI.type === 'equips') globalUI.equipChangeBoard.init();
 		}
-		/** 彻底退出物品栏 */ 
+		/** 彻底退出物品栏 */
 		function clearAll() {
 			[globalUI._back, globalUI._toolInv, globalUI._equipInv, globalUI._itemInfoBoard, globalUI._equipChangeBoard].forEach((menu) => {
 				if (menu) menu.clear();
@@ -5235,6 +5235,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						if (btn.disable) return;
 						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
 							btn.event(x, y, px, py);
+							if (btn instanceof ToolBtn) this.text = btn.text;
 						}
 					});
 				}
