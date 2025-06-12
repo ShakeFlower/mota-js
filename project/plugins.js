@@ -2519,8 +2519,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						radius = 3, lineOffsetX = 5, lineWidthX = 3,
 					} = this.config || {};
 					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+					core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
 					core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle);
-					core.fillRoundRect(ctx, x + 1, y + 1, w - 2, h - 2, radius, fillStyle);
 					core.drawLine(ctx, x + lineOffsetX, y + lineOffsetX, x + w - lineOffsetX, y + h - lineOffsetX, lineStyle, lineWidthX);
 					core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
 				}
@@ -2773,13 +2773,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// flag:hideInfo {[itemId:string]:boolean} 手动选择了显示/隐藏的道具的列表
 		core.ui.getToolboxItems = function (cls, showHide, sortFunc) {
 			const markedItems = core.getFlag('markedItems', []);
-			const itemsUsedCount = core.getFlag('itemsUsedCount', {});
 
-			if (!sortFunc) sortFunc = (itemId1, itemId2) => {
-				const item1Count = itemsUsedCount[itemId1] || 0,
-					item2Count = itemsUsedCount[itemId2] || 0;
-				return item2Count - item1Count;
-			}
+			// 暂时不采用按使用次数排序这个函数 因为导致物品排序频繁变动，反而体验不好
+			// const itemsUsedCount = core.getFlag('itemsUsedCount', {});
+			// if (!sortFunc) sortFunc = (itemId1, itemId2) => {
+			// 	const item1Count = itemsUsedCount[itemId1] || 0,
+			// 		item2Count = itemsUsedCount[itemId2] || 0;
+			// 	return item2Count - item1Count;
+			// }
 
 			let list = [];
 			if (cls === 'all') {
@@ -3494,7 +3495,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		/** @param {string} itemId */
 		function hotkeySelectFactory(itemId) {
-			const hotkeySelect = new HotkeySelect(itemId, 60, 100, 296, 206, 138);
+			const hotkeySelect = new HotkeySelect(itemId, 60, 100, 296, 206, 141); // 应当比物品背包的选择光标大，遮盖住前者
 			/** @type {[string, ButtonBaseClass][]} */
 			const btnList = [];
 			const setHotkeyNum = function () {
@@ -3707,7 +3708,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						redraw();
 					}
 					const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
-					const setHotkeyBtn = new IconBtn(145, 40, 24, 24, 'keyboard');
+					const setHotkeyBtn = new IconBtn(145, 60, 24, 24, 'keyboard');
 					setHotkeyBtn.event = () => {
 						if (!globalUI.itemId) return;
 						[globalUI.back, globalUI.itemInv, globalUI.equipChangeBoard, globalUI.itemInfoBoard].forEach((menu) => {
