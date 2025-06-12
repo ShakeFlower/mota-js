@@ -5235,8 +5235,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					this.btnList.forEach((btn, pos) => {
 						if (btn.disable) return;
 						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
+							if (btn instanceof ToolBtn) this.text = btn.text; // 先更新说明文字，再重绘
 							btn.event(x, y, px, py);
-							if (btn instanceof ToolBtn) this.text = btn.text;
 						}
 					});
 				}
