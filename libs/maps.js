@@ -2508,8 +2508,7 @@ maps.prototype.setBlockConnectivity = function (num, statusName, statusValue) {
     const floorIds = core.floorIds,
         maps = core.status.maps,
         mapBlockObjs = core.status.mapBlockObjs,
-        blocksInfo = core.maps.blocksInfo,
-        number2Block = core.status.number2Block;
+        blocksInfo = core.maps.blocksInfo;
     core.maps.blocksInfo = core.clone(maps_90f36752_8815_4be8_b32b_d7fad1d0542e);
     if (statusName === 'noPass') {
         floorIds.forEach((floorId) => {
@@ -2533,7 +2532,8 @@ maps.prototype.setBlockConnectivity = function (num, statusName, statusValue) {
         core.setFlag('blocksInfo', blocksInfo_flag);
     }
     else if (['cannotOut', 'cannotIn'].includes(statusName)) {
-        if (number2Block) number2Block[num]['event'][statusName] = statusValue;
+        const currBlockData = core.getBlockByNumber(num);
+        currBlockData['event'][statusName] = statusValue;
         blocksInfo[num][statusName] = statusValue;
         const blocksInfo_flag = core.getFlag('blocksInfo', {});
         if (!blocksInfo_flag.hasOwnProperty(num)) blocksInfo_flag[num] = {};
@@ -2541,7 +2541,6 @@ maps.prototype.setBlockConnectivity = function (num, statusName, statusValue) {
         core.setFlag('blocksInfo', blocksInfo_flag);
     }
 }
-
 
 ////// 重置地图 //////
 maps.prototype.resetMap = function (floorId) {
