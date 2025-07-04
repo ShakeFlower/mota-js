@@ -4017,8 +4017,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				horizontal: ['btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btnAlt']
 			},
 			replay: {
-				vertical: ['play', 'stop', 'rewind', 'book', 'view', 'speedDown', 'speedUp', 'single'],
-				horizontal: ['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'book']
+				vertical: ['play', 'stop', 'rewind', 'book', 'view', 'speedDown', 'speedUp', 'save'],
+				horizontal: ['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'save']
 			},
 			hide: {
 				vertical: [], horizontal: [],
@@ -5193,10 +5193,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					case 'key':
 						core.fillText(this.name, '-- 快捷键 --', 40, 205, ' #FFE4B5', '18px Verdana');
 						core.fillText(this.name, "注意⚠️更推荐在背包", 160, 190, "rgb(255,255,51)", '12px Verdana');
-						core.fillText(this.name, "中点击右上角", 285, 190, "rgb(255,255,51)", '12px Verdana');
+						core.fillText(this.name, "中点击右上角", 287, 190, "rgb(255,255,51)", '12px Verdana');
 						core.fillText(this.name, "图标设置单物品的快捷键", 160, 210, "rgb(255,255,51)", '12px Verdana');
-						core.drawIcon(this.name, "toolbox", 270, 178, 16, 16);
-						core.drawIcon(this.name, "keyboard", 358, 178, 16, 16);
+						core.drawIcon(this.name, "toolbox", 272, 178, 16, 16);
+						core.drawIcon(this.name, "keyboard", 359, 178, 16, 16);
 						break;
 					case 'toolBarConfig':
 						core.setTextAlign(this.name, 'left');
