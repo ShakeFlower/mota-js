@@ -3077,7 +3077,7 @@ ui.prototype._drawSLPanel_draw = function (page, max_page) {
 ui.prototype._drawSLPanel_drawBackground = function () {
     let backGroundStyle = 'black';
     if (core.status.event.id === 'save') backGroundStyle = 'rgb(75, 0, 130)';
-    else if (core.status.event.id === 'load') backGroundStyle = 'rgb(173, 216, 230)';
+    else if (core.status.event.id === 'load') backGroundStyle = 'rgb(0, 0, 139)';
     core.clearMap('ui');
     core.setAlpha('ui', 0.85);
     core.fillRect('ui', 0, 0, this.PIXEL, this.PIXEL, backGroundStyle); //可改成背景图
