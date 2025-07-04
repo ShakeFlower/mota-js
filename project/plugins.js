@@ -5191,7 +5191,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						core.fillText(this.name, '-- 音效 --', 40, 320, ' #FFE4B5', '18px Verdana');
 						break;
 					case 'key':
-						core.fillText(this.name, '-- 快捷键设置 --', 40, 205, ' #FFE4B5', '18px Verdana');
+						core.fillText(this.name, '-- 快捷键 --', 40, 205, ' #FFE4B5', '18px Verdana');
+						core.fillText(this.name, "注意⚠️更推荐在背包", 160, 190, "rgb(255,255,51)", '12px Verdana');
+						core.fillText(this.name, "中点击右上角", 285, 190, "rgb(255,255,51)", '12px Verdana');
+						core.fillText(this.name, "图标设置单物品的快捷键", 160, 210, "rgb(255,255,51)", '12px Verdana');
+						core.drawIcon(this.name, "toolbox", 270, 178, 16, 16);
+						core.drawIcon(this.name, "keyboard", 358, 178, 16, 16);
 						break;
 					case 'toolBarConfig':
 						core.setTextAlign(this.name, 'left');
