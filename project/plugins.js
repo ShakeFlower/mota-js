@@ -2868,6 +2868,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						toolInv.index = newConfig.index;
 						toolInv.subType = this.subType;
 						toolInv.updateItemList();
+						toolInv.focus(toolInv.index);
 						redraw(true);
 					}
 				};
@@ -3700,12 +3701,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					hideBtn.event = () => {
 						hideItem(globalUI.itemId);
 						this.itemInv.updateItemList();
-						redraw();
+						this.itemInv.focus(this.itemInv.index);
 					}
 					markBtn.event = () => {
 						markItem(globalUI.itemId);
 						this.itemInv.updateItemList();
-						redraw();
+						this.itemInv.focus(this.itemInv.index);
 					}
 					const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
 					const setHotkeyBtn = new IconBtn(145, 60, 24, 24, 'keyboard');
