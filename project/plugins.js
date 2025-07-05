@@ -2424,7 +2424,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillText(ctxName, content, x + ani.x, y, 'white', '16px Verdana');
 			})
 			// 弹幕的最大长度5600，再长属于异常数据
-			const aim = 100 + Math.min(core.calWidth(ctxName, content, '16px Verdana'), 5000);
+			const aim = 100 + x + Math.min(core.calWidth(ctxName, content, '16px Verdana'), 5000);
 			ani.mode(linear())
 				.time(aim / vx)
 				.absolute()
