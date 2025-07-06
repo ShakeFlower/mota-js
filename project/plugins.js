@@ -1922,25 +1922,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * 变量autoGet控制自动拾取开关
 		 * 变量autoBattle控制自动清怪开关
 		 */
-
-		const { Transition, hyper, Ticker } = core.plugin.animate ?? {};
-
-		// 磁吸特效的时长，单位毫秒
-		const transitionTime = 400;
-
-		const transitionList = [];
-
 		const ctxName = 'autoClear';
-
-		if (Ticker) {
-			const ticker = new Ticker();
-			ticker.add(() => {
-				if (core.isReplaying()) return;
-				const ctx = core.getContextByName(ctxName);
-				if (!has(ctx)) return;
-				core.clearMap(ctx);
-			});
-		}
 
 		// 每走一步后自动拾取的判定要放在阻击结算之后
 
@@ -1955,16 +1937,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return res;
 		};
 
-		this.autoClear = function () {
-			auto();
-			if (core.isReplaying()) return;
-			for (let i = 0; i < transitionList.length; i++) {
-				const t = transitionList[i];
-				let { x, y } = core.status.hero.loc;
-				t.value.x = x * 32 - core.bigmap.offsetX;
-				t.value.y = y * 32 - core.bigmap.offsetY;
-			}
-		}
+		this.autoClear = auto;
 
 		function willLvUp(exp) {
 			const nextExp = core.getNextLvUpNeed();
@@ -1983,21 +1956,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const floor = core.floors[core.status.floorId];
 			const e = core.getEnemyValue(enemy, null, x, y);
 			const hasEvent =
-				has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc])
-				|| has(e.beforeBattle) || has(e.afterBattle)
-				|| has(floor.events[loc]) || willLvUp(e.exp); // 防止有升级后事件
+				has(floor.afterBattle[loc]) || has(floor.beforeBattle[loc]) ||
+				has(e.beforeBattle) || has(e.afterBattle) ||
+				has(floor.events[loc]) || willLvUp(e.exp); // 防止有升级后事件
 
 			// 有事件，不清
 			if (hasEvent) return false;
 			// 有特定特殊属性的怪不清
 			if (core.hasSpecial(e.special, 12) // 中毒
-				|| core.hasSpecial(e.special, 13) // 衰弱
-				|| core.hasSpecial(e.special, 14) // 诅咒
-				|| core.hasSpecial(e.special, 19) // 自爆
-				|| core.hasSpecial(e.special, 21) // 退化
-				|| core.hasSpecial(e.special, 27) // 捕捉:逻辑上应该让怪物来找角色
-				|| core.hasSpecial(e.special, 28) // 追猎:逻辑上应该让怪物来找角色
-				|| core.hasSpecial(e.special, 29) // 败移:特殊战后事件
+				||
+				core.hasSpecial(e.special, 13) // 衰弱
+				||
+				core.hasSpecial(e.special, 14) // 诅咒
+				||
+				core.hasSpecial(e.special, 19) // 自爆
+				||
+				core.hasSpecial(e.special, 21) // 退化
+				||
+				core.hasSpecial(e.special, 26) // 支援
+				||
+				core.hasSpecial(e.special, 27) // 捕捉:逻辑上应该让怪物来找角色
+				||
+				core.hasSpecial(e.special, 28) // 追猎:逻辑上应该让怪物来找角色
+				||
+				core.hasSpecial(e.special, 29) // 败移:特殊战后事件
 			)
 				return false;
 			const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
@@ -2093,6 +2075,94 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return (has(damage) && damage > 0) || has(ambush) || has(repulse) || has(chase);
 		}
 
+		class AttractAnimate {
+			constructor() {
+				this.name = 'attractAnimate';
+				this.isPlaying = false;
+				this.nodes = [];
+				this.lastTime = -1;
+				this.thr = 5; // 缓动比例倒数，越大移动越慢
+			}
+
+			add(id, x, y, callback) {
+				this.nodes.push({ id, x, y, callback });
+			}
+
+			start() {
+				if (this.isPlaying) return;
+				this.isPlaying = true;
+				core.registerAnimationFrame(this.name, true, this.update.bind(this));
+				this.ctx = core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 120);
+			}
+
+			remove() {
+				core.unregisterAnimationFrame(this.name);
+				core.deleteCanvas(this.name);
+				this.isPlaying = false;
+			}
+
+			clear() {
+				this.nodes = [];
+				this.remove();
+			}
+
+			update(timeStamp) {
+				const { name, thr, nodes } = this;
+
+				if (this.lastTime < 0) this.lastTime = timeStamp;
+				if (timeStamp - this.lastTime < 20) return;
+				this.lastTime = timeStamp;
+
+				core.clearMap(name);
+
+				const heroCenterX = core.status.heroCenter.px - 16;
+				const heroCenterY = core.status.heroCenter.py - 16;
+
+				for (const n of nodes) {
+					const dx = heroCenterX - n.x;
+					const dy = heroCenterY - n.y;
+
+					if (Math.abs(dx) <= thr && Math.abs(dy) <= thr) {
+						n.dead = true;
+					} else {
+						n.x += ~~(dx / thr);
+						n.y += ~~(dy / thr);
+					}
+
+					core.drawIcon(name, n.id, n.x, n.y, 32, 32);
+				}
+
+				// 过滤掉 dead 的节点并执行回调
+				const remainingNodes = [];
+				for (const n of nodes) {
+					if (n.dead && n.callback) {
+						n.callback();
+					}
+					if (!n.dead) {
+						remainingNodes.push(n);
+					}
+				}
+				this.nodes = remainingNodes;
+
+				if (this.nodes.length === 0) {
+					this.remove();
+				}
+			}
+		}
+
+		const animateHwnd = new AttractAnimate();
+
+		/** 拾取单个物品的动画 */
+		this.pickOneItemAnimate = function (id, x, y, callback) {
+			if (core.isReplaying()) return;
+			animateHwnd.add(id, x, y, callback);
+			animateHwnd.start();
+		};
+		/** 在每次切换楼层后调用 */
+		this.clearAttractAnimate = function () {
+			animateHwnd.clear();
+		}
+
 		/**
 		 * 广搜，搜索可以到达的需要清的怪
 		 * @param {string} floorId
@@ -2102,11 +2172,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const objs = core.getMapBlocksObj(floorId);
 			const bgMap = core.getBgMapArray(floorId);
 			const { x, y } = core.status.hero.loc;
-			const dir = /** @type {[direction, number, number][]} */Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
+			const dir = /** @type {[direction, number, number][]} */ Object.entries(core.utils.scan).map(v => [v[0], v[1].x, v[1].y]);
 			const floor = core.status.maps[floorId];
 
 			/** @type {[number, number][]} */
-			const queue = [[x, y]];
+			const queue = [
+				[x, y]
+			];
 			const mapped = {
 				[`${x},${y}`]: true
 			};
@@ -2141,35 +2213,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const item = core.material.items[block.event.id];
 						if (canGetItem(item, loc, floorId)) {
 							core.getItem(item.id, 1, tx, ty);
-							if (!core.isReplaying() && Transition) {
-								let px = tx * 32 - core.bigmap.offsetX;
-								let py = ty * 32 - core.bigmap.offsetY;
-								const t = new Transition();
-								const onDestory = function (t) {
-									t.ticker.destroy();
-									const index = transitionList.findIndex(v => v === t);
-									transitionList.splice(index, 1);
-								} // 摧毁Transition t
-								core.plugin.tickerSet.add(t.ticker);
-								t.mode(hyper('sin', 'out'))
-									.time(transitionTime)
-									.absolute()
-									.transition('x', px)
-									.transition('y', py);
-								let { x, y } = core.status.hero.loc;
-								t.value.x = x * 32 - core.bigmap.offsetX;
-								t.value.y = y * 32 - core.bigmap.offsetY;
-								transitionList.push(t);
-								t.ticker.add(() => {
-									core.drawIcon(ctxName, item.id, t.value.x, t.value.y, 32, 32);
-									let { x, y } = core.status.hero.loc;
-									if (Math.abs(t.value.x - x * 32 + core.bigmap.offsetX) < 0.05 &&
-										Math.abs(t.value.y - y * 32 + core.bigmap.offsetY) < 0.05
-									) {
-										onDestory(t);
-									}
-								});
-							}
+							animateHwnd.add(item.id, x, y);
 						} else {
 							return;
 						}
@@ -2200,7 +2244,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			flags.__forbidSave__ = true;
 			flags.__statistics__ = true;
 			const ctx = core.getContextByName(ctxName);
-			if (!ctx) core.createCanvas(ctxName, 0, 0, core.__PIXELS__, core.__PIXELS__, 75);
+			if (!ctx) {
+				core.createCanvas(ctxName, 0, 0, core.__PIXELS__, core.__PIXELS__, 75);
+				core.setAlpha(ctxName, 0.6);
+			}
 			bfs(core.status.floorId, deep);
 			flags.__statistics__ = false;
 			flags.__forbidSave__ = before;

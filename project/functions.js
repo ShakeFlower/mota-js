@@ -168,7 +168,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.setWeather(weather[0], weather[1]);
 			else core.setWeather();
 
-			core.deleteAllAnis(); // 摧毁所有现存的高级动画
+			core.plugin.deleteAllAnis(); // 摧毁所有现存的高级动画
+			core.plugin.clearAttractAnimate(); // 摧毁拾取物品动画
 
 			// ...可以新增一些其他内容，比如创建个画布在右上角显示什么内容等等
 

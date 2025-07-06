@@ -267,6 +267,10 @@ type gameStatus = {
     /** 勇士移动状态 */
     heroMoving: number
     heroStop: boolean
+    heroCenter: {
+        px: number
+        py: number
+    }
 
     // 自动寻路相关
     automaticRoute: {
