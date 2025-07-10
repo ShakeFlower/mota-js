@@ -2621,6 +2621,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				})
 			}
 
+			addBtnList(key, button) {
+				this.btnList.set(key, button);
+				button.menu = this;
+				button.ctx = this.name;
+				button.key = key;
+			}
+
 			// 返回换算后的画布上的相对坐标
 			convertCoordinate(px, py) {
 				return [px - this.x, py - this.y];
@@ -3030,7 +3037,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const ctx = this.ctx;
 					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
 					const space = 2, lineWidth = 2, squareSize = w;
-					const equipId = core.getEquip(this.key);
+					const equipId = core.getEquip(this.menu.getTotalIndex(this.key));
 					if (equipId) core.drawIcon(ctx, equipId, x + 4, y + 4, squareSize - 8, squareSize - 8);
 					const color = (globalUI.selectType === 'equipBox' && this.menu.index === this.key) ? 'gold' : 'white';
 					core.strokeRect(ctx, x, y, squareSize, squareSize, color, lineWidth);
@@ -3234,11 +3241,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/** 聚焦于指定序号的按钮，并重绘画面 */
 			focus(index) {
 				this.index = index;
-				this.itemId = this.currItemList[this.index];
+				if (this instanceof EquipChangeBoard) {
+					this.itemId = core.status.hero.equipment[this.getTotalIndex()];
+					globalUI.selectType = 'equipBox';
+					globalUI.equipInv.index = -1;
+				}
+				else {
+					this.itemId = this.currItemList[this.index];
+					globalUI.selectType = 'toolBox';
+					if (this instanceof EquipInventory) globalUI.equipChangeBoard.index = -1;
+				}
 				this.btnList.forEach(btn => {
 					btn.status = (btn.key === this.index) ? 'selected' : 'none'
 				});
-				globalUI.selectType = (this instanceof EquipChangeBoard) ? 'equipBox' : 'toolBox';
 				globalUI.itemId = this.itemId;
 				redraw();
 			}
@@ -3291,19 +3306,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
 					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
 				let [x, y] = [spaceX, spaceY];
-				/** @type {[number, EquipBox][]} */
-				const btnArr = [];
 
-				for (let i = 0; i < this.currItemList.length; i++) {
-					const btn = new EquipBox(x, y, boxWidth, boxHeight);
-					btnArr.push([i, btn]);
+				for (let i = 0; i < this.pageCap; i++) {
+					if (!this.btnList.has(i)) {
+						const btn = new EquipBox(x, y, boxWidth, boxHeight);
+						this.addBtnList(i, btn);
+					}
+					else {
+						const btn = this.btnList.get(i);
+						if (btn) btn.disable = (i >= this.currItemList.length);
+					}
 					if ((i + 1) % this.columnMax === 0) {
 						x = spaceX;
 						y += spaceY + boxHeight;
 					}
 					else x += spaceX + boxWidth;
 				}
-				this.initBtnList(btnArr);
+				if (this.allItemList.length < this.pageCap) {
+					const pgDown = this.btnList.get('pgDown');
+					const pgUp = this.btnList.get('pgUp');
+					if (pgDown) pgDown.disable = true;
+					if (pgUp) pgUp.disable = true;
+				}
 				super.drawContent();
 			}
 			/**  注意，对于装备切换面板来说，它的装备列表不是装备本身，而是角色的装备孔 */
@@ -3311,8 +3335,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return core.status.globalAttribute.equipName;
 			}
 
+			getTotalIndex(index) {
+				if (index == null) index = this.index;
+				return this.page * this.pageCap + index;
+			}
+
+			changePageByTotalIndex(index) {
+				const newPage = Math.floor(index / this.pageCap);
+				this.page = newPage;
+				this.updateItemList();
+			}
+
 			triggerItem() {
-				const index = this.index;
+				const index = this.getTotalIndex();
 				if (core.status.hero.equipment[index]) {
 					core.unloadEquip(index);
 					core.status.route.push("unEquip:" + index);
@@ -3379,7 +3414,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			triggerItem() {
 				const itemId = this.itemId;
-				if (!core.canUseItem(itemId)) {
+				if (!core.canUseItem(itemId) && itemId !== 'centerFly') {
 					core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
 					return;
 				}
@@ -3403,6 +3438,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			triggerItem() {
 				const equip = this.itemId;
 				if (!core.canEquip(equip, true)) return;
+				const equipPos = core.getEquipTypeById(equip);
+				globalUI.equipChangeBoard.changePageByTotalIndex(equipPos);
 				core.loadEquip(equip);
 				core.status.route.push("equip:" + equip); // 注意focus会导致itemId改变
 				this.updateItemList(); // 穿上装备会导致道具数量变化，并且需要重新锁定当前选中的道具
@@ -3775,8 +3812,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					this._equipChangeBoard = new EquipChangeBoard(7, 10, 240, 125, 137);
 					const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
 					const [pgDown, pgUp] = [new ArrowBtn(0, 56, 14, 14, 'left', config), new ArrowBtn(222, 56, 14, 14, 'right', config)];
-					pgDown.event = () => { globalUI.equipChangeBoard.pageDown(); redraw(); };
-					pgUp.event = () => { globalUI.equipChangeBoard.pageUp(); redraw(); };
+					pgDown.event = () => {
+						globalUI.equipChangeBoard.pageDown();
+						redraw();
+					};
+					pgUp.event = () => {
+						globalUI.equipChangeBoard.pageUp();
+						redraw();
+					};
+					this._equipChangeBoard.addBtnList('pgDown', pgDown);
+					this._equipChangeBoard.addBtnList('pgUp', pgUp);
 				}
 				return this._equipChangeBoard;
 			}

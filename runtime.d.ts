@@ -3244,6 +3244,8 @@ declare class MenuBaseClass {
     createCanvas(): CanvasRenderingContext2D
     /** 初始化该菜单的按钮列表 */
     initBtnList(arr: [any, ButtonBaseClass][]): void
+    /** 为该菜单添加一个按钮 */
+    addBtnList(key, button): void
     /** 绘制该菜单上的按钮 */
     drawButtonContent(): void
     /** 绘制该菜单上的按钮(需要派生类自行绘制画布和填充内容) */
