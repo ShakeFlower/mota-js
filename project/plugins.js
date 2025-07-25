@@ -2485,7 +2485,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	},
 	"uiBaseClass": function () {
 		// 本插件定义了一些用于绘制的基类
-
+		/** 
+		 * @typedef {(x:number,y:number,px:number,py:number)=>void} posFunc
+		 */
 		/** 按钮基类 */
 		class ButtonBase {
 			constructor(x, y, w, h) {
@@ -2496,146 +2498,189 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.disable = false;
 				this.status = 'none';
 
-				// 下面三项在initBtnList时添加
-				/** @type {MenuBase} 所在的Menu，用于触发重绘等事件 */
+				// 下面三项在initbtnMap时添加
+				/** 
+				 * @type {MenuBase} 所在的Menu，用于触发重绘等事件 
+				 */
+				// @ts-ignore 将在菜单初始化时传入
 				this.menu;
 				/** @type {string} 所在的Menu的画布名称 */
 				this.ctx = '';
-				/** @type {string} 自身在所在的Menu的btnList中的索引 */
+				/** @type {string|number} 自身在所在的Menu的btnMap中的索引 */
 				this.key = '';
 
-				this.draw = () => { };
-				this.event = (x, y, px, py) => { };
+				/** @type {posFunc} */
+				this.ondown = () => { };
+				/** @type {posFunc|undefined} */
+				this.onmove = undefined;
+				/** @type {posFunc|undefined} */
+				this.onup = undefined;
 			}
+
+			/** 绘制该按钮的外观
+			 * @interface 
+			 */
+			draw() { }
 
 			/** 默认为矩形判定区 */
 			inRange(px, py) {
 				return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
 			}
 		}
+		const KeyCodeEnum = {
+			BackSpace: 8, Tab: 9, Enter: 13, Esc: 27, SpaceBar: 32,
+			PageUp: 33, PageDown: 34, Left: 37, Up: 38, Right: 39,
+			Down: 40, C: 67, Q: 81, T: 84,
+		};
 
-		class RoundBtn extends ButtonBase {
-			constructor(x, y, w, h, text, config) {
-				super(x, y, w, h);
-				this.text = text;
-				this.config = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					const { fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
-						selectedFillStyle = 'rgb(255, 51, 153)', selectedstrokeStyle = 'black', selectedFontStyle = 'white',
-						radius = 3, lineWidth = 1, angle = null, font = '16px Verdana' } = this.config || {};
-					core.setTextAlign(ctx, 'center');
-					core.setTextBaseline(ctx, 'alphabetic');
-					if (this.status === 'selected') {
-						core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle, angle);
-						core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth, angle);
-						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, font);
-					} else {
-						core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
-						core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
-						core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, font);
-					}
-				};
-			}
-		}
-
-		class IconBtn extends ButtonBase {
-			constructor(x, y, w, h, icon, config) {
-				super(x, y, w, h);
-				this.icon = icon;
-				this.config = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					const { strokeStyle = 'black', fillStyle = 'white',
-						radius = 3, lineWidth = 1, angle = null, frame = 0,
-					} = this.config || {};
-					if (fillStyle !== 'none') core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, radius, fillStyle, angle);
-					if (strokeStyle !== 'none') core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, radius, strokeStyle, lineWidth, angle);
-					core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h, frame);
-				};
-			}
-		}
-
-		class ExitBtn extends ButtonBase {
-			constructor(x, y, w, h, config) {
-				super(x, y, w, h);
-				this.config = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					const { strokeStyle = ' #D32F2F', fillStyle = ' #EF5350', lineStyle = 'white',
-						radius = 3, lineOffsetX = 5, lineWidthX = 3,
-					} = this.config || {};
-					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-					core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
-					core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle);
-					core.drawLine(ctx, x + lineOffsetX, y + lineOffsetX, x + w - lineOffsetX, y + h - lineOffsetX, lineStyle, lineWidthX);
-					core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
-				}
-			}
-		}
-
+		/** @typedef {'ondown'|'onmove'|'onup'|'keyDown'|'keyUp'|'onmousewheel'} eventType  */
 		class MenuBase {
-			constructor(name, x, y, w, h, zIndex) {
+			/** 
+			 * @param {string} name 菜单名称，作为绘制画布时的名称
+			 * @param {eventType[]} [toListen] 
+			 * @param {number} [x] 
+			 * @param {number} [y]
+			 * @param {number} [w]
+			 * @param {number} [h]
+			 * @param {number} [zIndex]
+			 */
+			constructor(name, toListen, x, y, w, h, zIndex) {
 				this.name = name;
-				/** @type {Map<any, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
-				this.btnList = new Map();
+				/** @type {Map<string|number, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
+				this.btnMap = new Map();
 				/** 当前画布是否正被绘制 */
 				this.onDraw = false;
+				/** @type {Set<eventType>} 当前画布需要监听的事件类型 */
+				this.toListen = new Set(toListen);
 
 				this.x = x ?? 0;
 				this.y = y ?? 0;
 				this.w = w ?? core.__PIXELS__;
 				this.h = h ?? core.__PIXELS__;
 				this.zIndex = zIndex ?? 136; // 136比uievent大1
-
-				/** 屏幕被按下时触发的事件 */
-				this.clickEvent = (x, y, rawpx, rawpy) => {
-					if (!this.isPosValid(rawpx, rawpy)) return;
-					const [px, py] = this.convertCoordinate(rawpx, rawpy);
-					this.btnList.forEach((btn) => {
-						if (btn.disable) return;
-						if (btn.inRange(px, py)) {
-							btn.event(x, y, px, py);
-						}
-					});
-				}
-				/** @type {((keycode:number)=>void) | undefined} 按键被按下时触发的事件 */
-				this.keyEvent = undefined;
-				/** @type {((keycode:number,altkey?:boolean,fromReplay?:boolean)=>void) | undefined} 按键被放开时触发的事件 */
-				this.keyUpEvent = undefined;
-				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 屏幕被鼠标滑动或手指拖动时触发的事件 */
-				this.onMoveEvent = undefined;
-				/** @type {((x:number,y:number,px:number,py:number)=>void) | undefined} 当屏幕被鼠标或手指放开时触发的事件 */
-				this.onUpEvent = undefined;
-				/** @type {((direct:1|-1)=>void) | undefined} 鼠标滚轮滚动时触发的事件 */
-				this.onMouseWheelEvent = undefined;
 			}
 
-			/** @param {[any, ButtonBase][]} arr */
-			initBtnList(arr) {
-				this.btnList = new Map(arr);
-				this.btnList.forEach((button, key) => {
-					button.menu = this;
-					button.ctx = this.name;
-					button.key = key;
-				})
-			}
-
-			addBtnList(key, button) {
-				this.btnList.set(key, button);
-				button.menu = this;
-				button.ctx = this.name;
-				button.key = key;
-			}
-
-			// 返回换算后的画布上的相对坐标
+			// #region 监听事件
+			/** 返回换算后的画布上的相对坐标 */
 			convertCoordinate(px, py) {
 				return [px - this.x, py - this.y];
 			}
 
-			// 检查坐标是否在画布范围内
-			isPosValid(px, py) {
-				return (px >= this.x) && (px <= this.x + this.w) && (py >= this.y) && (py <= this.y + this.h);
+			/** 默认为矩形判定区 */
+			inRange(px, py) {
+				return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
+			}
+
+			ondown(x, y, rawpx, rawpy) {
+				if (!this.inRange(rawpx, rawpy)) return;
+				const [px, py] = this.convertCoordinate(rawpx, rawpy);
+				this.ondownEvent(x, y, px, py);
+				this.ondownBtnEvent(x, y, px, py);
+			}
+
+			/** 点击画布自身触发的事件
+			 *  @interface 
+			 */
+			ondownEvent(x, y, px, py) { }
+
+			// btnMap 一个key指向一个对象 包含btn本身，对应事件，是否disable btn本身不包含event 由菜单赋予
+
+			/** 点击画布的按钮触发的事件
+			 * @interface 
+			 */
+			ondownBtnEvent(x, y, px, py) {
+				this.btnMap.forEach((btn) => {
+					if (btn.disable) return;
+					if (btn.inRange(px, py)) {
+						btn.ondown(x, y, px, py);
+					}
+				});
+			}
+
+			/** 屏幕被鼠标滑动或手指拖动时触发的事件
+			 * @interface (x:number,y:number,px:number,py:number):void 
+			 */
+			onmove(x, y, rawpx, rawpy) {
+				if (!this.inRange(rawpx, rawpy)) return;
+				const [px, py] = this.convertCoordinate(rawpx, rawpy);
+				this.onmoveEvent(x, y, px, py);
+				this.onmoveBtnEvent(x, y, px, py);
+			}
+
+			onmoveEvent(x, y, px, py) { }
+
+			onmoveBtnEvent(x, y, px, py) {
+				this.btnMap.forEach((btn) => {
+					if (btn.disable) return;
+					if (btn.inRange(px, py) && btn.onmove) {
+						btn.onmove(x, y, px, py);
+					}
+				});
+			}
+
+			/** 当屏幕被鼠标或手指放开时触发的事件
+			 * @interface (x:number,y:number,px:number,py:number):void
+			 */
+			onup(x, y, rawpx, rawpy) {
+				if (!this.inRange(rawpx, rawpy)) return;
+				const [px, py] = this.convertCoordinate(rawpx, rawpy);
+				this.onupEvent(x, y, px, py);
+				this.onupBtnEvent(x, y, px, py);
+			}
+
+			onupEvent(x, y, px, py) { }
+
+			onupBtnEvent(x, y, px, py) {
+				this.btnMap.forEach((btn) => {
+					if (btn.disable) return;
+					if (btn.inRange(px, py) && btn.onup) {
+						btn.onup(x, y, px, py);
+					}
+				});
+			}
+
+			/** 按键被按下时触发的事件
+			 * @interface (keycode:number)=>void 
+			 */
+			keyDownEvent(keycode) { }
+
+			/** 按键被放开时触发的事件
+			 * @interface (keycode:number,altkey?:boolean,fromReplay?:boolean)=>void)
+			 */
+			keyUpEvent(keycode, altkey, fromReplay) { }
+
+			/** 鼠标滚轮滚动时触发的事件
+			 * @interface (direct:1|-1):void
+			 */
+			onmousewheelEvent(direct) { }
+			// #endregion
+
+			/** 
+			 * @param {string | number} key
+			 * @param {ButtonBase} btn
+			 * @param {posFunc | {ondown:posFunc,onmove?:posFunc,onup?:posFunc}} [event]
+			 */
+			registerBtn(key, btn, event) {
+				btn.menu = this;
+				btn.ctx = this.name;
+				btn.key = key;
+				if (event == null) { }
+				else if (typeof event === 'function') {
+					btn.ondown = event;
+				} else {
+					const { ondown, onmove, onup } = event;
+					btn.ondown = ondown;
+					btn.onmove = onmove;
+					btn.onup = onup;
+				}
+				this.btnMap.set(key, btn);
+			}
+
+			registerBtns(arr) {
+				arr.forEach(ele => {
+					const [key, btn, event] = ele;
+					this.registerBtn(key, btn, event);
+				});
 			}
 
 			// 创建并返回本菜单的画布
@@ -2644,7 +2689,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			drawButtonContent() {
-				this.btnList.forEach((button) => {
+				this.btnMap.forEach((button) => {
 					if (!button.disable) button.draw();
 				})
 			}
@@ -2655,12 +2700,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			beginListen() {
-				core.registerAction('ondown', this.name, this.clickEvent, 100);
-				if (this.keyEvent) core.registerAction('keyDown', this.name, this.keyEvent, 100);
-				if (this.keyUpEvent) core.registerAction('keyUp', this.name, this.keyUpEvent, 100);
-				if (core.platform.isPC && this.onMoveEvent) core.registerAction('onmove', this.name, this.onMoveEvent, 100);
-				if (this.onUpEvent) core.registerAction('onup', this.name, this.onUpEvent, 100);
-				if (core.platform.isPC && this.onMouseWheelEvent) core.registerAction('onmousewheel', this.name, this.onMouseWheelEvent, 100);
+				if (this.toListen.has('ondown')) core.registerAction('ondown', this.name, this.ondown.bind(this), 100);
+				if (this.toListen.has('keyDown')) core.registerAction('keyDown', this.name, this.keyDownEvent.bind(this), 100);
+				if (this.toListen.has('keyUp')) core.registerAction('keyUp', this.name, this.keyUpEvent.bind(this), 100);
+				if (this.toListen.has('onmove')) core.registerAction('onmove', this.name, this.onmove.bind(this), 100)
+				if (this.toListen.has('onup')) core.registerAction('onup', this.name, this.onup.bind(this), 100);
+				if (this.toListen.has('onmousewheel')) core.registerAction('onmousewheel', this.name, this.onmousewheelEvent.bind(this), 100);
 			}
 
 			endListen() {
@@ -2672,10 +2717,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.unregisterAction('onmousewheel', this.name);
 			}
 
+			remove() {
+				core.ui.deleteCanvas(this.name);
+				this.onDraw = false;
+			}
+
 			clear() {
 				this.endListen();
-				core.deleteCanvas(this.name);
-				this.onDraw = false;
+				this.remove();
 			}
 
 			init() {
@@ -2683,12 +2732,127 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.drawContent();
 			}
 		}
-		this.uiBase = { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase };
+
+		class Pagination extends MenuBase {
+			constructor(pageList, currPage, name, toListen, x, y, w, h, zIndex) {
+				super(name, toListen, x, y, w, h, zIndex);
+				/**
+				 * 当前页面列表
+				 * @type {Array<MenuBaseClass>}
+				 */
+				this.pageList = pageList;
+				/**
+				 * 当前页的序号
+				 * @type {number}
+				 */
+				this.currPage = currPage || 0;
+			}
+
+			initOnePage(index) {
+				this.currPage = index;
+				this.pageList[index].init();
+			}
+
+			changePage(num) {
+				if (num !== this.currPage) {
+					const beforeMenu = this.pageList[this.currPage];
+					beforeMenu.clear();
+				}
+				this.initOnePage(num);
+			}
+
+			pageDown() {
+				if (this.currPage > 0) this.changePage(this.currPage - 1);
+			}
+
+			pageUp() {
+				if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
+			}
+
+			clear() {
+				this.pageList.forEach((page) => page.clear());
+				super.clear();
+			}
+		}
+
+		// 圆角带文字的按钮
+		class RoundBtn extends ButtonBase {
+			constructor(x, y, w, h, text, config) {
+				super(x, y, w, h);
+				this.text = text;
+				this.config = config || {};
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const { x, y, w, h } = this;
+				const {
+					fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
+					selectedFillStyle = 'rgb(255, 51, 153)', selectedstrokeStyle = 'black', selectedFontStyle = 'white',
+					radius = 3, lineWidth = 1, angle = null, font = '16px Verdana'
+				} = this.config || {};
+				core.setTextAlign(ctx, 'center');
+				core.setTextBaseline(ctx, 'alphabetic');
+				if (this.status === 'selected') {
+					core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle, angle);
+					core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth, angle);
+					core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, font);
+				} else {
+					core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
+					core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
+					core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, font);
+				}
+			};
+		}
+
+		class IconBtn extends ButtonBase {
+			constructor(x, y, w, h, icon, config) {
+				super(x, y, w, h);
+				this.icon = icon;
+				this.config = config || {};
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const { x, y, w, h } = this;
+				const {
+					strokeStyle = 'black', fillStyle = 'white',
+					radius = 3, lineWidth = 1, angle = null, frame = 0
+				} = this.config || {};
+				if (fillStyle !== 'none') core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
+				if (strokeStyle !== 'none') core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
+				core.drawIcon(ctx, this.icon, x, y, w, h, frame);
+			}
+		}
+
+		class ExitBtn extends ButtonBase {
+			constructor(x, y, w, h, config) {
+				super(x, y, w, h);
+				this.config = config || {};
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const {
+					strokeStyle = ' #D32F2F', fillStyle = ' #EF5350', lineStyle = 'white',
+					radius = 3, lineOffsetX = 5, lineWidthX = 3,
+				} = this.config || {};
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
+				core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle);
+				core.drawLine(ctx, x + lineOffsetX, y + lineOffsetX, x + w - lineOffsetX, y + h - lineOffsetX, lineStyle, lineWidthX);
+				core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
+			}
+		}
+		this.uiBase = { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, Pagination, KeyCodeEnum };
 	},
 	"newBackpackLook": function () {
+		// 本插件定义了一些用于绘制的基类
+
 		let __enable = true;
 		if (!__enable) return;
 
+		/** @todo 尝试干掉redraw */
 		// #region 复写
 
 		core.ui._drawToolbox = function () { drawItemBox('all'); }.bind(core.ui);
@@ -2700,7 +2864,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const oriClosePanel = core.ui.closePanel;
 		core.ui.closePanel = function () {
 			oriClosePanel.apply(core.ui, [arguments]);
-			clearAll();
+			UI.clearAll();
 		}
 
 		core.control._replayAction_item = function (action) {
@@ -2710,15 +2874,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
 				core.useItem(itemId, false, core.replay);
 				return true;
-			};
+			}
 			core.ui._drawToolbox(0);
-			const itemInv = globalUI.itemInv;
+			const itemInv = UI.itemInv;
 			const totalIndex = itemInv.allItemList.indexOf(itemId);
 			const page = Math.max(Math.ceil(totalIndex / itemInv.pageCap) - 1, 0);
 			const currIndex = totalIndex - page * itemInv.pageCap;
 			itemInv.page = page;
-			itemInv.focus(currIndex);
-			redraw();
+			itemInv.setIndex(currIndex);
+			itemInv.drawContent();
 			setTimeout(function () {
 				core.ui.closePanel();
 				core.useItem(itemId, false, core.replay);
@@ -2750,13 +2914,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return true;
 			}
 			core.ui._drawEquipbox(0);
-			const { itemId, itemInv } = globalUI;
+			const { itemId, itemInv, equipSlots } = UI;
 			const totalIndex = itemInv.allItemList.indexOf(itemId);
 			const page = Math.max(Math.ceil(totalIndex / itemInv.pageCap) - 1, 0);
 			const currIndex = totalIndex - page * itemInv.pageCap;
 			itemInv.page = page;
-			itemInv.focus(currIndex);
-			redraw();
+			itemInv.setIndex(currIndex);
+			itemInv.drawContent();
+			equipSlots.drawContent();
 			setTimeout(function () {
 				core.ui.closePanel();
 				core.loadEquip(equipId, callbackFunc);
@@ -2773,7 +2938,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			const callback = function () {
-				redraw();
+				UI.redraw();
 				core.ui.closePanel();
 				const next = core.status.replay.toReplay[0] || "";
 				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
@@ -2789,11 +2954,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.unloadEquip(equipType, callback);
 				return true;
 			}
-			const itemInv = globalUI.itemInv;
+			const { itemInv, equipSlots } = UI;
 			const page = Math.max(Math.ceil(equipType / itemInv.pageCap) - 1, 0);
 			const currIndex = equipType - page * itemInv.pageCap;
 			itemInv.page = page;
-			itemInv.focus(currIndex);
+			itemInv.setIndex(currIndex);
+			itemInv.drawContent();
+			equipSlots.drawContent();
 			core.ui._drawEquipbox(0);
 			setTimeout(function () {
 				core.unloadEquip(equipType, callback);
@@ -2807,7 +2974,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 复写control.startReplay
 		const oriStartReplay = core.control.startReplay; // 进入播放录像模式时清空道具栏选中目标的缓存
 		core.control.startReplay = function (list) {
-			clearItemBoxCache();
+			UI.clearItemBoxCache();
 			oriStartReplay.apply(core.control, [list, ...arguments]);
 		}
 
@@ -2842,8 +3009,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (name === "equips") continue;
 					list = list.concat(Object.keys(core.status.hero.items[name])); // 获取'constants'和'tools'整体的列表
 				}
-			}
-			else if (core.status.hero.items[cls]) {
+			} else if (core.status.hero.items[cls]) {
 				list = Object.keys(core.status.hero.items[cls] || {});
 			}
 			const markedList = list.filter((itemId) => markedItems.includes(itemId)).sort(sortFunc),
@@ -2861,111 +3027,85 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const originResize = core.control.resize;
 		core.control.resize = function () {
 			originResize.apply(core.control, arguments);
-			const { _back, _itemInv, _equipChangeBoard, _itemInfoBoard } = globalUI;
+			const { _back, _itemInv, _equipSlots: _equipChangeBoard, _itemInfo: _itemInfoBoard } = UI;
 			[_back, _itemInv, _equipChangeBoard, _itemInfoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
 		}
 
 		// #endregion
-		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase } = core.plugin.uiBase;
+		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, KeyCodeEnum } = core.plugin.uiBase;
 		// #region 绘制用到的按钮类
 
+		/** 隐藏物品的按钮 */
 		class HideBtn extends RoundBtn {
 			constructor(x, y, w, h, config) {
 				super(x, y, w, h, '隐藏', config);
-				const oriDraw = this.draw;
-				this.draw = () => {
-					const itemId = globalUI.itemId;
-					if (core.material.items[itemId]) {
-						const hideInfo = core.getFlag('hideInfo', {});
-						if (hideInfo.hasOwnProperty(itemId)) this.text = hideInfo[itemId] ? "显示" : "隐藏";
-						else this.text = core.material.items[itemId].hideInToolbox ? "显示" : "隐藏";
-					}
-					oriDraw();
+			}
+
+			draw() {
+				const itemId = UI.itemId;
+				if (core.material.items[itemId]) {
+					const hideInfo = core.getFlag('hideInfo', {});
+					if (hideInfo.hasOwnProperty(itemId)) this.text = hideInfo[itemId] ? "显示" : "隐藏";
+					else this.text = core.material.items[itemId].hideInToolbox ? "显示" : "隐藏";
 				}
+				super.draw();
 			}
 		}
 
+		/** 置顶物品的按钮 */
 		class MarkBtn extends RoundBtn {
 			constructor(x, y, w, h, config) {
-				super(x, y, w, h, '隐藏', config);
-				const oriDraw = this.draw;
-				this.draw = () => {
-					const itemId = globalUI.itemId;
-					const markedItems = core.getFlag('markedItems', []);
-					this.text = markedItems.includes(itemId) ? "取消" : "置顶";
-					oriDraw();
-				}
+				super(x, y, w, h, '置顶', config);
+			}
+
+			draw() {
+				const itemId = UI.itemId;
+				const markedItems = core.getFlag('markedItems', []);
+				this.text = markedItems.includes(itemId) ? "取消" : "置顶";
+				super.draw();
 			}
 		}
 
+		/** 切换到显示指定分类的物品(如：永久,消耗)的模式的按钮 */
 		class ClassifyBtn extends RoundBtn {
 			constructor(x, y, w, h, text, subType, config) {
 				super(x, y, w, h, text, config);
 				this.subType = subType;
-				const oriDraw = this.draw;
-				this.draw = () => {
-					const { type, toolInv } = globalUI;
-					if (type === 'equips') return;
-					if (toolInv.subType === this.subType) this.status = 'selected';
-					else this.status = "none";
-					oriDraw();
-				}
-				this.event = () => {
-					const { type, toolInv } = globalUI;
-					if (type === 'equips') return;
-					if (toolInv.subType !== this.subType) {
-						const oldConfig = toolInv.cache[toolInv.subType],
-							newConfig = toolInv.cache[this.subType];
-						oldConfig.page = toolInv.page;
-						oldConfig.index = toolInv.index;
-						toolInv.page = newConfig.page;
-						toolInv.index = newConfig.index;
-						toolInv.subType = this.subType;
-						toolInv.updateItemList();
-						toolInv.focus(toolInv.index);
-						redraw(true);
-					}
-				};
+			}
+
+			draw() {
+				const { type, toolInv } = UI;
+				if (type === 'equips') return;
+				if (toolInv.subType === this.subType) this.status = 'selected';
+				else this.status = "none";
+				super.draw();
 			}
 		}
 
+		/** 控制是否显示隐藏物品的按钮 */
 		class ShowHideBtn extends ButtonBase {
-			constructor(x, y, w, h) {
-				super(x, y, w, h)
-				this.draw = () => {
-					const ctx = this.ctx;
-					const squareSize = this.h;
-					core.strokeRect(ctx, this.x, this.y, squareSize, squareSize, 'black');
-					core.fillRect(ctx, this.x + 1, this.y + 1, squareSize - 2, squareSize - 2, 'white');
-					const font = core.ui._buildFont(this.h - 4);
-					core.setTextAlign(ctx, 'left');
-					core.setTextBaseline(ctx, 'middle');
-					if (core.hasFlag('showHideItem')) core.fillText(ctx, '√', this.x + 3, this.y + 10, 'red', font);
-					core.fillText(ctx, '查看隐藏', this.x + squareSize + 6, this.y + 10, 'white', font);
-				};
-
-				this.event = () => {
-					const itemInv = globalUI.itemInv;
-					core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
-					itemInv.updateItemList();
-					redraw();
-				}
+			draw() {
+				const ctx = this.ctx;
+				const squareSize = this.h;
+				core.strokeRect(ctx, this.x, this.y, squareSize, squareSize, 'black');
+				core.fillRect(ctx, this.x + 1, this.y + 1, squareSize - 2, squareSize - 2, 'white');
+				const font = core.ui._buildFont(this.h - 4);
+				core.setTextAlign(ctx, 'left');
+				core.setTextBaseline(ctx, 'middle');
+				if (core.hasFlag('showHideItem')) core.fillText(ctx, '√', this.x + 3, this.y + 10, 'red', font);
+				core.fillText(ctx, '查看隐藏', this.x + squareSize + 6, this.y + 10, 'white', font);
 			}
 		}
 
 		/** 切换道具栏和装备栏的按钮 */
 		class SwitchBtn extends IconBtn {
 			constructor(x, y, w, h, config) {
-				super(x, y, w, h, '', config);
-				const oriDraw = this.draw;
-				this.draw = () => {
-					this.icon = (globalUI.type === 'all') ? 'toolbox' : 'equipbox';
-					oriDraw();
-				}
-				this.event = () => {
-					switchType();
-					redraw(true);
-				}
+				super(x, y, w, h, 'toolbox', config);
+			}
+
+			draw() {
+				this.icon = (UI.type === 'all') ? 'toolbox' : 'equipbox';
+				super.draw();
 			}
 		}
 
@@ -2973,83 +3113,57 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor(x, y, w, h, dir, config) {
 				super(x, y, w, h);
 				this.config = config || {};
-				/** @type {'left'|'right'} */this.dir = dir;
-				this.draw = () => {
-					const { marginLeft = 6, marginTop = 5, marginRight = 4,
-						backStyle = 'gray', arrowStyle = 'black'
-					} = this.config || {};
-					const ctx = this.ctx;
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, backStyle);
-					if (this.dir === 'left')
-						core.fillPolygon(ctx, [[this.x + this.w - marginLeft, this.y + marginTop], [this.x + this.w - marginLeft, this.y + this.h - marginTop],
-						[this.x + marginRight, this.y + this.h / 2]], arrowStyle);
-					else if (this.dir === 'right')
-						core.fillPolygon(ctx, [[this.x + marginLeft, this.y + marginTop], [this.x + marginLeft, this.y + this.h - marginTop],
-						[this.x + this.w - marginRight, this.y + this.h / 2]], arrowStyle);
-					core.setAlpha(ctx, 1);
-				};
+				/** @type {'left'|'right'} */
+				this.dir = dir;
+			}
+
+			draw() {
+				const {
+					marginLeft = 6, marginTop = 5, marginRight = 4,
+					backStyle = 'gray', arrowStyle = 'black'
+				} = this.config || {};
+				const ctx = this.ctx;
+				core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, backStyle);
+				if (this.dir === 'left')
+					core.fillPolygon(ctx, [
+						[this.x + this.w - marginLeft, this.y + marginTop],
+						[this.x + this.w - marginLeft, this.y + this.h - marginTop],
+						[this.x + marginRight, this.y + this.h / 2]
+					], arrowStyle);
+				else if (this.dir === 'right')
+					core.fillPolygon(ctx, [
+						[this.x + marginLeft, this.y + marginTop],
+						[this.x + marginLeft, this.y + this.h - marginTop],
+						[this.x + this.w - marginRight, this.y + this.h / 2]
+					], arrowStyle);
+				core.setAlpha(ctx, 1);
 			}
 		}
-		/** 物品背包的单个道具选框 */
-		class ItemBox extends ButtonBase {
-			constructor(x, y, w, h) {
-				super(x, y, w, h);
-				/** @type {ItemInventory} */this.menu;
-				this.draw = () => {
-					const menu = this.menu;
-					const ctx = this.ctx;
-					const itemId = menu.currItemList[this.key];
-					const y = this.y;
 
-					const item = core.material.items[itemId] || {};
-					const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
-
-					// 被隐藏的道具在显示时需要半透明
-					const hideInfo = core.getFlag('hideInfo', {});
-					if (item && (hideInfo.hasOwnProperty(itemId) ? hideInfo[itemId] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
-
-					// 绘制物品图标
-					if (core.material.items[itemId]) core.drawIcon(ctx, itemId, 4, this.y + 6, 18, 18);
-
-					core.setTextAlign(ctx, "right");
-					core.setTextBaseline(ctx, "middle");
-					// 绘制物品数量 ×几
-					const numText = "×" + num;
-					core.fillText(ctx, numText, 220, y + menu.oneItemHeight / 2, 'white', '18px Verdana');
-
-					// 绘制物品名称
-					const markedItems = core.getFlag('markedItems', []);
-					const name = item.name || "???";
-					core.setTextAlign(ctx, "left");
-					core.fillText(ctx, name, 24, this.y + menu.oneItemHeight / 2, markedItems.includes(itemId) ? 'gold' : 'white', '18px Verdana', 180);
-					core.setAlpha(ctx, 1);
-				}
-
-				this.event = () => { this.menu.triggerItem(); };
-			}
-		}
 		/** 切换装备面板的单个装备选框 */
 		class EquipBox extends ButtonBase {
 			constructor(x, y, w, h) {
 				super(x, y, w, h);
-				/** @type {EquipChangeBoard} */this.menu;
-				this.draw = () => {
-					const ctx = this.ctx;
-					const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-					const space = 2, lineWidth = 2, squareSize = w;
-					const equipId = core.getEquip(this.menu.getTotalIndex(this.key));
-					if (equipId) core.drawIcon(ctx, equipId, x + 4, y + 4, squareSize - 8, squareSize - 8);
-					const color = (globalUI.selectType === 'equipBox' && this.menu.index === this.key) ? 'gold' : 'white';
-					core.strokeRect(ctx, x, y, squareSize, squareSize, color, lineWidth);
-					core.setTextAlign(ctx, "center");
-					core.setTextBaseline(ctx, "top");
-					const tx = x + w / 2,
-						ty = y + squareSize + space;
-					core.fillText(ctx, this.menu.currItemList[this.key], tx, ty, color, '14px Verdana');
-				};
-				this.event = () => {
-					this.menu.triggerItem();
-				};
+				/** @type {EquipSlots} */ // @ts-ignore
+				this.menu;
+				this.key = -1;
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				const space = 2,
+					lineWidth = 2,
+					squareSize = w;
+				const equipId = core.getEquip(this.menu.getTotalIndex(this.key));
+				if (equipId) core.drawIcon(ctx, equipId, x + 4, y + 4, squareSize - 8, squareSize - 8);
+				const color = (UI.selectType === 'equipBox' && this.menu.index === this.key) ? 'gold' : 'white';
+				core.strokeRect(ctx, x, y, squareSize, squareSize, color, lineWidth);
+				core.setTextAlign(ctx, "center");
+				core.setTextBaseline(ctx, "top");
+				const tx = x + w / 2,
+					ty = y + squareSize + space;
+				core.fillText(ctx, this.menu.currItemList[this.key], tx, ty, color, '14px Verdana');
 			}
 		}
 
@@ -3059,98 +3173,86 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 道具栏/装备栏的背景
 		class ItemBoxBack extends MenuBase {
 			constructor() {
-				super('itemBoxBack'); // 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
-				this.keyEvent = (keyCode) => {
-					const { type, selectType, itemInv, equipChangeBoard } = globalUI;
-					if (keyCode === 37) { // left	
-						if (selectType === 'toolBox') itemInv.pageDown();
-						else if (selectType === 'equipBox') {
-							if (equipChangeBoard.index === 0) {
-								equipChangeBoard.pageDown();
-							}
-							else equipChangeBoard.focus(equipChangeBoard.index - 1);
+				// 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
+				super('itemBoxBack', ['ondown', 'keyDown', 'keyUp'], null, null, null, null, 136);
+			}
+
+			keyDownEvent(keyCode) {
+				const { type, selectType, itemInv, equipSlots } = UI;
+				if (keyCode === KeyCodeEnum.Left) { // left	
+					if (selectType === 'toolBox') itemInv.pageDown();
+					else if (selectType === 'equipBox') {
+						if (equipSlots.index === 0) {
+							equipSlots.pageDown();
+						} else {
+							equipSlots.setIndex(equipSlots.index - 1);
 						}
 					}
-					else if (keyCode === 39) { // right		
-						if (selectType === 'toolBox') itemInv.pageUp();
-						else if (selectType === 'equipBox') {
-							if (equipChangeBoard.index === equipChangeBoard.currItemList.length - 1) {
-								equipChangeBoard.pageUp();
-							}
-							else equipChangeBoard.focus(equipChangeBoard.index + 1);
+				} else if (keyCode === KeyCodeEnum.Right) { // right		
+					if (selectType === 'toolBox') itemInv.pageUp();
+					else if (selectType === 'equipBox') {
+						if (equipSlots.index === equipSlots.currItemList.length - 1) {
+							equipSlots.pageUp();
+						} else {
+							equipSlots.setIndex(equipSlots.index + 1);
 						}
 					}
-					else if (keyCode === 38) { // up
-						if (selectType === 'toolBox') {
-							if (itemInv.index === 0) {
-								if (type === 'equips') { // 在仅物品栏模式下点上键到顶，切换到上一页，否则会切换到装备栏
-									equipChangeBoard.focus(equipChangeBoard.currItemList.length - 1);
-								}
-								else {
-									itemInv.pageDown(); // 向上到顶将翻到上一页
-								}
+				} else if (keyCode === KeyCodeEnum.Up) { // up
+					if (selectType === 'toolBox') {
+						if (itemInv.index === 0) {
+							if (type === 'equips') { // 在仅物品栏模式下点上键到顶，切换到上一页，否则会切换到装备栏
+								equipSlots.setIndex(equipSlots.currItemList.length - 1);
+							} else {
+								itemInv.pageDown(); // 向上到顶将翻到上一页
 							}
-							else {
-								itemInv.focus(itemInv.index - 1);
-								redraw();
-							}
+						} else {
+							itemInv.setIndex(itemInv.index - 1);
 						}
-						else if (selectType === 'equipBox') {
-							if (equipChangeBoard.index >= equipChangeBoard.rowMax) {
-								equipChangeBoard.index -= equipChangeBoard.rowMax;
-								redraw();
-							}
+					} else if (selectType === 'equipBox') {
+						if (equipSlots.index >= equipSlots.rowMax) {
+							equipSlots.index -= equipSlots.rowMax;
 						}
 					}
-					else if (keyCode === 40) { // down
-						if (selectType === 'toolBox') {
-							if (itemInv.index < itemInv.currItemList.length - 1) {
-								itemInv.focus(itemInv.index + 1);
-							}
-							else {
-								itemInv.pageUp(); // 向下到底将翻到下一页
-							}
+				} else if (keyCode === KeyCodeEnum.Down) { // down
+					if (selectType === 'toolBox') {
+						if (itemInv.index < itemInv.currItemList.length - 1) {
+							itemInv.setIndex(itemInv.index + 1);
+						} else {
+							itemInv.pageUp(); // 向下到底将翻到下一页
 						}
-						else if (selectType === 'equipBox') {
-							let newIndex = equipChangeBoard.index + equipChangeBoard.rowMax;
-							if (newIndex < equipChangeBoard.currItemList.length - 1) {
-								equipChangeBoard.focus(newIndex);
-							}
-							else {
-								equipChangeBoard.focus(0);
-							}
+					} else if (selectType === 'equipBox') {
+						let newIndex = equipSlots.index + equipSlots.rowMax;
+						if (newIndex < equipSlots.currItemList.length - 1) {
+							equipSlots.setIndex(newIndex);
+						} else {
+							equipSlots.setIndex(0);
 						}
 					}
-				};
-				this.keyUpEvent = (keyCode, altKey) => {
-					const { itemId, selectType, itemInv, equipChangeBoard } = globalUI;
-					if (keyCode === 81) { // Q
-						if (globalUI.type === "equips") exit();
-						else switchType();
+				}
+			}
+
+			keyUpEvent(keyCode, altKey) {
+				const { itemId, selectType, itemInv, equipSlots: equipChangeBoard } = UI;
+				if (keyCode === KeyCodeEnum.Q) { // Q
+					if (UI.type === "equips") UI.exit();
+					else UI.switchType();
+				} else if (keyCode === KeyCodeEnum.T) { // T
+					if (UI.type === "all") UI.exit();
+					else UI.switchType();
+				} else if (keyCode === KeyCodeEnum.BackSpace || keyCode === KeyCodeEnum.Esc) { // BackSpace/Esc
+					UI.exit();
+				} else if (keyCode === KeyCodeEnum.Enter || keyCode === KeyCodeEnum.SpaceBar || keyCode === KeyCodeEnum.C) { // Enter/SpaceBar/C
+					if (selectType === "toolBox") {
+						if (core.material.items[itemId]) itemInv.triggerItem();
+					} else if (selectType === "equipBox") {
+						equipChangeBoard.triggerItem();
+						UI.redraw();
+					} else {
+						itemInv.setIndex(0);
 					}
-					else if (keyCode === 84) { // T
-						if (globalUI.type === "all") exit();
-						else switchType();
-					}
-					else if (keyCode === 8 || keyCode === 27) { // BackSpace/Esc
-						exit();
-					}
-					else if (keyCode === 13 || keyCode === 32 || keyCode === 67) { // Enter/SpaceBar/C
-						if (selectType === "toolBox") {
-							if (core.material.items[itemId]) itemInv.triggerItem();
-						}
-						else if (selectType === "equipBox") {
-							equipChangeBoard.triggerItem();
-							redraw();
-						}
-						else {
-							itemInv.focus(0);
-						}
-					}
-					else if (altKey && keyCode >= 48 && keyCode <= 57) { // 都有自动切装了还有神人想要这个Alt换装 服了
-						core.items.quickSaveEquip(keyCode - 48);
-						return;
-					}
+				} else if (altKey && keyCode >= 48 && keyCode <= 57) { // 都有自动切装了还有神人想要这个Alt换装 服了
+					core.items.quickSaveEquip(keyCode - 48);
+					return;
 				}
 			}
 
@@ -3164,16 +3266,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.strokeRoundRect(ctx, 2, 2, 412, 412, 5, 'white', 2);
 				core.fillRoundRect(ctx, 3, 3, 410, 410, 5, 'rgb(108, 187, 219)');
 				core.drawLine(ctx, 248, 3, 248, 413, 'white', 2); // 左栏和右栏的分界线
-				if (globalUI.type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
+				if (UI.type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
 			}
 		}
 
-		// selectType采用一套新的逻辑来判定 
-
 		// 物品列表和换装界面的共用基类 
-		class ItemBoxBase extends MenuBase {
+		class ItemListBase extends MenuBase {
 			constructor(name, x, y, w, h, zIndex) {
-				super(name, x, y, w, h, zIndex);
+				super(name, ['ondown', 'onmove'], x, y, w, h, zIndex);
 				/** 当前页 */
 				this.page = 0;
 				/** 一页最多可容纳的道具数量 */
@@ -3186,37 +3286,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.currItemList = [];
 				/** 当前选中了第几个道具 */
 				this.index = 0;
-				/** 当前选中的道具的名称 */
-				this.itemId = '';
-
-				this.clickEvent = (x, y, rawpx, rawpy) => {
-					if (!this.isPosValid(rawpx, rawpy)) return;
-					const [px, py] = this.convertCoordinate(rawpx, rawpy);
-					this.btnList.forEach((btn) => {
-						if (btn.disable) return;
-						if (btn.inRange(px, py)) {
-							if (btn instanceof ItemBox || btn instanceof EquipBox) {
-								if (btn.key !== this.index) this.focus(btn.key);
-								else btn.event();
-							}
-							else if (btn instanceof ArrowBtn) btn.event(x, y, px, py);
-						}
-					});
-				}
-				this.onMoveEvent = (x, y, rawpx, rawpy) => {
-					if (!this.isPosValid(rawpx, rawpy)) return;
-					const [px, py] = this.convertCoordinate(rawpx, rawpy);
-					this.btnList.forEach((btn) => {
-						if (btn.disable) return;
-						if (btn.inRange(px, py)) {
-							if (btn instanceof ItemBox || btn instanceof EquipBox) {
-								if (btn.key !== this.index ||
-									(this instanceof EquipChangeBoard && globalUI.type !== 'equips') ||
-									(this instanceof ItemBoxBase && globalUI.type !== 'all')) this.focus(btn.key);
-							}
-						}
-					});
-				}
 			}
 
 			/** 
@@ -3225,7 +3294,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			 */
 			getItemList() { return []; }
 
-			/** @abstract 尝试使用当前选中的物品 */
+			/** 
+			 * @abstract 尝试使用当前选中的物品 
+			 */
 			triggerItem() { }
 
 			/** 更新物品列表 */
@@ -3234,28 +3305,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
 				if (this.pageMax < 1) this.pageMax = 1;
 				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
-				if (this.index >= this.currItemList.length) this.index = 0;
-				this.itemId = this.currItemList[this.index];
-			}
-
-			/** 聚焦于指定序号的按钮，并重绘画面 */
-			focus(index) {
-				this.index = index;
-				if (this instanceof EquipChangeBoard) {
-					this.itemId = core.status.hero.equipment[this.getTotalIndex()];
-					globalUI.selectType = 'equipBox';
-					globalUI.equipInv.index = -1;
-				}
-				else {
-					this.itemId = this.currItemList[this.index];
-					globalUI.selectType = 'toolBox';
-					if (this instanceof EquipInventory) globalUI.equipChangeBoard.index = -1;
-				}
-				this.btnList.forEach(btn => {
-					btn.status = (btn.key === this.index) ? 'selected' : 'none'
-				});
-				globalUI.itemId = this.itemId;
-				redraw();
+				if (this.index >= this.currItemList.length) this.index = this.currItemList.length - 1;
+				// this.itemId = this.currItemList[this.index];
 			}
 
 			canPageUp() {
@@ -3266,29 +3317,69 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return this.page > 0;
 			}
 
+			/** 翻页，更新物品列表，并重绘该菜单自身 */
 			pageUp() {
 				if (!this.canPageUp()) return;
 				this.page++;
+				if (this.index >= this.currItemList.length) {
+					this.index = this.currItemList.length - 1;
+				}
 				this.updateItemList();
-				this.focus((this.index < this.currItemList.length) ? this.index : 0);
+				this.drawContent();
 			}
 
+			/** 翻页，更新物品列表，并重绘该菜单自身 */
 			pageDown() {
 				if (!this.canPageDown()) return;
 				this.page--;
 				this.updateItemList();
-				this.focus(this.index);
+				this.drawContent();
 			}
 		}
 
 		/** 展示角色当前已穿戴的装备的面板 */
-		class EquipChangeBoard extends ItemBoxBase {
+		class EquipSlots extends ItemListBase {
 			constructor(x, y, w, h, zIndex) {
 				super('equipChangeBoard', x, y, w, h, zIndex);
 				this.columnMax = 4;
 				this.rowMax = 2;
 				this.pageCap = this.columnMax * this.rowMax;
 				this.updateItemList();
+				const currNameList = this.currItemList;
+
+				const columnCount = Math.min(currNameList.length, this.columnMax), // 判断装备孔数量是否小于最大列数
+					rowCount = Math.min(Math.ceil(currNameList.length / this.columnMax), this.rowMax);
+				const [boxWidth, boxHeight] = [36, 52];
+				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
+					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
+				let [xi, yi] = [spaceX, spaceY];
+
+				// 装备孔的按钮在这里注册
+				for (let i = 0; i < this.pageCap; i++) {
+					if (!this.btnMap.has(i)) {
+						const btn = new EquipBox(xi, yi, boxWidth, boxHeight);
+						this.registerBtn(i, btn, {
+							ondown: function () {
+								if (this.index !== i) {
+									this.setIndex(i);
+								} else this.triggerItem(i);
+							}.bind(this),
+							onmove: function () {
+								if (this.index !== i) {
+									this.setIndex(i);
+								}
+							}.bind(this),
+						});
+						if ((i >= this.currItemList.length)) btn.disable = true;
+					} else {
+						const btn = this.btnMap.get(i);
+						if (btn) btn.disable = (i >= this.currItemList.length);
+					}
+					if ((i + 1) % this.columnMax === 0) {
+						xi = spaceX;
+						yi += spaceY + boxHeight;
+					} else { xi += spaceX + boxWidth; }
+				}
 			}
 
 			drawContent() {
@@ -3298,68 +3389,69 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.setTextBaseline(ctx, "alphabetic");
 					core.fillText(ctx, this.page + 1 + '/' + this.pageMax, this.w / 2, this.h - 2, 'white', '12px Verdana');
 				}
-
-				const currNameList = this.currItemList;
-				const columnCount = Math.min(currNameList.length, this.columnMax),  // 判断装备孔数量是否小于最大列数
-					rowCount = Math.min(Math.ceil(currNameList.length / this.columnMax), this.rowMax);
-				const [boxWidth, boxHeight] = [36, 52];
-				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
-					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
-				let [x, y] = [spaceX, spaceY];
-
-				for (let i = 0; i < this.pageCap; i++) {
-					if (!this.btnList.has(i)) {
-						const btn = new EquipBox(x, y, boxWidth, boxHeight);
-						this.addBtnList(i, btn);
-					}
-					else {
-						const btn = this.btnList.get(i);
-						if (btn) btn.disable = (i >= this.currItemList.length);
-					}
-					if ((i + 1) % this.columnMax === 0) {
-						x = spaceX;
-						y += spaceY + boxHeight;
-					}
-					else x += spaceX + boxWidth;
-				}
+				// 切装面板只有1页时不激活翻页按钮
 				if (this.allItemList.length < this.pageCap) {
-					const pgDown = this.btnList.get('pgDown');
-					const pgUp = this.btnList.get('pgUp');
+					const pgDown = this.btnMap.get('pgDownBtn');
+					const pgUp = this.btnMap.get('pgUpBtn');
 					if (pgDown) pgDown.disable = true;
 					if (pgUp) pgUp.disable = true;
 				}
+
 				super.drawContent();
 			}
+
 			/**  注意，对于装备切换面板来说，它的装备列表不是装备本身，而是角色的装备孔 */
 			getItemList() {
 				return core.status.globalAttribute.equipName;
 			}
 
+			/** @param {number} index 根据当前页选中的序号换算对应装备在角色装备中的总序号 */
 			getTotalIndex(index) {
 				if (index == null) index = this.index;
 				return this.page * this.pageCap + index;
 			}
 
+			/** @param {number} index */
 			changePageByTotalIndex(index) {
 				const newPage = Math.floor(index / this.pageCap);
 				this.page = newPage;
 				this.updateItemList();
 			}
 
-			triggerItem() {
-				const index = this.getTotalIndex();
-				if (core.status.hero.equipment[index]) {
-					core.unloadEquip(index);
-					core.status.route.push("unEquip:" + index);
+			/** 脱下指定位置的装备 */
+			triggerItem(index) {
+				const totalIndex = this.getTotalIndex(index);
+				if (core.status.hero.equipment[totalIndex]) {
+					core.unloadEquip(totalIndex);
+					core.status.route.push("unEquip:" + totalIndex);
 					this.updateItemList();
-					globalUI.itemInv.updateItemList(); //穿脱装备是双向的过程，装备栏和道具栏的物品列表组成都会变
-					redraw();
+					this.drawContent();
+					UI.itemInv.updateItemList(); //穿脱装备是双向的过程，装备栏和道具栏的物品列表组成都会变
+					UI.itemInv.drawContent();
+					UI.itemId = '';
 				}
+			}
+
+			setIndex(index) {
+				this.index = index;
+				UI.equipInv.index = -1;
+				core.ui.clearUIEventSelector(1);
+				// 被选中的装备框变色
+				this.btnMap.forEach((ele, key) => {
+					if (ele instanceof EquipBox) {
+						if (key === index) ele.status = 'selected';
+						else ele.status = 'none';
+					}
+				})
+				UI.selectType = 'equipBox';
+				const totalIndex = this.getTotalIndex(index);
+				UI.itemId = core.status.hero.equipment[totalIndex];
+				this.drawButtonContent();
 			}
 		}
 
 		/** 展示角色当前背包物品的面板，有道具/装备两种模式 */
-		class ItemInventory extends ItemBoxBase {
+		class InventoryBase extends ItemListBase {
 			constructor(name, x, y, w, h, zIndex) {
 				super(name, x, y, w, h, zIndex);
 
@@ -3371,30 +3463,91 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			drawContent() {
 				const ctx = this.createCanvas();
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				const [w, h] = [this.w, this.h];
 				core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
 
 				core.setTextBaseline(ctx, "middle");
-				for (let i = 0; i < this.pageCap; i++) {
-					const btn = this.btnList.get(i);
-					if (btn && btn instanceof ItemBox) btn.disable = i >= this.currItemList.length;
+				for (let i = 0; i < this.currItemList.length; i++) {
+					this.drawOneItem(i);
 				}
 				core.setTextAlign(ctx, "center");
 				core.setTextBaseline(ctx, "alphabetic");
 				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, h - 4, 'white', '12px Verdana');
-				if (globalUI.selectType === 'toolBox') { // 光标绘制是绝对坐标
-					core.drawUIEventSelector(1, 'winskin.png', x, y + this.index * this.oneItemHeight, w, this.oneItemHeight, 140);
-				} else core.clearUIEventSelector(1);
 				super.drawContent();
+			}
+
+			drawOneItem(currIndex) {
+				const itemId = this.currItemList[currIndex];
+				const ctx = core.dymCanvas[this.name];
+				const y = this.oneItemHeight * currIndex;
+
+				const item = core.material.items[itemId] || {};
+				const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
+
+				// 被隐藏的道具在显示时需要半透明
+				const hideInfo = core.getFlag('hideInfo', {});
+				if (item && (hideInfo.hasOwnProperty(itemId) ? hideInfo[itemId] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
+
+				// 绘制物品图标
+				if (core.material.items[itemId]) core.drawIcon(ctx, itemId, 4, y + 6, 18, 18);
+
+				core.setTextAlign(ctx, "right");
+				core.setTextBaseline(ctx, "middle");
+				// 绘制物品数量 ×几
+				const numText = "×" + num;
+				core.fillText(ctx, numText, 220, y + this.oneItemHeight / 2, 'white', '18px Verdana');
+
+				// 绘制物品名称
+				const markedItems = core.getFlag('markedItems', []);
+				const name = item.name || "???";
+				core.setTextAlign(ctx, "left");
+				core.fillText(ctx, name, 24, y + this.oneItemHeight / 2, markedItems.includes(itemId) ? 'gold' : 'white', '18px Verdana', 180);
+				core.setAlpha(ctx, 1);
 			}
 
 			clear() {
 				core.clearUIEventSelector(1);
 				super.clear();
 			}
+
+			/** 绘制选中物品的光标，在selectType或index改变时自动执行绘制/擦除 */
+			drawSelector(index) {
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h]; // 光标绘制是绝对坐标
+				core.drawUIEventSelector(1, 'winskin.png', x, y + index * this.oneItemHeight, w, this.oneItemHeight, 140);
+			}
+
+			/** 选中指定序号的位置，改变选中道具的ID，重绘光标 */
+			setIndex(index) {
+				this.index = index;
+				if (UI.type === 'equips') {
+					UI.equipSlots.index = -1;
+					UI.equipSlots.drawButtonContent(); // 清除装备栏的选中状态
+				}
+				this.drawSelector(index);
+				UI.selectType = 'toolBox';
+				UI.itemId = this.currItemList[index];
+			}
+
+			ondownEvent(_x, _y, px, py) {
+				const index = Math.floor(py / this.oneItemHeight);
+				if (index < 0 || index >= this.pageCap) return;
+				if (UI.selectType !== 'toolBox' || this.index !== index) {
+					this.setIndex(index);
+				} else {
+					this.triggerItem();
+				}
+			}
+
+			onmoveEvent(_x, _y, px, py) {
+				const index = Math.floor(py / this.oneItemHeight);
+				if (index < 0 || index >= this.pageCap) return;
+				if (UI.selectType !== 'toolBox' || this.index !== index) {
+					this.setIndex(index);
+				}
+			}
 		}
 
-		class ToolInventory extends ItemInventory {
+		class ToolInventory extends InventoryBase {
 			constructor(x, y, w, h, zIndex) {
 				super('toolInventory', x, y, w, h, zIndex);
 				/** @type {'all'|'tools'|'constants'} 当前显示哪个子菜单 */
@@ -3413,20 +3566,37 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			triggerItem() {
-				const itemId = this.itemId;
+				const itemId = UI.itemId;
 				if (!core.canUseItem(itemId) && itemId !== 'centerFly') {
 					core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
 					return;
 				}
-				clearAll();
+				UI.clearAll();
 				setTimeout(() => {
 					core.unlockControl();
 					core.tryUseItem(itemId);
 				}, 0);
 			}
+
+			/** 物品栏仅显示指定类型物品 */
+			classfiy(subType) {
+				if (this.subType !== subType) {
+					const oldConfig = this.cache[this.subType],
+						newConfig = this.cache[subType];
+					oldConfig.page = this.page;
+					oldConfig.index = this.index;
+					this.page = newConfig.page;
+					this.index = newConfig.index;
+					this.subType = subType;
+					this.updateItemList();
+					this.setIndex(this.index);
+					this.drawContent();
+					UI.back.drawContent(); // 切换物品栏类型时需要重绘背景
+				}
+			}
 		}
 
-		class EquipInventory extends ItemInventory {
+		class EquipInventory extends InventoryBase {
 			constructor(x, y, w, h, zIndex) {
 				super('equipInventory', x, y, w, h, zIndex);
 			}
@@ -3436,33 +3606,35 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			triggerItem() {
-				const equip = this.itemId;
+				const equip = UI.itemId;
 				if (!core.canEquip(equip, true)) return;
 				const equipPos = core.getEquipTypeById(equip);
-				globalUI.equipChangeBoard.changePageByTotalIndex(equipPos);
+				UI.equipSlots.changePageByTotalIndex(equipPos);
 				core.loadEquip(equip);
-				core.status.route.push("equip:" + equip); // 注意focus会导致itemId改变
-				this.updateItemList(); // 穿上装备会导致道具数量变化，并且需要重新锁定当前选中的道具
-				this.focus(this.index);
+				core.status.route.push("equip:" + equip);
+				this.updateItemList(); // 穿上装备会导致道具数量变化，需要重新生成装备列表
+				this.setIndex(this.index);
+				this.drawContent();
+				UI.equipSlots.drawContent();
 			}
 		}
 
 		class ItemInfoBox extends MenuBase {
 			constructor(x, y, w, h) {
-				super('itemInfoBox', x, y, w, h, 137);
+				super('itemInfoBox', ['ondown'], x, y, w, h, 137);
 			}
 
 			drawContent() {
 				const ctx = this.createCanvas();
 				core.strokeRoundRect(ctx, 23, 27, 32, 32, 2, 'white', 2);
-				const itemId = globalUI.itemId;
+				const itemId = UI.itemId;
 				if (itemId) core.drawIcon(ctx, itemId, 24, 28, 30, 30);
 
 				// 修改这里可以编辑未选中道具时的默认值
 				const defaultItem = { cls: "constants", name: "无道具", id: "-", text: "没有道具最永久" };
 				const defaultEquip = { cls: "equips", name: "无装备", id: "-", text: "一无所有，又何尝不是一种装备", equip: { type: "装备" } };
 				let item = core.material.items[itemId];
-				if (!item) item = (globalUI.type === 'all' ? defaultItem : defaultEquip);
+				if (!item) item = (UI.type === 'all' ? defaultItem : defaultEquip);
 				core.setTextAlign(ctx, "left");
 				core.setTextBaseline(ctx, "middle");
 				core.fillText(ctx, item.name, 66, 46, 'black', 'bold 18px Verdana', 98); // 物品名字 e.g.护符
@@ -3472,23 +3644,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillText(ctx, "ID", 20, 95, 'crimson', '14px Verdana');
 				core.fillText(ctx, item.id, 50, 95, 'rgb(47, 49, 54)', '14px Verdana');
 
-				if (globalUI.type === 'all') { // 显示物品累计使用的次数，将作为排序依据
+				if (UI.type === 'all') { // 显示物品累计使用的次数，将作为排序依据
 					core.fillText(ctx, "累计使用", 20, 113, 'crimson', '14px Verdana');
 					const itemsUsedCount = core.getFlag('itemsUsedCount', {});
 					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
 				}
 
-				const itemText = core.replaceText(item.text) + ((globalUI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
+				const itemText = core.replaceText(item.text) + ((UI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
 				core.drawTextContent(ctx, itemText, {
-					left: 20, top: 125, bold: false, color: "black",
-					align: "left", fontSize: 15, maxWidth: 150
+					left: 20,
+					top: 125,
+					bold: false,
+					color: "black",
+					align: "left",
+					fontSize: 15,
+					maxWidth: 150
 				});
 				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId);
 				// 获取快捷键设置按钮当前的图标
 
-				const setHotkeyBtn = /** @type {IconBtnClass} */(this.btnList.get('setHotkeyBtn'));
+				const setHotkeyBtn = /** @type {IconBtnClass} */ (this.btnMap.get('setHotkeyBtn'));
 				if (setHotkeyBtn) {
-					setHotkeyBtn.disable = (globalUI.type === 'equips');
+					setHotkeyBtn.disable = (UI.type === 'equips');
 					setHotkeyBtn.icon = (currItemHotKey == null) ? 'keyboard' : ('btn' + currItemHotKey);
 				}
 				super.drawContent();
@@ -3497,14 +3674,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/*** @param {Item} item */
 			getEquipCompareInfo(item) {
 				let str = '';
-				if (globalUI.type !== "equips") return str;
+				if (UI.type !== "equips") return str;
 
 				let equipType = item.equip?.type;
 				if (!equipType) return str;
 				if (typeof equipType == "string") equipType = core.getEquipTypeByName(equipType);
 				let compare;
 				/** @todo 准备卸下装备时显示卸下的比较信息 */
-				if (globalUI.selectType == "equipBox") compare = core.compareEquipment(null, item.id);
+				if (UI.selectType == "equipBox") compare = core.compareEquipment(null, item.id);
 				else compare = core.compareEquipment(item.id, core.getEquip(equipType));
 				// --- 变化值...
 				for (const name in core.status.hero) {
@@ -3521,10 +3698,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		/** 取消设置快捷键的按钮 */
+		class SetNullBtn extends ButtonBase {
+			draw() {
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				core.strokeRect(this.ctx, x, y, w, h, 'red', 2);
+				core.drawLine(this.ctx, x, y, x + w, y + h, 'red', 2);
+			}
+		}
+
 		// 为当前道具设定一个快捷键
 		class HotkeySelect extends MenuBase {
 			constructor(itemId, x, y, w, h, zIndex) {
-				super('hotkeySelect', x, y, w, h, zIndex);
+				super('hotkeySelect', ['ondown', 'keyDown'], x, y, w, h, zIndex);
 				this.itemId = itemId;
 				/** @type {number | null} null代表当前道具没有快捷键 */
 				this.hotkeyNum = HotkeySelect.getHotkeyNum(this.itemId);
@@ -3543,10 +3729,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				// 无自定义设置时样板的默认快捷键（如123分别对应破炸飞），不可在此设置
 				// 绘制指向当前快捷键的监听
 				if (this.hotkeyNum != null) {
-					const btn = this.btnList.get('btn' + this.hotkeyNum);
+					const btn = this.btnMap.get('btn' + this.hotkeyNum);
 					if (btn) {
-						core.fillPolygon(ctx, [[btn.x + 12, btn.y + btn.h + 10], [btn.x + btn.w - 12, btn.y + btn.h + 10],
-						[btn.x + btn.w / 2, btn.y + btn.h + 2]], 'black');
+						core.fillPolygon(ctx, [
+							[btn.x + 12, btn.y + btn.h + 10],
+							[btn.x + btn.w - 12, btn.y + btn.h + 10],
+							[btn.x + btn.w / 2, btn.y + btn.h + 2]
+						], 'black');
 					}
 				}
 				super.drawContent();
@@ -3574,20 +3763,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			clear() {
 				super.clear();
-				const { back, itemInv, equipChangeBoard, itemInfoBoard } = globalUI;
-				[back, itemInv, equipChangeBoard, itemInfoBoard].forEach((menu) => { menu.beginListen(); });
+				const { back, itemInv, equipSlots, itemInfo } = UI;
+				[back, itemInv, equipSlots, itemInfo].forEach((menu) => { menu.beginListen(); });
+				UI.itemInfo.drawContent(); // 快捷键图标会发生变化
 			}
 		}
+
 		/** @param {string} itemId */
 		function hotkeySelectFactory(itemId) {
 			const hotkeySelect = new HotkeySelect(itemId, 60, 100, 296, 206, 141); // 应当比物品背包的选择光标大，遮盖住前者
 			/** @type {[string, ButtonBaseClass][]} */
-			const btnList = [];
-			const setHotkeyNum = function () {
+			const btnMap = [];
+			const setHotkeyNum = function (i) {
 				const num = this.key.replace('btn', '');
 				hotkeySelect.setHotkey(num);
 				hotkeySelect.clear();
-				globalUI.itemInfoBoard.drawContent();
+				UI.itemInfo.drawContent();
 			}
 
 			const [btnSize, btnInterval] = [32, 20];
@@ -3600,26 +3791,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				let btn;
 				if (row === 1) btn = new IconBtn(leftMargin + i * (btnSize + btnInterval), 100, btnSize, btnSize, 'btn' + num, style);
 				else btn = new IconBtn(leftMargin + (i - 5) * (btnSize + btnInterval), 150, btnSize, btnSize, 'btn' + num, style);
-				btnList.push(['btn' + num, btn]);
-				btn.event = setHotkeyNum.bind(btn);
+				hotkeySelect.registerBtn('btn' + num, btn, () => setHotkeyNum(i));
 			}
-			const setNullBtn = new ButtonBase(leftMargin + 4 * (btnSize + btnInterval), 150, btnSize, btnSize);
-			setNullBtn.draw = function () {
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-				core.strokeRect(this.ctx, x, y, w, h, 'red', 2);
-				core.drawLine(this.ctx, x, y, x + w, y + h, 'red', 2);
-			}.bind(setNullBtn);
-			setNullBtn.event = function () {
+			const setNullBtn = new SetNullBtn(leftMargin + 4 * (btnSize + btnInterval), 150, btnSize, btnSize);
+			hotkeySelect.registerBtn('setNullBtn', setNullBtn, () => {
 				hotkeySelect.deleteHotkey();
 				hotkeySelect.clear();
-				globalUI.itemInfoBoard.drawContent();
-			}
+				UI.itemInfo.drawContent();
+			});
 			const exitBtn = new ExitBtn(274, 5, 16, 16, { radius: 1, lineOffsetX: 2, lineWidthX: 2 });
-			exitBtn.event = () => {
-				hotkeySelect.clear();
-			}
-			btnList.push(['setNullBtn', setNullBtn], ['exitBtn', exitBtn]);
-			hotkeySelect.initBtnList(btnList);
+			hotkeySelect.registerBtn('exitBtn', exitBtn, () => hotkeySelect.clear());
 			return hotkeySelect;
 		}
 
@@ -3637,82 +3818,36 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return core.status.globalAttribute.equipName[type];
 			} else return itemClsName[item.cls] || item.cls;
 		}
-		/** 隐藏 | 取消隐藏当前选中的物品 */
-		function hideItem(itemId) {
-			if (!itemId) return;
-			let hideInfo = core.getFlag('hideInfo', {});
-			if (hideInfo.hasOwnProperty(itemId)) {
-				hideInfo[itemId] = !hideInfo[itemId];
-			} else {
-				hideInfo[itemId] = !core.material.items[itemId].hideInToolbox;
-			}
-			core.setFlag('hideInfo', hideInfo);
-		}
-		/** 置顶 | 取消置顶当前选中的物品 */
-		function markItem(itemId) {
-			let markedItems = core.getFlag('markedItems', []);
-			if (markedItems.includes(itemId)) markedItems = markedItems.filter((currId) => currId !== itemId);
-			else markedItems.push(itemId);
-			core.setFlag('markedItems', markedItems);
-		}
-
-		/** 初始化物品栏的所有菜单 */
-		function initAll() {
-			[globalUI.back, globalUI.itemInv, globalUI.itemInfoBoard].forEach((menu) => menu.init());
-			if (globalUI.type === 'equips') globalUI.equipChangeBoard.init();
-		}
-		/** 彻底退出物品栏 */
-		function clearAll() {
-			[globalUI._back, globalUI._toolInv, globalUI._equipInv, globalUI._itemInfoBoard, globalUI._equipChangeBoard].forEach((menu) => {
-				if (menu) menu.clear();
-			});
-			core.status.event.id = null;
-		}
-
-		function exit() {
-			clearAll();
-			setTimeout(core.unlockControl, 0);
-		}
 
 		function clearItemBoxCache() {
-			globalUI.itemId = '';
-			[globalUI._toolInv, globalUI._equipInv, globalUI._equipChangeBoard].forEach((menu) => {
+			UI.itemId = '';
+			UI.selectType = 'toolBox';
+			[UI._toolInv, UI._equipInv, UI._equipSlots].forEach((menu) => {
 				if (menu) menu.index = 0;
 			});
 		} // 每次存读档，及进行录像回放时调用，清空之前选中的道具信息
 		this.clearItemBoxCache = clearItemBoxCache;
 
-		function redraw(all) {
-			globalUI.itemInv.drawContent();
-			globalUI.itemInfoBoard.drawContent();
-			if (globalUI.type === 'equips') globalUI.equipChangeBoard.drawContent();
-			if (all) globalUI.back.drawContent();
-		}
-
-		function switchType() {
-			globalUI.type = (globalUI.type === 'all') ? 'equips' : 'all';
-			if (globalUI.type === 'all') {
-				globalUI.equipChangeBoard.clear();
-				globalUI.equipInv.clear();
-			}
-			else if (globalUI.type === 'equips') {
-				globalUI.equipChangeBoard.init();
-				globalUI.toolInv.clear();
-			}
-			globalUI.itemInv.beginListen(); // 接下来再进行包括此在内全体菜单的重绘
-			globalUI.itemInv.updateItemList();
-			globalUI.itemInv.focus(globalUI.itemInv.index);
-		}
-
 		// 以下是本插件范围内的全局变量
 
-		const globalUI = {
-			/** @type {'all'|'equips'} 当前打开的物品页面是道具页还是装备页 */
+		const UI = {
+			/** 当前打开的是道具页还是装备页 
+			 * @type {'all'|'equips'} 
+			 **/
 			type: 'all',
-			/** @type {'toolBox'|'equipBox'} 当前选中的物品所在位置 */
+			/** @type {'toolBox'|'equipBox'} 当前选中了哪一个子界面（切装面板/物品栏） */
 			selectType: 'toolBox',
-			/** @type {string} 当前选中的物品ID */
-			itemId: '',
+			_itemId: '',
+			/** @type {string} 当前选中的物品ID，变化时自动触发右侧栏的信息变化 */
+			get itemId() {
+				return this._itemId;
+			},
+			set itemId(value) {
+				if (this._itemId !== value) {
+					this._itemId = value;
+					this.itemInfo.drawContent();
+				}
+			},
 			/** @type {undefined|ItemBoxBack} 物品页面的背景 */
 			_back: undefined,
 			/** @type {undefined|ToolInventory} 道具背包 */
@@ -3720,22 +3855,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/** @type {undefined|EquipInventory} 装备背包 */
 			_equipInv: undefined,
 			/** @type {undefined|ItemInfoBox} 右侧显示选中物品详细信息的页面 */
-			_itemInfoBoard: undefined,
-			/** @type {undefined|EquipChangeBoard} 显示已穿戴装备的面板 */
-			_equipChangeBoard: undefined,
+			_itemInfo: undefined,
+			/** @type {undefined|EquipSlots} 显示已穿戴装备的面板 */
+			_equipSlots: undefined,
 			/** 物品页面的背景 */
 			get back() {
 				if (!this._back) {
 					this._back = new ItemBoxBack();
 					const switchModeBtn = new SwitchBtn(385, 5, 24, 24, { strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
+					this._back.registerBtn('switchModeBtn', switchModeBtn, () => this.switchType());
 					// 背景上的按钮不需要随着itemId切换
 					const exitBtn = new ExitBtn(385, 385, 24, 24);
+					this._back.registerBtn('exitBtn', exitBtn, () => this.exit());
 					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
 						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
 						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
-					exitBtn.event = () => exit();
-					this._back.initBtnList([['switchModeBtn', switchModeBtn], ['exitBtn', exitBtn], ['allBtn', allBtn],
-					['toolsBtn', toolsBtn], ['constantsBtn', constantsBtn]]);
+					this._back.registerBtn('allBtn', allBtn, () => this.toolInv.classfiy('all'));
+					this._back.registerBtn('toolsBtn', toolsBtn, () => this.toolInv.classfiy('tools'));
+					this._back.registerBtn('constantsBtn', constantsBtn, () => this.toolInv.classfiy('constants'));
 				}
 				return this._back;
 			},
@@ -3743,16 +3880,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			get toolInv() {
 				if (!this._toolInv) {
 					this._toolInv = new ToolInventory(15, 40, 225, 360, 137);
-					/** @type {[number|string, ButtonBaseClass][]} */const btnArr = [];
-					for (let i = 0; i < this._toolInv.pageCap; i++) {
-						btnArr.push([i, new ItemBox(0, i * this._toolInv.oneItemHeight, this._toolInv.w, this._toolInv.oneItemHeight)])
-					}
-					const [pgDown, pgUp] = [new ArrowBtn(5, 335, 20, 20, 'left'), new ArrowBtn(200, 335, 20, 20, 'right')];
-					pgDown.event = () => { globalUI.toolInv.pageDown(); redraw(); }
-					pgUp.event = () => { globalUI.toolInv.pageUp(); redraw(); }
-					btnArr.push(['pgDownBtn', pgDown]); // 这里不能使用core.push，否则会丢失类的方法 @todo 修复此bug
-					btnArr.push(['pgUpBtn', pgUp]);
-					this._toolInv.initBtnList(btnArr);
+					const pgDown = new ArrowBtn(5, 335, 20, 20, 'left');
+					const pgUp = new ArrowBtn(200, 335, 20, 20, 'right');
+					this._toolInv.registerBtn('pgDownBtn', pgDown, () => UI.toolInv.pageDown());
+					this._toolInv.registerBtn('pgUpBtn', pgUp, () => UI.toolInv.pageUp());
 				}
 				return this._toolInv;
 			},
@@ -3760,16 +3891,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			get equipInv() {
 				if (!this._equipInv) {
 					this._equipInv = new EquipInventory(15, 160, 225, 240, 137);
-					/** @type {[number|string, ButtonBaseClass][]} */const btnArr = [];
-					for (let i = 0; i < this._equipInv.pageCap; i++) {
-						btnArr.push([i, new ItemBox(0, i * this._equipInv.oneItemHeight, this._equipInv.w, this._equipInv.oneItemHeight)])
-					}
-					const [pgDown, pgUp] = [new ArrowBtn(5, 215, 20, 20, 'left'), new ArrowBtn(200, 215, 20, 20, 'right')];
-					pgDown.event = () => { globalUI.equipInv.pageDown(); redraw(); }
-					pgUp.event = () => { globalUI.equipInv.pageUp(); redraw(); }
-					btnArr.push(['pgDownBtn', pgDown]);
-					btnArr.push(['pgUpBtn', pgUp]);
-					this._equipInv.initBtnList(btnArr);
+					const pgDown = new ArrowBtn(5, 215, 20, 20, 'left');
+					const pgUp = new ArrowBtn(200, 215, 20, 20, 'right');;
+					this._equipInv.registerBtn('pgDownBtn', pgDown, () => UI.equipInv.pageDown());
+					this._equipInv.registerBtn('pgUpBtn', pgUp, () => UI.equipInv.pageUp());
 				}
 				return this._equipInv;
 			},
@@ -3778,67 +3903,118 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return (this.type === 'all') ? this.toolInv : this.equipInv;
 			},
 			/** 右侧显示选中物品详细信息的页面 */
-			get itemInfoBoard() {
-				if (!this._itemInfoBoard) {
-					this._itemInfoBoard = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
-					const [hideBtn, markBtn] = [new HideBtn(20, 380, 46, 24), new MarkBtn(80, 380, 46, 24)];
-					hideBtn.event = () => {
-						hideItem(globalUI.itemId);
+			get itemInfo() {
+				if (!this._itemInfo) {
+					this._itemInfo = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
+					const hideBtn = new HideBtn(20, 380, 46, 24);
+					this._itemInfo.registerBtn('hideBtn', hideBtn, () => {
+						this.hideItem(UI.itemId);
 						this.itemInv.updateItemList();
-						this.itemInv.focus(this.itemInv.index);
-					}
-					markBtn.event = () => {
-						markItem(globalUI.itemId);
+						this.itemInv.setIndex(this.itemInv.index);
+						this.itemInv.drawContent();
+					});
+					const markBtn = new MarkBtn(80, 380, 46, 24);
+					this._itemInfo.registerBtn('markBtn', markBtn, () => {
+						this.markItem(UI.itemId);
 						this.itemInv.updateItemList();
-						this.itemInv.focus(this.itemInv.index);
-					}
+						this.itemInv.setIndex(this.itemInv.index);
+						this.itemInv.drawContent();
+					});
 					const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
+					this._itemInfo.registerBtn('showHideBtn', showHideBtn, () => {
+						this.switchShowHide();
+						this.itemInv.updateItemList();
+						this.itemInv.setIndex(this.itemInv.index);
+						this.itemInv.drawContent();
+					});
 					const setHotkeyBtn = new IconBtn(145, 60, 24, 24, 'keyboard');
-					setHotkeyBtn.event = () => {
-						if (!globalUI.itemId) return;
-						[globalUI.back, globalUI.itemInv, globalUI.equipChangeBoard, globalUI.itemInfoBoard].forEach((menu) => {
+					this.itemInfo.registerBtn('setHotkeyBtn', setHotkeyBtn, () => {
+						if (!UI.itemId) return;
+						[UI.back, UI.itemInv, UI.equipSlots, UI.itemInfo].forEach((menu) => {
 							if (menu) menu.endListen();
 						});
-						const hotkeySelect = hotkeySelectFactory(globalUI.itemId);
+						const hotkeySelect = hotkeySelectFactory(UI.itemId);
 						hotkeySelect.init();
-					}
-					this._itemInfoBoard.initBtnList([['hideBtn', hideBtn], ['markBtn', markBtn], ['showHideBtn', showHideBtn],
-					['setHotkeyBtn', setHotkeyBtn]]);
+					});
 				}
-				return this._itemInfoBoard;
+				return this._itemInfo;
 			},
-			get equipChangeBoard() {
-				if (!this._equipChangeBoard) {
-					this._equipChangeBoard = new EquipChangeBoard(7, 10, 240, 125, 137);
+			get equipSlots() {
+				if (!this._equipSlots) {
+					this._equipSlots = new EquipSlots(7, 10, 240, 125, 137);
 					const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
-					const [pgDown, pgUp] = [new ArrowBtn(0, 56, 14, 14, 'left', config), new ArrowBtn(222, 56, 14, 14, 'right', config)];
-					pgDown.event = () => {
-						globalUI.equipChangeBoard.pageDown();
-						redraw();
-					};
-					pgUp.event = () => {
-						globalUI.equipChangeBoard.pageUp();
-						redraw();
-					};
-					this._equipChangeBoard.addBtnList('pgDown', pgDown);
-					this._equipChangeBoard.addBtnList('pgUp', pgUp);
+					const pgDown = new ArrowBtn(0, 56, 14, 14, 'left', config);
+					const pgUp = new ArrowBtn(222, 56, 14, 14, 'right', config);
+					this._equipSlots.registerBtn('pgDownBtn', pgDown, () => UI.equipSlots.pageDown());
+					this._equipSlots.registerBtn('pgUpBtn', pgUp, () => UI.equipSlots.pageUp());
 				}
-				return this._equipChangeBoard;
+				return this._equipSlots;
+			},
+			/** 清空各个菜单的绘制和监听(不包括解除锁定) */
+			clearAll() {
+				[this._back, this._toolInv, this._equipInv, this._itemInfo, this._equipSlots].forEach((menu) => {
+					if (menu) menu.clear();
+				});
+				core.status.event.id = null;
+			},
+			initAll() {
+				[UI.back, UI.itemInv, UI.itemInfo].forEach((menu) => menu.init());
+				if (UI.type === 'equips') UI.equipSlots.init();
+			},
+			/** 解除锁定，退出道具栏/装备栏 */
+			exit() {
+				this.clearAll();
+				setTimeout(core.unlockControl, 0);
+			},
+			/** 在道具栏/装备栏模式中切换 */
+			switchType() {
+				this.type = (this.type === 'all') ? 'equips' : 'all';
+				if (this.type === 'all') {
+					this.equipSlots.clear();
+					this.equipInv.clear();
+				} else if (this.type === 'equips') {
+					this.toolInv.clear();
+					this.equipSlots.init();
+				}
+				this.itemInv.updateItemList();
+				this.back.drawContent();
+				this.itemInv.init();
+				this.itemInv.setIndex(this.itemInv.index);
+			},
+			/** 隐藏 | 取消隐藏当前选中的物品 */
+			hideItem(itemId) {
+				if (!itemId) return;
+				let hideInfo = core.getFlag('hideInfo', {});
+				if (hideInfo.hasOwnProperty(itemId)) {
+					hideInfo[itemId] = !hideInfo[itemId];
+				} else {
+					hideInfo[itemId] = !core.material.items[itemId].hideInToolbox;
+				}
+				core.setFlag('hideInfo', hideInfo);
+			},
+			/** 置顶 | 取消置顶当前选中的物品 */
+			markItem(itemId) {
+				let markedItems = core.getFlag('markedItems', []);
+				if (markedItems.includes(itemId)) markedItems = markedItems.filter((currId) => currId !== itemId);
+				else markedItems.push(itemId);
+				core.setFlag('markedItems', markedItems);
+			},
+			/** 切入/切出显示已隐藏物品的模式 */
+			switchShowHide() {
+				core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
 			}
 		}
 
+		// 程序入口，在_drawToolbox 与 _drawEquipbox处调用
 		/** @param {'all'|'equips'} currType  */
 		function drawItemBox(currType) {
-			if (globalUI._toolInv && globalUI._toolInv.onDraw && currType === globalUI.type) {
-				clearAll();
-				return;
-			}
-			clearAll();
+			UI.clearAll();
+			if (UI._toolInv && UI._toolInv.onDraw && currType === UI.type) return;
 			core.lockControl();
-			globalUI.type = currType;
-			globalUI.itemInv.updateItemList();
-			globalUI.itemInv.focus(globalUI.itemInv.index);
-			initAll();
+			UI.type = currType;
+			UI.itemInv.updateItemList();
+			UI.itemInv.setIndex(UI.itemInv.index);
+			UI.initAll();
 		}
 		// #endregion
 	},
@@ -3963,7 +4139,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					let equipType = core.material.items[j].equip.type;
 					switch (typeof equipType) {
 						case 'number':
-							for (let k = 0, l = equipOwned[j]; k < l; k++) { equipList[equipIncluded.indexOf(equipType)].add(j); }
+							for (let k = 0, l = equipOwned[j]; k < l; k++) { 
+								equipList[equipIncluded.indexOf(equipType)].add(j); 
+							}
 							break;
 						case 'string':
 							if (equipType === equipNameList[i])
@@ -4219,75 +4397,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方
 
-		/**
-		 * 本插件的修改方法：如果您了解样板的绘制API，基础的JS和面向对象，您可以轻松读懂和修改本插件。否则，您可以借助AI辅助阅读。
-		 * 以下给出一些快速修改的参考
-		 * 1.如何了解选项的效果，及修改已有的选项：找到下方如下代码段:
-			const settingMap = new Map([
-			['autoGet', new Setting(   // 'autoGet'为其在settingMap中对应的键名
-				() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),  // 此项填一个函数，返回一个字符串，为该选项显示的文字内容
-				() => invertFlag('autoGet'),  // 此项填一个函数，为点击该选项执行的效果
-				'每走一步，自动拾取当前层可获得的道具。',  // 此项填一个字符串，为该选项的说明文本
-				true,  // 此项控制点击该选项的操作是否计入录像。请勿计入任何DOM操作。
-			)],
-			// ...some Content
-			]);
-			将对应位置的数组修改为
-			['autoGet', new Setting(  
-				() => '点我加100血',  
-				() => { core.status.hero.hp += 100; core.updateStatusBar(); },  
-				'点击该选项加100血',  
-				true,  // 此项控制点击该选项的操作是否计入录像。请勿计入任何DOM操作。
-			)],
-			应用该修改后，选项“自动拾取”效果改为点1次加100血。
-		 * 2.如何删除和添加已有的选项
-			以删除“自动拾取”这个选项为例。查找可知，“自动拾取”在settingMap中对应的键名为'autoGet'
-			在本插件最下方找到如下代码段
-				gamePlayMenu.initBtnList([
-				['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 
-				// ...some Content
-			]);
-			该按钮在此被添加到子菜单gamePlayMenu（功能）中
-			删除 ['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 这一行，自动拾取按钮将消失。
-			但同时，相应按钮的位置将会空缺。
-			如果想要添加按钮，上面的数组中，第一项'1,1'表示按钮所在的行和列，仅影响按下方向键时光标的移动
-			按钮在画面中视觉上所处的位置为(40, 180), 尺寸为(150, 30),对应的settingMap中的数据索引为'autoGet'
-			根据以上原则来修改和添加自己的按钮
-			重要：为保险起见，您应当不仅删除按钮的入口，还删除按钮的效果，方法见上一条
-		 * 3.如何删除和添加子菜单
-			下列代码段控制子菜单的绘制：
-			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu], 0, ctx);
-
-			const gamePlayBtn = new ChoiceButton(32, 40, 46, 24, '功能', 0),
-				gameViewBtn = new ChoiceButton(92, 40, 46, 24, '音画', 1),
-				keyBtn = new ChoiceButton(152, 40, 46, 24, '按键', 2),
-				consoleBtn = new ChoiceButton(212, 40, 66, 24, '控制台', 3);
-			settingMenu.initBtnList([
-			[0, gamePlayBtn],
-			[1, gameViewBtn],
-			[2, keyBtn],
-			[3, consoleBtn],
-			['quit', quit]
-			]);
-			删除consoleBtn的声明和引用，就能从设置界面中去掉控制台菜单。
-			下面演示如何添加一个自己的菜单，添加下列代码段：
-			const myMenu = new SettingOnePage('myContent');
-
-			然后在settingMenu中加入该子菜单，如下：
-			const settingMenu = new SettingMenu([gamePlayMenu, gameViewMenu, keyMenu, consoleMenu, myMenu], 0, ctx);
-
-			在画面中添加该菜单的入口：
-			const myBtn = new ChoiceButton(272, 40, 86, 24, '我的菜单', 4);
-			settingMenu.initBtnList([...
-			,[4, myBtn],
-			['quit', quit]
-			]);
-			但该菜单还没有任何内容，添加一个按钮，如下：
-			myMenu.initBtnList([
-			['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')], 
-			]);
-		 */
-
 		// #region 复写
 		// 复写resize，保证屏幕变化时此画布表现正常 
 		const originResize = core.control.resize;
@@ -4298,743 +4407,29 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		// #endregion
 
-		const { ButtonBase, RoundBtn, MenuBase } = core.plugin.uiBase;
-		class MenuPage extends MenuBase {
-			constructor(pageList, currPage, ctx) {
-				super(ctx);
-				/**
-				 * 当前页面列表
-				 * @type {Array<MenuBaseClass>}
-				 */
-				this.pageList = pageList;
-				/**
-				 * 当前页的序号
-				 * @type {number}
-				 */
-				this.currPage = currPage || 0;
-			}
-
-			initOnePage(index) {
-				if (index == null) index = this.currPage;
-				this.pageList[index].init();
-			}
-
-			changePage(num) {
-				if (num !== this.currPage) {
-					const beforeMenu = this.pageList[this.currPage];
-					beforeMenu.clear();
-				}
-				this.currPage = num;
-				this.initOnePage();
-			}
-
-			pageDown() {
-				if (this.currPage > 0) this.changePage(this.currPage - 1);
-			}
-
-			pageUp() {
-				if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
-			}
-
-			clear() {
-				this.pageList.forEach((page) => page.clear());
-				super.clear();
-			}
-		}
-
-		class Setting {
-			/**
-			 * @param {(ctx:string)=>void} [draw]  
-			 */
-			constructor(name, effect, text, replay, draw) {
-				/** 获取选项界面显示的名称 */
-				this.getName = name;
-				/** 执行该选项的效果 */
-				this.effect = effect;
-				/** 该选项在框中的说明文字 */
-				this.text = text;
-				/** 该选项是否计入录像 
-				 * @type {boolean}
-				 */
-				this.replay = replay;
-				/** 除名称外的绘制内容
-				 * @type {((ctx:string)=>void )| undefined}
-				 */
-				this.draw = draw;
-			}
-		}
+		/**
+		 * @typedef {{
+		 * getName:()=>string,
+		 * effect:()=>void,
+		 * text:string,
+		 * replay?:boolean,
+		 * draw?:((ctx:string)=>void)
+		 * }} Setting
+		 */
 
 		// #region 跳过剧情相关设置
 		function invertFlag(name) {
 			core.setFlag(name, !core.getFlag(name, false));
 		}
 
-		function instantMove(fromX, fromY, aimX, aimY, keep, callback) {
-			const [block, blockInfo] = core.maps._getAndRemoveBlock(fromX, fromY);
-			if (keep) {
-				core.setBlock(blockInfo.number, aimX, aimY);
-				core.showBlock(aimX, aimY);
-			}
-			if (callback) callback();
-		}
-
-		function checkSkipFuncs() {
-			const skipInfo = core.getLocalStorage('skip');
-
-			const skipText = skipInfo === 'perform' || skipInfo === 'text';
-			// 此函数用于检测是否处在录像模式下，是则将跳过所有非必要对话
-			core.events.__action_checkReplaying = skipText ? function () {
-				core.doAction();
-				return true;
-			}.bind(core.events) : events.prototype.__action_checkReplaying;
-
-			const skipPeform = skipInfo === 'perform';
-			core.maps.jumpBlock = skipPeform ? function (sx, sy, ex, ey, time, keep, callback) {
-				return instantMove(sx, sy, ex, ey, keep, callback);
-			}.bind(core.maps) : maps.prototype.jumpBlock;
-
-			core.maps.moveBlock = skipPeform ? function (x, y, steps, time, keep, callback) {
-				maps.prototype.moveBlock(x, y, steps, 1, keep, callback);
-			}.bind(core.maps) : maps.prototype.moveBlock;
-
-			core.maps.drawAnimate = skipPeform ? function (name, x, y, alignWindow, callback) {
-				if (callback) callback();
-				return -1;
-			}.bind(core.maps) : maps.prototype.drawAnimate;
-
-			core.maps.drawHeroAnimate = skipPeform ? function (name, callback) {
-				if (callback) callback();
-				return -1;
-			}.bind(core.maps) : maps.prototype.drawHeroAnimate;
-
-			core.events.jumpHero = skipPeform ? function (ex, ey, time, callback) {
-				const { x: sx, y: sy } = core.status.hero.loc;
-				if (ex == null) ex = sx;
-				if (ey == null) ey = sy;
-				core.setHeroLoc('x', ex);
-				core.setHeroLoc('y', ey);
-				core.clearMap('hero');
-				core.drawHero();
-				if (callback) callback();
-			}.bind(core.events) : events.prototype.jumpHero;
-
-			core.events.vibrate = skipPeform ? function (direction, time, speed, power, callback) {
-				if (callback) callback();
-				return;
-			}.bind(core.events) : events.prototype.vibrate;
-
-			core.events._action_sleep = skipPeform ? function (data, x, y, prefix) {
-				core.doAction();
-			}.bind(core.events) : events.prototype._action_sleep;
-		}
+		function checkSkipFuncs() { }
 		this.checkSkipFuncs = checkSkipFuncs;
 		// #endregion 
 		// #region 设置的具体内容，与相应的录像注册
-		const settingMap = new Map([
-			['autoGet', new Setting(
-				() => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),
-				() => invertFlag('autoGet'),
-				'每走一步，自动拾取当前层可获得的道具。',
-				true,
-			)],
-			['autoBattle', new Setting(
-				() => '自动清怪:' + (core.getFlag('autoBattle', false) ? '开' : '关'),
-				() => invertFlag('autoBattle'),
-				'每走一步，自动和当前层可到达位置伤害为0的敌人战斗。对部分特殊敌人无效。',
-				true,
-			)],
-			['noRouting_HP', new Setting(
-				() => '',
-				() => invertFlag('noRouting_HP'),
-				'自动寻路时绕过加血物品。同时自动拾取也将忽略这类物品。',
-				true,
-				function (ctx) {
-					core.setAlpha(ctx, core.hasFlag('noRouting_HP') ? 1 : 0.3);
-					core.drawIcon(ctx, 'redPotion', this.x, this.y, this.w, this.h);
-					core.setAlpha(ctx, 1);
-				}
-			)],
-			['noRouting_MDEF', new Setting(
-				() => '',
-				() => invertFlag('noRouting_MDEF'),
-				'自动寻路时绕过加护盾物品。同时自动拾取也将忽略这类物品。',
-				true,
-				function (ctx) {
-					core.setAlpha(ctx, core.hasFlag('noRouting_MDEF') ? 1 : 0.3);
-					core.drawIcon(ctx, 'greenGem', this.x, this.y, this.w, this.h);
-					core.setAlpha(ctx, 1);
-				}
-			)],
-			['noRouting_ATK', new Setting(
-				() => '',
-				() => invertFlag('noRouting_ATK'),
-				'自动寻路时绕过加攻物品。同时自动拾取也将忽略这类物品。',
-				true,
-				function (ctx) {
-					core.setAlpha(ctx, core.hasFlag('noRouting_ATK') ? 1 : 0.3);
-					core.drawIcon(ctx, 'redGem', this.x, this.y, this.w, this.h);
-					core.setAlpha(ctx, 1);
-				}
-			)],
-			['noRouting_DEF', new Setting(
-				() => '',
-				() => invertFlag('noRouting_DEF'),
-				'自动寻路时绕过加防物品。同时自动拾取也将忽略这类物品。',
-				true,
-				function (ctx) {
-					core.setAlpha(ctx, core.hasFlag('noRouting_DEF') ? 1 : 0.3);
-					core.drawIcon(ctx, 'blueGem', this.x, this.y, this.w, this.h);
-					core.setAlpha(ctx, 1);
-				}
-			)],
-			['clickMove', new Setting(
-				() => '单击瞬移:' + (core.hasFlag('__noClickMove__') ? '关' : '开'),
-				() => invertFlag('__noClickMove__'),
-				'系统设置。单击即可触发瞬移。',
-				true,
-			)],
-			['moveSpeedDown', new Setting(
-				() => ' < 步时:' + core.values.moveSpeed,
-				() => core.actions._clickSwitchs_action_moveSpeed(-10),
-				'缩短步时。',
-				false,
-			)],
-			['moveSpeedUp', new Setting(
-				() => ' > ',
-				() => core.actions._clickSwitchs_action_moveSpeed(10),
-				'增大步时。',
-				false,
-			)],
-			['floorChangeTimeDown', new Setting(
-				() => ' <   转场:' + core.values.floorChangeTime,
-				() => core.actions._clickSwitchs_action_floorChangeTime(-100),
-				'缩短转场时间。',
-				false, // 录像中不可录入任何DOM操作
-			)],
-			['floorChangeTimeUp', new Setting(
-				() => ' > ',
-				() => core.actions._clickSwitchs_action_floorChangeTime(100),
-				'增大转场时间。',
-				false,
-			)],
-			['skip', new Setting(
-				() => {
-					let text = '跳过:';
-					switch (core.getFlag('skip')) {
-						case 'perform':
-							text += '[剧情+演出]';
-							break;
-						case 'text':
-							text += '[剧情]';
-							break;
-						default:
-							text += '无';
-							break;
-					}
-					return text;
-				},
-				() => {
-					const list = [null, 'text', 'perform'];
-					const skipMode = core.getLocalStorage('skip', null);
-					const index = list.indexOf(skipMode);
-					let newIndex = index + 1;
-					if (newIndex > list.length - 1) newIndex = 0;
-					const newSkipMode = list[newIndex];
-					core.setLocalStorage('skip', newSkipMode);
-					core.plugin.checkSkipFuncs();
-				},
-				'跳过所有对话（可能跳过重要信息，请慎用）。',
-				true,
-			)],
-			['comment', new Setting(
-				() => '在线留言:' + (core.hasFlag('comment') ? '开' : '关'),
-				() => {
-					if (core.hasFlag('comment')) {
-						core.setFlag('comment', false);
-						core.plugin.clearCommentSign();
-					}
-					else {
-						core.setFlag('comment', true);
-						core.plugin.drawCommentSign();
-					}
-				},
-				'在地图上显示玩家的在线留言。',
-				true,
-			)],
-			['itemDetail', new Setting(
-				() => '物品显示数据:' + (core.hasFlag('itemDetail') ? '开' : '关'),
-				() => invertFlag('itemDetail'),
-				'在地图上显示即捡即用道具和装备增加的属性值。',
-				true,
-			)],
-			/** @todo 该数字可以是小数，需要舍入 */
-			['zoomIn', new Setting(
-				() => ' <  放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
-				() => {
-					core.actions._clickSwitchs_display_setSize(-1);
-				},
-				'放缩。',
-				false, // 录像中不可录入任何DOM操作
-			)],
-			['zoomOut', new Setting(
-				() => ' > ',
-				() => {
-					core.actions._clickSwitchs_display_setSize(1);
-				},
-				'放缩。',
-				false,
-			)],
-			['HDCanvas', new Setting(
-				() => '高清画面:' + (core.flags.enableHDCanvas ? '开' : '关'),
-				core.actions._clickSwitchs_display_enableHDCanvas,
-				'高清画面。本功能开关后刷新游戏才能看到效果。',
-				false,
-			)],
-			['enableEnemyPoint', new Setting(
-				() => '定点怪显:' + (core.flags.enableEnemyPoint ? '开' : '关'),
-				core.actions._clickSwitchs_display_enableEnemyPoint,
-				'怪物属性定点显示功能，即属性不同的怪物会在怪物手册单列。',
-				false,
-			)],
-			['displayEnemyDamage', new Setting(
-				() => '怪物显伤:' + (core.flags.displayEnemyDamage ? '开' : '关'),
-				core.actions._clickSwitchs_display_enemyDamage,
-				'怪物显伤',
-				false,
-			)],
-			['displayCritical', new Setting(
-				() => '临界显伤:' + (core.flags.displayCritical ? '开' : '关'),
-				core.actions._clickSwitchs_display_critical,
-				'临界显伤',
-				false,
-			)],
-			['displayExtraDamage', new Setting(
-				() => '领域显伤:' + (core.flags.displayExtraDamage ? '开' : '关'),
-				core.actions._clickSwitchs_display_extraDamage,
-				'领域显伤',
-				false,
-			)],
-			['extraDamageType', new Setting(
-				() => '领域模式:' + (core.flags.extraDamageType == 2 ? '[最简]' : core.flags.extraDamageType == 1 ? '[半透明]' : '[完整]'),
-				core.actions._clickSwitchs_display_extraDamageType,
-				'是否显示不可通行地块的领域伤害。',
-				false,
-			)],
-			['autoScale', new Setting(
-				() => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
-				() => {
-					core.setLocalStorage('autoScale', core.getLocalStorage('autoScale') ? false : true);
-				},
-				'自动放缩。',
-				false,
-			)],
-			['bgm', new Setting(
-				() => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
-				core.actions._clickSwitchs_sounds_bgm,
-				'播放背景音乐。',
-				false,
-			)],
-			['se', new Setting(
-				() => '音效:' + (core.musicStatus.soundStatus ? '开' : '关'),
-				core.actions._clickSwitchs_sounds_se,
-				'播放音效。',
-				false,
-			)],
-			['decreaseVolume', new Setting(
-				() => " <   音量:" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)),
-				() => core.actions._clickSwitchs_sounds_userVolume(-1),
-				'减小音量。',
-				false,
-			)],
-			['increaseVolume', new Setting(
-				() => ' > ',
-				() => core.actions._clickSwitchs_sounds_userVolume(1),
-				'增大音量。',
-				false,
-			)],
-			['leftHand', new Setting(
-				() => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
-				() => {
-					core.flags.leftHandPrefer = !core.flags.leftHandPrefer;
-					core.setLocalStorage('leftHandPrefer', core.flags.leftHandPrefer);
-				},
-				'系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
-				true,
-			)],
-			['setHotKey', new Setting(
-				() => '',
-				function (num) {
-					core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (value) => {
-						const itemInfo = core.material.items;
-						const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
-						if (aimItem) {
-							if (['constants', 'tools'].includes(aimItem.cls)) {
-								for (let i = 1; i <= 9; i++) {
-									if (i !== num && core.getLocalStorage('hotkey' + i) === aimItem.id) {
-										core.setLocalStorage('hotkey' + i, null);
-									} // 除默认外，一个物品只保留一个快捷键即可
-								}
-								core.setLocalStorage('hotkey' + num, aimItem.id);
-								this.menu.drawContent();
-							}
-							else core.drawFailTip('错误：该类型的物品不支持快捷使用!');
-						}
-						else core.drawFailTip('错误：找不到该名称的物品!');
-					}, () => { });
-				},
-				'给选定的数字键绑定一个可快捷使用的物品。',
-				false,
-				function (ctx) {
-					const num = this.eventArgs[0];
-					const item = core.getLocalStorage('hotkey' + num, null);
-					let icon, itemName;
-					if (item && core.material.items.hasOwnProperty(item)) {
-						icon = item;
-						itemName = core.material.items[item].name;
-					}
-					else {
-						const itemMap = {
-							'1': { icon: 'pickaxe', itemName: '破墙镐' }, '2': { icon: 'bomb', itemName: '炸弹' },
-							'3': { icon: 'centerFly', itemName: '中心飞' }, '4': { itemName: '杂物' },
-							'5': { itemName: '回退一步' }, '6': { itemName: '撤销回退' },
-							'7': { itemName: '轻按' }
-						};
-						if (num >= '1' && num <= '9') {
-							({ icon, itemName = '无' } = itemMap[num] || {});
-						}
-					}
-					const keyIcon = 'btn' + num;
-					core.drawIcon(ctx, keyIcon, this.x, this.y, 16, 16);
-					const hasItem = core.material.items.hasOwnProperty(icon);
-					if (hasItem) core.drawIcon(ctx, icon, this.x + 20, this.y, 16, 16);
-					core.setTextAlign(ctx, 'left');
-					core.setTextBaseline(ctx, 'alphabetic');
-					core.fillText(ctx, itemName || '无', this.x + (hasItem ? 40 : 20), this.y + 14, 'white', '16px Verdana');
-				}
-			)],
-			['clearHotKeys', new Setting(
-				() => '',
-				function () {
-					for (let i = 1; i <= 9; i++) {
-						core.setLocalStorage('hotkey' + i, null);
-					}
-					this.menu.drawContent();
-					core.drawSuccessTip('快捷键已重置到默认状态。')
-				},
-				'重置本页面所有快捷键到默认状态。',
-				false,
-				function (ctx) {
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-					core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-				},
-			)],
-			['debug_wallHacking', new Setting(
-				() => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
-				() => {
-					core.setFlag('debug', true);
-					invertFlag('debug_wallHacking');
-				},
-				'开启时将始终穿墙并无视各种事件，无论是否按下Ctrl。',
-				false,
-			)],
-			['debug_statusName', new Setting(
-				() => core.getFlag('debug_statusName', '??'),
-				function () {
-					const dictionary = {
-						'体力': 'hp', '血量': 'hp', '生命': 'hp', '血': 'hp',
-						'体力上限': 'hpmax', '血量上限': 'hpmax', '生命上限': 'hpmax', '血限': 'hpmax',
-						'攻击': 'atk', '攻': 'atk', '防御': 'def', '防': 'def',
-						'魔防': 'mdef', '护盾': 'mdef', 'mf': 'mdef',
-						'金币': 'money', '金钱': 'money', '钱': 'money', '经验': 'exp',
-						'魔力': 'mana', '魔': 'mana', '蓝': 'mana',
-					}
-					core.utils.myprompt('输入要修改的属性名称', '', (value) => {
-						const heroStatus = core.status.hero;
-						if (dictionary.hasOwnProperty(value)) {
-							value = dictionary[value];
-						}
-						if (heroStatus && heroStatus.hasOwnProperty(value)
-							&& ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'].includes(value)) {
-							core.setFlag('debug_statusName', value);
-							this.menu.drawContent();
-						}
-						else {
-							core.drawFailTip('错误：不合法的名称!');
-						}
-					}, () => { });
-				},
-				'',
-				false,
-				function (ctx) {
-					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-				},
-			)],
-			['debug_statusValue', new Setting(
-				() => {
-					let value = core.getFlag('debug_statusValue', '??');
-					if (typeof value === 'number') return core.formatBigNumber(value, 5);
-					else return value;
-				},
-				function () {
-					core.utils.myprompt('输入要修改到的值', null, (input) => {
-						const value = parseInt(input);
-						if (!Number.isNaN(value)) {
-							core.setFlag('debug_statusValue', value);
-							this.menu.drawContent();
-						}
-						else {
-							core.drawFailTip('错误：不合法的值!');
-						}
-					}, () => { });
-				},
-				'',
-				false,
-				function (ctx) {
-					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-				},
-			)],
-			['debug_setStatus', new Setting(
-				() => '',
-				() => {
-					const name = core.getFlag('debug_statusName'),
-						value = core.getFlag('debug_statusValue');
-					if (!(name && core.status.hero && core.status.hero.hasOwnProperty(name))) {
-						core.drawFailTip('错误：不合法的名称!');
-						return;
-					}
-					if (!Number.isInteger(value)) {
-						core.drawFailTip('错误：不合法的值!');
-						return;
-					}
-					core.setFlag('debug', true);
-					core.setStatus(name, value);
-					core.updateStatusBar();
-					core.drawSuccessTip('设置成功!');
-				},
-				'将角色状态设为相应值。',
-				false,
-				function (ctx) {
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-				},
-			)],
-			['debug_itemName', new Setting(
-				() => core.getFlag('debug_itemName', '??'),
-				function () {
-					core.utils.myprompt('输入要修改的物品名称', null, (value) => {
-						const itemInfo = core.material.items;
-						if (itemInfo) {
-							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
-							if (aimItem) {
-								core.setFlag('debug_itemName', aimItem.id);
-								this.menu.drawContent();
-								return;
-							}
-						}
-						core.drawFailTip('错误：不合法的名称!');
-					}, () => { });
-				},
-				'',
-				false,
-				function (ctx) {
-					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-				},
-			)],
-			['debug_itemValue', new Setting(
-				() => core.getFlag('debug_itemValue', '??'),
-				function () {
-					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改到的值', null, (input) => {
-						const value = parseInt(input);
-						if (!Number.isNaN(value)) {
-							core.setFlag('debug_itemValue', value);
-							this.menu.drawContent();
-						}
-						else {
-							core.drawFailTip('错误：不合法的值!');
-						}
-					}, () => { });
-				},
-				'',
-				false,
-				function (ctx) {
-					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-				},
-			)],
-			['debug_setItem', new Setting(
-				() => '',
-				() => {
-					const name = core.getFlag('debug_itemName'),
-						value = core.getFlag('debug_itemValue');
-					const itemInfo = core.material.items;
-
-					if (name && itemInfo) {
-						let itemExist = Object.values(itemInfo).some((item) => item.id === name);
-						if (!itemExist) {
-							core.drawFailTip('错误：不合法的名称!');
-							return;
-						}
-					}
-					else {
-						core.drawFailTip('错误：不合法的名称!');
-						return;
-					}
-
-					if (!Number.isInteger(value)) {
-						core.drawFailTip('错误：不合法的值!');
-						return;
-					}
-					core.setFlag('debug', true);
-					core.setItem(name, value);
-					core.updateStatusBar();
-					core.drawSuccessTip('设置成功!');
-				},
-				'将道具数设为相应值。',
-				false,
-				function (ctx) {
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-				},
-			)],
-			['debug_flagName', new Setting(
-				() => core.getFlag('debug_flagName', '??'),
-				function () {
-					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
-						if (!value.startsWith('debug')) {
-							core.setFlag('debug_flagName', value);
-							this.menu.drawContent();
-						}
-						else {
-							core.drawFailTip('错误：不合法的名称!');
-						}
-					}, () => { });
-				},
-				'',
-				false,
-				function (ctx) {
-					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-				},
-			)],
-			['debug_flagValue', new Setting(
-				() => core.getFlag('debug_flagValue', '??'),
-				function () {
-					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
-						let newValue;
-						try {
-							newValue = JSON.parse(value.trim());
-						}
-						catch {
-							core.drawFailTip('错误：不合法的值，无法解析!');
-							return;
-						}
-						core.setFlag('debug_flagValue', newValue);
-						this.menu.drawContent();
-					}, () => { });
-				},
-				'',
-				false,
-				function (ctx) {
-					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
-				},
-			)],
-			['debug_setFlag', new Setting(
-				() => '',
-				() => {
-					const name = core.getFlag('debug_flagName'),
-						value = core.getFlag('debug_flagValue');
-					if (!name) {
-						core.drawFailTip('错误：不合法的变量名称!');
-						return;
-					}
-					core.setFlag('debug', true);
-					core.setFlag(name, value);
-					core.updateStatusBar();
-					core.drawSuccessTip('设置成功!');
-				},
-				'将变量设为相应值。',
-				false,
-				function (ctx) {
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
-					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
-				},
-			)],
-		])
-
-		// 注册点击SettingButton的行为cSet， 只有replay为真时计入录像
-		core.registerReplayAction('cSet', (action) => {
-			const strArr = action.split(':');
-			if (strArr[0] !== 'cSet') return false;
-			const btn = settingMap.get(strArr[1]);
-			if (!btn || !btn.replay || strArr[1].startsWith('debug')) return false;
-
-			let params = strArr.slice(2);
-
-			if (params.length > 0) {
-				btn.effect.apply(btn, params);
-			} else {
-				btn.effect.call(btn);
-			}
-
-			core.status.route.push(action);
-			core.replay();
-			return true;
-		});
 		// #endregion
 		// #region 按钮类
-		class SettingButton extends ButtonBase {
-			/**
-			 * @param {string[]} [eventArgs]
-			 */
-			constructor(x, y, w, h, name, eventArgs) {
-				super(x, y, w, h);
-				this.name = name;
-				/*** @type {Array<string>}*/
-				this.eventArgs = eventArgs || [];
-				/** @type {Setting} */
-				this.setting = settingMap.get(name);
-				/** @type {string} 本设置在框中的说明文字*/
-				this.text = this.setting.text;
-				this.draw = () => {
-					if (this.disable) return;
-					const ctx = this.ctx;
-					// 取消注释下面这一句将显示所有按钮的判定框
-					// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
-					core.ui.fillText(ctx, this.setting.getName(),
-						this.x, this.y + this.h / 2 + 5, 'white', '16px Verdana');
-					const drawFunc = this.setting.draw;
-					if (this.status === 'selected') {
-						core.drawUIEventSelector(0, "winskin.png", this.x, this.y, this.w, this.h, 137);
-					}
-					if (drawFunc) drawFunc.apply(this, [ctx]);
-				}
-				this.event = () => {
-					if (this.disable) return;
-					this.setting.effect.apply(this, eventArgs);
-					this.menu.drawContent();
-					if (this.setting.replay) {
-						let actionString = 'cSet:' + name;
-						if (this.eventArgs.length > 0) {
-							actionString += ':' + this.eventArgs.map(arg => encodeURIComponent(arg)).join(':');
-						}
-						core.status.route.push(actionString);
-					}
-				}
-			}
-		}
 
-		class PageChangeBtn extends RoundBtn {
-			constructor(x, y, w, h, text, index) {
-				super(x, y, w, h, text);
-				/** @type {SettingBase} */this.menu;
-				this.index = index;
-			}
-		}
+		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, Pagination, KeyCodeEnum } = core.plugin.uiBase;
 
 		class TextButton extends ButtonBase {
 			constructor(x, y, w, h, text) {
@@ -5047,272 +4442,139 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 		}
-
-		class ToolBtn extends ButtonBase {
-			constructor(x, y, w, h, icon, text, config) {
-				super(x, y, w, h);
-				/** @type {ToolBarConfigPage} */this.menu;
-				this.icon = icon; // 特殊icon:delete 用于删除图标
-				/** @todo 这里需要重构 */
-				this.text = text;
-				const { strokeStyle = 'white', fillStyle = 'white', selectedStyle = 'gold' } = config || {};
-				this.draw = () => {
-					const ctx = this.ctx;
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, (this.menu.selectedTool === this.icon) ? selectedStyle : strokeStyle);
-					if (this.icon === 'delete') {
-						core.drawLine(ctx, this.x + 2, this.y + 2, this.x + this.w - 2, this.y + this.h - 2, 'red', 2);
-						core.drawLine(ctx, this.x + 2, this.y + this.h - 2, this.x + this.w - 2, this.y + 2, 'red', 2);
-					}
-					else core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
-				};
-				this.event = () => {
-					this.menu.selectedTool = this.icon;
-					this.menu.drawContent();
-				};
-			}
-		}
-
-		class ToolBarBtn extends ButtonBase {
-			constructor(x, y, size, type, length, text) {
-				super(x, y, length * size, size);
-				/** @type {ToolBarConfigPage} */this.menu;
-				this.type = type;
-				this.length = length;
-				/** @todo 这里需要重构 */
-				this.text = text;
-
-				this.draw = () => {
-					const ctx = this.ctx;
-					const squareSize = this.h;
-					const toolBarConfig = core.plugin.getToolBarConfig(type);
-					for (let i = 0; i < this.length; i++) {
-						const style = (this.menu.type === type && this.menu.index === i) ? 'gold' : 'white';
-						core.strokeRoundRect(ctx, this.x + squareSize * i + i, this.y, squareSize, squareSize, 3, style);
-						core.drawIcon(ctx, toolBarConfig[i], this.x + squareSize * i + i, this.y, squareSize, squareSize);
-					}
-				}
-				this.event = (x, y, px, py) => {
-					const squareSize = this.h;
-					const index = Math.floor((px - this.x) / squareSize);
-					this.menu.type = type;
-					this.menu.index = index;
-					this.menu.drawContent();
-				}
-			}
-		}
-
-		function drawSetting(ctx) {
-			core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "white", 2);
-			core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
-
-			// 绘制设置说明的文本框
-			core.strokeRoundRect(ctx, 20, 70, core.__PIXELS__ - 40, 70, 3, "white");
-			core.fillRoundRect(ctx, 21, 71, core.__PIXELS__ - 42, 68, 3, " #555555");
-
-			// 绘制设置的框体
-			core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 240, 3, "white");
-			core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 238, 3, " #999999");
-
-			core.setTextAlign(ctx, 'center');
-			core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
-		}
 		// #endregion
 		// #region 菜单类
-		class SettingBase extends MenuPage {
-			constructor(pageList, currPage, name) {
-				super(pageList, currPage, name);
-				this.keyEvent = (keyCode) => {
-					if (keyCode === 33) this.pageUp();
-					if (keyCode === 34) this.pageDown();
-					if ([33, 34].includes(keyCode)) {
-						const btn = this.btnList.get(this.currPage);
-						this.changeBtn(btn);
-						this.drawContent();
-					}
-					if (keyCode === 27) {
-						this.quit();
-					}
+
+		// #region 单个设置菜单的基类
+		/** 单个设置按钮的基类 */
+		class SettingButton extends ButtonBase {
+			constructor(x, y, w, h, ...drawArgs) {
+				super(x, y, w, h);
+				/** @type {Setting} 将在registerBtn时赋予此项 */ // @ts-ignore
+				this.setting;
+				this.drawArgs = drawArgs;
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+				const setting = this.setting;
+				// 取消注释下面这一句将显示所有按钮的判定框
+				// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
+				core.ui.fillText(ctx, setting.getName(), x, y + h / 2 + 5, 'white', '16px Verdana');
+				const drawFunc = setting.draw;
+				if (this.status === 'selected') {
+					core.drawUIEventSelector(0, "winskin.png", this.x, this.y, this.w, this.h, 137);
 				}
-			}
-
-			quit() {
-				this.clear();
-				setTimeout(core.unlockControl, 0); // 消抖，防止点击关闭按钮的一瞬间触发瞬移。
-			}
-
-			initBtnList(arr) {
-				super.initBtnList(arr);
-				this.btnList.forEach((btn) => {
-					if (btn instanceof PageChangeBtn) {
-						btn.event = function () {
-							this.menu.changePage(this.index);
-							this.menu.changeBtn(this);
-							this.menu.drawContent();
-						}
-					}
-				});
-			}
-
-			drawContent() {
-				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 136);
-				drawSetting(ctx);
-				super.drawContent();
-				this.initOnePage();
-			}
-
-			changeBtn(aimBtn) {
-				this.btnList.forEach((btn) => {
-					if (btn instanceof RoundBtn) {
-						btn.status = aimBtn === btn ? 'selected' : 'none';
-					}
-				})
+				if (drawFunc) drawFunc.apply(this, [ctx, ...this.drawArgs]);
 			}
 		}
 
-		/** 除自定义工具栏外的选项界面 */
+		// @todo 悬浮按钮不改变时不触发事件 这个优化有没有做
+		
+		/** 单个设置菜单的基类 */
 		class SettingOnePage extends MenuBase {
-			constructor(name) {
-				super(name);
+			constructor(name, settingData) {
+				super(name, ['ondown', 'onmove', 'keyDown']);
 				this.text = '';
+				/** @type {string | undefined}*/
 				this.selectedPos;
+				/** @type {SettingButton | undefined}*/
 				this.selectedBtn;
-				this.clickEvent = (x, y, px, py) => {
-					this.btnList.forEach((btn, pos) => {
-						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-							if (this.selectedBtn === btn) btn.event(x, y, px, py);
-							else {
-								this.focus(btn, pos);
-							}
-						}
-					});
-				}
-				if (core.platform.isPC) this.onMoveEvent = (x, y, px, py) => {
-					const btnNow = this.selectedBtn;
-					// 先检测，如果还在当前已选中的按钮范围内，则什么也不做
-					if (btnNow) {
-						if (px >= btnNow.x && px <= btnNow.x + btnNow.w && py > btnNow.y && py <= btnNow.y + btnNow.h)
-							return;
-					}
-					this.btnList.forEach((btn, pos) => {
-						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-							if (btnNow !== btn) this.focus(btn, pos);
-						}
-					});
-				}
-				this.keyEvent = (keyCode) => {
-					let x, y;
-					const changePos = (newPos) => {
-						if (this.btnList.has(newPos)) {
-							const button = this.btnList.get(newPos);
-							this.focus(button, newPos);
-						}
-					}
-					if ([37, 38, 39, 40].includes(keyCode)) {
-						if (!this.selectedBtn) {
-							const button = this.btnList.get('1,1');
-							if (button) this.focus(button, '1,1');
-							return;
-						}
-						else {
-							[x, y] = this.selectedPos.split(',').map((x) => parseInt(x));
-							if (keyCode === 37) x--;
-							if (keyCode === 38) y--;
-							if (keyCode === 39) x++;
-							if (keyCode === 40) y++;
-							let newPos = x + ',' + y;
+				/** @type {{[x:string]:Setting}}*/
+				this.settingData = settingData;
+			}
 
-							// 逻辑：左右，查找不到对应坐标就不动。
-							// 上下，查找不到对应坐标，只要该列存在第一个元素，就会移到该列。
-
-							if (keyCode === 37 || keyCode === 39) {
-								changePos(newPos);
-							}
-							if (keyCode === 38 || keyCode === 40) {
-								if (this.btnList.has(newPos)) {
-									const button = this.btnList.get(newPos);
-									this.focus(button, newPos);
-								}
-								else {
-									newPos = '1,' + y;
-									changePos(newPos);
-								}
-							}
-						}
+			keyDownEvent(keyCode) {
+				let x, y;
+				const changePos = (newPos) => {
+					if (this.btnMap.has(newPos)) {
+						const button = this.btnMap.get(newPos);
+						this.focus(button, newPos);
+					}
+				}
+				if ([KeyCodeEnum.Left, KeyCodeEnum.Right, KeyCodeEnum.Up, KeyCodeEnum.Down].includes(keyCode)) {
+					if (!this.selectedBtn || !this.selectedPos) {
+						const button = this.btnMap.get('1,1');
+						if (button) this.focus(button, '1,1');
+						return;
 					}
 					else {
-						switch (keyCode) {
-							case 13:
-							case 32: // Enter/Space
-								if (this.selectedBtn) this.selectedBtn.event();
-								break;
+						[x, y] = this.selectedPos.split(',').map((x) => parseInt(x));
+						if (keyCode === KeyCodeEnum.Left) x--;
+						if (keyCode === KeyCodeEnum.Up) y--;
+						if (keyCode === KeyCodeEnum.Right) x++;
+						if (keyCode === KeyCodeEnum.Down) y++;
+						let newPos = x + ',' + y;
+
+						// 逻辑：左右，查找不到对应坐标就不动。
+						// 上下，查找不到对应坐标，只要该列存在第一个元素，就会移到该列。
+
+						if (keyCode === KeyCodeEnum.Left || keyCode === KeyCodeEnum.Right) {
+							changePos(newPos);
 						}
+						if (keyCode === KeyCodeEnum.Up || keyCode === KeyCodeEnum.Down) {
+							if (this.btnMap.has(newPos)) {
+								const button = this.btnMap.get(newPos);
+								this.focus(button, newPos);
+							}
+							else {
+								newPos = '1,' + y;
+								changePos(newPos);
+							}
+						}
+					}
+				}
+				else {
+					switch (keyCode) {
+						case KeyCodeEnum.Enter: // Enter/Space
+						case KeyCodeEnum.SpaceBar:
+							if (this.selectedBtn) this.selectedBtn.ondown(-1, -1, -1, -1);
+							break;
 					}
 				}
 			}
 
-			focus(button, pos) {
-				this.selectedPos = pos;
-				this.selectedBtn = button;
-				this.btnList.forEach((currBtn) => {
-					currBtn.status = (currBtn === button) ? 'selected' : 'none';
-				})
-				this.text = button.text;
+			/** 
+			 * @param {SettingButton} btn  
+			 * @param {string} key 对应事件的索引
+			 **/
+			execEffect(btn, key, ...eventArgs) {
+				debugger;
+				const setting = btn.setting;
+				setting.effect.apply(this, eventArgs);
+				if (setting.replay) {
+					let actionString = 'cSet:' + key; 
+					if (eventArgs && eventArgs.length > 0) {
+						actionString += ':' + eventArgs.map(arg => encodeURIComponent(arg)).join(':');
+					}
+					core.status.route.push(actionString);
+				}
 				this.drawContent();
 			}
 
-			drawContent() {
-				core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 136);
+			/** 聚焦到指定的按钮并重绘菜单 */
+			focus(button, pos) {
+				if (this.selectedBtn === button) return; // 如果当前按钮已被选中，则不做任何操作
+				this.selectedPos = pos;
+				this.selectedBtn = button;
+				this.btnMap.forEach((currBtn) => {
+					currBtn.status = (currBtn === button) ? 'selected' : 'none';
+				});
+				if (button instanceof SettingButton) {
+					this.text = button.setting.text || '';
+				}
+				this.drawContent();
+			}
+
+			drawContent(ctx) {
+				if (!ctx) ctx = this.name;
 				super.drawContent();
 				if (this.text && this.text.length > 0) {
-					core.ui.drawTextContent(this.name, this.text, {
+					core.ui.drawTextContent(ctx, this.text, {
 						left: 30, top: 78, bold: false, color: "white",
 						align: "left", fontSize: 14, maxWidth: 350
 					});
-				}
-				switch (this.name) {
-					case 'gamePlay':
-						core.fillText(this.name, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
-						core.fillText(this.name, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
-						core.fillText(this.name, '绕开', 220, 250, 'white', '16px Verdana');
-						core.fillText(this.name, '-- 杂项 --', 40, 275, ' #FFE4B5', '18px Verdana');
-						break;
-					case 'gameView':
-						core.fillText(this.name, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
-						core.fillText(this.name, '-- 音效 --', 40, 320, ' #FFE4B5', '18px Verdana');
-						break;
-					case 'key':
-						core.fillText(this.name, '-- 快捷键 --', 40, 205, ' #FFE4B5', '18px Verdana');
-						core.fillText(this.name, "注意⚠️更推荐在背包", 160, 190, "rgb(255,255,51)", '12px Verdana');
-						core.fillText(this.name, "中点击右上角", 287, 190, "rgb(255,255,51)", '12px Verdana');
-						core.fillText(this.name, "图标设置单物品的快捷键", 160, 210, "rgb(255,255,51)", '12px Verdana');
-						core.drawIcon(this.name, "toolbox", 272, 178, 16, 16);
-						core.drawIcon(this.name, "keyboard", 359, 178, 16, 16);
-						break;
-					case 'toolBarConfig':
-						core.setTextAlign(this.name, 'left');
-						core.fillText(this.name, '常规', 40, 175, ' #FFE4B5', '16px Verdana');
-						core.fillText(this.name, '数字', 40, 205, ' #FFE4B5', '16px Verdana');
-						core.fillText(this.name, '录像', 40, 235, ' #FFE4B5', '16px Verdana');
-						core.fillText(this.name, '可选按钮', 40, 265, ' #FFE4B5', '16px Verdana');
-						break;
-					case 'console':
-						const ctx = this.name;
-						const consoleWarnText =
-							"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
-						core.setTextAlign(this.name, 'left');
-						core.setTextBaseline(ctx, 'alphabetic');
-						core.fillText(this.name, "本页面的功能仅供调试用。使用后相应存档将变红，录像", 30, 170, " #FFC0CB", '14px Verdana');
-						core.fillText(this.name, "不能通过，且无法提交。请读档到普通存档后正常游玩方", 30, 190, " #FFC0CB", '14px Verdana');
-						core.fillText(this.name, "可提交。", 30, 210, " #FFC0CB", '14px Verdana');
-						core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
-						core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
-						core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
-						core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
-						core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
-						core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
-						break;
 				}
 			}
 
@@ -5320,96 +4582,537 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.clearUIEventSelector(0); // 光标的绘制在按钮中进行
 				super.clear();
 			}
-		}
 
-		/** 自定义工具栏界面 */
-		class ToolBarConfigPage extends SettingOnePage {
-			constructor(name) {
-				super(name);
-				/** 当前选中的图标 */this.selectedTool = 'none';
-				/** 当前选中了哪个类型的工具栏 */this.type = 'none';
-				/** 当前选中工具栏哪个位置(1-9) */this.index = -1;
-				this.clickEvent = (x, y, px, py) => {
-					this.btnList.forEach((btn, pos) => {
-						if (btn.disable) return;
-						if (px >= btn.x && px <= btn.x + btn.w && py > btn.y && py <= btn.y + btn.h) {
-							if (btn instanceof ToolBtn) this.text = btn.text; // 先更新说明文字，再重绘
-							btn.event(x, y, px, py);
-						}
-					});
-				}
-				this.keyEvent = () => { }; /** 这个页面没有按键事件，因为有两类按钮可以同时被选中，没想好怎么弄 */
-				if (core.platform.isPC) this.onMoveEvent = () => { }; /** 这里滚轮事件体验过于灵活，不利于选中想要的图标 */
+			/**
+			 * @override
+			 * @param {string} pos 
+			 * @param {string} key
+			 * @param {SettingButton} btn 
+			 * @param {...(string|number)} eventArgs
+			 */
+			registerBtn(pos, key, btn, ...eventArgs) {
+				super.registerBtn(pos, btn, {
+					'ondown': () => {
+						if (this.selectedBtn === btn) this.execEffect(btn, key, ...eventArgs);
+						else this.focus(btn, pos);
+					},
+					'onmove': () => {
+						this.focus(btn, pos);
+					}
+				});
+				btn.setting = this.settingData[key];
+			}
+
+			registerBtns(arr) {
+				arr.forEach(ele => {
+					const [key, btn, event, ...eventArgs] = ele;
+					this.registerBtn(key, btn, event, ...eventArgs);
+				});
 			}
 		}
 		// #endregion
 
-		this.openSetting = function () {
-			if (core.isReplaying()) return;
-			core.lockControl();
-			const ctx = 'setting';
+		// #region 功能菜单
+		/** @type {{[x:string]:Setting}} */
+		const gamePlaySetting = {
+			autoGet: {
+				getName: () => '自动拾取:' + (core.getFlag('autoGet', false) ? '开' : '关'),
+				effect: () => invertFlag('autoGet'),
+				text: '每走一步，自动拾取当前层可获得的道具。',
+				replay: true,
+			},
+			autoBattle: {
+				getName: () => '自动清怪:' + (core.getFlag('autoBattle', false) ? '开' : '关'),
+				effect: () => invertFlag('autoBattle'),
+				text: '每走一步，自动和当前层可到达位置伤害为0的敌人战斗。对部分特殊敌人无效。',
+				replay: true,
+			},
+			noRouting_HP: {
+				getName: () => '',
+				effect: () => invertFlag('noRouting_HP'),
+				text: '自动寻路时绕过加血物品。同时自动拾取也将忽略这类物品。',
+				replay: true,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_HP') ? 1 : 0.3);
+					core.drawIcon(ctx, 'redPotion', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			},
+			noRouting_MDEF: {
+				getName: () => '',
+				effect: () => invertFlag('noRouting_MDEF'),
+				text: '自动寻路时绕过加护盾物品。同时自动拾取也将忽略这类物品。',
+				replay: true,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_MDEF') ? 1 : 0.3);
+					core.drawIcon(ctx, 'greenGem', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			},
+			noRouting_ATK: {
+				getName: () => '',
+				effect: () => invertFlag('noRouting_ATK'),
+				text: '自动寻路时绕过加攻物品。同时自动拾取也将忽略这类物品。',
+				replay: true,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_ATK') ? 1 : 0.3);
+					core.drawIcon(ctx, 'redGem', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			},
+			noRouting_DEF: {
+				getName: () => '',
+				effect: () => invertFlag('noRouting_DEF'),
+				text: '自动寻路时绕过加防物品。同时自动拾取也将忽略这类物品。',
+				replay: true,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.setAlpha(ctx, core.hasFlag('noRouting_DEF') ? 1 : 0.3);
+					core.drawIcon(ctx, 'blueGem', this.x, this.y, this.w, this.h);
+					core.setAlpha(ctx, 1);
+				}
+			},
+			clickMove: {
+				getName: () => '单击瞬移:' + (core.hasFlag('__noClickMove__') ? '关' : '开'),
+				effect: () => invertFlag('__noClickMove__'),
+				text: '系统设置。单击即可触发瞬移。',
+				replay: true,
+			},
+			moveSpeedDown: {
+				getName: () => ' < 步时:' + core.values.moveSpeed,
+				effect: () => core.actions._clickSwitchs_action_moveSpeed(-10),
+				text: '缩短步时。',
+				replay: false, // 录像中不可录入任何DOM操作
+			},
+			moveSpeedUp: {
+				getName: () => ' > ',
+				effect: () => core.actions._clickSwitchs_action_moveSpeed(10),
+				text: '增大步时。',
+				replay: false,
+			},
+			floorChangeTimeDown: {
+				getName: () => ' <   转场:' + core.values.floorChangeTime,
+				effect: () => core.actions._clickSwitchs_action_floorChangeTime(-100),
+				text: '缩短转场时间。',
+				replay: false, // 录像中不可录入任何DOM操作
+			},
+			floorChangeTimeUp: {
+				getName: () => ' > ',
+				effect: () => core.actions._clickSwitchs_action_floorChangeTime(100),
+				text: '增大转场时间。',
+				replay: false,
+			},
+			skip: {
+				getName: () => '跳过剧情:' + (core.hasFlag('skip') ? '开' : '关'),
+				effect: () => { invertFlag('skip'); },
+				text: '跳过所有剧情。',
+				replay: true,
+			},
+			comment: {
+				getName: () => '在线留言:' + (core.hasFlag('comment') ? '开' : '关'),
+				effect: () => {
+					if (core.hasFlag('comment')) {
+						core.setFlag('comment', false);
+						core.plugin.clearCommentSign();
+					} else {
+						core.setFlag('comment', true);
+						core.plugin.drawCommentSign();
+					}
+				},
+				text: '在地图上显示玩家的在线留言。',
+				replay: true,
+			}
+		}
 
-			// 每个页面的按钮
-			const gamePlayMenu = new SettingOnePage('gamePlay');
-			gamePlayMenu.initBtnList([
-				['1,1', new SettingButton(40, 180, 150, 30, 'autoGet')],
-				['2,1', new SettingButton(220, 180, 150, 30, 'autoBattle')],
-				['1,2', new SettingButton(40, 230, 150, 30, 'clickMove')],
-				['2,2', new SettingButton(260, 234, 24, 24, 'noRouting_HP')],
-				['3,2', new SettingButton(290, 234, 24, 24, 'noRouting_MDEF')],
-				['4,2', new SettingButton(320, 234, 24, 24, 'noRouting_ATK')],
-				['5,2', new SettingButton(350, 234, 24, 24, 'noRouting_DEF')],
-				['1,3', new SettingButton(40, 280, 25, 25, 'moveSpeedDown')],
-				['2,3', new SettingButton(140, 280, 25, 25, 'moveSpeedUp')],
-				['3,3', new SettingButton(220, 280, 25, 25, 'floorChangeTimeDown')],
-				['4,3', new SettingButton(340, 280, 25, 25, 'floorChangeTimeUp')],
-				['1,4', new SettingButton(40, 305, 150, 25, 'skip')],
-				['2,4', new SettingButton(220, 305, 150, 25, 'comment')],
+		class GamePlay extends SettingOnePage {
+			constructor() {
+				super('gamePlay', gamePlaySetting);
+			}
+
+			drawContent() {
+				const ctx = this.createCanvas();
+				core.fillText(ctx, '-- 自动 --', 40, 175, ' #FFE4B5', '18px Verdana');
+				core.fillText(ctx, '-- 瞬移 --', 40, 225, ' #FFE4B5', '18px Verdana');
+				core.fillText(ctx, '绕开', 220, 250, 'white', '16px Verdana');
+				core.fillText(ctx, '-- 杂项 --', 40, 275, ' #FFE4B5', '18px Verdana');
+				super.drawContent(ctx);
+			}
+		}
+
+		function gamePlayFactory() {
+			const gamePlayMenu = new GamePlay();
+			gamePlayMenu.registerBtns([
+				['1,1', 'autoGet', new SettingButton(40, 180, 150, 30)],
+				['2,1', 'autoBattle', new SettingButton(220, 180, 150, 30)],
+				['1,2', 'clickMove', new SettingButton(40, 230, 150, 30)],
+				['2,2', 'noRouting_HP', new SettingButton(260, 234, 24, 24)],
+				['3,2', 'noRouting_MDEF', new SettingButton(290, 234, 24, 24)],
+				['4,2', 'noRouting_ATK', new SettingButton(320, 234, 24, 24)],
+				['5,2', 'noRouting_DEF', new SettingButton(350, 234, 24, 24)],
+				['1,3', 'moveSpeedDown', new SettingButton(40, 280, 25, 25)],
+				['2,3', 'moveSpeedUp', new SettingButton(140, 280, 25, 25)],
+				['3,3', 'floorChangeTimeDown', new SettingButton(220, 280, 25, 25)],
+				['4,3', 'floorChangeTimeUp', new SettingButton(340, 280, 25, 25)],
+				['1,4', 'skip', new SettingButton(40, 305, 150, 25)],
+				['2,4', 'comment', new SettingButton(220, 305, 150, 25)]
 			]);
+			return gamePlayMenu;
+		}
+		// #endregion
+		// #region 视图菜单
+		/** @type {{[x:string]:Setting}} */
+		const gameViewSetting = {
+			itemDetail: {
+				getName: () => '物品显示数据:' + (core.hasFlag('itemDetail') ? '开' : '关'),
+				effect: () => invertFlag('itemDetail'),
+				text: '在地图上显示即捡即用道具和装备增加的属性值。',
+				replay: true,
+			},
+			zoomIn: {
+				getName: () => ' <  放缩:' + Math.max(core.domStyle.scale, 1) + 'x',
+				effect: () => core.actions._clickSwitchs_display_setSize(-1),
+				text: '放缩',
+				replay: false,
+			},
+			zoomOut: {
+				getName: () => ' > ',
+				effect: () => core.actions._clickSwitchs_display_setSize(1),
+				text: '放缩。',
+				replay: false,
+			},
+			HDCanvas: {
+				getName: () => '高清画面:' + (core.flags.enableHDCanvas ? '开' : '关'),
+				effect: core.actions._clickSwitchs_display_enableHDCanvas,
+				text: '高清画面。本功能开关后刷新游戏才能看到效果。',
+				replay: false,
+			},
+			enableEnemyPoint: {
+				getName: () => '定点怪显:' + (core.flags.enableEnemyPoint ? '开' : '关'),
+				effect: core.actions._clickSwitchs_display_enableEnemyPoint,
+				text: '怪物属性定点显示功能，即属性不同的怪物会在怪物手册单列。',
+				replay: false,
+			},
+			displayEnemyDamage: {
+				getName: () => '怪物显伤:' + (core.flags.displayEnemyDamage ? '开' : '关'),
+				effect: core.actions._clickSwitchs_display_enemyDamage,
+				text: '怪物显伤',
+				replay: false,
+			},
+			displayCritical: {
+				getName: () => '临界显伤:' + (core.flags.displayCritical ? '开' : '关'),
+				effect: core.actions._clickSwitchs_display_critical,
+				text: '临界显伤',
+				replay: false,
+			},
+			displayExtraDamage: {
+				getName: () => '领域显伤:' + (core.flags.displayExtraDamage ? '开' : '关'),
+				effect: core.actions._clickSwitchs_display_extraDamage,
+				text: '领域显伤',
+				replay: false,
+			},
+			extraDamageType: {
+				getName: () => '领域模式:' + (core.flags.extraDamageType == 2 ? '[最简]' : core.flags.extraDamageType == 1 ? '[半透明]' : '[完整]'),
+				effect: core.actions._clickSwitchs_display_extraDamageType,
+				text: '是否显示不可通行地块的领域伤害。',
+				replay: false,
+			},
+			autoScale: {
+				getName: () => '自动放缩:' + (core.getLocalStorage('autoScale') ? '开' : '关'),
+				effect: () => {
+					core.setLocalStorage('autoScale', !core.getLocalStorage('autoScale'));
+				},
+				text: '自动放缩。',
+				replay: false,
+			},
+			bgm: {
+				getName: () => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
+				effect: core.actions._clickSwitchs_sounds_bgm,
+				text: '播放背景音乐。',
+				replay: false,
+			},
+			se: {
+				getName: () => '音效:' + (core.musicStatus.soundStatus ? '开' : '关'),
+				effect: core.actions._clickSwitchs_sounds_se,
+				text: '播放音效。',
+				replay: false,
+			},
+			decreaseVolume: {
+				getName: () => " <   音量:" + Math.round(Math.sqrt(100 * core.musicStatus.userVolume)),
+				effect: () => core.actions._clickSwitchs_sounds_userVolume(-1),
+				text: '减小音量。',
+				replay: false,
+			},
+			increaseVolume: {
+				getName: () => ' > ',
+				effect: () => core.actions._clickSwitchs_sounds_userVolume(1),
+				text: '增大音量。',
+				replay: false,
+			},
+		};
 
-			const gameViewMenu = new SettingOnePage('gameView');
-			gameViewMenu.initBtnList([
-				['1,1', new SettingButton(40, 180, 150, 25, 'itemDetail')],
-				['1,2', new SettingButton(40, 205, 150, 25, 'HDCanvas')],
-				['1,3', new SettingButton(40, 230, 150, 25, 'displayEnemyDamage')],
-				['1,4', new SettingButton(40, 255, 150, 25, 'displayExtraDamage')],
-				['1,5', new SettingButton(40, 280, 150, 25, 'extraDamageType')],
-				['1,6', new SettingButton(40, 325, 150, 25, 'bgm')],
-				['1,7', new SettingButton(40, 350, 25, 25, 'decreaseVolume')],
-				['2,7', new SettingButton(140, 350, 25, 25, 'increaseVolume')],
+		class GameView extends SettingOnePage {
+			constructor() {
+				super('gameView', gameViewSetting);
+			}
 
-				['2,1', new SettingButton(220, 180, 25, 25, 'zoomIn')],
-				['3,1', new SettingButton(330, 180, 25, 25, 'zoomOut')],
-				['2,2', new SettingButton(220, 205, 150, 25, 'autoScale')],
-				['2,3', new SettingButton(220, 230, 150, 25, 'enableEnemyPoint')],
-				['2,4', new SettingButton(220, 255, 150, 25, 'displayCritical')],
-				['2,6', new SettingButton(220, 325, 150, 25, 'se')],
+			drawContent() {
+				const ctx = this.createCanvas();
+				core.fillText(ctx, '-- 显示 --', 40, 175, ' #FFE4B5', '18px Verdana');
+				core.fillText(ctx, '-- 音效 --', 40, 320, ' #FFE4B5', '18px Verdana');
+				super.drawContent(ctx);
+			}
+		}
+
+		function gameViewFactory() {
+			const gameViewMenu = new GameView();
+			gameViewMenu.registerBtns([
+				['1,1', 'itemDetail', new SettingButton(40, 180, 150, 25)],
+				['1,2', 'HDCanvas', new SettingButton(40, 205, 150, 25)],
+				['1,3', 'displayEnemyDamage', new SettingButton(40, 230, 150, 25)],
+				['1,4', 'displayExtraDamage', new SettingButton(40, 255, 150, 25)],
+				['1,5', 'extraDamageType', new SettingButton(40, 280, 150, 25)],
+				['1,6', 'bgm', new SettingButton(40, 325, 150, 25)],
+				['1,7', 'decreaseVolume', new SettingButton(40, 350, 25, 25)],
+				['2,7', 'increaseVolume', new SettingButton(140, 350, 25, 25)],
+				['2,1', 'zoomIn', new SettingButton(220, 180, 25, 25)],
+				['3,1', 'zoomOut', new SettingButton(330, 180, 25, 25)],
+				['2,2', 'autoScale', new SettingButton(220, 205, 150, 25)],
+				['2,3', 'enableEnemyPoint', new SettingButton(220, 230, 150, 25)],
+				['2,4', 'displayCritical', new SettingButton(220, 255, 150, 25)],
+				['2,6', 'se', new SettingButton(220, 325, 150, 25)]
 			]);
+			return gameViewMenu;
+		}
+		// #endregion
+		// #region 快捷键菜单
+		/** @type {{[x:string]:Setting}} */
+		const keySetting = {
+			leftHand: {
+				getName: () => '左手模式:' + (core.flags.leftHandPrefer ? '开' : '关'),
+				effect: () => {
+					core.flags.leftHandPrefer = !core.flags.leftHandPrefer;
+					core.setLocalStorage('leftHandPrefer', core.flags.leftHandPrefer);
+				},
+				text: '系统设置。左手模式下WASD将用于移动角色，IJKL对应于原始的WASD进行存读档等操作。',
+				replay: true,
+			},
+			setHotKey: {
+				getName: () => '',
+				effect: /** @this {GameView} */
+					function (num) {
+						core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (value) => {
+							const itemInfo = core.material.items;
+							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+							if (aimItem) {
+								if (['constants', 'tools'].includes(aimItem.cls)) {
+									for (let i = 1; i <= 9; i++) {
+										if (i !== num && core.getLocalStorage('hotkey' + i) === aimItem.id) {
+											core.setLocalStorage('hotkey' + i, null);
+										}
+									}
+									core.setLocalStorage('hotkey' + num, aimItem.id);
+									this.drawContent();
+								} else {
+									core.drawFailTip('错误：该类型的物品不支持快捷使用!');
+								}
+							} else {
+								core.drawFailTip('错误：找不到该名称的物品!');
+							}
+						}, () => { });
+					},
+				text: '给选定的数字键绑定一个可快捷使用的物品。',
+				replay: false,
+				draw: /** @this {SettingButton} */
+					function (ctx, num) {
+						const item = core.getLocalStorage('hotkey' + num, null);
+						let icon, itemName;
+						if (item && core.material.items.hasOwnProperty(item)) {
+							icon = item;
+							itemName = core.material.items[item].name;
+						} else {
+							const itemMap = {
+								'1': { icon: 'pickaxe', itemName: '破墙镐' },
+								'2': { icon: 'bomb', itemName: '炸弹' },
+								'3': { icon: 'centerFly', itemName: '中心飞' },
+								'4': { itemName: '杂物' },
+								'5': { itemName: '回退一步' },
+								'6': { itemName: '撤销回退' },
+								'7': { itemName: '轻按' }
+							};
+							if (num >= 1 && num <= 9) {
+								({ icon, itemName = '无' } = itemMap[num] || {});
+							}
+						}
+						const keyIcon = 'btn' + num;
+						core.drawIcon(ctx, keyIcon, this.x, this.y, 16, 16);
+						const hasItem = core.material.items.hasOwnProperty(icon);
+						if (hasItem) core.drawIcon(ctx, icon, this.x + 20, this.y, 16, 16);
+						core.setTextAlign(ctx, 'left');
+						core.setTextBaseline(ctx, 'alphabetic');
+						core.fillText(ctx, itemName || '无', this.x + (hasItem ? 40 : 20), this.y + 14, 'white', '16px Verdana');
+					}
+			},
+			clearHotKeys: {
+				getName: () => '',
+				effect: /** @this {GameView} */
+				function () {
+					for (let i = 1; i <= 9; i++) {
+						core.setLocalStorage('hotkey' + i, null);
+					}
+					this.drawContent();
+					core.drawSuccessTip('快捷键已重置到默认状态。');
+				},
+				text: '重置本页面所有快捷键到默认状态。',
+				replay: false,
+				draw: /** @this {SettingButton} */
+				function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, '#D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, '#888888');
+					core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, '#333333', '16px Verdana');
+				}
+			}
+		};
+		class KeyMenu extends SettingOnePage {
+			constructor() {
+				super('key', keySetting);
+			}
 
-			const keyMenu = new SettingOnePage('key');
-			keyMenu.initBtnList([
-				['1,1', new SettingButton(40, 160, 150, 25, 'leftHand')],
-				['1,2', new SettingButton(40, 220, 150, 25, 'setHotKey', ['1'])],
-				['2,2', new SettingButton(220, 220, 150, 25, 'setHotKey', ['2'])],
-				['1,3', new SettingButton(40, 250, 150, 25, 'setHotKey', ['3'])],
-				['2,3', new SettingButton(220, 250, 150, 25, 'setHotKey', ['4'])],
-				['1,4', new SettingButton(40, 280, 150, 25, 'setHotKey', ['5'])],
-				['2,4', new SettingButton(220, 280, 150, 25, 'setHotKey', ['6'])],
-				['1,5', new SettingButton(40, 310, 150, 25, 'setHotKey', ['7'])],
-				['2,5', new SettingButton(220, 310, 150, 25, 'setHotKey', ['8'])],
-				['1,6', new SettingButton(40, 340, 150, 25, 'setHotKey', ['9'])],
-				['2,6', new SettingButton(300, 350, 42, 25, 'clearHotKeys')],
+			drawContent() {
+				const ctx = this.createCanvas();
+				core.fillText(ctx, '-- 快捷键 --', 40, 205, ' #FFE4B5', '18px Verdana');
+				core.fillText(ctx, "注意⚠️更推荐在背包", 160, 190, "rgb(255,255,51)", '12px Verdana');
+				core.fillText(ctx, "中点击右上角", 287, 190, "rgb(255,255,51)", '12px Verdana');
+				core.fillText(ctx, "图标设置单物品的快捷键", 160, 210, "rgb(255,255,51)", '12px Verdana');
+				core.drawIcon(ctx, "toolbox", 272, 178, 16, 16);
+				core.drawIcon(ctx, "keyboard", 359, 178, 16, 16);
+				super.drawContent(ctx);
+			}
+		}
+
+		function keyMenuFactory() {
+			const keyMenu = new KeyMenu();
+			keyMenu.registerBtns([
+				['1,1', 'leftHand', new SettingButton(40, 160, 150, 25)],
+				['1,2', 'setHotKey', new SettingButton(40, 220, 150, 25, '1'), 1],
+				['2,2', 'setHotKey', new SettingButton(220, 220, 150, 25, '2'), 2],
+				['1,3', 'setHotKey', new SettingButton(40, 250, 150, 25, '3'), 3],
+				['2,3', 'setHotKey', new SettingButton(220, 250, 150, 25, '4'), 4],
+				['1,4', 'setHotKey', new SettingButton(40, 280, 150, 25, '5'), 5],
+				['2,4', 'setHotKey', new SettingButton(220, 280, 150, 25, '6'), 6],
+				['1,5', 'setHotKey', new SettingButton(40, 310, 150, 25, '7'), 7],
+				['1,6', 'clearHotKeys', new SettingButton(300, 350, 42, 25)],
 			]);
+			return keyMenu;
+		}
+		// #endregion
+		// #region 自定义工具栏界面
+		/** 自定义工具栏界面 */
+		class ToolBtn extends ButtonBase {
+			constructor(x, y, w, h, icon, text, config) {
+				super(x, y, w, h);
+				/** @type {ToolBarConfigPage} */ // @ts-ignore
+				this.menu;
+				this.icon = icon; // 特殊icon:delete 用于删除图标
+				/** @todo 这里需要重构 */
+				this.text = text;
+				this.config = config || {};
+				this.ondown = () => {
+					this.menu.selectedTool = this.icon;
+					this.menu.text = this.text;
+					this.menu.drawContent();
+				};
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const { strokeStyle = 'white', fillStyle = 'white', selectedStyle = 'gold' } = this.config;
+				core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, (this.menu.selectedTool === this.icon) ? selectedStyle : strokeStyle);
+				if (this.icon === 'delete') {
+					core.drawLine(ctx, this.x + 2, this.y + 2, this.x + this.w - 2, this.y + this.h - 2, 'red', 2);
+					core.drawLine(ctx, this.x + 2, this.y + this.h - 2, this.x + this.w - 2, this.y + 2, 'red', 2);
+				} else core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
+			};
+		}
+
+		class ToolBarBtn extends ButtonBase {
+			constructor(x, y, size, type, length, text) {
+				super(x, y, length * size, size);
+				/** @type {ToolBarConfigPage} */ // @ts-ignore
+				this.menu;
+				this.type = type;
+				this.length = length;
+				/** @todo 这里需要重构 */
+				this.text = text;
+				this.ondown = (x, y, px, py) => {
+					const squareSize = this.h;
+					const index = Math.floor((px - this.x) / squareSize);
+					this.menu.type = type;
+					this.menu.index = index;
+					this.menu.drawContent();
+				}
+			}
+
+			draw() {
+				const ctx = this.ctx;
+				const squareSize = this.h;
+				const type = this.type;
+				const toolBarConfig = core.plugin.getToolBarConfig(type);
+				for (let i = 0; i < this.length; i++) {
+					const style = (this.menu.type === type && this.menu.index === i) ? 'gold' : 'white';
+					core.strokeRoundRect(ctx, this.x + squareSize * i + i, this.y, squareSize, squareSize, 3, style);
+					core.drawIcon(ctx, toolBarConfig[i], this.x + squareSize * i + i, this.y, squareSize, squareSize);
+				}
+			}
+		}
+
+		class ToolBarConfigPage extends MenuBase {
+			constructor() {
+				super('toolBarConfig', ['ondown']);
+				/** 当前选中的图标 */
+				this.selectedTool = 'none';
+				/** 当前选中了哪个类型的工具栏 */
+				this.type = 'none';
+				/** 当前选中工具栏哪个位置(1-9) */
+				this.index = -1;
+				this.text = '';
+			}
+
+			drawContent() {
+				const ctx = this.createCanvas();
+				core.setTextAlign(ctx, 'left');
+				core.fillText(ctx, '常规', 40, 175, ' #FFE4B5', '16px Verdana');
+				core.fillText(ctx, '数字', 40, 205, ' #FFE4B5', '16px Verdana');
+				core.fillText(ctx, '录像', 40, 235, ' #FFE4B5', '16px Verdana');
+				core.fillText(ctx, '可选按钮', 40, 265, ' #FFE4B5', '16px Verdana');
+				if (this.text && this.text.length > 0) {
+					core.ui.drawTextContent(ctx, this.text, {
+						left: 30, top: 78, bold: false, color: "white",
+						align: "left", fontSize: 14, maxWidth: 350
+					});
+				}
+				super.drawContent();
+			}
+
+			setToolBarConfig() {
+				core.setToolBarConfig(this.type, this.index, this.selectedTool);
+				this.drawContent();
+			}
+		}
+
+		function toolBarConfigFactory() {
 			// 名字不能叫toolBar 画布toolBar被系统占了
-			const toolBarMenu = new ToolBarConfigPage('toolBarConfig');
+			const toolBarMenu = new ToolBarConfigPage();
 			const changeToolBarBtn = new RoundBtn(320, 158, 42, 24, '执行', -1);
-			changeToolBarBtn.event = function () {
+			changeToolBarBtn.ondown = function () {
 				core.setToolBarConfig(this.menu.type, this.menu.index, this.menu.selectedTool);
 				this.menu.drawContent();
 			}.bind(changeToolBarBtn);
-			toolBarMenu.initBtnList([
+			toolBarMenu.registerBtns([
 				['1,1', new ToolBarBtn(80, 158, 24, 'normal', 9, '常规模式下显示在工具栏中的图标。')],
-				['1,2', changeToolBarBtn],
+				['1,2', changeToolBarBtn, () => toolBarMenu.setToolBarConfig()],
 				['2,1', new ToolBarBtn(80, 188, 24, 'num', 9, '数字模式下显示在工具栏中的图标。')],
 				['3,1', new ToolBarBtn(80, 218, 24, 'replay', 9, '录像模式下显示在工具栏中的图标。')],
 				['5,1', new ToolBtn(40, 275, 24, 24, 'book', '打开怪物手册')],
@@ -5441,44 +5144,427 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['7,6', new ToolBtn(190, 335, 24, 24, 'single', '单步播放录像')],
 				['7,7', new ToolBtn(220, 335, 24, 24, 'view', '浏览地图')],
 				['7,8', new ToolBtn(250, 335, 24, 24, 'delete', '删除已有图标')],
-			])
-
-			const consoleMenu = new SettingOnePage('console');
-			consoleMenu.initBtnList([
-				['1,1', new SettingButton(40, 220, 150, 25, 'debug_wallHacking')],
-				['1,2', new SettingButton(80, 250, 80, 20, 'debug_statusName')],
-				['2,2', new SettingButton(210, 250, 80, 20, 'debug_statusValue')],
-				['3,2', new SettingButton(340, 250, 40, 20, 'debug_setStatus')],
-				['1,3', new SettingButton(80, 276, 80, 20, 'debug_itemName')],
-				['2,3', new SettingButton(240, 276, 80, 20, 'debug_itemValue')],
-				['3,3', new SettingButton(340, 276, 40, 20, 'debug_setItem')],
-				['1,4', new SettingButton(80, 302, 80, 20, 'debug_flagName')],
-				['2,4', new SettingButton(210, 302, 80, 20, 'debug_flagValue')],
-				['3,4', new SettingButton(340, 302, 40, 20, 'debug_setFlag')],
 			]);
+			return toolBarMenu;
+		}
+		// #endregion
+		// #region 控制台界面
+		/** @type {{[x:string]:Setting}} */
+		const consoleSetting = {
+			debug_wallHacking: {
+				getName: () => ' 穿墙:' + (core.hasFlag('debug_wallHacking') ? '开' : '关'),
+				effect: () => {
+					core.setFlag('debug', true);
+					invertFlag('debug_wallHacking');
+				},
+				text: '开启时将始终穿墙并无视各种事件，无论是否按下Ctrl。',
+				replay: false,
+			},
+			debug_statusName: {
+				getName: () => core.getFlag('debug_statusName', '??'),
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					const dictionary = {
+						'体力': 'hp', '血量': 'hp', '生命': 'hp', '血': 'hp',
+						'体力上限': 'hpmax', '血量上限': 'hpmax', '生命上限': 'hpmax', '血限': 'hpmax',
+						'攻击': 'atk', '攻': 'atk',
+						'防御': 'def', '防': 'def',
+						'魔防': 'mdef', '护盾': 'mdef', 'mf': 'mdef',
+						'金币': 'money', '金钱': 'money', '钱': 'money',
+						'经验': 'exp',
+						'魔力': 'mana', '魔': 'mana', '蓝': 'mana',
+					};
+					core.utils.myprompt('输入要修改的属性名称', '', (value) => {
+						const heroStatus = core.status.hero;
+						if (dictionary.hasOwnProperty(value)) {
+							value = dictionary[value];
+						}
+						if (heroStatus && heroStatus.hasOwnProperty(value) &&
+							['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'].includes(value)) {
+							core.setFlag('debug_statusName', value);
+							this.menu.drawContent();
+						} else {
+							core.drawFailTip('错误：不合法的名称!');
+						}
+					}, () => { });
+				},
+				text: '',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			},
+			debug_statusValue: {
+				getName: () => {
+					let value = core.getFlag('debug_statusValue', '??');
+					if (typeof value === 'number') return core.formatBigNumber(value, 5);
+					else return value;
+				},
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					core.utils.myprompt('输入要修改到的值', null, (input) => {
+						const value = parseInt(input);
+						if (!Number.isNaN(value)) {
+							core.setFlag('debug_statusValue', value);
+							this.menu.drawContent();
+						} else {
+							core.drawFailTip('错误：不合法的值!');
+						}
+					}, () => { });
+				},
+				text: '',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			},
+			debug_setStatus: {
+				getName: () => '',
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					const name = core.getFlag('debug_statusName'),
+						value = core.getFlag('debug_statusValue');
+					if (!(name && core.status.hero && core.status.hero.hasOwnProperty(name))) {
+						core.drawFailTip('错误：不合法的名称!');
+						return;
+					}
+					if (!Number.isInteger(value)) {
+						core.drawFailTip('错误：不合法的值!');
+						return;
+					}
+					core.setFlag('debug', true);
+					core.setStatus(name, value);
+					core.updateStatusBar();
+					core.drawSuccessTip('设置成功!');
+				},
+				text: '将角色状态设为相应值。',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			},
+			debug_itemName: {
+				getName: () => core.getFlag('debug_itemName', '??'),
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					core.utils.myprompt('输入要修改的物品名称', null, (value) => {
+						const itemInfo = core.material.items;
+						if (itemInfo) {
+							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
+							if (aimItem) {
+								core.setFlag('debug_itemName', aimItem.id);
+								this.menu.drawContent();
+								return;
+							}
+						}
+						core.drawFailTip('错误：不合法的名称!');
+					}, () => { });
+				},
+				text: '',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			},
+			debug_itemValue: {
+				getName: () => core.getFlag('debug_itemValue', '??'),
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					core.setFlag('debug', true);
+					core.utils.myprompt('输入要修改到的值', null, (input) => {
+						const value = parseInt(input);
+						if (!Number.isNaN(value)) {
+							core.setFlag('debug_itemValue', value);
+							this.menu.drawContent();
+						} else {
+							core.drawFailTip('错误：不合法的值!');
+						}
+					}, () => { });
+				},
+				text: '',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			},
+			debug_setItem: {
+				getName: () => '',
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					const name = core.getFlag('debug_itemName'),
+						value = core.getFlag('debug_itemValue');
+					const itemInfo = core.material.items;
+
+					if (name && itemInfo) {
+						let itemExist = Object.values(itemInfo).some((item) => item.id === name);
+						if (!itemExist) {
+							core.drawFailTip('错误：不合法的名称!');
+							return;
+						}
+					} else {
+						core.drawFailTip('错误：不合法的名称!');
+						return;
+					}
+
+					if (!Number.isInteger(value)) {
+						core.drawFailTip('错误：不合法的值!');
+						return;
+					}
+
+					core.setFlag('debug', true);
+					core.setItem(name, value);
+					core.updateStatusBar();
+					core.drawSuccessTip('设置成功!');
+				},
+				text: '将道具数设为相应值。',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			},
+			debug_flagName: {
+				getName: () => core.getFlag('debug_flagName', '??'),
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					core.setFlag('debug', true);
+					core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+						if (!value.startsWith('debug')) {
+							core.setFlag('debug_flagName', value);
+							this.menu.drawContent();
+						} else {
+							core.drawFailTip('错误：不合法的名称!');
+						}
+					}, () => { });
+				},
+				text: '',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			},
+			debug_flagValue: {
+				getName: () => core.getFlag('debug_flagValue', '??'),
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					core.setFlag('debug', true);
+					core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+						let newValue;
+						try {
+							newValue = JSON.parse(value.trim());
+						} catch {
+							core.drawFailTip('错误：不合法的值，无法解析!');
+							return;
+						}
+						core.setFlag('debug_flagValue', newValue);
+						this.menu.drawContent();
+					}, () => { });
+				},
+				text: '',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.strokeRect(ctx, this.x, this.y, this.w, this.h, ' #708090');
+				},
+			},
+			debug_setFlag: {
+				getName: () => '',
+				/** @this {ConsoleMenu} */
+				effect: function () {
+					const name = core.getFlag('debug_flagName'),
+						value = core.getFlag('debug_flagValue');
+					if (!name) {
+						core.drawFailTip('错误：不合法的变量名称!');
+						return;
+					}
+					core.setFlag('debug', true);
+					core.setFlag(name, value);
+					core.updateStatusBar();
+					core.drawSuccessTip('设置成功!');
+				},
+				text: '将变量设为相应值。',
+				replay: false,
+				/** @this {SettingButton} */
+				draw: function (ctx) {
+					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #D3D3D3');
+					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, ' #888888');
+					core.fillText(ctx, '执行', this.x + 5, this.y + this.h / 2 + 5, ' #333333', '16px Verdana');
+				},
+			},
+		};
+
+		class ConsoleMenu extends SettingOnePage {
+			constructor() {
+				super('console', consoleSetting);
+				this.menu = this;
+			}
+
+			drawContent() {
+				const ctx = this.createCanvas();
+				const consoleWarnText =
+					"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
+				core.setTextAlign(this.name, 'left');
+				core.setTextBaseline(ctx, 'alphabetic');
+				core.fillText(this.name, "本页面的功能仅供调试用。使用后相应存档将变红，录像", 30, 170, " #FFC0CB", '14px Verdana');
+				core.fillText(this.name, "不能通过，且无法提交。请读档到普通存档后正常游玩方", 30, 190, " #FFC0CB", '14px Verdana');
+				core.fillText(this.name, "可提交。", 30, 210, " #FFC0CB", '14px Verdana');
+				core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
+				core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
+				core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
+				core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
+				core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
+				core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
+				super.drawContent(ctx);
+			}
+		}
+
+		function consoleMenuFactory() {
+			const consoleMenu = new ConsoleMenu();
+			consoleMenu.registerBtns([
+				['1,1', 'debug_wallHacking', new SettingButton(40, 220, 150, 25)],
+				['1,2', 'debug_statusName', new SettingButton(80, 250, 80, 20)],
+				['2,2', 'debug_statusValue', new SettingButton(210, 250, 80, 20)],
+				['3,2', 'debug_setStatus', new SettingButton(340, 250, 40, 20)],
+				['1,3', 'debug_itemName', new SettingButton(80, 276, 80, 20)],
+				['2,3', 'debug_itemValue', new SettingButton(240, 276, 80, 20)],
+				['3,3', 'debug_setItem', new SettingButton(340, 276, 40, 20)],
+				['1,4', 'debug_flagName', new SettingButton(80, 302, 80, 20)],
+				['2,4', 'debug_flagValue', new SettingButton(210, 302, 80, 20)],
+				['3,4', 'debug_setFlag', new SettingButton(340, 302, 40, 20)],
+			]);
+			return consoleMenu;
+		}
+		// #endregion
+
+		class PageChangeBtn extends RoundBtn {
+			constructor(x, y, w, h, text) {
+				super(x, y, w, h, text);
+				/** @type {SettingBack} */ // @ts-ignore
+				this.menu;
+				this.ondown = () => this.menu.changePage(this.key);
+			}
+		}
+
+		class SettingBack extends Pagination {
+			constructor(pageList, currPage, name) {
+				super(pageList, currPage, name, ['ondown', 'keyDown']);
+			}
+
+			changePage(index) {
+				this.btnMap.forEach((btn, key) => {
+					btn.status = (key === index) ? 'selected' : 'none';
+				});
+				super.changePage(index);
+				this.drawContent();
+			}
+
+			/** @override */
+			keyDownEvent(keyCode) {
+				if (keyCode === KeyCodeEnum.PageDown) this.pageDown();
+				else if (keyCode === KeyCodeEnum.PageUp) this.pageUp();
+				else if (keyCode === KeyCodeEnum.Esc) this.quit();
+			}
+
+			quit() {
+				this.clear();
+				setTimeout(core.unlockControl, 0); // 消抖，防止点击关闭按钮的一瞬间触发瞬移。
+			}
+
+			drawSettingBackGround(ctx) {
+				core.strokeRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "white", 2);
+				core.fillRoundRect(ctx, 0, 0, core.__PIXELS__, core.__PIXELS__, 5, "gray");
+
+				// 绘制设置说明的文本框
+				core.strokeRoundRect(ctx, 20, 70, core.__PIXELS__ - 40, 70, 3, "white");
+				core.fillRoundRect(ctx, 21, 71, core.__PIXELS__ - 42, 68, 3, " #555555");
+
+				// 绘制设置的框体
+				core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 240, 3, "white");
+				core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 238, 3, " #999999");
+
+				core.setTextAlign(ctx, 'center');
+				core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');
+			}
+
+			drawContent() {
+				const ctx = core.createCanvas(this.name, this.x, this.y, this.w, this.h, 136);
+				this.drawSettingBackGround(ctx);
+				super.drawContent();
+				// this.initOnePage(this.currPage);
+			}
+		}
+		
+		const allSettings = {
+			...gamePlaySetting,
+			...gameViewSetting,
+			...keySetting,
+			...consoleSetting,
+		};
+		// 注册点击SettingButton的行为cSet， 只有replay为真时计入录像
+		core.registerReplayAction('cSet', (action) => {
+			const strArr = action.split(':');
+			if (strArr[0] !== 'cSet') return false;
+			const currSetting = allSettings[strArr[1]]; //@todo bugfix
+			if (!currSetting || !currSetting.replay || strArr[1].startsWith('debug')) return false;
+
+			let params = strArr.slice(2);
+
+			if (params.length > 0) {
+				currSetting.effect.apply(currSetting, params);
+			} else {
+				currSetting.effect.call(currSetting);
+			}
+
+			core.status.route.push(action);
+			core.replay();
+			return true;
+		});
+
+		this.openSetting = function () {
+			if (core.isReplaying()) return;
+			core.lockControl();
+			const ctx = 'setting';
+
+			const gamePlayMenu = gamePlayFactory();
+			const gameViewMenu = gameViewFactory();
+			const keyMenu = keyMenuFactory();
+			const toolBarMenu = toolBarConfigFactory();
+			const consoleMenu = consoleMenuFactory();
 
 			// 在此处添加新的菜单页面
-			const settingMenu = new SettingBase([gamePlayMenu, gameViewMenu, keyMenu, toolBarMenu, consoleMenu], 0, ctx);
+			const settingMenu = new SettingBack([gamePlayMenu, gameViewMenu, keyMenu, toolBarMenu, consoleMenu], 0, ctx);
 
 			// 主页面的按钮列表
-			const gamePlayBtn = new PageChangeBtn(32, 40, 46, 24, '功能', 0),
-				gameViewBtn = new PageChangeBtn(92, 40, 46, 24, '音画', 1),
-				keyBtn = new PageChangeBtn(152, 40, 46, 24, '按键', 2),
-				toolBarBtn = new PageChangeBtn(212, 40, 66, 24, '工具栏', 3),
-				consoleBtn = new PageChangeBtn(292, 40, 66, 24, '控制台', 4);
+			const gamePlayBtn = new PageChangeBtn(32, 40, 46, 24, '功能'),
+				gameViewBtn = new PageChangeBtn(92, 40, 46, 24, '音画'),
+				keyBtn = new PageChangeBtn(152, 40, 46, 24, '按键'),
+				toolBarBtn = new PageChangeBtn(212, 40, 66, 24, '工具栏'),
+				consoleBtn = new PageChangeBtn(292, 40, 66, 24, '控制台');
 			const quit = new TextButton(360, 10, 45, 25, '[退出]');
-			quit.event = () => { settingMenu.quit(); }
 
-			settingMenu.initBtnList([[0, gamePlayBtn], [1, gameViewBtn],
-			[2, keyBtn], [3, toolBarBtn], [4, consoleBtn],
-			['quit', quit]]);
+			settingMenu.registerBtns([
+				[0, gamePlayBtn], [1, gameViewBtn],
+				[2, keyBtn], [3, toolBarBtn], [4, consoleBtn],
+				['quit', quit, () => settingMenu.quit()]
+			]);
 
 			// 放缩时重绘整个大menu
 			core.plugin.settingMenu = settingMenu;
 			// 设置初始时选中的按键为第一个按键
-			settingMenu.changeBtn(gamePlayBtn);
+			gamePlayBtn.status = 'selected';
 
 			settingMenu.init();
+			settingMenu.changePage(0);
 		}
 		// @todo 新版存档界面
 	}

@@ -2321,7 +2321,7 @@ interface items {
      * @param equipId 装备id
      * @returns 类型编号，自然数
      */
-    getEquipTypeById(equipId: string): number | string
+    getEquipTypeById(equipId: string): number
 
     /**
      * 检查能否穿上某件装备
@@ -2378,7 +2378,7 @@ interface items {
     removeItem(itemId?: string, itemNum?: number): void
 
     /** 根据类型获得一个可用的装备孔 */
-    getEquipTypeByName(name?: string): void
+    getEquipTypeByName(name?: string): number
 
     /**
      * 设置某个装备的属性并计入存档
@@ -3105,11 +3105,17 @@ interface plugin {
     changeHero(toHeroId?: number): void
 
     uiBase: {
+        KeyCodeEnum: {
+            BackSpace: 8, Tab: 9, Enter: 13, Esc: 27, SpaceBar: 32,
+            PageUp: 33, PageDown: 34, Left: 37, Up: 38, Right: 39,
+            Down: 40, C: 67, Q: 81, T: 84,
+        }
         ButtonBase: ButtonBase
         RoundBtn: RoundBtn
         IconBtn: IconBtn
         ExitBtn: ExitBtn
         MenuBase: MenuBase
+        Pagination: Pagination
     }
 
     /** 设置菜单 */
@@ -3124,6 +3130,8 @@ interface plugin {
 interface ButtonBase {
     new(x: number, y: number, w: number, h: number): ButtonBaseClass;
 }
+
+type posFunc = (x: number, y: number, px: number, py: number) => void; 
 
 declare class ButtonBaseClass {
     constructor(x: number, y: number, w: number, h: number);
@@ -3145,10 +3153,17 @@ declare class ButtonBaseClass {
     ctx: string
     /** 按钮在菜单中的索引 */
     key: string | number
-    /** 按钮的绘制方法 */
-    draw: () => void
+    /** 
+     * 按钮的绘制方法 
+     * @virtual
+     **/
+    draw(): void
     /** 按钮被按下时触发的事件 */
-    event: (x: number, y: number, px: number, py: number) => void
+    ondown: posFunc;
+    /** 鼠标悬停时触发的事件 */
+    onmove: posFunc | undefined;
+    /** 按钮抬起时触发的事件 */
+    onup: posFunc | undefined;
     /** 当前点击坐标是否在该按钮的判定区范围内 */
     inRange(px, py): boolean;
 }
@@ -3198,15 +3213,21 @@ declare class ExitBtnClass extends ButtonBaseClass {
 }
 
 interface MenuBase {
-    new(name: string, x?: number, y?: number, w?: number, h?: number, zIndex?: number): MenuBaseClass;
+    new(name: string, toListen: eventType[],
+        x?: number | null, y?: number | null, w?: number | null, h?: number | null,
+        zIndex?: number | null): MenuBaseClass;
 }
+
+type eventType = 'ondown' | 'onmove' | 'onup' | 'keyDown' | 'keyUp' | 'onmousewheel';
 
 /*** 菜单基类 */
 declare class MenuBaseClass {
     /**
      * @param name 该菜单使用的画布的名称
      */
-    constructor(name: string, x?: number, y?: number, w?: number, h?: number, zIndex?: number);
+    constructor(name: string, toListen: eventType[],
+        x?: number | null, y?: number | null, w?: number | null, h?: number | null,
+        zIndex?: number | null);
     /** 该菜单画布左上角的x坐标 */
     x: number
     /** 该菜单画布左上角的y坐标 */
@@ -3222,30 +3243,58 @@ declare class MenuBaseClass {
     /** 该画布是否正在被绘制 */
     onDraw: boolean
     /** 该菜单的按钮列表 */
-    btnList: Map<any, ButtonBaseClass>
-    /** 该菜单的点击事件(在此监听按钮的点击事件) */
-    clickEvent: (x: number, y: number, px: number, py: number) => void
+    btnMap: Map<string | number, ButtonBaseClass>
+
+    ondown(x: number, y: number, rawpx: number, rawpy: number): void
+    /** 
+     * @virtual
+     * 点击菜单自身触发的事件 */
+    ondownEvent(x: number, y: number, px: number, py: number): void
+    /** 
+     * @virtual
+     * 点击菜单上的按钮触发的事件 */
+    ondownBtnEvent(x: number, y: number, px: number, py: number): void
+    onmove(x: number, y: number, rawpx: number, rawpy: number): void
+    /** 
+     * @virtual
+     * 鼠标在菜单自身上移动触发的事件 */
+    onmoveEvent(x: number, y: number, px: number, py: number): void
+    /** 
+     * @virtual
+     * 鼠标移动到按钮上触发的事件 */
+    onmoveBtnEvent(x: number, y: number, px: number, py: number): void
+    onup(x: number, y: number, rawpx: number, rawpy: number): void
+    /** 
+     * @virtual
+     * 当菜单自身被鼠标或手指放开时触发的事件 */
+    onupEvent(x: number, y: number, px: number, py: number): void
+    /** 
+     * @virtual
+     * 当菜单上的按钮被鼠标或手指放开时触发的事件 */
+    onupBtnEvent(x: number, y: number, px: number, py: number): void
+
     /** 按键被按下时触发的事件 */
-    keyEvent: ((keycode: number) => void) | undefined
+    keyDownEvent(keycode: number): void
     /** 按键被放开时触发的事件 */
-    keyUpEvent: ((keycode: number, altkey?: boolean, fromReplay?: boolean) => void) | undefined;
-    /** 屏幕被鼠标滑动或手指拖动时触发的事件 */
-    onMoveEvent: ((x: number, y: number, px: number, py: number) => void) | undefined;
-    /** 当屏幕被鼠标或手指放开时触发的事件 */
-    onUpEvent: ((x: number, y: number, px: number, py: number) => void) | undefined;
+    keyUpEvent(keycode: number, altkey?: boolean, fromReplay?: boolean): void;
     /** 鼠标滚轮滚动时触发的事件 */
-    onMouseWheelEvent: ((direct: 1 | -1) => void) | undefined;
+    onMouseWheelEvent(direct: 1 | -1): void;
 
     /** 返回换算后的画布上的相对坐标 */
     convertCoordinate(px: number, py: number): [number, number]
     /** 检查坐标是否在画布范围内 */
     isPosValid(px: number, py: number): boolean
+
+
+    /** 注册一个按钮的事件 */
+    registerBtn(key: string | number, button: ButtonBaseClass,
+        event?: posFunc | { ondown: posFunc, onmove?: posFunc, onup?: posFunc }): void
+    /** 注册若干个按钮的事件 */
+    registerBtns(btns: [key: string | number, button: ButtonBaseClass,
+        event?: posFunc | { ondown: posFunc, onmove?: posFunc, onup?: posFunc }][]): void
+
     /** 创建并返回本菜单的画布 */
     createCanvas(): CanvasRenderingContext2D
-    /** 初始化该菜单的按钮列表 */
-    initBtnList(arr: [any, ButtonBaseClass][]): void
-    /** 为该菜单添加一个按钮 */
-    addBtnList(key, button): void
     /** 绘制该菜单上的按钮 */
     drawButtonContent(): void
     /** 绘制该菜单上的按钮(需要派生类自行绘制画布和填充内容) */
@@ -3254,10 +3303,36 @@ declare class MenuBaseClass {
     beginListen(): void
     /** 取消监听该菜单的各个事件 */
     endListen(): void
+    /** 擦除该菜单的画布 */
+    remove(): void
     /** 取消监听该菜单的各个事件, 并清除该菜单的画布 */
     clear(): void
     /** 开始监听和绘制 */
     init(): void
+}
+
+interface Pagination {
+    new(pageList: MenuBase[], currPage: number, name: string, toListen: eventType[],
+        x?: number, y?: number, w?: number, h?: number, zIndex?: number): PaginationClass
+}
+
+declare class PaginationClass extends MenuBaseClass {
+    constructor(pageList: MenuBase[], currPage: number, name: string, toListen: eventType[],
+        x?: number, y?: number, w?: number, h?: number, zIndex?: number);
+    /** 页面列表 */
+    pageList: MenuBase[]
+    /** 当前页码 */
+    currPage: number
+
+    initOnePage(index: number): void
+    /** 切换到指定的页码 */
+    changePage(index: number): void
+    /** 向下翻页 */
+    pageDown(): void
+    /** 向上翻页 */
+    pageUp(): void
+    /** 清除当前页和分页本身 */
+    clear(): void
 }
 
 type CoreMixin = {
