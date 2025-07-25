@@ -1319,19 +1319,6 @@ actions.prototype._clickFly = function (x, y) {
         core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
         core.ui.drawFly(core.status.event.data);
     }
-    if (x >= 7 && x <= 8 && y === 2) {
-        core.myprompt("请输入一段笔记，字数不要过多。", null, function (data) {
-            if (data) {
-                const flyNotes = core.getFlag('flyNotes', {});
-                flyNotes[floorId] = data;
-                core.setFlag('flyNotes', flyNotes);
-                core.ui.drawFly(core.status.event.data);
-                core.drawSuccessTip("楼层笔记新增成功！");
-            } else {
-                core.ui.closePanel();
-            }
-        }, () => { });
-    }
     return;
 }
 

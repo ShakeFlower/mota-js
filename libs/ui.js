@@ -2547,6 +2547,32 @@ ui.prototype._drawBookDetail_drawContent = function (enemy, content, pos) {
     });
 }
 
+function getFloorBlockCounts(floorId) {
+    const blockType = {
+        enemy: 0,
+        npc: 0,
+        item: 0,
+    };
+    core.extractBlocks(floorId);
+    const blocks = core.status.maps[floorId].blocks;
+    blocks.forEach(block => {
+        switch (block.event.cls) {
+            case 'enemys':
+            case 'enemy48':
+                blockType.enemy++;
+                break;
+            case 'npcs':
+            case 'npc48':
+                blockType.npc++;
+                break;
+            case 'items':
+                blockType.item++;
+                break;
+        }
+    });
+    return blockType;
+}
+
 ////// 绘制楼层传送器 //////
 ui.prototype.drawFly = function (page) {
     core.status.event.data = page;
@@ -2600,11 +2626,23 @@ ui.prototype.drawFly = function (page) {
     core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
     if (isHide) core.setAlpha('ui', 1);
 
-    const flyNotes = core.getFlag('flyNotes', {});
-    if (flyNotes.hasOwnProperty(floorId)) {
-        core.ui.drawTextContent('ui', flyNotes[floorId], {
-            left: 50, top: 120, color: 'white', align: 'center', fontSize: 12, maxWidth: size - 50,
-        });
+    const blockCounts = getFloorBlockCounts(floorId);
+
+    if (blockCounts.enemy > 0) {
+        core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 100, 16, 16);
+        core.drawIcon('ui', 'redSlime', this.PIXEL - 85, 105, 16, 16);
+        core.fillText('ui', '× ' + blockCounts.enemy, this.PIXEL - 50, 117, 'white', '12px Verdana');
+    }
+    if (blockCounts.item > 0) {
+        core.drawIcon('ui', 'redGem', this.PIXEL - 90, 130, 16, 16);
+        core.drawIcon('ui', 'bluePotion', this.PIXEL - 85, 135, 16, 16);
+        core.fillText('ui', '× ' + blockCounts.item, this.PIXEL - 50, 147, 'white', '12px Verdana');
+    }
+
+    if (blockCounts.npc > 0) {
+        core.drawIcon('ui', 'man', this.PIXEL - 90, 160, 16, 16);
+        core.drawIcon('ui', 'trader', this.PIXEL - 85, 165, 16, 16);
+        core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 177, 'white', '12px Verdana');
     }
 }
 
