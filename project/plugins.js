@@ -2085,11 +2085,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			add(id, x, y, callback) {
+				if (core.isReplaying()) return;
 				this.nodes.push({ id, x, y, callback });
 			}
 
 			start() {
 				if (this.isPlaying) return;
+				if (core.isReplaying()) return;
+				if (core.getLocalStorage('skipPerform')) return;
 				this.isPlaying = true;
 				core.registerAnimationFrame(this.name, true, this.update.bind(this));
 				this.ctx = core.createCanvas(this.name, 0, 0, core.__PIXELS__, core.__PIXELS__, 120);
@@ -2212,8 +2215,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					} else if (type === 'item') {
 						const item = core.material.items[block.event.id];
 						if (canGetItem(item, loc, floorId)) {
+							if (core.isReplaying()) animateHwnd.add(item.id, 32 * tx, 32 * ty);
 							core.getItem(item.id, 1, tx, ty);
-							animateHwnd.add(item.id, x, y);
 						} else {
 							return;
 						}
@@ -2249,6 +2252,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setAlpha(ctxName, 0.6);
 			}
 			bfs(core.status.floorId, deep);
+			if (core.isReplaying()) animateHwnd.start();
 			flags.__statistics__ = false;
 			flags.__forbidSave__ = before;
 			core.updateStatusBar();
@@ -4544,7 +4548,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			 * @param {string} key 对应事件的索引
 			 **/
 			execEffect(btn, key, ...eventArgs) {
-				debugger;
 				const setting = btn.setting;
 				setting.effect.apply(this, eventArgs);
 				if (setting.replay) {
@@ -4836,7 +4839,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const gameViewSetting = {
 			itemDetail: {
 				getName: () => '物品显示数据:' + (core.hasFlag('itemDetail') ? '开' : '关'),
-				effect: () => invertFlag('itemDetail'),
+				effect: () => {
+					invertFlag('itemDetail');
+					core.control.updateStatusBar(); // 更新地图上物品的属性显示
+				},
 				text: '在地图上显示即捡即用道具和装备增加的属性值。',
 				replay: true,
 			},
