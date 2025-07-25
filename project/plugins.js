@@ -3295,6 +3295,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			getItemList() { return []; }
 
 			/** 
+			 * @virtual 
+			 * @description 选中指定位置 
+			 * @param {number} index 
+			 **/
+			setIndex(index){}
+
+			/** 
 			 * @abstract 尝试使用当前选中的物品 
 			 */
 			triggerItem() { }
@@ -3305,8 +3312,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
 				if (this.pageMax < 1) this.pageMax = 1;
 				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
-				if (this.index >= this.currItemList.length) this.index = this.currItemList.length - 1;
-				// this.itemId = this.currItemList[this.index];
+				if (this.index >= this.currItemList.length && this.currItemList.length > 0) this.setIndex(this.currItemList.length - 1);
 			}
 
 			canPageUp() {
@@ -3321,9 +3327,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			pageUp() {
 				if (!this.canPageUp()) return;
 				this.page++;
-				if (this.index >= this.currItemList.length) {
-					this.index = this.currItemList.length - 1;
-				}
 				this.updateItemList();
 				this.drawContent();
 			}
@@ -3530,7 +3533,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			ondownEvent(_x, _y, px, py) {
 				const index = Math.floor(py / this.oneItemHeight);
-				if (index < 0 || index >= this.pageCap) return;
+				if (index < 0 || index >= this.currItemList.length) return;
 				if (UI.selectType !== 'toolBox' || this.index !== index) {
 					this.setIndex(index);
 				} else {
@@ -3540,7 +3543,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			onmoveEvent(_x, _y, px, py) {
 				const index = Math.floor(py / this.oneItemHeight);
-				if (index < 0 || index >= this.pageCap) return;
+				if (index < 0 || index >= this.currItemList.length) return;
 				if (UI.selectType !== 'toolBox' || this.index !== index) {
 					this.setIndex(index);
 				}
@@ -3619,7 +3622,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
-		class ItemInfoBox extends MenuBase {
+		class ItemInfoBoard extends MenuBase {
 			constructor(x, y, w, h) {
 				super('itemInfoBox', ['ondown'], x, y, w, h, 137);
 			}
@@ -3820,7 +3823,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		function clearItemBoxCache() {
-			UI.itemId = '';
+			UI._itemId = '';
 			UI.selectType = 'toolBox';
 			[UI._toolInv, UI._equipInv, UI._equipSlots].forEach((menu) => {
 				if (menu) menu.index = 0;
@@ -3854,7 +3857,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_toolInv: undefined,
 			/** @type {undefined|EquipInventory} 装备背包 */
 			_equipInv: undefined,
-			/** @type {undefined|ItemInfoBox} 右侧显示选中物品详细信息的页面 */
+			/** @type {undefined|ItemInfoBoard} 右侧显示选中物品详细信息的页面 */
 			_itemInfo: undefined,
 			/** @type {undefined|EquipSlots} 显示已穿戴装备的面板 */
 			_equipSlots: undefined,
@@ -3905,7 +3908,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/** 右侧显示选中物品详细信息的页面 */
 			get itemInfo() {
 				if (!this._itemInfo) {
-					this._itemInfo = new ItemInfoBox(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
+					this._itemInfo = new ItemInfoBoard(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
 					const hideBtn = new HideBtn(20, 380, 46, 24);
 					this._itemInfo.registerBtn('hideBtn', hideBtn, () => {
 						this.hideItem(UI.itemId);
@@ -4416,14 +4419,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * draw?:((ctx:string)=>void)
 		 * }} Setting
 		 */
-
-		// #region 跳过剧情相关设置
 		function invertFlag(name) {
-			core.setFlag(name, !core.getFlag(name, false));
+			core.setFlag(name, !core.hasFlag(name));
 		}
 
-		function checkSkipFuncs() { }
-		this.checkSkipFuncs = checkSkipFuncs;
+		function invertLocalStorage(name) {
+			const value = core.getLocalStorage(name, false);
+			core.setLocalStorage(name, !value);
+		}
+
 		// #endregion 
 		// #region 设置的具体内容，与相应的录像注册
 		// #endregion
@@ -4613,6 +4617,64 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// #endregion
 
 		// #region 功能菜单
+		function checkSkipFuncs() {
+			const skipText = core.getLocalStorage('skipText');
+			// 此函数用于检测是否处在录像模式下，是则将跳过所有非必要对话
+			core.events.__action_checkReplaying = skipText ? function () {
+				core.doAction();
+				return true;
+			}.bind(core.events) : events.prototype.__action_checkReplaying;
+
+			const skipPeform = core.getLocalStorage('skipPeform');
+
+			const instantMove = function (fromX, fromY, aimX, aimY, keep, callback) {
+				const [_block, blockInfo] = core.maps._getAndRemoveBlock(fromX, fromY);
+				if (keep) {
+					core.setBlock(blockInfo.number, aimX, aimY);
+					core.showBlock(aimX, aimY);
+				}
+				if (callback) callback();
+			}
+
+			core.maps.jumpBlock = skipPeform ? function (sx, sy, ex, ey, time, keep, callback) {
+				return instantMove(sx, sy, ex, ey, keep, callback);
+			}.bind(core.maps) : maps.prototype.jumpBlock;
+
+			core.maps.moveBlock = skipPeform ? function (x, y, steps, time, keep, callback) {
+				maps.prototype.moveBlock(x, y, steps, 1, keep, callback);
+			}.bind(core.maps) : maps.prototype.moveBlock;
+
+			core.maps.drawAnimate = skipPeform ? function (name, x, y, alignWindow, callback) {
+				if (callback) callback();
+				return -1;
+			}.bind(core.maps) : maps.prototype.drawAnimate;
+
+			core.maps.drawHeroAnimate = skipPeform ? function (name, callback) {
+				if (callback) callback();
+				return -1;
+			}.bind(core.maps) : maps.prototype.drawHeroAnimate;
+
+			core.events.jumpHero = skipPeform ? function (ex, ey, time, callback) {
+				const { x: sx, y: sy } = core.status.hero.loc;
+				if (ex == null) ex = sx;
+				if (ey == null) ey = sy;
+				core.setHeroLoc('x', ex);
+				core.setHeroLoc('y', ey);
+				core.clearMap('hero');
+				core.drawHero();
+				if (callback) callback();
+			}.bind(core.events) : events.prototype.jumpHero;
+
+			core.events.vibrate = skipPeform ? function (direction, time, speed, power, callback) {
+				if (callback) callback();
+				return;
+			}.bind(core.events) : events.prototype.vibrate;
+
+			core.events._action_sleep = skipPeform ? function (data, x, y, prefix) {
+				core.doAction();
+			}.bind(core.events) : events.prototype._action_sleep;
+		}
+		this.checkSkipFuncs = checkSkipFuncs;
 		/** @type {{[x:string]:Setting}} */
 		const gamePlaySetting = {
 			autoGet: {
@@ -4705,11 +4767,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				text: '增大转场时间。',
 				replay: false,
 			},
-			skip: {
-				getName: () => '跳过剧情:' + (core.hasFlag('skip') ? '开' : '关'),
-				effect: () => { invertFlag('skip'); },
-				text: '跳过所有剧情。',
-				replay: true,
+			skipText: {
+				getName: () => '跳过剧情:' + (core.getLocalStorage('skipText', false) ? '开' : '关'),
+				effect: () => { invertLocalStorage('skipText'); },
+				text: '跳过全部文字对话。初见请勿开启此选项。',
+				replay: false,
+			},
+			skipPeform: {
+				getName: () => '跳过演出:' + (core.getLocalStorage('skipPerform', false) ? '开' : '关'),
+				effect: () => { invertLocalStorage('skipPerform'); },
+				text: '加速等待、播放动画等常见演出效果。',
+				replay: false,
 			},
 			comment: {
 				getName: () => '在线留言:' + (core.hasFlag('comment') ? '开' : '关'),
@@ -4756,8 +4824,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['2,3', 'moveSpeedUp', new SettingButton(140, 280, 25, 25)],
 				['3,3', 'floorChangeTimeDown', new SettingButton(220, 280, 25, 25)],
 				['4,3', 'floorChangeTimeUp', new SettingButton(340, 280, 25, 25)],
-				['1,4', 'skip', new SettingButton(40, 305, 150, 25)],
-				['2,4', 'comment', new SettingButton(220, 305, 150, 25)]
+				['1,4', 'skipText', new SettingButton(40, 305, 150, 25)],
+				['2,4', 'skipPeform', new SettingButton(220, 305, 150, 25)],
+				['1,5', 'comment', new SettingButton(40, 330, 150, 25)],
 			]);
 			return gamePlayMenu;
 		}
@@ -5413,17 +5482,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const ctx = this.createCanvas();
 				const consoleWarnText =
 					"本页面的功能仅供调试用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。";
-				core.setTextAlign(this.name, 'left');
+				core.setTextAlign(ctx, 'left');
 				core.setTextBaseline(ctx, 'alphabetic');
-				core.fillText(this.name, "本页面的功能仅供调试用。使用后相应存档将变红，录像", 30, 170, " #FFC0CB", '14px Verdana');
-				core.fillText(this.name, "不能通过，且无法提交。请读档到普通存档后正常游玩方", 30, 190, " #FFC0CB", '14px Verdana');
-				core.fillText(this.name, "可提交。", 30, 210, " #FFC0CB", '14px Verdana');
-				core.fillText(this.name, "属性", 45, 264, 'white', '16px Verdana');
-				core.fillText(this.name, "设为", 170, 264, 'white', '16px Verdana');
-				core.fillText(this.name, "物品", 45, 290, 'white', '16px Verdana');
-				core.fillText(this.name, "数量设为", 170, 290, 'white', '16px Verdana');
-				core.fillText(this.name, "变量", 45, 316, 'white', '16px Verdana');
-				core.fillText(this.name, "设为", 170, 316, 'white', '16px Verdana');
+				core.fillText(ctx, "本页面的功能仅供调试用。使用后相应存档将变红，录像", 30, 170, " #FFC0CB", '14px Verdana');
+				core.fillText(ctx, "不能通过，且无法提交。请读档到普通存档后正常游玩方", 30, 190, " #FFC0CB", '14px Verdana');
+				core.fillText(ctx, "可提交。", 30, 210, " #FFC0CB", '14px Verdana');
+				core.fillText(ctx, "属性", 45, 264, 'white', '16px Verdana');
+				core.fillText(ctx, "设为", 170, 264, 'white', '16px Verdana');
+				core.fillText(ctx, "物品", 45, 290, 'white', '16px Verdana');
+				core.fillText(ctx, "数量设为", 170, 290, 'white', '16px Verdana');
+				core.fillText(ctx, "变量", 45, 316, 'white', '16px Verdana');
+				core.fillText(ctx, "设为", 170, 316, 'white', '16px Verdana');
 				super.drawContent(ctx);
 			}
 		}
