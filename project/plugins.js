@@ -2942,7 +2942,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			const callback = function () {
-				UI.redraw();
+				[UI._equipSlots, UI._equipInv, UI._itemInfo].forEach((menu) => {
+					if (menu && menu.onDraw) menu.drawContent();
+				});
 				core.ui.closePanel();
 				const next = core.status.replay.toReplay[0] || "";
 				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
@@ -2978,7 +2980,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 复写control.startReplay
 		const oriStartReplay = core.control.startReplay; // 进入播放录像模式时清空道具栏选中目标的缓存
 		core.control.startReplay = function (list) {
-			UI.clearItemBoxCache();
+			clearItemBoxCache();
 			oriStartReplay.apply(core.control, [list, ...arguments]);
 		}
 
@@ -3250,7 +3252,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						if (core.material.items[itemId]) itemInv.triggerItem();
 					} else if (selectType === "equipBox") {
 						equipChangeBoard.triggerItem();
-						UI.redraw();
+						[UI._equipSlots, UI._equipInv, UI._itemInfo].forEach((menu) => {
+							if (menu && menu.onDraw) menu.drawContent();
+						});
 					} else {
 						itemInv.setIndex(0);
 					}
@@ -3303,7 +3307,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			 * @description 选中指定位置 
 			 * @param {number} index 
 			 **/
-			setIndex(index){}
+			setIndex(index) { }
 
 			/** 
 			 * @abstract 尝试使用当前选中的物品 
@@ -3779,8 +3783,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		/** @param {string} itemId */
 		function hotkeySelectFactory(itemId) {
 			const hotkeySelect = new HotkeySelect(itemId, 60, 100, 296, 206, 141); // 应当比物品背包的选择光标大，遮盖住前者
-			/** @type {[string, ButtonBaseClass][]} */
-			const btnMap = [];
 			const setHotkeyNum = function (i) {
 				const num = this.key.replace('btn', '');
 				hotkeySelect.setHotkey(num);
@@ -3798,7 +3800,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				let btn;
 				if (row === 1) btn = new IconBtn(leftMargin + i * (btnSize + btnInterval), 100, btnSize, btnSize, 'btn' + num, style);
 				else btn = new IconBtn(leftMargin + (i - 5) * (btnSize + btnInterval), 150, btnSize, btnSize, 'btn' + num, style);
-				hotkeySelect.registerBtn('btn' + num, btn, () => setHotkeyNum(i));
+				hotkeySelect.registerBtn('btn' + num, btn, () => setHotkeyNum.call(btn, i));
 			}
 			const setNullBtn = new SetNullBtn(leftMargin + 4 * (btnSize + btnInterval), 150, btnSize, btnSize);
 			hotkeySelect.registerBtn('setNullBtn', setNullBtn, () => {
@@ -3937,7 +3939,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const setHotkeyBtn = new IconBtn(145, 60, 24, 24, 'keyboard');
 					this.itemInfo.registerBtn('setHotkeyBtn', setHotkeyBtn, () => {
 						if (!UI.itemId) return;
-						[UI.back, UI.itemInv, UI.equipSlots, UI.itemInfo].forEach((menu) => {
+						[UI._back, UI.itemInv, UI._equipSlots, UI._itemInfo].forEach((menu) => {
 							if (menu) menu.endListen();
 						});
 						const hotkeySelect = hotkeySelectFactory(UI.itemId);
@@ -4146,8 +4148,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					let equipType = core.material.items[j].equip.type;
 					switch (typeof equipType) {
 						case 'number':
-							for (let k = 0, l = equipOwned[j]; k < l; k++) { 
-								equipList[equipIncluded.indexOf(equipType)].add(j); 
+							for (let k = 0, l = equipOwned[j]; k < l; k++) {
+								equipList[equipIncluded.indexOf(equipType)].add(j);
 							}
 							break;
 						case 'string':
@@ -4479,7 +4481,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		// @todo 悬浮按钮不改变时不触发事件 这个优化有没有做
-		
+
 		/** 单个设置菜单的基类 */
 		class SettingOnePage extends MenuBase {
 			constructor(name, settingData) {
@@ -4551,7 +4553,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const setting = btn.setting;
 				setting.effect.apply(this, eventArgs);
 				if (setting.replay) {
-					let actionString = 'cSet:' + key; 
+					let actionString = 'cSet:' + key;
 					if (eventArgs && eventArgs.length > 0) {
 						actionString += ':' + eventArgs.map(arg => encodeURIComponent(arg)).join(':');
 					}
@@ -5033,21 +5035,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			clearHotKeys: {
 				getName: () => '',
 				effect: /** @this {GameView} */
-				function () {
-					for (let i = 1; i <= 9; i++) {
-						core.setLocalStorage('hotkey' + i, null);
-					}
-					this.drawContent();
-					core.drawSuccessTip('快捷键已重置到默认状态。');
-				},
+					function () {
+						for (let i = 1; i <= 9; i++) {
+							core.setLocalStorage('hotkey' + i, null);
+						}
+						this.drawContent();
+						core.drawSuccessTip('快捷键已重置到默认状态。');
+					},
 				text: '重置本页面所有快捷键到默认状态。',
 				replay: false,
 				draw: /** @this {SettingButton} */
-				function (ctx) {
-					core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, '#D3D3D3');
-					core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, '#888888');
-					core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, '#333333', '16px Verdana');
-				}
+					function (ctx) {
+						core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, '#D3D3D3');
+						core.strokeRoundRect(ctx, this.x, this.y, this.w, this.h, 3, '#888888');
+						core.fillText(ctx, '重置', this.x + 5, this.y + this.h / 2 + 5, '#333333', '16px Verdana');
+					}
 			}
 		};
 		class KeyMenu extends SettingOnePage {
@@ -5578,7 +5580,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				// this.initOnePage(this.currPage);
 			}
 		}
-		
+
 		const allSettings = {
 			...gamePlaySetting,
 			...gameViewSetting,

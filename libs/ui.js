@@ -2595,8 +2595,6 @@ ui.prototype.drawFly = function (page) {
 
     core.fillText('ui', isHide ? '[显示本层]' : '[隐藏本层]', 60, 80, '#EEEEEE', this._buildFont(12, false));
     core.fillText('ui', '[显示隐藏层:' + (noHideFly ? 'ON' : 'OFF') + ']', 160, 80, '#EEEEEE', this._buildFont(12, false));
-    core.fillText('ui', '[楼层笔记]', 260, 80, '#EEEEEE', this._buildFont(12, false));
-
     var middle = this.HPIXEL + 39;
 
     // 换行
@@ -2629,20 +2627,20 @@ ui.prototype.drawFly = function (page) {
     const blockCounts = getFloorBlockCounts(floorId);
 
     if (blockCounts.enemy > 0) {
-        core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 100, 16, 16);
-        core.drawIcon('ui', 'redSlime', this.PIXEL - 85, 105, 16, 16);
-        core.fillText('ui', '× ' + blockCounts.enemy, this.PIXEL - 50, 117, 'white', '12px Verdana');
+        core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 30, 16, 16);
+        core.drawIcon('ui', 'redSlime', this.PIXEL - 85, 35, 16, 16);
+        core.fillText('ui', '× ' + blockCounts.enemy, this.PIXEL - 50, 47, 'white', '12px Verdana');
     }
     if (blockCounts.item > 0) {
-        core.drawIcon('ui', 'redGem', this.PIXEL - 90, 130, 16, 16);
-        core.drawIcon('ui', 'bluePotion', this.PIXEL - 85, 135, 16, 16);
-        core.fillText('ui', '× ' + blockCounts.item, this.PIXEL - 50, 147, 'white', '12px Verdana');
+        core.drawIcon('ui', 'redGem', this.PIXEL - 90, 60, 16, 16);
+        core.drawIcon('ui', 'bluePotion', this.PIXEL - 85, 65, 16, 16);
+        core.fillText('ui', '× ' + blockCounts.item, this.PIXEL - 50, 77, 'white', '12px Verdana');
     }
 
     if (blockCounts.npc > 0) {
-        core.drawIcon('ui', 'man', this.PIXEL - 90, 160, 16, 16);
-        core.drawIcon('ui', 'trader', this.PIXEL - 85, 165, 16, 16);
-        core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 177, 'white', '12px Verdana');
+        core.drawIcon('ui', 'man', this.PIXEL - 90, 90, 16, 16);
+        core.drawIcon('ui', 'trader', this.PIXEL - 85, 95, 16, 16);
+        core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 107, 'white', '12px Verdana');
     }
 }
 
