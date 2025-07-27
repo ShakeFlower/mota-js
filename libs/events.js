@@ -2775,6 +2775,16 @@ events.prototype.openBook = function (fromUserAction) {
     core.useItem('book', true);
 }
 
+////// 退出屏蔽物品界面 //////
+events.prototype.quitIgnoreItems = function () {
+    core.setFlag('pickingIgnoreItems', false);
+    core.deleteCanvas('ignoreItems');
+    core.deleteCanvas('ignoreItemsMark');
+    core.unregisterAction('ondown', 'ignoreItem');
+    core.unregisterAction('keyUp', 'ignoreItem');
+    core.unlockControl();
+}
+
 ////// 点击楼层传送器时的打开操作 //////
 events.prototype.useFly = function (fromUserAction) {
     if (core.isReplaying()) return;
@@ -2794,12 +2804,7 @@ events.prototype.useFly = function (fromUserAction) {
 
     // 退出隐藏物品模式
     if (core.hasFlag('pickingIgnoreItems')) {
-        core.setFlag('pickingIgnoreItems', false);
-        core.deleteCanvas('ignoreItems');
-        core.deleteCanvas('ignoreItemsMark');
-        core.unregisterAction('ondown', 'ignoreItem');
-        core.unlockControl();
-        return;
+        this.quitIgnoreItems();
     }
 
     if (!this._checkStatus('fly', fromUserAction, true)) return;

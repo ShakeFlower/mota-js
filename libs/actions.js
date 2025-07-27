@@ -1294,8 +1294,12 @@ function _hideFly(floorId) {
     else {
         hideFloors[floorId] = true;
     }
+    const autoHiddenFloorList = core.getFlag("autoHiddenFloorList", []);
+    autoHiddenFloorList.push(floorId);
+    core.setFlag("autoHiddenFloorList", autoHiddenFloorList);
     core.setFlag('hideFloors', hideFloors);
 }
+actions.prototype._hideFly = _hideFly;
 
 function _isFloorHided(floorId) {
     if (floorId === core.status.floorId) return false; // 当前所在层需要无条件显示
@@ -1368,7 +1372,7 @@ function ignoreItemsOnMap(floorId) {
         });
     }
     core.registerAction('ondown', 'ignoreItem', (x, y) => {
-        if (core.getBlockCls(x, y, floorId) !== 'items') return;
+        if (!["items", "enemys", "enemy48", "npcs", "npc48"].includes(core.getBlockCls(x, y, floorId))) return;
         const posStr = x + ',' + y;
         if (currIgnoreItems.has(posStr)) {
             currIgnoreItems.delete(posStr);
@@ -1379,6 +1383,15 @@ function ignoreItemsOnMap(floorId) {
         ignoreItems[floorId] = [...currIgnoreItems];
         core.setFlag('ignoreItems', ignoreItems);
         drawIgnoreItems();
+    }, 120);
+    core.registerAction('keyUp', 'ignoreItem', (keyCode) => {
+        switch (keyCode) {
+            case 8: //BackSpace
+            case 27: //Esc
+            case 71: //G
+                core.events.quitIgnoreItems();
+                break;
+        }
     }, 120);
     drawIgnoreItems();
 }

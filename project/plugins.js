@@ -4810,6 +4810,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				},
 				text: '在地图上显示玩家的在线留言。',
 				replay: true,
+			},
+			autoHideFloor: {
+				getName: () => '自动隐藏楼层:' + (core.hasFlag('autoHideFloor') ? '开' : '关'),
+				effect: () => {
+					invertFlag('autoHideFloor');
+				},
+				text: '一个楼层已无物品、敌人、NPC(不含已忽略图块)，且无未到达楼层传送口时可被自动隐藏，仅在首次进入此状态时在楼传界面触发。',
+				replay: true,
 			}
 		}
 
@@ -4845,6 +4853,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,4', 'skipText', new SettingButton(40, 305, 150, 25)],
 				['2,4', 'skipPeform', new SettingButton(220, 305, 150, 25)],
 				['1,5', 'comment', new SettingButton(40, 330, 150, 25)],
+				['2,5', 'autoHideFloor', new SettingButton(220, 330, 150, 25)],
 			]);
 			return gamePlayMenu;
 		}

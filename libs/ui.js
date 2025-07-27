@@ -2563,8 +2563,56 @@ ui.prototype._drawBookDetail_drawContent = function (enemy, content, pos) {
     });
 }
 
+/** 将":before"":next"转换为真实楼层ID。相应处理见events.prototype._changeFloor_getInfo 
+ * @param {string} floorId 待转换的floorId
+ * @param {string} currFloor ":before"":next"的基准floorId
+ */
+function getRealFloorId(floorId, currFloor) {
+    const index = core.floorIds.indexOf(currFloor);
+    if (index === -1) return floorId;
+    if (floorId === ":before" && index > 0) {
+        return core.floorIds[index - 1];
+    }
+    else if (floorId === ":next" && index < core.floorIds.length - 1) {
+        return core.floorIds[index - 1];
+    }
+    else return floorId;
+}
+
+// 查找嵌套JSON中是否有{type:changeFloor, floorId:xxx的格式}
+function findFloorIds(obj, currFloorId) {
+    const result = [];
+
+    function traverse(current) {
+        if (current && typeof current === 'object') {
+            // 判断当前对象是否满足条件
+            if (current.type === 'changeFloor' && 'floorId' in current) {
+                result.push(getRealFloorId(current.floorId, currFloorId));
+            }
+            // 递归处理对象或数组中的每个元素
+            if (Array.isArray(current)) {
+                for (const item of current) {
+                    traverse(item);
+                }
+            } else {
+                for (const key in current) {
+                    traverse(current[key]);
+                }
+            }
+        }
+    }
+
+    traverse(obj);
+    return result;
+}
+
+/**
+ * @returns {{
+ * enemy:number,npc:number,item:number
+ * }}
+ */
 function getFloorBlockCounts(floorId) {
-    const blockType = {
+    const blockCounts = {
         enemy: 0,
         npc: 0,
         item: 0,
@@ -2573,23 +2621,25 @@ function getFloorBlockCounts(floorId) {
     const blocks = core.status.maps[floorId].blocks;
     const ignoreItems = core.getFlag('ignoreItems', {});
     const currIgnoreItems = new Set(ignoreItems[floorId]);
+
     blocks.forEach(block => {
         if (currIgnoreItems.has(block.x + ',' + block.y)) return;
+
         switch (block.event.cls) {
             case 'enemys':
             case 'enemy48':
-                blockType.enemy++;
+                blockCounts.enemy++;
                 break;
             case 'npcs':
             case 'npc48':
-                blockType.npc++;
+                blockCounts.npc++;
                 break;
             case 'items':
-                blockType.item++;
+                blockCounts.item++;
                 break;
         }
     });
-    return blockType;
+    return blockCounts;
 }
 
 ////// 绘制楼传/楼层传送器 //////
@@ -2609,7 +2659,7 @@ ui.prototype.drawFly = function (page) {
     core.fillText('ui', '可楼层跳跃！', this.PIXEL - 10, this.PIXEL - 11, null, this._buildFont(10, false));
     core.setTextAlign('ui', 'center');
 
-    const isHide = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+    let isHide = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
     const noHideFly = core.hasFlag('noHideFly');
 
     core.fillText('ui', isHide ? '[显示本层(H)]' : '[隐藏本层(H)]', 70, 80, '#EEEEEE', this._buildFont(12, false));
@@ -2639,9 +2689,6 @@ ui.prototype.drawFly = function (page) {
     const size = this.PIXEL - 143;
 
     core.strokeRect('ui', 20, 100, size, size, '#FFFFFF', 2);
-    if (isHide) core.setAlpha('ui', 0.6);
-    core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
-    if (isHide) core.setAlpha('ui', 1);
 
     // 绘制被忽略的图块的标记
     const ignoreItems = core.getFlag('ignoreItems', {});
@@ -2654,9 +2701,8 @@ ui.prototype.drawFly = function (page) {
     });
 
     const hideMapCount = core.getFlag('hideMapCount', false);
+    const blockCounts = getFloorBlockCounts(floorId);
     if (!hideMapCount) {
-        const blockCounts = getFloorBlockCounts(floorId);
-
         if (blockCounts.enemy > 0) {
             core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 35, 16, 16);
             core.drawIcon('ui', 'redSlime', this.PIXEL - 85, 40, 16, 16);
@@ -2674,12 +2720,56 @@ ui.prototype.drawFly = function (page) {
             core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 112, 'white', '12px Verdana');
         }
     }
+    // 判断是否触发自动隐藏楼层，否则不检查相关信息
+    const autoHideFloor = core.getFlag('autoHideFloor', false);
+    /** 已经触发过自动隐藏的楼层的列表 该数组在手动隐藏/首次自动隐藏时触发，且只增不减 */
+    const autoHiddenFloorList = core.getFlag('autoHiddenFloorList', []);
+
+    if (autoHideFloor && !autoHiddenFloorList.includes(floorId)) {
+        // 该楼层可达的楼层
+        const aimFloor = [];
+        const addFloorIdsFromEvents = function (event) {
+            for (let pos in event) {
+                if (currIgnoreItems.has(pos)) continue;
+                aimFloor.push(...findFloorIds(event[pos], floorId));
+            }
+        }
+
+        const currFloorInfo = core.floors[floorId];
+        addFloorIdsFromEvents(currFloorInfo.afterBattle);
+        addFloorIdsFromEvents(currFloorInfo.beforeBattle);
+        addFloorIdsFromEvents(currFloorInfo.afterGetItem);
+        addFloorIdsFromEvents(currFloorInfo.afterOpenDoor);
+        addFloorIdsFromEvents(currFloorInfo.autoEvent);
+        addFloorIdsFromEvents(currFloorInfo.events);
+        for (let pos in currFloorInfo.changeFloor) {
+            aimFloor.push(getRealFloorId(currFloorInfo.changeFloor[pos].floorId, floorId));
+        }
+        // 该楼层可达的楼层集合
+        const aimFloorSet = new Set(aimFloor.filter(floorId => core.floorIds.includes(floorId)));
+        const isAllFloorVisited = [...aimFloorSet].every(floorId => core.hasVisitedFloor(floorId));
+
+        if (blockCounts.enemy === 0 && blockCounts.npc === 0 &&
+            blockCounts.item === 0 && isAllFloorVisited) {
+            {
+                core.setFlag("autoHiddenFloorList", autoHiddenFloorList);
+                core.actions._hideFly(floorId);
+                isHide = true;
+                core.drawTip("满足条件，已自动隐藏该层。");
+            }
+        }
+    }
+
+    if (isHide) core.setAlpha('ui', 0.6);
+    core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
+    if (isHide) core.setAlpha('ui', 1);
+
     const { IconBtn } = core.plugin.uiBase;
     if (IconBtn) {
         // 显示/隐藏地图数据显示的按钮
         const showItemCountBtn = new IconBtn(this.PIXEL - 90, 6, 20, 20, 'greenSlime', {
             fillStyle: 'Silver', strokeStyle: 'DimGray', lineWidth: 2,
-            crossline1: !hideMapCount, crossline2: !hideMapCount,
+            crossline1: hideMapCount, crossline2: hideMapCount,
         });
         showItemCountBtn.ctx = 'ui';
         showItemCountBtn.draw();
