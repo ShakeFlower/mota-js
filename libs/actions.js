@@ -1284,6 +1284,7 @@ actions.prototype._clickBookDetail = function () {
     core.status.event.id = 'book';
 }
 
+////// 楼层传送器界面/楼传界面时隐藏/显示单个楼层的操作 //////
 function _hideFly(floorId) {
     const hideFloors = core.getFlag('hideFloors', {});
     if (hideFloors.hasOwnProperty(floorId)) {
@@ -1301,33 +1302,105 @@ function _isFloorHided(floorId) {
     return !core.hasFlag('noHideFly') && core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
 }
 
-////// 楼层传送器界面时的点击操作 //////
-actions.prototype._clickFly = function (x, y) {
-    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE + 3) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(-1)); }
-    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE - 1) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(1)); }
-    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE + 4) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(-10)); }
-    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE - 2) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(10)); }
-    if (x >= this.HSIZE - 1 && x <= this.HSIZE + 1 && y == this.LAST) { core.playSound('取消'); core.ui.closePanel(); }
+////// 楼层传送器界面/楼传界面时的点击操作 //////
+actions.prototype._clickFly = function (x, y, px, py) {
+    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE + 3) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(-1));
+    }
+    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE - 1) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(1));
+    }
+    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE + 4) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(-10));
+    }
+    if ((x == this.SIZE - 2 || x == this.SIZE - 3) && y == this.HSIZE - 2) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(10));
+    }
+    if (x >= this.HSIZE - 1 && x <= this.HSIZE + 1 && y == this.LAST) {
+        core.playSound('取消');
+        core.ui.closePanel();
+    }
     const floorId = core.floorIds[core.status.event.data];
     if (x >= 0 && x <= this.HSIZE + 3 && y >= 3 && y <= this.LAST - 1)
         core.flyTo(floorId);
-    if (x >= 1 && x <= 2 && y === 2) {
+    if (px >= 30 && px <= 110 && y === 2) {
         _hideFly(floorId);
         core.ui.drawFly(core.status.event.data);
     }
-    if (x >= 3 && x <= 6 && y === 2) {
+    if (x >= 4 && x <= 6 && y === 2) {
         core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
         core.ui.drawFly(core.status.event.data);
+    }
+
+    // 隐藏楼层数据统计的按钮
+    if (px >= core.__PIXELS__ - 90 && px <= core.__PIXELS__ - 70 && py >= 6 && py <= 26) {
+        core.setFlag('hideMapCount', !core.hasFlag('hideMapCount'));
+        core.ui.drawFly(core.status.event.data);
+    }
+
+    // 隐藏地图上物品的按钮
+    if (px >= core.__PIXELS__ - 60 && px <= core.__PIXELS__ - 40 && py >= 6 && py <= 26) {
+        core.ui.closePanel();
+        ignoreItemsOnMap(floorId);
     }
     return;
 }
 
-////// 楼层传送器界面时，按下某个键的操作 //////
+function ignoreItemsOnMap(floorId) {
+    // 选定要忽略的物品
+    const ignoreItems = core.getFlag('ignoreItems', {});
+    const currIgnoreItems = new Set(ignoreItems[floorId]);
+    core.control.lockControl();
+    core.setFlag('pickingIgnoreItems', true);
+    const ctx = core.createCanvas('ignoreItems', 0, 0, core.__PIXELS__, core.__PIXELS__, 141);
+    ctx.lineJoin = 'round';
+    core.drawThumbnail(floorId, null, { damage: false, x: 0, y: 0, size: core.__PIXELS__, ctx: ctx });
+    core.fillBoldText('ignoreItems', '选择有物品的图块，在统计数据时将忽略该位置。点楼传退出。', 35, 12, 'red', 'white', '12px Verdana');
+    const drawIgnoreItems = () => {
+        const ctx = core.createCanvas('ignoreItemsMark', 0, 0, core.__PIXELS__, core.__PIXELS__, 142);
+        currIgnoreItems.forEach(pos => {
+            const [x, y] = pos.split(',').map(char => parseInt(char));
+            core.drawCrossLine(ctx, 32 * x + 2, 32 * y + 2, 32 * (x + 1) - 2, 32 * (y + 1) - 2, 'red', 2);
+        });
+    }
+    core.registerAction('ondown', 'ignoreItem', (x, y) => {
+        if (core.getBlockCls(x, y, floorId) !== 'items') return;
+        const posStr = x + ',' + y;
+        if (currIgnoreItems.has(posStr)) {
+            currIgnoreItems.delete(posStr);
+        }
+        else {
+            currIgnoreItems.add(posStr);
+        }
+        ignoreItems[floorId] = [...currIgnoreItems];
+        core.setFlag('ignoreItems', ignoreItems);
+        drawIgnoreItems();
+    }, 120);
+    drawIgnoreItems();
+}
+
+////// 楼层传送器/楼传界面界面时，按下某个键的操作 //////
 actions.prototype._keyDownFly = function (keycode) {
-    if (keycode == 37) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(-10)); }
-    else if (keycode == 38) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(1)); }
-    else if (keycode == 39) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(10)); }
-    else if (keycode == 40) { core.playSound('光标移动'); core.ui.drawFly(this._getNextFlyFloor(-1)); }
+    if (keycode == 37) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(-10));
+    }
+    else if (keycode == 38) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(1));
+    }
+    else if (keycode == 39) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(10));
+    }
+    else if (keycode == 40) {
+        core.playSound('光标移动');
+        core.ui.drawFly(this._getNextFlyFloor(-1));
+    }
     return;
 }
 
@@ -1351,14 +1424,19 @@ actions.prototype._getNextFlyFloor = function (delta, index) {
     return ans;
 }
 
-////// 楼层传送器界面时，放开某个键的操作 //////
+////// 楼层传送器/楼传界面时，放开某个键的操作 //////
 actions.prototype._keyUpFly = function (keycode) {
-    if (keycode == 71 || keycode == 27 || keycode == 88) {
+    const floorId = core.floorIds[core.status.event.data];
+    if (keycode === 71 || keycode === 27 || keycode === 88) {
         core.playSound('取消');
         core.ui.closePanel();
     }
-    if (keycode == 13 || keycode == 32 || keycode == 67)
+    else if (keycode === 13 || keycode === 32 || keycode === 67)
         this._clickFly(this.HSIZE - 1, this.HSIZE - 1);
+    else if (keycode === 72) { // H键
+        _hideFly(floorId);
+        core.ui.drawFly(core.status.event.data);
+    }
     return;
 }
 

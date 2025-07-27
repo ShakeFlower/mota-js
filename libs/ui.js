@@ -403,6 +403,22 @@ ui.prototype.drawLine = function (name, x1, y1, x2, y2, style, lineWidth) {
     ctx.stroke();
 }
 
+////// 在某个canvas上绘制一个叉符号 //////
+ui.prototype.drawCrossLine = function (name, x1, y1, x2, y2, style, lineWidth) {
+    if (style) core.setStrokeStyle(name, style);
+    if (lineWidth != null) core.setLineWidth(name, lineWidth);
+    var ctx = this.getContextByName(name);
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x1, y2);
+    ctx.lineTo(x2, y1);
+    ctx.stroke();
+}
+
 ui.prototype._uievent_drawLine = function (data) {
     this._createUIEvent();
     this.drawLine('uievent', core.calValue(data.x1), core.calValue(data.y1), core.calValue(data.x2), core.calValue(data.y2), data.style, data.lineWidth);
@@ -2555,7 +2571,10 @@ function getFloorBlockCounts(floorId) {
     };
     core.extractBlocks(floorId);
     const blocks = core.status.maps[floorId].blocks;
+    const ignoreItems = core.getFlag('ignoreItems', {});
+    const currIgnoreItems = new Set(ignoreItems[floorId]);
     blocks.forEach(block => {
+        if (currIgnoreItems.has(block.x + ',' + block.y)) return;
         switch (block.event.cls) {
             case 'enemys':
             case 'enemy48':
@@ -2573,7 +2592,7 @@ function getFloorBlockCounts(floorId) {
     return blockType;
 }
 
-////// 绘制楼层传送器 //////
+////// 绘制楼传/楼层传送器 //////
 ui.prototype.drawFly = function (page) {
     core.status.event.data = page;
     var floorId = core.floorIds[page];
@@ -2593,8 +2612,8 @@ ui.prototype.drawFly = function (page) {
     const isHide = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
     const noHideFly = core.hasFlag('noHideFly');
 
-    core.fillText('ui', isHide ? '[显示本层]' : '[隐藏本层]', 60, 80, '#EEEEEE', this._buildFont(12, false));
-    core.fillText('ui', '[显示隐藏层:' + (noHideFly ? 'ON' : 'OFF') + ']', 160, 80, '#EEEEEE', this._buildFont(12, false));
+    core.fillText('ui', isHide ? '[显示本层(H)]' : '[隐藏本层(H)]', 70, 80, '#EEEEEE', this._buildFont(12, false));
+    core.fillText('ui', '[显示隐藏层:' + (noHideFly ? 'ON' : 'OFF') + ']', 175, 80, '#EEEEEE', this._buildFont(12, false));
     var middle = this.HPIXEL + 39;
 
     // 换行
@@ -2617,30 +2636,62 @@ ui.prototype.drawFly = function (page) {
         core.fillText('ui', '▼', this.PIXEL - 60, middle + 96);
         core.fillText('ui', '▼', this.PIXEL - 60, middle + 96 + 7);
     }
-    var size = this.PIXEL - 143;
+    const size = this.PIXEL - 143;
 
     core.strokeRect('ui', 20, 100, size, size, '#FFFFFF', 2);
     if (isHide) core.setAlpha('ui', 0.6);
     core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });
     if (isHide) core.setAlpha('ui', 1);
 
-    const blockCounts = getFloorBlockCounts(floorId);
+    // 绘制被忽略的图块的标记
+    const ignoreItems = core.getFlag('ignoreItems', {});
+    const currIgnoreItems = new Set(ignoreItems[floorId]);
+    currIgnoreItems.forEach(pos => {
+        const [ignoreX, ignoreY] = pos.split(',').map(char => parseInt(char));
+        const blockSize = size / core.__SIZE__;
+        core.drawCrossLine('ui', 20 + blockSize * ignoreX + 2, 100 + blockSize * ignoreY + 2,
+            20 + blockSize * (ignoreX + 1) - 2, 100 + blockSize * (ignoreY + 1) - 2, 'red', 2);
+    });
 
-    if (blockCounts.enemy > 0) {
-        core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 30, 16, 16);
-        core.drawIcon('ui', 'redSlime', this.PIXEL - 85, 35, 16, 16);
-        core.fillText('ui', '× ' + blockCounts.enemy, this.PIXEL - 50, 47, 'white', '12px Verdana');
-    }
-    if (blockCounts.item > 0) {
-        core.drawIcon('ui', 'redGem', this.PIXEL - 90, 60, 16, 16);
-        core.drawIcon('ui', 'bluePotion', this.PIXEL - 85, 65, 16, 16);
-        core.fillText('ui', '× ' + blockCounts.item, this.PIXEL - 50, 77, 'white', '12px Verdana');
-    }
+    const hideMapCount = core.getFlag('hideMapCount', false);
+    if (!hideMapCount) {
+        const blockCounts = getFloorBlockCounts(floorId);
 
-    if (blockCounts.npc > 0) {
-        core.drawIcon('ui', 'man', this.PIXEL - 90, 90, 16, 16);
-        core.drawIcon('ui', 'trader', this.PIXEL - 85, 95, 16, 16);
-        core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 107, 'white', '12px Verdana');
+        if (blockCounts.enemy > 0) {
+            core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 35, 16, 16);
+            core.drawIcon('ui', 'redSlime', this.PIXEL - 85, 40, 16, 16);
+            core.fillText('ui', '× ' + blockCounts.enemy, this.PIXEL - 50, 52, 'white', '12px Verdana');
+        }
+        if (blockCounts.item > 0) {
+            core.drawIcon('ui', 'redGem', this.PIXEL - 90, 65, 16, 16);
+            core.drawIcon('ui', 'bluePotion', this.PIXEL - 85, 70, 16, 16);
+            core.fillText('ui', '× ' + blockCounts.item, this.PIXEL - 50, 82, 'white', '12px Verdana');
+        }
+
+        if (blockCounts.npc > 0) {
+            core.drawIcon('ui', 'man', this.PIXEL - 90, 95, 16, 16);
+            core.drawIcon('ui', 'trader', this.PIXEL - 85, 100, 16, 16);
+            core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 112, 'white', '12px Verdana');
+        }
+    }
+    const { IconBtn } = core.plugin.uiBase;
+    if (IconBtn) {
+        // 显示/隐藏地图数据显示的按钮
+        const showItemCountBtn = new IconBtn(this.PIXEL - 90, 6, 20, 20, 'greenSlime', {
+            fillStyle: 'Silver', strokeStyle: 'DimGray', lineWidth: 2,
+            crossline1: !hideMapCount, crossline2: !hideMapCount,
+        });
+        showItemCountBtn.ctx = 'ui';
+        showItemCountBtn.draw();
+
+        // 隐藏地图上物品的按钮
+        const hideMapItemBtn = new IconBtn(this.PIXEL - 60, 6, 20, 20, 'redPotion', {
+            fillStyle: 'Silver', strokeStyle: 'DimGray', lineWidth: 2,
+            iconX: this.PIXEL - 58, iconY: 8, iconW: 16, iconH: 16,
+            crossline1: true, crossline2: true
+        });
+        hideMapItemBtn.ctx = 'ui';
+        hideMapItemBtn.draw();
     }
 }
 
@@ -3347,8 +3398,12 @@ ui.prototype._drawStatistics_floorId = function (floorId, obj) {
     var floor = core.status.maps[floorId], blocks = floor.blocks;
     // 隐藏层不给看
     if (floor.cannotViewMap && floorId != core.status.floorId) return;
+    const ignoreItems = core.getFlag('ignoreItems', {});
+    const currIgnoreItems = new Set(ignoreItems[floorId]);
     blocks.forEach(function (block) {
         if (block.disable) return;
+        // 被屏蔽的道具不计入
+        if (currIgnoreItems.has(block.x + ',' + block.y)) return;
         var event = block.event;
         if (event.cls.indexOf("enemy") == 0) {
             core.ui._drawStatistics_enemy(floorId, event.id, obj);

@@ -2821,11 +2821,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const { x, y, w, h } = this;
 				const {
 					strokeStyle = 'black', fillStyle = 'white',
-					radius = 3, lineWidth = 1, angle = null, frame = 0
+					radius = 3, lineWidth = 1, angle = null, frame = 0,
+					iconX = x, iconY = y, iconW = w, iconH = h,
+					crossline1 = false, crossline2 = false, crossLineOffset = 2,
+					crossLineStyle = 'red', crossLineWidth = 2,
 				} = this.config || {};
 				if (fillStyle !== 'none') core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
 				if (strokeStyle !== 'none') core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
-				core.drawIcon(ctx, this.icon, x, y, w, h, frame);
+				core.drawIcon(ctx, this.icon, iconX, iconY, iconW, iconH, frame);
+				if (crossline1) {
+					core.drawLine(ctx, x + crossLineOffset, y + crossLineOffset,
+						x + w - crossLineOffset, y + h - crossLineOffset,
+						crossLineStyle, crossLineWidth);
+				}
+				if (crossline2) {
+					core.drawLine(ctx, x + crossLineOffset, y + h - crossLineOffset,
+						x + w - crossLineOffset, y + crossLineOffset,
+						crossLineStyle, crossLineWidth);
+				}
 			}
 		}
 

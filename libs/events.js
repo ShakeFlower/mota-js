@@ -2792,6 +2792,16 @@ events.prototype.useFly = function (fromUserAction) {
         return;
     }
 
+    // 退出隐藏物品模式
+    if (core.hasFlag('pickingIgnoreItems')) {
+        core.setFlag('pickingIgnoreItems', false);
+        core.deleteCanvas('ignoreItems');
+        core.deleteCanvas('ignoreItemsMark');
+        core.unregisterAction('ondown', 'ignoreItem');
+        core.unlockControl();
+        return;
+    }
+
     if (!this._checkStatus('fly', fromUserAction, true)) return;
     if (core.flags.flyNearStair && !core.nearStair()) {
         core.playSound('操作失败');
