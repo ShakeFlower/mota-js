@@ -446,8 +446,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 			else {
 				const { aimx, aimy, aimId } = failMoveInfo;
-				if (core.getBlockId(x, y) === enemyId && failMoveInfo
-					&& core.getBlockId(aimx, aimy) === aimId) {
+				if (core.getBlockId(x, y) === enemyId && failMoveInfo &&
+					core.getBlockId(aimx, aimy) === aimId) {
 					const doFailMove = [
 						{ "type": "setBlock", "number": enemyId, "loc": [[aimx, aimy]], "time": 50 },
 						{ "type": "setBlock", "number": aimId, "loc": [[x, y]], "time": 50 },
