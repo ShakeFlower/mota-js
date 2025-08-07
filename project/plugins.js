@@ -2215,7 +2215,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					} else if (type === 'item') {
 						const item = core.material.items[block.event.id];
 						if (canGetItem(item, loc, floorId)) {
-							if (core.isReplaying()) animateHwnd.add(item.id, 32 * tx, 32 * ty);
+							if (!core.isReplaying()) animateHwnd.add(item.id, 32 * tx, 32 * ty);
 							core.getItem(item.id, 1, tx, ty);
 						} else {
 							return;
@@ -2252,7 +2252,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setAlpha(ctxName, 0.6);
 			}
 			bfs(core.status.floorId, deep);
-			if (core.isReplaying()) animateHwnd.start();
+			if (!core.isReplaying()) animateHwnd.start();
 			flags.__statistics__ = false;
 			flags.__forbidSave__ = before;
 			core.updateStatusBar();
