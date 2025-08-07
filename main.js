@@ -734,6 +734,7 @@ main.prototype.listen = function () {
     main.statusBar.image.rollback.onclick = function (e) {
         e.stopPropagation();
         if (core.isReplaying()) return;
+        if (core.status.lockControl) return;
         else if (main.core.isPlaying()) core.doSL("autoSave", "load");
     }
 
@@ -741,6 +742,7 @@ main.prototype.listen = function () {
     main.statusBar.image.undoRollback.onclick = function (e) {
         e.stopPropagation();
         if (core.isReplaying()) return;
+        if (core.status.lockControl) return;
         else if (main.core.isPlaying()) core.doSL("autoSave", "reload");
     }
 
