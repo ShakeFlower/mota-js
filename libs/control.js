@@ -659,6 +659,13 @@ control.prototype.moveAction = function (callback) {
     var noPass = core.noPass(core.nextX(), core.nextY()), canMove = core.canMoveHero();
     // 下一个点如果不能走
     if (noPass || !canMove) return this._moveAction_noPass(canMove, callback);
+    if (core.hasFlag("autoSaveAfterItem")) {
+        const nextbgNumber = core.maps.getBgNumber(core.nextX(), core.nextY(), core.status.floorId);
+        if (core.onSki(nextbgNumber)) {
+            core.control.autosave();
+        }
+    }
+
     this._moveAction_moving(callback);
 }
 
@@ -1179,8 +1186,18 @@ control.prototype.checkBlock = function () {
     if (currChase && currChase.length > 0) {
         core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase(true);\n}" });
     }
-    if (actions.length > 0) core.insertAction(actions, x, y, core.plugin.autoClear);
-    else core.plugin.autoClear(); // 阻击结算后执行自动清怪
+    if (ambushAction.length > 0 && core.hasFlag("autoSaveAfterItem")) {
+        core.push(actions, { "type": "autoSave" }); // 捕捉触发后自动存档
+    }
+
+    const autoClear = core.plugin.autoClear;
+    if (autoClear) { // 检查autoClear的存在性，防止接档出现bug
+        if (actions.length > 0) core.insertAction(actions, x, y, autoClear);
+        else autoClear(); // 阻击结算后执行自动清怪
+    }
+    else {
+        if (actions.length > 0) core.insertAction(actions, x, y);
+    }
 }
 
 control.prototype.checkBlock_adjacentChase = function (inAction) {
@@ -1715,7 +1732,7 @@ control.prototype.replay = function (force) {
     if (!core.isPlaying() || !core.isReplaying()
         || core.status.replay.animate || core.status.event.id || core.status.replay.failed) return;
     if (core.status.replay.pausing && !force) return;
-    
+
     this._replay_drawProgress();
     if (core.status.replay.toReplay.length == 0)
         return this._replay_finished();
@@ -2060,7 +2077,7 @@ control.prototype._replayAction_no = function (action) {
 ////// 自动存档 //////
 control.prototype.autosave = function (removeLast) {
     if (core.hasFlag('__forbidSave__')) return;
-    core.saves.actionCount ++;
+    core.saves.actionCount++;
     var x = null;
     if (removeLast) {
         x = core.status.route.pop();
@@ -2161,7 +2178,7 @@ control.prototype._doSL_load = function (id, callback) {
     }
     else {
         core.getLocalForage(id == 'autoSave' ? id : "save" + id, null, function (data) {
-            if (id == 'autoSave' && data != null) {                
+            if (id == 'autoSave' && data != null) {
                 autosave.data = data;
                 if (!(autosave.data instanceof Array)) {
                     autosave.data = [autosave.data];
@@ -3344,7 +3361,7 @@ control.prototype.updateHeroIcon = function (name) {
 //         ["rollback", "undoRollback"].forEach(function (t) {
 //             core.statusBar.image[t].style.display = core.flags.showHard ? "none" : "block";
 //         });
-        
+
 //         core.statusBar.image.keyboard.style.display
 //             = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
 //     }
