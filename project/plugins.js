@@ -4822,12 +4822,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				replay: true,
 			},
 			autoSaveAfterItem: {
-				getName: () => '破炸飞跳自动保存:' + (core.hasFlag('autoSaveAfterItem') ? '开' : '关'),
+				getName: () => '破炸飞跳自动保存:' + (core.getLocalStorage('autoSaveAfterItem') ? '开' : '关'),
 				effect: () => {
-					invertFlag('autoSaveAfterItem');
+					invertLocalStorage('autoSaveAfterItem');
 				},
 				text: '使用破、炸、飞、跳等特定道具前，以及即将走入滑冰、触发捕捉时自动存档。',
-				replay: true,
+				replay: false,
 			}
 		}
 
