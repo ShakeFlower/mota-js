@@ -3597,7 +3597,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			/** 物品栏仅显示指定类型物品 */
-			classfiy(subType) {
+			classify(subType) {
+				if (UI.type !== 'all') {
+					// 非物品栏类型的菜单不支持分类
+					return;
+				}
 				if (this.subType !== subType) {
 					const oldConfig = this.cache[this.subType],
 						newConfig = this.cache[subType];
@@ -3886,9 +3890,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
 						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
 						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
-					this._back.registerBtn('allBtn', allBtn, () => this.toolInv.classfiy('all'));
-					this._back.registerBtn('toolsBtn', toolsBtn, () => this.toolInv.classfiy('tools'));
-					this._back.registerBtn('constantsBtn', constantsBtn, () => this.toolInv.classfiy('constants'));
+					this._back.registerBtn('allBtn', allBtn, () => this.toolInv.classify('all'));
+					this._back.registerBtn('toolsBtn', toolsBtn, () => this.toolInv.classify('tools'));
+					this._back.registerBtn('constantsBtn', constantsBtn, () => this.toolInv.classify('constants'));
 				}
 				return this._back;
 			},
