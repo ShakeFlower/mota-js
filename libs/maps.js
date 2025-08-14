@@ -1924,8 +1924,44 @@ maps.prototype.stairExists = function (x, y, floorId) {
 
 ////// 当前位置是否在楼梯边 //////
 maps.prototype.nearStair = function () {
-    var x = core.getHeroLoc('x'), y = core.getHeroLoc('y');
+    const { x, y } = core.status.hero.loc;
     return this.stairExists(x, y) || this.stairExists(x - 1, y) || this.stairExists(x, y - 1) || this.stairExists(x + 1, y) || this.stairExists(x, y + 1);
+}
+
+////// 当前位置是否可到达某一楼梯 //////
+maps.prototype.accessStair = function () {
+    const stairIdList = ['upFloor', 'downFloor', 'leftPortal', 'rightPortal', 'upPortal', 'downPortal', 'portal', 'starPortal'];
+    const floorId = core.status.floorId;
+    core.extractBlocks(floorId);
+    /** 筛选那些在楼梯附近一格，且为空地的图块 只计入空地，不判断可入性，因为可能存在踩灯这类一次性事件 */
+    const nearStairPos = [];
+    core.status.maps[floorId].blocks.forEach(function (block) {
+        if (stairIdList.includes(block.event.id)) {
+            for (let dir in core.utils.scan) {
+                const nx = block.x + core.utils.scan[dir].x,
+                    ny = block.y + core.utils.scan[dir].y;
+                if (nx < 0 || ny < 0 || nx >= core.floors[floorId].width || ny >= core.floors[floorId].height) continue;
+                if (core.getBlock(nx, ny, floorId) == null) {
+                    nearStairPos.push([nx, ny]);
+                }
+            }
+        }
+    });
+    const canMoveArr = this.canMoveDirectlyArray(nearStairPos);
+    return canMoveArr.some(canMoveStep => canMoveStep >= 0);
+}
+
+// 当前位置是否满足使用飞行器的条件
+maps.prototype.canUseFlyHere = function () {
+    if (core.flags.flyNearStair) {
+        return this.nearStair();
+    }
+    else if (core.flags.flyAccessStair) {
+        return this.accessStair();
+    }
+    else {
+        return true;
+    }
 }
 
 ////// 某个点是否存在（指定的）怪物 //////

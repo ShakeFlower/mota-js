@@ -134,6 +134,7 @@ type MotaAction = {
 type SystemFlags = {
     enableXxx: boolean
     flyNearStair: boolean
+    flyAccessStair: boolean
     steelDoorWithoutKey: boolean
     betweenAttackMax: boolean
     ignoreChangeFloor: boolean
@@ -2129,6 +2130,12 @@ interface maps {
 
     /** 当前位置是否在楼梯边；在楼传平面塔模式下对箭头也有效 */
     nearStair(): boolean
+
+    /** 当前位置是否可以直接移动到某个楼梯附近的空地 */
+    accessStair(): boolean
+
+    /** 当前位置是否满足使用楼传的条件 */
+    canUseFlyHere(): boolean
 
     /** 某个点是否存在（指定的）怪物 */
     enemyExists(x?: number, y?: number, id?: string, floorId?: string): boolean

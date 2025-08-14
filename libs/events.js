@@ -2793,7 +2793,7 @@ events.prototype.useFly = function (fromUserAction) {
         if (!core.hasItem('fly')) {
             core.playSound('操作失败');
             core.drawTip('你没有' + core.material.items['fly'].name, 'fly');
-        } else if (!core.canUseItem('fly') || (core.flags.flyNearStair && !core.nearStair())) {
+        } else if (!core.canUseItem('fly') || (!core.maps.canUseFlyHere())) {
             core.playSound('操作失败');
             core.drawTip('无法传送到当前层', 'fly');
         } else {
@@ -2808,7 +2808,7 @@ events.prototype.useFly = function (fromUserAction) {
     }
 
     if (!this._checkStatus('fly', fromUserAction, true)) return;
-    if (core.flags.flyNearStair && !core.nearStair()) {
+    if (!core.maps.canUseFlyHere()) {
         core.playSound('操作失败');
         core.drawTip("只有在楼梯边才能使用" + core.material.items['fly'].name, 'fly');
         core.unlockControl();
@@ -2818,7 +2818,7 @@ events.prototype.useFly = function (fromUserAction) {
     }
     if (!core.canUseItem('fly')) {
         core.playSound('操作失败');
-        core.drawTip(core.material.items['fly'].name + "好像失效了", 'fly');
+        core.drawTip(core.material.items['fly'].name + "失效了", 'fly');
         core.unlockControl();
         core.status.event.data = null;
         core.status.event.id = null;

@@ -1975,7 +1975,7 @@ control.prototype._replayAction_fly = function (action) {
     if (action.indexOf("fly:") != 0) return false;
     var floorId = action.substring(4);
     var toIndex = core.floorIds.indexOf(floorId);
-    if (!core.canUseItem('fly') || (core.flags.flyNearStair && !core.nearStair())) return false;
+    if (!core.canUseItem('fly') || (!core.maps.canUseFlyHere())) return false;
     core.ui.drawFly(toIndex);
     if (core.status.replay.speed == 24) {
         if (!core.flyTo(floorId, core.replay))

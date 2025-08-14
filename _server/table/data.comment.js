@@ -570,6 +570,12 @@ var data_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "楼传需在楼梯边",
 					"_data": "传送器是否需要在楼梯边使用；如果flyRecordPosition开启，则此项对箭头也有效。"
 				},
+				"flyAccessStair": {
+					"_leaf": true,
+					"_type": "checkbox",
+					"_docs": "楼传需可达楼梯",
+					"_data": "传送器是否需要在当前可到达楼梯时使用；如果flyNearStair开启，则覆盖此项；如果flyRecordPosition开启，则此项对箭头也有效。"
+				},
 				"flyRecordPosition": {
 					"_leaf": true,
 					"_type": "checkbox",
