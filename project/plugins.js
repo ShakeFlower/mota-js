@@ -472,8 +472,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var sy = one.sy || 0;
 			var x = one.x || 0, y = one.y || 0;
 			if (onMap && core.bigmap.v2) {
-				if (x > 32 * core.bigmap.posX + core.__PIXELS__ + 32 || x + width < 32 * core.bigmap.posX - 32
-					|| y > 32 * core.bigmap.posX + core.__PIXELS__ + 32 || y + height < 32 * core.bigmap.posY - 32) {
+				if (x > 32 * core.bigmap.posX + core.__PIXELS__ + 32 || x + width < 32 * core.bigmap.posX - 32 ||
+					y > 32 * core.bigmap.posX + core.__PIXELS__ + 32 || y + height < 32 * core.bigmap.posY - 32) {
 					return;
 				}
 				x -= 32 * core.bigmap.posX;
@@ -1963,25 +1963,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 有事件，不清
 			if (hasEvent) return false;
 			// 有特定特殊属性的怪不清
-			if (core.hasSpecial(e.special, 12) // 中毒
-				||
-				core.hasSpecial(e.special, 13) // 衰弱
-				||
-				core.hasSpecial(e.special, 14) // 诅咒
-				||
-				core.hasSpecial(e.special, 19) // 自爆
-				||
-				core.hasSpecial(e.special, 21) // 退化
-				||
-				core.hasSpecial(e.special, 26) // 支援
-				||
-				core.hasSpecial(e.special, 27) // 捕捉:逻辑上应该让怪物来找角色
-				||
-				core.hasSpecial(e.special, 28) // 追猎:逻辑上应该让怪物来找角色
-				||
+			if (
+				core.hasSpecial(e.special, 12) || // 中毒
+				core.hasSpecial(e.special, 13) || // 衰弱
+				core.hasSpecial(e.special, 14) || // 诅咒
+				core.hasSpecial(e.special, 19) || // 自爆	
+				core.hasSpecial(e.special, 21) || // 退化
+				core.hasSpecial(e.special, 26) || // 支援
+				core.hasSpecial(e.special, 27) || // 捕捉:逻辑上应该让怪物来找角色
+				core.hasSpecial(e.special, 28) || // 追猎:逻辑上应该让怪物来找角色
 				core.hasSpecial(e.special, 29) // 败移:特殊战后事件
-			)
+			) {
 				return false;
+			}
 			const damage = core.getDamageInfo(enemy, void 0, x, y)?.damage;
 			// 0伤或负伤，清
 			if (has(damage) && damage <= 0) return true;
@@ -2256,7 +2250,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			flags.__statistics__ = false;
 			flags.__forbidSave__ = before;
 			core.updateStatusBar();
-		};
+		}
 	},
 	"scrollingText": function () {
 		// 本插件用于绘制在线留言
@@ -2806,7 +2800,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
 					core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, font);
 				}
-			};
+			}
 		}
 
 		class IconBtn extends ButtonBase {
@@ -4349,8 +4343,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 			const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
 			const key = isVertical() ? 'vertical' : 'horizontal';
-			if (type === 'replay'
-				&& (['fly', 'shop', 'load', 'settings', 'btnAlt', 'rollback', 'undoRollback', 'btnAlt'].includes(value))) {
+			if (type === 'replay' &&
+				(['fly', 'shop', 'load', 'settings', 'btnAlt', 'rollback', 'undoRollback', 'btnAlt'].includes(value))) {
 				core.drawFailTip('该按钮不允许放在录像模式下！');
 				return;
 			} // 录像模式下的按键处理有一套专门的逻辑，在_sys_onkeyUp_replay，实际上并不能读取自动档
@@ -5140,7 +5134,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.drawLine(ctx, this.x + 2, this.y + 2, this.x + this.w - 2, this.y + this.h - 2, 'red', 2);
 					core.drawLine(ctx, this.x + 2, this.y + this.h - 2, this.x + this.w - 2, this.y + 2, 'red', 2);
 				} else core.drawIcon(ctx, this.icon, this.x, this.y, this.w, this.h);
-			};
+			}
 		}
 
 		class ToolBarBtn extends ButtonBase {
@@ -6010,7 +6004,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		class StreamLoader {
 			constructor(url) {
-				/** 传输目标  Set<IStreamReader>*/
+				/** 传输目标  Set<IStreamReader> */
 				this.target = new Set();
 				this.loading = false;
 			}
@@ -6064,8 +6058,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 				this.loading = false;
 				targets.forEach((v) => v.end(true));
-
-				//
 			}
 
 			cancel(reason) {
@@ -6075,6 +6067,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.target.forEach((v) => v.end(false, reason));
 			}
 		}
+
+		/** @type {[string, number[]][]} */
 		const fileSignatures = [
 			[AudioType.Mp3, [0x49, 0x44, 0x33]],
 			[AudioType.Ogg, [0x4f, 0x67, 0x67, 0x53]],
@@ -6083,6 +6077,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			[AudioType.Aac, [0xff, 0xf1]],
 			[AudioType.Aac, [0xff, 0xf9]],
 		];
+		/** @type {[string, number[]][]} */
 		const oggHeaders = [
 			[AudioType.Opus, [0x4f, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64]],
 		];
