@@ -1962,6 +1962,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			// 有事件，不清
 			if (hasEvent) return false;
+
+			const cache = core.status.checkBlock.cache;
+			const hasGuards = has(cache) && has(cache[loc]) &&
+				has(cache[loc]["guards"]) && cache[loc]["guards"].length > 0; // 该敌人会被支援
+			if (hasGuards) return false;
+			
 			// 有特定特殊属性的怪不清
 			if (
 				core.hasSpecial(e.special, 12) || // 中毒
