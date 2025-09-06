@@ -3792,7 +3792,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			clear() {
 				super.clear();
 				const { back, itemInv, equipSlots, itemInfo } = UI;
-				[back, itemInv, equipSlots, itemInfo].forEach((menu) => { menu.beginListen(); });
+				[back, itemInv, equipSlots, itemInfo].forEach(menu => {
+					if (menu.onDraw) menu.beginListen(); // 注意本来就没在绘制的则不监听
+				});
 				UI.itemInfo.drawContent(); // 快捷键图标会发生变化
 			}
 		}
