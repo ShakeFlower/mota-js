@@ -2877,6 +2877,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.actions._keyDownToolbox = core.actions._keyDownEquipbox = function (keyCode) { return true; }.bind(core.actions);
 		core.actions._clickToolbox = core.actions._clickEquipbox = function (x, y, px, py) { return true; }.bind(core.actions);
 		core.actions._keyUpToolbox = core.actions._keyUpEquipbox = function (keyCode) { return true; }.bind(core.actions);
+		// 暂不考虑修改core.status.event.id，该变量牵涉太多，作用不完全清楚
+		// 录像模式下下列函数会进行检测，不处于特定模式时，阻止自定义监听事件 
+		core.actions._checkReplaying = function () {
+			if (core.isReplaying() && !UI._back?.onDraw &&
+				['save', 'book', 'book-detail', 'viewMaps', 'toolbox', 'equipbox', 'text'].indexOf(core.status.event.id) < 0) {
+				return true;
+			}
+			return false;
+		}.bind(core.actions);
 
 		const oriClosePanel = core.ui.closePanel;
 		core.ui.closePanel = function () {
@@ -4037,7 +4046,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		/** @param {'all'|'equips'} currType  */
 		function drawItemBox(currType) {
 			UI.clearAll();
-			if (UI._toolInv && UI._toolInv.onDraw && currType === UI.type) return;
+			if (UI._toolInv && UI._toolInv?.onDraw && currType === UI.type) return;
 			core.lockControl();
 			UI.type = currType;
 			UI.itemInv.updateItemList();
