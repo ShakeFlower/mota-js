@@ -3963,6 +3963,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						this.itemInv.updateItemList();
 						this.itemInv.setIndex(this.itemInv.index);
 						this.itemInv.drawContent();
+						this.itemInfo.drawContent(); // 这里不论选中物品是否变化，itemInfo必定要重绘，因为按钮图案会变
 					});
 					const setHotkeyBtn = new IconBtn(145, 60, 24, 24, 'keyboard');
 					this.itemInfo.registerBtn('setHotkeyBtn', setHotkeyBtn, () => {
