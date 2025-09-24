@@ -4805,13 +4805,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			},
 			skipText: {
 				getName: () => '跳过剧情:' + (core.getLocalStorage('skipText', false) ? '开' : '关'),
-				effect: () => { invertLocalStorage('skipText'); },
+				effect: () => {
+					invertLocalStorage('skipText');
+					checkSkipFuncs();
+				},
 				text: '跳过全部文字对话。初见请勿开启此选项。',
 				replay: false,
 			},
 			skipPeform: {
 				getName: () => '跳过演出:' + (core.getLocalStorage('skipPerform', false) ? '开' : '关'),
-				effect: () => { invertLocalStorage('skipPerform'); },
+				effect: () => {
+					invertLocalStorage('skipPerform');
+					checkSkipFuncs();
+				},
 				text: '加速等待、播放动画等常见演出效果。',
 				replay: false,
 			},
