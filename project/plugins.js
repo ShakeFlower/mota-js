@@ -3358,6 +3358,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (!this.canPageUp()) return;
 				this.page++;
 				this.updateItemList();
+				this.setIndex(Math.min(this.index, this.currItemList.length - 1));
 				this.drawContent();
 			}
 
@@ -3366,6 +3367,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (!this.canPageDown()) return;
 				this.page--;
 				this.updateItemList();
+				this.setIndex(this.index);
 				this.drawContent();
 			}
 		}
@@ -4042,6 +4044,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
 			}
 		}
+		console.log(UI);
 
 		// 程序入口，在_drawToolbox 与 _drawEquipbox处调用
 		/** @param {'all'|'equips'} currType  */
