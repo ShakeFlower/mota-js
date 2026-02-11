@@ -1340,13 +1340,76 @@ control.prototype.updateDamage = function (floorId, ctx) {
     this.drawDamage(ctx);
 }
 
+control.prototype.getEnemyValueString = function(name, blockId, x, y, floorId) {
+    if (name == null) return { text: null, color: null };
+    const colorMap = {
+        hp: '#55ff55', atk: '#ff5555',
+        def: '#5555ff', money: '#ffff55', exp: '#ffaa33',
+        criticalDamage: '#B22222', defDamage: '#1E90FF'
+    }
+    switch (name) {
+        case "damage":
+            if (core.flags.displayEnemyDamage) {
+                const damageString = core.enemys.getDamageString(blockId, x, y, floorId);
+                return { text: damageString.damage, color: damageString.color };
+            }
+            break;
+        case "critical":
+            if (core.flags.displayCritical) {
+                const critical = core.enemys.nextCriticals(blockId, 1, x, y, floorId);
+                const criticalString = core.formatBigNumber((critical[0] || [])[0], true);
+                return { text: criticalString == '???' ? '?' : criticalString, color: '#FFFFFF' };
+            }
+            break;
+        case "hp":
+        case "atk":
+        case "def":
+        case "money":
+        case "exp":
+            const value = core.enemys.getEnemyValue(blockId, name, x, y, floorId);
+            const valueString = core.utils.formatBigNumber(value, 5);
+            return { text: valueString, color: colorMap[name] };
+        case "criticalDamage":
+            let criticalDamage = 0;
+            const criticals = core.enemys.nextCriticals(blockId, 1, x, y, floorId);
+            if (criticals && criticals.length > 0) {
+                criticalDamage = criticals[0][1];
+                criticalDamage = core.formatBigNumber(criticalDamage, 5);
+            }
+            return { text: criticalDamage, color: colorMap.criticalDamage };
+        case "defDamage":
+            const defDamage = core.enemys.getDefDamage(blockId, 1, x, y, floorId);
+            return { text: defDamage, color: colorMap.defDamage };
+        case "special":
+            const specialData = core.getLocalStorage('specialIconData', {});
+            const special = core.enemys.getEnemyValue(blockId, 'special', x, y, floorId);
+            const specialArr = core.utils.parseSpecial(special);
+            let text = '';
+            for (const s of specialArr) {
+                if (specialData[s]) {
+                    text += specialData[s];
+                }
+            }
+            return { text, color: '#FFFFFF' };
+    }
+}
+
+control.prototype.pushDamageData = function(name, px, py, blockId, x, y, floorId) {
+    if (name == null) return;
+    const { text, color } = this.getEnemyValueString(name, blockId, x, y, floorId);
+    core.status.damage.data.push({ text, px, py, color });
+}
+
 control.prototype._updateDamage_damage = function (floorId, onMap) {
     core.status.damage.data = [];
     if (!core.flags.displayEnemyDamage && !core.flags.displayExtraDamage) return;
 
     core.extractBlocks(floorId);
+
     core.status.maps[floorId].blocks.forEach(function (block) {
-        var x = block.x, y = block.y;
+        const x = block.x,
+            y = block.y,
+            blockId = block.event.id;
 
         // v2优化，只绘制范围内的部分
         if (onMap && core.bigmap.v2) {
@@ -1357,16 +1420,15 @@ control.prototype._updateDamage_damage = function (floorId, onMap) {
         }
 
         if (!block.disable && block.event.cls.indexOf('enemy') == 0 && block.event.displayDamage !== false) {
-            if (core.flags.displayEnemyDamage) {
-                var damageString = core.enemys.getDamageString(block.event.id, x, y, floorId);
-                core.status.damage.data.push({ text: damageString.damage, px: 32 * x + 1, py: 32 * (y + 1) - 1, color: damageString.color });
-            }
-            if (core.flags.displayCritical) {
-                var critical = core.enemys.nextCriticals(block.event.id, 1, x, y, floorId);
-                critical = core.formatBigNumber((critical[0] || [])[0], true);
-                if (critical == '???') critical = '?';
-                core.status.damage.data.push({ text: critical, px: 32 * x + 1, py: 32 * (y + 1) - 11, color: '#FFFFFF' });
-            }
+            const defaultData = { leftdown: { 1: 'damage', 2: 'critical' }, rightup: {} };
+            const data = core.getLocalStorage('displayData', defaultData);
+
+            this.pushDamageData(data.leftdown[1], 32 * x + 1, 32 * (y + 1) - 1, blockId, x, y, floorId);
+            this.pushDamageData(data.leftdown[2], 32 * x + 1, 32 * (y + 1) - 11, blockId, x, y, floorId);
+            this.pushDamageData(data.leftdown[3], 32 * x + 1, 32 * (y + 1) - 21, blockId, x, y, floorId);
+            this.pushDamageData(data.rightup[1], 32 * x + 16, 32 * (y + 1) - 21, blockId, x, y, floorId);
+            this.pushDamageData(data.rightup[2], 32 * x + 16, 32 * (y + 1) - 11, blockId, x, y, floorId);
+            this.pushDamageData(data.rightup[3], 32 * x + 16, 32 * (y + 1) - 1, blockId, x, y, floorId);
         }
     });
 }

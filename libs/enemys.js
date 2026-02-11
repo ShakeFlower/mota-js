@@ -80,20 +80,32 @@ enemys.prototype.getSpecials = function () {
     return this.enemydata.getSpecials();
 }
 
+enemys.prototype.getSpecialIndexMap = function () {
+    const specials = this.getSpecials();
+    const map = {};
+    if (!specials) return map;
+    specials.forEach(special => {
+        const index = special[0];
+        map[index] = special;
+    });
+    return map;
+}
+
 ////// 获得所有特殊属性的名称 //////
 enemys.prototype.getSpecialText = function (enemy) {
     if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
     if (!enemy) return [];
-    var special = enemy.special;
-    var text = [];
-
-    var specials = this.getSpecials();
-    if (specials) {
-        for (var i = 0; i < specials.length; i++) {
-            if (this.hasSpecial(special, specials[i][0]))
-                text.push(this._calSpecialContent(enemy, specials[i][1]));
+    const special = enemy.special;
+    const text = [];
+    const specialArr = core.utils.parseSpecial(special);
+    const specialIndexMap = this.getSpecialIndexMap();
+    specialArr.forEach(specialNum => {
+        const specialInfo = specialIndexMap[specialNum];
+        if (specialInfo) {
+            text.push(this._calSpecialContent(enemy, specialInfo[1]));
         }
-    }
+    });
+
     return text;
 }
 
@@ -101,18 +113,18 @@ enemys.prototype.getSpecialText = function (enemy) {
 enemys.prototype.getSpecialColor = function (enemy) {
     if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
     if (!enemy) return [];
-    var special = enemy.special;
-    var colors = [];
+    const special = enemy.special;
+    const colors = [];
 
-    var specials = this.getSpecials();
-    if (specials) {
-        for (var i = 0; i < specials.length; i++) {
-            if (this.hasSpecial(special, specials[i][0]))
-                colors.push(specials[i][3] || null);
+    const specialArr = core.utils.parseSpecial(special);
+    const specialIndexMap = this.getSpecialIndexMap();
+    specialArr.forEach(specialNum => {
+        const specialInfo = specialIndexMap[specialNum];
+        if (specialInfo) {
+            colors.push(specialInfo[3] || null);
         }
-    }
+    });
     return colors;
-
 }
 
 ////// 获得所有特殊属性的额外标记 //////
@@ -133,10 +145,10 @@ enemys.prototype.getSpecialFlag = function (enemy) {
 }
 
 ////// 获得每个特殊属性的说明 //////
-enemys.prototype.getSpecialHint = function (enemy, special) {
+enemys.prototype.getSpecialHint = function (enemy, specialNum) {
     var specials = this.getSpecials();
 
-    if (special == null) {
+    if (specialNum == null) {
         if (specials == null) return [];
         var hints = [];
         for (var i = 0; i < specials.length; i++) {
@@ -149,7 +161,7 @@ enemys.prototype.getSpecialHint = function (enemy, special) {
 
     if (specials == null) return "";
     for (var i = 0; i < specials.length; i++) {
-        if (special == specials[i][0])
+        if (specialNum == specials[i][0])
             return "\r[#FF6A6A]\\d" + this._calSpecialContent(enemy, specials[i][1]) + "：\\d\r[]" + this._calSpecialContent(enemy, specials[i][2]);
     }
     return "";

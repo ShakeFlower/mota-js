@@ -2861,7 +2861,40 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
 			}
 		}
-		this.uiBase = { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, Pagination, KeyCodeEnum };
+
+		class ArrowBtn extends ButtonBase {
+			constructor(x, y, w, h, dir, config) {
+				super(x, y, w, h);
+				this.config = config || {};
+				/** @type {'left'|'right'} */
+				this.dir = dir;
+			}
+
+			draw() {
+				const {
+					marginLeft = 6, marginTop = 5, marginRight = 4,
+					backStyle = 'gray', arrowStyle = 'black'
+				} = this.config || {};
+				const { x, y, w, h, ctx } = this;
+				core.fillRoundRect(ctx, x, y, w, h, 3, backStyle);
+				if (this.dir === 'left')
+					core.fillPolygon(ctx, [
+						[x + w - marginLeft, y + marginTop],
+						[x + w - marginLeft, y + h - marginTop],
+						[x + marginRight, y + h / 2]
+					], arrowStyle);
+				else if (this.dir === 'right')
+					core.fillPolygon(ctx, [
+						[x + marginLeft, y + marginTop],
+						[x + marginLeft, y + h - marginTop],
+						[x + w - marginRight, y + h / 2]
+					], arrowStyle);
+			}
+		}
+		this.uiBase = {
+			ButtonBase, RoundBtn, IconBtn, ExitBtn,
+			ArrowBtn, MenuBase, Pagination, KeyCodeEnum
+		};
 	},
 	"newBackpackLook": function () {
 		// 本插件定义了一些用于绘制的基类
@@ -4044,7 +4077,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
 			}
 		}
-		console.log(UI);
 
 		// 程序入口，在_drawToolbox 与 _drawEquipbox处调用
 		/** @param {'all'|'equips'} currType  */
@@ -4471,7 +4503,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// #endregion
 		// #region 按钮类
 
-		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, Pagination, KeyCodeEnum } = core.plugin.uiBase;
+		const { ButtonBase, RoundBtn, IconBtn, ExitBtn,
+			ArrowBtn, MenuBase, Pagination, KeyCodeEnum } = core.plugin.uiBase;
 
 		class TextButton extends ButtonBase {
 			constructor(x, y, w, h, text) {
@@ -4503,6 +4536,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const setting = this.setting;
 				// 取消注释下面这一句将显示所有按钮的判定框
 				// core.strokeRect(ctx, this.x, this.y, this.w, this.h, 'yellow');
+				core.setTextAlign(ctx, 'start');
 				core.ui.fillText(ctx, setting.getName(), x, y + h / 2 + 5, 'white', '16px Verdana');
 				const drawFunc = setting.draw;
 				if (this.status === 'selected') {
@@ -4633,7 +4667,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			 * @param {SettingButton} btn 
 			 * @param {...(string|number)} eventArgs
 			 */
-			registerBtn(pos, key, btn, ...eventArgs) {
+			registerSettingBtn(pos, key, btn, ...eventArgs) {
 				super.registerBtn(pos, btn, {
 					'ondown': () => {
 						if (this.selectedBtn === btn) this.execEffect(btn, key, ...eventArgs);
@@ -4646,10 +4680,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				btn.setting = this.settingData[key];
 			}
 
-			registerBtns(arr) {
+			registerSettingBtns(arr) {
 				arr.forEach(ele => {
 					const [key, btn, event, ...eventArgs] = ele;
-					this.registerBtn(key, btn, event, ...eventArgs);
+					this.registerSettingBtn(key, btn, event, ...eventArgs);
 				});
 			}
 		}
@@ -4873,7 +4907,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function gamePlayFactory() {
 			const gamePlayMenu = new GamePlay();
-			gamePlayMenu.registerBtns([
+			gamePlayMenu.registerSettingBtns([
 				['1,1', 'autoGet', new SettingButton(40, 180, 150, 30)],
 				['2,1', 'autoBattle', new SettingButton(220, 180, 150, 30)],
 				['1,2', 'clickMove', new SettingButton(40, 230, 150, 30)],
@@ -4933,13 +4967,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			displayEnemyDamage: {
 				getName: () => '怪物显伤:' + (core.flags.displayEnemyDamage ? '开' : '关'),
 				effect: core.actions._clickSwitchs_display_enemyDamage,
-				text: '怪物显伤',
+				text: '地图上显示怪物的伤害。',
 				replay: false,
 			},
 			displayCritical: {
 				getName: () => '临界显伤:' + (core.flags.displayCritical ? '开' : '关'),
 				effect: core.actions._clickSwitchs_display_critical,
-				text: '临界显伤',
+				text: '地图上显示怪物的临界值',
 				replay: false,
 			},
 			displayExtraDamage: {
@@ -5003,21 +5037,35 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function gameViewFactory() {
 			const gameViewMenu = new GameView();
-			gameViewMenu.registerBtns([
+			const advanceDisplayBtn = new RoundBtn(300, 280, 32, 18, "高级", {
+				font: '12px Verdana', fillStyle: "SlateGray", radius: 1, fontStyle: "yellow",
+				strokeStyle: "black"
+			});
+			gameViewMenu.registerBtn('openAdvanceDisplay', advanceDisplayBtn, () => {
+				const settingMenu = core.plugin.settingMenu;
+				if (settingMenu) {
+					settingMenu.endListen();
+					settingMenu.pageList[settingMenu.currPage].endListen();
+				}
+				core.ui.clearUIEventSelector(0);
+				const advanceDisplayMenu = advanceDisplayFactory();
+				advanceDisplayMenu.init();
+			});
+			gameViewMenu.registerSettingBtns([
 				['1,1', 'itemDetail', new SettingButton(40, 180, 150, 25)],
-				['1,2', 'HDCanvas', new SettingButton(40, 205, 150, 25)],
-				['1,3', 'displayEnemyDamage', new SettingButton(40, 230, 150, 25)],
-				['1,4', 'displayExtraDamage', new SettingButton(40, 255, 150, 25)],
-				['1,5', 'extraDamageType', new SettingButton(40, 280, 150, 25)],
+				['1,2', 'displayEnemyDamage', new SettingButton(40, 205, 150, 25)],
+				['1,3', 'displayExtraDamage', new SettingButton(40, 230, 150, 25)],
+				['1,4', 'autoScale', new SettingButton(40, 255, 150, 25)],
+				['1,5', 'HDCanvas', new SettingButton(40, 280, 150, 25)],
 				['1,6', 'bgm', new SettingButton(40, 325, 150, 25)],
 				['1,7', 'decreaseVolume', new SettingButton(40, 350, 25, 25)],
 				['2,7', 'increaseVolume', new SettingButton(140, 350, 25, 25)],
-				['2,1', 'zoomIn', new SettingButton(220, 180, 25, 25)],
-				['3,1', 'zoomOut', new SettingButton(330, 180, 25, 25)],
-				['2,2', 'autoScale', new SettingButton(220, 205, 150, 25)],
-				['2,3', 'enableEnemyPoint', new SettingButton(220, 230, 150, 25)],
-				['2,4', 'displayCritical', new SettingButton(220, 255, 150, 25)],
-				['2,6', 'se', new SettingButton(220, 325, 150, 25)]
+				['2,1', 'displayEnemyDamage', new SettingButton(220, 180, 150, 25)],
+				['2,2', 'displayCritical', new SettingButton(220, 205, 150, 25)], 
+				['2,3', 'extraDamageType', new SettingButton(220, 230, 150, 25)],
+				['2,4', 'zoomIn', new SettingButton(220, 255, 25, 25)],
+				['3,4', 'zoomOut', new SettingButton(330, 255, 25, 25)],
+				['2,6', 'se', new SettingButton(220, 325, 150, 25)],
 			]);
 			return gameViewMenu;
 		}
@@ -5125,7 +5173,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function keyMenuFactory() {
 			const keyMenu = new KeyMenu();
-			keyMenu.registerBtns([
+			keyMenu.registerSettingBtns([
 				['1,1', 'leftHand', new SettingButton(40, 160, 150, 25)],
 				['1,2', 'setHotKey', new SettingButton(40, 220, 150, 25, '1'), 1],
 				['2,2', 'setHotKey', new SettingButton(220, 220, 150, 25, '2'), 2],
@@ -5579,7 +5627,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		function consoleMenuFactory() {
 			const consoleMenu = new ConsoleMenu();
-			consoleMenu.registerBtns([
+			consoleMenu.registerSettingBtns([
 				['1,1', 'debug_wallHacking', new SettingButton(40, 220, 150, 25)],
 				['1,2', 'debug_statusName', new SettingButton(80, 250, 80, 20)],
 				['2,2', 'debug_statusValue', new SettingButton(210, 250, 80, 20)],
@@ -5592,6 +5640,241 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['3,4', 'debug_setFlag', new SettingButton(340, 302, 40, 20)],
 			]);
 			return consoleMenu;
+		}
+		// #endregion
+		// #region 敌人信息显示调节界面
+		const infoNameMap = {
+			'damage': '伤害', 'critical': '临界', 'hp': core.control.getStatusLabel('hp'),
+			'atk': core.control.getStatusLabel('atk'), 'def': core.control.getStatusLabel('def'),
+			'money': core.control.getStatusLabel('money'), 'exp': core.control.getStatusLabel('exp'),
+			'criticalDamage': '临界减伤', 'defDamage': '1防减伤', 'special': '特殊属性',
+		}
+
+		class DisplayInfoBtn extends RoundBtn {
+			constructor(x, y, w, h, pos, index) {
+				super(x, y, w, h);
+				this.pos = pos;
+				this.index = index;
+			}
+
+			draw() {
+				super.draw();
+				const isEmpty = !this.infoName;
+				const ctx = this.ctx;
+				const { x, y, w, h } = this;
+				const [x0, y0, r, offset] = [x + w + 15, y + h / 2, h / 2 - 2, 2];
+				core.fillCircle(ctx, x0, y0, r, isEmpty ? 'lime' : 'red');
+				core.drawLine(ctx, x0 - r + offset, y0, x0 + r - offset, y0, 'white', 2);
+				if (isEmpty) core.drawLine(ctx, x0, y0 - r + offset, x0, y0 + r - offset, 'white', 2);
+			}
+
+			inRange(px, py) { // 实际的点击判定区是右边的圆形
+				const { x, y, w, h } = this;
+				return px >= x + w + 15 - h / 2 && px <= x + w + 15 + h / 2 && py >= y && py <= y + h;
+			}
+		}
+
+		class SpecialIconBtn extends RoundBtn {}
+
+		class AdvanceDisplayMenu extends MenuBase {
+			constructor() {
+				super('advanceDisplay', ['ondown']);
+				this.selectedBtn = null;
+				this.getData();
+				this.getAllSpecials();
+				this.getSpecialIconData();
+				this.specialIconPage = 0;
+			}
+
+			drawContent() {
+				const ctx = this.createCanvas();
+				core.setTextAlign(ctx, 'center');
+				core.setTextBaseline(ctx, 'alphabetic');
+				core.fillRoundRect(ctx, 20, 70, core.__PIXELS__ - 40, 320, 5, "rgba(50,50,50,1)");
+				core.fillText(ctx, "设定敌人左下角显示的数据", 110, 90, 'white', '14px Verdana');
+				core.fillText(ctx, "设定敌人右上角显示的数据", 110, 190, 'white', '14px Verdana');
+				core.fillText(ctx, "设定特殊属性的代表字符", 110, 290, 'white', '14px Verdana');
+				this.getData();
+				this.setInfoName();
+				this.getSpecialIconData();
+				super.drawContent(ctx);
+			}
+
+			clear() {
+				super.clear();
+				const settingMenu = core.plugin.settingMenu;
+				if (settingMenu) {
+					settingMenu.beginListen();
+					settingMenu.pageList[settingMenu.currPage].beginListen();
+				}
+			}
+
+			getData() {
+				const defaultData = { leftdown: { 1: 'damage', 2: 'critical' }, rightup: {} };
+				this.data = core.getLocalStorage('displayData', defaultData);
+			}
+
+			setData(pos, index, infoName) {
+				this.data[pos][index] = infoName;
+				core.setLocalStorage('displayData', this.data);
+				this.setInfoName();
+			}
+
+			setInfoName() {
+				this.btnMap.forEach(btn => {
+					if (!(btn instanceof DisplayInfoBtn)) return;
+					const pos = btn.pos;
+					const index = btn.index;
+					const infoName = this.data[pos][index];
+					if (infoName) {
+						btn.infoName = infoName;
+						const name = infoNameMap[infoName];
+						btn.text = name;
+					}
+					else {
+						btn.infoName = null;
+						btn.text = '';
+					}
+				});
+			}
+
+			getAllSpecials() { // allSpecials是所有用到了的特殊属性的数组
+				let allSpecialsSet = new Set();
+				Object.values(core.material.enemys).forEach(enemy => {
+					const special = core.utils.parseSpecial(enemy.special);
+					allSpecialsSet = new Set([...allSpecialsSet, ...special]);
+				})
+				this.allSpecials = [...allSpecialsSet].sort((a, b) => a - b);
+			}
+
+			getSpecialIconData() {
+				const specialData = core.getLocalStorage('specialIconData', {});
+				this.specialIconData = specialData;
+			}
+
+			getCurrSpecialIconList(){
+				return this.allSpecials.slice(this.specialIconPage * 6, 
+					this.specialIconPage * 6 + 6);
+			}
+
+			/** 更新每个按钮对应的文本，在翻页和修改内容时需要手动调用 */
+			setSpecialIconBtnText() {
+				const specialIconList = this.getCurrSpecialIconList();
+				for (let i = 0; i <= 5; i++) {
+					const key = 's' + (i + 1);
+					const btn = this.btnMap.get(key);
+					const index = this.specialIconPage * 6 + i;
+					if (index >= this.allSpecials.length) {
+						btn.text = '';
+					}
+					else {
+						const specialNum = this.allSpecials[index];
+						const specialIndexMap = core.enemys.getSpecialIndexMap();
+						const [key, name] = specialIndexMap[specialNum];
+						const icon = this.specialIconData[specialNum] || "无";
+						btn.text = `${key}:${name} ${icon}`;
+					}
+				}
+			}
+
+			setSpecialIconData(index) {
+				const specialIconList = this.getCurrSpecialIconList();
+				const specialNum = specialIconList[index];
+				if (!specialNum) return;
+				core.utils.myprompt('输入该特殊属性的代表字符', null, (value) => {
+					if (value.length > 1) value = value[0]; // 最多保留一位字符
+					this.specialIconData[specialNum] = value;
+					core.setLocalStorage('specialIconData', this.specialIconData);
+					this.setSpecialIconBtnText();
+					this.drawContent();
+				});
+			}
+
+			pageUp(){
+				if (this.specialIconPage * 6 + 6 < this.allSpecials.length) {
+					this.specialIconPage++;
+					this.setSpecialIconBtnText();
+					this.drawContent();
+				}
+			}
+
+			pageDown(){
+				if (this.specialIconPage > 0) {
+					this.specialIconPage--;
+					this.setSpecialIconBtnText();
+					this.drawContent();
+				}
+			}
+		}
+
+		function advanceDisplayFactory() {
+			const advanceDisplayMenu = new AdvanceDisplayMenu();
+			const exitBtn = new ExitBtn(370, 80, 16, 16, { radius: 1, lineOffsetX: 2, lineWidthX: 2 })
+			advanceDisplayMenu.registerBtn('exitBtn', exitBtn, () => {
+				advanceDisplayMenu.clear();
+			});
+			const btn1 = new DisplayInfoBtn(50, 100, 75, 20, 'leftdown', 1),
+				btn2 = new DisplayInfoBtn(50, 125, 75, 20, 'leftdown', 2),
+				btn3 = new DisplayInfoBtn(50, 150, 75, 20, 'leftdown', 3),
+				btn4 = new DisplayInfoBtn(50, 200, 75, 20, 'rightup', 1),
+				btn5 = new DisplayInfoBtn(50, 225, 75, 20, 'rightup', 2),
+				btn6 = new DisplayInfoBtn(50, 250, 75, 20, 'rightup', 3);
+			const infoNameList = Object.keys(infoNameMap);
+			const l = infoNameList.length;
+
+			const setNewInfo = function (infoName) {
+				return function () {
+					const btn = advanceDisplayMenu.selectedBtn;
+					if (!btn) return;
+					advanceDisplayMenu.setData(btn.pos, btn.index, infoName);
+					advanceDisplayMenu.btnMap.forEach((btn, key) => {
+						if (btn.key.startsWith("temp")) btn.disable = true;
+					});
+					advanceDisplayMenu.selectedBtn = null;
+					advanceDisplayMenu.drawContent();
+				}
+			}
+			for (let i = 0; i < 5; i++) {
+				const tempBtn = new RoundBtn(200, 100 + i * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
+				tempBtn.disable = true;
+				advanceDisplayMenu.registerBtn('temp' + i, tempBtn, setNewInfo(infoNameList[i]));
+			}
+			for (let i = 5; i < l; i++) {
+				const tempBtn = new RoundBtn(300, 100 + (i - 5) * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
+				tempBtn.disable = true;
+				advanceDisplayMenu.registerBtn('temp' + i, tempBtn, setNewInfo(infoNameList[i]));
+			}
+			const change = function (btn) {
+				return function () {
+					if (btn.infoName) {
+						advanceDisplayMenu.setData(btn.pos, btn.index, null);
+					}
+					else {
+						advanceDisplayMenu.selectedBtn = btn;
+						advanceDisplayMenu.btnMap.forEach((btn, key) => {
+							if (btn.key.startsWith("temp")) btn.disable = false;
+						});
+					}
+					advanceDisplayMenu.drawContent();
+				}
+			}
+			advanceDisplayMenu.registerBtns([
+				['1', btn1, change(btn1)], ['2', btn2, change(btn2)], ['3', btn3, change(btn3)],
+				['4', btn4, change(btn4)], ['5', btn5, change(btn5)], ['6', btn6, change(btn6)],
+			]);
+			const config = { "font": "12px Verdana" };
+			advanceDisplayMenu.registerBtn('s1', new SpecialIconBtn(50, 300, 80, 20, "", config), advanceDisplayMenu.setSpecialIconData.bind(advanceDisplayMenu, 0));
+			advanceDisplayMenu.registerBtn('s2', new SpecialIconBtn(150, 300, 80, 20, "", config), advanceDisplayMenu.setSpecialIconData.bind(advanceDisplayMenu, 1));
+			advanceDisplayMenu.registerBtn('s3', new SpecialIconBtn(250, 300, 80, 20, "", config), advanceDisplayMenu.setSpecialIconData.bind(advanceDisplayMenu, 2));
+			advanceDisplayMenu.registerBtn('s4', new SpecialIconBtn(50, 330, 80, 20, "", config), advanceDisplayMenu.setSpecialIconData.bind(advanceDisplayMenu, 3));
+			advanceDisplayMenu.registerBtn('s5', new SpecialIconBtn(150, 330, 80, 20, "", config), advanceDisplayMenu.setSpecialIconData.bind(advanceDisplayMenu, 4));
+			advanceDisplayMenu.registerBtn('s6', new SpecialIconBtn(250, 330, 80, 20, "", config), advanceDisplayMenu.setSpecialIconData.bind(advanceDisplayMenu, 5));
+			advanceDisplayMenu.registerBtn('pageDown', new ArrowBtn(50, 360, 16, 16, 'left'),
+				advanceDisplayMenu.pageDown.bind(advanceDisplayMenu));
+			advanceDisplayMenu.registerBtn('pageUp', new ArrowBtn(320, 360, 16, 16, 'right'),
+				advanceDisplayMenu.pageUp.bind(advanceDisplayMenu));
+			advanceDisplayMenu.setSpecialIconBtnText();
+			return advanceDisplayMenu;
 		}
 		// #endregion
 
