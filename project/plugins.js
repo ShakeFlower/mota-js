@@ -5045,7 +5045,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const settingMenu = core.plugin.settingMenu;
 				if (settingMenu) {
 					settingMenu.endListen();
+					// 隐藏大菜单的按钮是为了避免视觉上的干扰
+					settingMenu.btnMap.forEach(btn => { btn.disable = true });
 					settingMenu.pageList[settingMenu.currPage].endListen();
+					settingMenu.drawContent();
 				}
 				core.ui.clearUIEventSelector(0);
 				const advanceDisplayMenu = advanceDisplayFactory();
@@ -5812,6 +5815,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const exitBtn = new ExitBtn(370, 80, 16, 16, { radius: 1, lineOffsetX: 2, lineWidthX: 2 })
 			advanceDisplayMenu.registerBtn('exitBtn', exitBtn, () => {
 				advanceDisplayMenu.clear();
+				const settingMenu = core.plugin.settingMenu;
+				settingMenu.btnMap.forEach(btn => { btn.disable = false });
+				settingMenu.drawContent();
 			});
 			const btn1 = new DisplayInfoBtn(50, 100, 75, 20, 'leftdown', 1),
 				btn2 = new DisplayInfoBtn(50, 125, 75, 20, 'leftdown', 2),
@@ -5850,10 +5856,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						advanceDisplayMenu.setData(btn.pos, btn.index, null);
 					}
 					else {
-						advanceDisplayMenu.selectedBtn = btn;
-						advanceDisplayMenu.btnMap.forEach((btn, key) => {
-							if (btn.key.startsWith("temp")) btn.disable = false;
-						});
+						if (advanceDisplayMenu.selectedBtn && advanceDisplayMenu.selectedBtn === btn) {
+							// 点击左边刚点过的按钮会收起展开菜单
+							advanceDisplayMenu.btnMap.forEach((btn, key) => {
+								if (btn.key.startsWith("temp")) btn.disable = true;
+							});
+							advanceDisplayMenu.selectedBtn = null;
+							advanceDisplayMenu.drawContent();
+						} else {
+							advanceDisplayMenu.selectedBtn = btn;
+							advanceDisplayMenu.btnMap.forEach((btn, key) => {
+								if (btn.key.startsWith("temp")) btn.disable = false;
+							});
+						}
 					}
 					advanceDisplayMenu.drawContent();
 				}
