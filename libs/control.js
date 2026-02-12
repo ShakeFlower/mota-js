@@ -1423,12 +1423,12 @@ control.prototype._updateDamage_damage = function (floorId, onMap) {
             const defaultData = { leftdown: { 1: 'damage', 2: 'critical' }, rightup: {} };
             const data = core.getLocalStorage('displayData', defaultData);
 
-            this.pushDamageData(data.leftdown[1], 32 * x + 1, 32 * (y + 1) - 1, blockId, x, y, floorId);
-            this.pushDamageData(data.leftdown[2], 32 * x + 1, 32 * (y + 1) - 11, blockId, x, y, floorId);
-            this.pushDamageData(data.leftdown[3], 32 * x + 1, 32 * (y + 1) - 21, blockId, x, y, floorId);
-            this.pushDamageData(data.rightup[1], 32 * x + 16, 32 * (y + 1) - 21, blockId, x, y, floorId);
-            this.pushDamageData(data.rightup[2], 32 * x + 16, 32 * (y + 1) - 11, blockId, x, y, floorId);
-            this.pushDamageData(data.rightup[3], 32 * x + 16, 32 * (y + 1) - 1, blockId, x, y, floorId);
+            core.control.pushDamageData(data.leftdown[1], 32 * x + 1, 32 * (y + 1) - 1, blockId, x, y, floorId);
+            core.control.pushDamageData(data.leftdown[2], 32 * x + 1, 32 * (y + 1) - 11, blockId, x, y, floorId);
+            core.control.pushDamageData(data.leftdown[3], 32 * x + 1, 32 * (y + 1) - 21, blockId, x, y, floorId);
+            core.control.pushDamageData(data.rightup[1], 32 * x + 16, 32 * (y + 1) - 21, blockId, x, y, floorId);
+            core.control.pushDamageData(data.rightup[2], 32 * x + 16, 32 * (y + 1) - 11, blockId, x, y, floorId);
+            core.control.pushDamageData(data.rightup[3], 32 * x + 16, 32 * (y + 1) - 1, blockId, x, y, floorId);
         }
     });
 }
