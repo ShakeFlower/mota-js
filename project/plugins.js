@@ -3721,8 +3721,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const itemsUsedCount = core.getFlag('itemsUsedCount', {});
 					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
 				}
-
-				const itemText = core.replaceText(item.text) + ((UI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
+				const rawItemText = core.replaceText(item.text) ?? "";
+				const itemText = rawItemText + ((UI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
 				core.drawTextContent(ctx, itemText, {
 					left: 20,
 					top: 125,
