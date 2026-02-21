@@ -5838,6 +5838,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					});
 					advanceDisplayMenu.selectedBtn = null;
 					advanceDisplayMenu.drawContent();
+					core.control.updateStatusBar(); // 手动刷新一下地图显伤
 				}
 			}
 			for (let i = 0; i < 5; i++) {
