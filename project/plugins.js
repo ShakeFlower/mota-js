@@ -1768,7 +1768,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 			this._updateDamage_damage(floorId, onMap);
 			this._updateDamage_extraDamage(floorId, onMap);
-			if (!core.isReplaying()) core.getItemDetail(floorId); // 宝石血瓶详细信息
+			core.getItemDetail(floorId); // 宝石血瓶详细信息
 			this.drawDamage(ctx);
 		};
 
