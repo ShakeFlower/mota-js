@@ -2706,25 +2706,30 @@ maps.prototype._getAndRemoveBlock = function (x, y) {
 maps.prototype.moveBlock = function (x, y, steps, time, keep, callback, noMoveEInfo) {
     if (core.status.replay.speed == 24) time = 1;
     time = time || 500;
-    var blockArr = this._getAndRemoveBlock(x, y);
+    const blockArr = this._getAndRemoveBlock(x, y);
     if (blockArr == null) {
         if (callback) callback();
         return;
     }
-    var block = blockArr[0], blockInfo = blockArr[1];
-    var moveSteps = (steps || []).map(function (t) {
+    const block = blockArr[0], blockInfo = blockArr[1];
+    const moveSteps = (steps || []).map(function (t) {
         return [t.split(':')[0], parseInt(t.split(':')[1] || "1")];
     }).filter(function (t) {
         return ['up', 'down', 'left', 'right', 'forward', 'backward', 'leftup', 'leftdown', 'rightup', 'rightdown', 'speed'].indexOf(t[0]) >= 0
             && !(t[0] == 'speed' && t[1] < 16)
     });
-    var canvases = this._initDetachedBlock(blockInfo, x, y, block.event.animate !== false);
+    const canvases = this._initDetachedBlock(blockInfo, x, y, block.event.animate !== false);
     this._moveDetachedBlock(blockInfo, 32 * x, 32 * y, 1, canvases);
 
-    var moveInfo = {
+    const per_time = time / 16 / core.status.replay.speed;
+    let oneStepLength = 2;
+    if (time / core.status.replay.speed < 50) oneStepLength = 8; // 当time较小时增大步长
+    else if (time / core.status.replay.speed < 100) oneStepLength = 4;
+
+    const moveInfo = {
         sx: x, sy: y, x: x, y: y, px: 32 * x, py: 32 * y, opacity: 1, keep: keep, lastDirection: null, offset: 1,
-        moveSteps: moveSteps, step: 0, per_time: time / 16 / core.status.replay.speed
-    }
+        moveSteps: moveSteps, step: 0, per_time, oneStepLength,
+    };
     this._moveBlock_doMove(blockInfo, canvases, moveInfo, callback, noMoveEInfo);
 }
 
@@ -2768,23 +2773,6 @@ maps.prototype._moveBlock_doMove = function (blockInfo, canvases, moveInfo, call
         core.animateFrame.asyncId[animate] = cb;
     }
     _run();
-}
-
-maps.prototype.exchangeBlock = function (x1, y1, x2, y2, dir, time, callback) {
-    const floorId = core.status.floorId;
-
-    let callbackCount = 0;
-    function myCallback() {
-        callbackCount++;
-        if (callbackCount === 2) {
-            core.exchangeEnemyOnPoint(x1, y1, x2, y2, floorId);
-            if (callback) callback();
-        }
-    }
-
-    const reverseDir = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
-    this.moveBlock(x1, y1, [dir], time, true, myCallback, true);
-    this.moveBlock(x2, y2, [reverseDir[dir]], time, true, myCallback, true);
 }
 
 maps.prototype._moveBlock_updateSpeed = function (moveInfo) {
@@ -2856,10 +2844,10 @@ maps.prototype._moveBlock_moving = function (blockInfo, canvases, moveInfo) {
     }
     var curr = moveInfo.moveSteps[0];
     moveInfo.step++;
-    moveInfo.px += core.utils.scan2[curr[0]].x * 2 * moveInfo.offset;
-    moveInfo.py += core.utils.scan2[curr[0]].y * 2 * moveInfo.offset;
+    moveInfo.px += core.utils.scan2[curr[0]].x * moveInfo.offset * moveInfo.oneStepLength;
+    moveInfo.py += core.utils.scan2[curr[0]].y * moveInfo.offset * moveInfo.oneStepLength;
     this._moveDetachedBlock(blockInfo, moveInfo.px, moveInfo.py, moveInfo.opacity, canvases);
-    if (moveInfo.step == Math.round(32 / (moveInfo.offset * 2))) {
+    if (moveInfo.step == Math.abs(Math.round(32 / (moveInfo.offset * moveInfo.oneStepLength)))) {
         moveInfo.step = 0;
         moveInfo.moveSteps[0][1]--;
         if (moveInfo.moveSteps[0][1] <= 0) {
@@ -2867,6 +2855,24 @@ maps.prototype._moveBlock_moving = function (blockInfo, canvases, moveInfo) {
         }
     }
 }
+
+maps.prototype.exchangeBlock = function (x1, y1, x2, y2, dir, time, callback) {
+    const floorId = core.status.floorId;
+
+    let callbackCount = 0;
+    function myCallback() {
+        callbackCount++;
+        if (callbackCount === 2) {
+            core.exchangeEnemyOnPoint(x1, y1, x2, y2, floorId);
+            if (callback) callback();
+        }
+    }
+
+    const reverseDir = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+    this.moveBlock(x1, y1, [dir], time, true, myCallback, true);
+    this.moveBlock(x2, y2, [reverseDir[dir]], time, true, myCallback, true);
+}
+
 
 ////// 显示跳跃某块的动画，达到{"type":"jump"}的效果 //////
 maps.prototype.jumpBlock = function (sx, sy, ex, ey, time, keep, callback) {

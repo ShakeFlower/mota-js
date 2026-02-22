@@ -1242,7 +1242,7 @@ control.prototype._checkBlock_repulse = function (repulse) {
     if (!repulse || repulse.length == 0) return [];
     var actions = [];
     repulse.forEach(function (t) {
-        actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 100, "keep": true, "async": true });
+        actions.push({ "type": "move", "loc": [t[0], t[1]], "steps": [t[3]], "time": 80, "keep": true, "async": true });
     });
     if (actions.length > 0) actions.push({ "type": "waitAsync" });
     return actions;
@@ -1293,7 +1293,7 @@ control.prototype._checkBlock_chase = function (chase) {
             actions.push({
                 "type": "if", "condition": "!core.getBlock(" + aimx + "," + aimy + ")",
                 "true": [
-                    { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
+                    { "type": "move", "loc": [x, y], "time": 80, "keep": true, "async": true, "steps": [dir + ":1"] },
                 ],
                 "false": [
                     { "type": "setValue", "name": "flag:chaseAimCls", "value": `core.getBlockCls(${aimx},${aimy})` },
@@ -1309,8 +1309,8 @@ control.prototype._checkBlock_chase = function (chase) {
                                     },
                                 ],
                                 "false": [
-                                    { "type": "move", "loc": [x, y], "time": 100, "keep": true, "async": true, "steps": [dir + ":1"] },
-                                    { "type": "move", "loc": [aimx, aimy], "time": 100, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
+                                    { "type": "move", "loc": [x, y], "time": 80, "keep": true, "async": true, "steps": [dir + ":1"] },
+                                    { "type": "move", "loc": [aimx, aimy], "time": 80, "keep": true, "async": true, "steps": [reverseDir[dir] + ":1"] },
                                 ]
                             },
                             { "type": "waitAsync", "excludeAnimates": true },
