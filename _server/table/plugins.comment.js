@@ -117,6 +117,18 @@ var plugins_comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 				"_range": "typeof(thiseval)=='string' || thiseval==null",
 				"_data": "自绘设置界面"
 			},
+			"opusAdaptation": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "opus格式适配"
+			},
+			"platFly": {
+				"_leaf": true,
+				"_type": "textarea",
+				"_range": "typeof(thiseval)=='string' || thiseval==null",
+				"_data": "平面楼传地图"
+			},
 		}
 		if (obj[key]) return obj[key];
 		return {
