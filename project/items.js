@@ -508,8 +508,65 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"name": "生命魔杖",
 		"text": "使用后回复100体力。",
 		"canUseItemEffect": "true",
-		"useItemEffect": "core.addStatus('hp', 100);",
-		"hideInReplay": true
+		"useItemEffect": null,
+		"hideInReplay": true,
+		"useItemEvent": [
+			{
+				"type": "comment",
+				"text": "先静默增加一个魔杖（因为使用道具必须消耗一个）"
+			},
+			{
+				"type": "function",
+				"function": "function(){\ncore.addItem('wand', 1);\n}"
+			},
+			{
+				"type": "input",
+				"text": "请输入使用生命杖的次数"
+			},
+			{
+				"type": "if",
+				"condition": "Number.isNaN(flag:input)",
+				"true": [
+					{
+						"type": "exit"
+					}
+				]
+			},
+			{
+				"type": "if",
+				"condition": "(flag:input>item:wand)",
+				"true": [
+					{
+						"type": "setValue",
+						"name": "flag:input",
+						"value": "item:wand"
+					}
+				]
+			},
+			{
+				"type": "if",
+				"condition": "(flag:input<0)",
+				"true": [
+					{
+						"type": "setValue",
+						"name": "flag:input",
+						"value": "0"
+					}
+				]
+			},
+			{
+				"type": "setValue",
+				"name": "item:wand",
+				"operator": "-=",
+				"value": "flag:input"
+			},
+			{
+				"type": "setValue",
+				"name": "status:hp",
+				"operator": "+=",
+				"value": "100*flag:input"
+			}
+		]
 	},
 	"pack": {
 		"cls": "items",
