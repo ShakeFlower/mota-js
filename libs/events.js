@@ -2810,7 +2810,10 @@ events.prototype.useFly = function (fromUserAction) {
     if (!this._checkStatus('fly', fromUserAction, true)) return;
     if (!core.maps.canUseFlyHere()) {
         core.playSound('操作失败');
-        core.drawTip("只有在楼梯边才能使用" + core.material.items['fly'].name, 'fly');
+        const failTip = core.flags.flyNearStair ? "只能在楼梯边使用" : (
+            core.flags.flyAccessStair ? "只能在能直接走到楼梯边的地方使用" : "当前无法使用"
+        );
+        core.drawTip(failTip + core.material.items['fly'].name, 'fly');
         core.unlockControl();
         core.status.event.data = null;
         core.status.event.id = null;
