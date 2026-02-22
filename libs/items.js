@@ -128,6 +128,14 @@ items.prototype.useItem = function (itemId, noRoute, callback) {
         if (callback) callback();
         return;
     }
+
+    const itemData = core.material.items[itemId];
+    // 使用道具前自动存档
+    if (core.getLocalStorage("autoSaveBeforeUseItem") &&
+        itemData.cls === 'tools' && !itemData.noAutoSaveBeforeUse) {
+        if (noRoute) core.autosave(true);
+        else core.autosave(false);
+    }
     // 执行道具效果
     this._useItemEffect(itemId);
     // 执行完毕

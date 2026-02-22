@@ -659,7 +659,7 @@ control.prototype.moveAction = function (callback) {
     var noPass = core.noPass(core.nextX(), core.nextY()), canMove = core.canMoveHero();
     // 下一个点如果不能走
     if (noPass || !canMove) return this._moveAction_noPass(canMove, callback);
-    if (core.getLocalStorage("autoSaveAfterItem")) { // 即将进入滑冰前触发自动存档
+    if (core.getLocalStorage("autoSaveBeforeUseItem")) { // 即将进入滑冰前触发自动存档
         const nextbgNumber = core.maps.getBgNumber(core.nextX(), core.nextY(), core.status.floorId);
         if (core.onSki(nextbgNumber)) {
             core.control.autosave();
@@ -1186,7 +1186,7 @@ control.prototype.checkBlock = function () {
     if (currChase && currChase.length > 0) {
         core.push(actions, { "type": "function", "async": true, "function": "function(){core.checkBlock_adjacentChase(true);}" });
     }
-    if (ambushAction.length > 0 && core.getLocalStorage("autoSaveAfterItem")) {
+    if (ambushAction.length > 0 && core.getLocalStorage("autoSaveBeforeUseItem")) {
         core.push(actions, { "type": "autoSave" }); // 捕捉触发后自动存档
     }
 

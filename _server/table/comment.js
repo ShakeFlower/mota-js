@@ -110,6 +110,12 @@ var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_lint": true,
 					"_docs": "能否使用或装备",
 					"_data": "当前能否使用或装备该道具，仅对cls不为items有效。null表示始终不可使用但可装备"
+				},
+				"noAutoSaveBeforeUse": {
+					"_leaf": true,
+					"_type": "checkbox",
+					"_docs": "使用前不自动存档",
+					"_data": "勾选时，即使设置中开启了使用(tools)类道具前自动存档，对此道具也无效",
 				}
 			}
 		},

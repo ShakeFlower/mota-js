@@ -4869,14 +4869,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				text: '一个楼层已无物品、敌人、NPC(不含已忽略图块)，且无未到达楼层传送口时可被自动隐藏，仅在首次进入此状态时在楼传界面触发。',
 				replay: true,
 			},
-			autoSaveAfterItem: {
-				getName: () => '破炸飞跳自动保存:' + (core.getLocalStorage('autoSaveAfterItem') ? '开' : '关'),
+			autoSaveBeforeUseItem: {
+				getName: () => '使用物品自动保存:' + (core.getLocalStorage('autoSaveBeforeUseItem') ? '开' : '关'),
 				effect: () => {
-					invertLocalStorage('autoSaveAfterItem');
+					invertLocalStorage('autoSaveBeforeUseItem');
 				},
-				text: '使用破、炸、飞、跳等特定道具前，以及即将走入滑冰、触发捕捉时自动存档。',
+				text: '使用消耗类物品(含破炸飞跳)前，以及即将走入滑冰、触发捕捉时自动存档。',
 				replay: false,
-			}
+			},
+			autoSaveBeforePickItem: {
+				getName: () => '拾取物品自动保存:' + (core.getLocalStorage('autoSaveBeforePickItem') ? '开' : '关'),
+				effect: () => {	
+					invertLocalStorage('autoSaveBeforePickItem');
+				},
+				text: '拾取地上物品前自动存档。',
+				replay: false,
+			},
 		}
 
 		class GamePlay extends SettingOnePage {
@@ -4912,7 +4920,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['2,4', 'skipPeform', new SettingButton(220, 305, 150, 25)],
 				['1,5', 'comment', new SettingButton(40, 330, 150, 25)],
 				['2,5', 'autoHideFloor', new SettingButton(220, 330, 150, 25)],
-				['1,6', 'autoSaveAfterItem', new SettingButton(40, 355, 150, 25)],
+				['1,6', 'autoSaveBeforeUseItem', new SettingButton(40, 355, 150, 25)],
 			]);
 			return gamePlayMenu;
 		}
