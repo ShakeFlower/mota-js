@@ -1924,18 +1924,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 */
 		const ctxName = 'autoClear';
 
-		// 每走一步后自动拾取的判定要放在阻击结算之后
-
-		control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
-			const res = this.controldata.moveDirectly(
-				destX,
-				destY,
-				ignoreSteps
-			);
-			core.control.updateCheckBlock();
-			core.plugin.autoClear();
-			return res;
-		};
+		// 每走一步后自动拾取的判定要放在阻击结算之后，见libs，并不写在本插件当中
 
 		this.autoClear = auto;
 

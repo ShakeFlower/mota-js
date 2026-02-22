@@ -1179,12 +1179,12 @@ control.prototype.checkBlock = function () {
             const adjacentChase = core.checkBlock_adjacentChase();
             if (adjacentChase && adjacentChase.length > 0) core.push(actions, adjacentChase);
         }
-        else core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase(true);\n}" });
+        else core.push(actions, { "type": "function", "async": true, "function": "function(){core.checkBlock_adjacentChase(true);}" });
     }
     const chaseAction = this._checkBlock_chase(currChase);
     if (chaseAction.length > 0) core.push(actions, chaseAction);
     if (currChase && currChase.length > 0) {
-        core.push(actions, { "type": "function", "async": true, "function": "function(){\ncore.checkBlock_adjacentChase(true);\n}" });
+        core.push(actions, { "type": "function", "async": true, "function": "function(){core.checkBlock_adjacentChase(true);}" });
     }
     if (ambushAction.length > 0 && core.getLocalStorage("autoSaveAfterItem")) {
         core.push(actions, { "type": "autoSave" }); // 捕捉触发后自动存档
@@ -1192,7 +1192,13 @@ control.prototype.checkBlock = function () {
 
     const autoClear = core.plugin.autoClear;
     if (autoClear) { // 检查autoClear的存在性，防止接档出现bug
-        if (actions.length > 0) core.insertAction(actions, x, y, autoClear);
+        if (actions.length > 0) {
+            actions.push({
+                "type": "function", "async": true,
+                "function": "function(){core.plugin.autoClear();core.doAction();}"
+            }); // 注意要放在事件队列最后。经测试放在insertAction回调当中仍有小概率先于阻击结算触发，原因不明
+            core.insertAction(actions, x, y);
+        }
         else autoClear(); // 阻击结算后执行自动清怪
     }
     else {
