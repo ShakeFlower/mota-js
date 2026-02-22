@@ -4921,6 +4921,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,5', 'comment', new SettingButton(40, 330, 150, 25)],
 				['2,5', 'autoHideFloor', new SettingButton(220, 330, 150, 25)],
 				['1,6', 'autoSaveBeforeUseItem', new SettingButton(40, 355, 150, 25)],
+				['2,6', 'autoSaveBeforePickItem', new SettingButton(220, 355, 150, 25)],
 			]);
 			return gamePlayMenu;
 		}
@@ -5934,8 +5935,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillRoundRect(ctx, 21, 71, core.__PIXELS__ - 42, 68, 3, " #555555");
 
 				// 绘制设置的框体
-				core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 240, 3, "white");
-				core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 238, 3, " #999999");
+				core.strokeRoundRect(ctx, 20, 150, core.__PIXELS__ - 40, 256, 3, "white");
+				core.fillRoundRect(ctx, 21, 151, core.__PIXELS__ - 42, 254, 3, " #999999");
 
 				core.setTextAlign(ctx, 'center');
 				core.ui.fillText(ctx, "设置", core.__PIXELS__ / 2, 25, 'white', '20px Verdana');

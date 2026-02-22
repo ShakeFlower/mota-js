@@ -656,16 +656,29 @@ control.prototype.moveOneStep = function (callback) {
 ////// 实际每一步的行走过程 //////
 control.prototype.moveAction = function (callback) {
     if (core.status.heroMoving > 0) return;
-    var noPass = core.noPass(core.nextX(), core.nextY()), canMove = core.canMoveHero();
-    // 下一个点如果不能走
+    const nextX = core.nextX(), nextY = core.nextY();
+    const noPass = core.noPass(nextX, nextY);
+    const canMove = core.canMoveHero();
+    // 下一个点如果不可通行
     if (noPass || !canMove) return this._moveAction_noPass(canMove, callback);
-    if (core.getLocalStorage("autoSaveBeforeUseItem")) { // 即将进入滑冰前触发自动存档
-        const nextbgNumber = core.maps.getBgNumber(core.nextX(), core.nextY(), core.status.floorId);
-        if (core.onSki(nextbgNumber)) {
+    // 下一个点如果可通行
+    // 满足条件时触发一次自动存档
+    if (!core.isReplaying()) {
+        const dir = core.getHeroLoc('direction');
+        let needAutoSave = false;
+        if (core.getLocalStorage("autoSaveBeforeUseItem") &&
+            core.onSki(core.maps.getBgNumber(nextX, nextY))) {
+            needAutoSave = true;
+        }
+        else if (core.getLocalStorage('autoSaveBeforePickItem') &&
+            core.getBlockCls(nextX, nextY) === 'items') {
+            needAutoSave = true;
+        }
+        if (needAutoSave) {
+            core.status.route.push(`turn:${dir}`); // 保存触发转向后的方向
             core.control.autosave();
         }
     }
-
     this._moveAction_moving(callback);
 }
 
@@ -723,8 +736,12 @@ control.prototype._moveAction_popAutomaticRoute = function () {
 control.prototype.moveHero = function (direction, callback) {
     // 如果正在移动，直接return
     if (core.status.heroMoving != 0) return;
-    if (core.isset(direction))
+    if (core.isset(direction)) {
+        if (core.status.hero.loc.direction != direction) {
+            core.status.dirBeforeMove = core.status.hero.loc.direction; // 记录转向前的方向，如果下一步自动保存要还原到这个方向
+        }
         core.setHeroLoc('direction', direction);
+    }
 
     if (callback) return this.moveAction(callback);
     this._moveHero_moving();
