@@ -3079,8 +3079,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const originResize = core.control.resize;
 		core.control.resize = function () {
 			originResize.apply(core.control, arguments);
-			const { _back, _itemInv, _equipSlots: _equipChangeBoard, _itemInfo: _itemInfoBoard } = UI;
-			[_back, _itemInv, _equipChangeBoard, _itemInfoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
+			const { _back, itemInv, _equipSlots: _equipChangeBoard, _itemInfo: _itemInfoBoard } = UI;
+			[_back, itemInv, _equipChangeBoard, _itemInfoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
 		}
 
 		// #endregion
@@ -4544,8 +4544,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const originResize = core.control.resize;
 		core.control.resize = function () {
 			originResize.apply(core.control, arguments);
+			/** @type {SettingBack} */
 			const settingMenu = core.plugin.settingMenu;
-			if (settingMenu && settingMenu.onDraw) settingMenu.drawContent();
+			if (settingMenu && settingMenu.onDraw) {
+				settingMenu.drawContent();
+				settingMenu.pageList[settingMenu.currPage].drawContent();
+			}
 		}
 		// #endregion
 
