@@ -3373,6 +3373,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.allItemList = this.getItemList();
 				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
 				if (this.pageMax < 1) this.pageMax = 1;
+				if (this.page >= this.pageMax) this.page = this.pageMax - 1;
 				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
 				if (this.index >= this.currItemList.length && this.currItemList.length > 0) this.setIndex(this.currItemList.length - 1);
 			}
