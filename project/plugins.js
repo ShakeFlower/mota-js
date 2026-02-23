@@ -3161,6 +3161,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		class NoHoverBtn extends IconBtn {
+			draw() {
+				super.draw();
+				const ctx = this.ctx;
+				const { x, y, w, h } = this;
+				core.drawImage(ctx, "mousewheel.png", x, y, w, h);
+			}
+		}
+
 		class ArrowBtn extends ButtonBase {
 			constructor(x, y, w, h, dir, config) {
 				super(x, y, w, h);
@@ -3424,6 +3433,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								} else this.triggerItem(i);
 							}.bind(this),
 							onmove: function () {
+								if (UI.isNoHover) return;
 								if (this.index !== i) {
 									this.setIndex(i);
 								}
@@ -3598,6 +3608,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			onmoveEvent(_x, _y, px, py) {
+				if (UI.isNoHover) return;
 				const index = Math.floor(py / this.oneItemHeight);
 				if (index < 0 || index >= this.currItemList.length) return;
 				if (UI.selectType !== 'toolBox' || this.index !== index) {
@@ -3921,6 +3932,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_itemInfo: undefined,
 			/** @type {undefined|EquipSlots} 显示已穿戴装备的面板 */
 			_equipSlots: undefined,
+			/** 是否监听onMove事件 */
+			isNoHover: core.getLocalStorage('itemBoxNoHover'),
 			/** 物品页面的背景 */
 			get back() {
 				if (!this._back) {
@@ -3933,9 +3946,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
 						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
 						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
+					const noHoverBtn = new NoHoverBtn(210, 10, 24, 24, null, { crossline1: this.isNoHover });
 					this._back.registerBtn('allBtn', allBtn, () => this.toolInv.classify('all'));
 					this._back.registerBtn('toolsBtn', toolsBtn, () => this.toolInv.classify('tools'));
 					this._back.registerBtn('constantsBtn', constantsBtn, () => this.toolInv.classify('constants'));
+					this._back.registerBtn('noHoverBtn', noHoverBtn, () => {
+						this.isNoHover = !this.isNoHover;
+						core.setLocalStorage('itemBoxNoHover', this.isNoHover);
+						noHoverBtn.config.crossline1 = this.isNoHover;
+						this._back?.drawButtonContent();
+					});
+					if (!core.platform.isPC) noHoverBtn.disable = true; // 非PC端本来就触发不了onmove事件，故隐藏此按钮
 				}
 				return this._back;
 			},
