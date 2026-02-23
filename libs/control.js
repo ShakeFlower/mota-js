@@ -1394,6 +1394,10 @@ control.prototype.getEnemyValueString = function(name, blockId, x, y, floorId) {
             const value = core.enemys.getEnemyValue(blockId, name, x, y, floorId);
             const valueString = core.utils.formatBigNumber(value, 5);
             return { text: valueString, color: colorMap[name] };
+        case "notBomb":
+            const notBomb = core.enemys.getEnemyValue(blockId, name, x, y, floorId);
+            const notBombStr = notBomb ? "b" : "";
+            return { text: notBombStr, color: colorMap[name] || "white" };
         case "criticalDamage":
             let criticalDamage = 0;
             const criticals = core.enemys.nextCriticals(blockId, 1, x, y, floorId);
@@ -1451,9 +1455,9 @@ control.prototype._updateDamage_damage = function (floorId, onMap) {
             core.control.pushDamageData(data.leftdown[1], 32 * x + 1, 32 * (y + 1) - 1, blockId, x, y, floorId);
             core.control.pushDamageData(data.leftdown[2], 32 * x + 1, 32 * (y + 1) - 11, blockId, x, y, floorId);
             core.control.pushDamageData(data.leftdown[3], 32 * x + 1, 32 * (y + 1) - 21, blockId, x, y, floorId);
-            core.control.pushDamageData(data.rightup[1], 32 * x + 16, 32 * (y + 1) - 21, blockId, x, y, floorId);
-            core.control.pushDamageData(data.rightup[2], 32 * x + 16, 32 * (y + 1) - 11, blockId, x, y, floorId);
-            core.control.pushDamageData(data.rightup[3], 32 * x + 16, 32 * (y + 1) - 1, blockId, x, y, floorId);
+            core.control.pushDamageData(data.rightup[1], 32 * x + 22, 32 * (y + 1) - 21, blockId, x, y, floorId);
+            core.control.pushDamageData(data.rightup[2], 32 * x + 22, 32 * (y + 1) - 11, blockId, x, y, floorId);
+            core.control.pushDamageData(data.rightup[3], 32 * x + 22, 32 * (y + 1) - 1, blockId, x, y, floorId);
         }
     });
 }

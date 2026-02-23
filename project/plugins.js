@@ -5733,6 +5733,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			'atk': core.control.getStatusLabel('atk'), 'def': core.control.getStatusLabel('def'),
 			'money': core.control.getStatusLabel('money'), 'exp': core.control.getStatusLabel('exp'),
 			'criticalDamage': '临界减伤', 'defDamage': '1防减伤', 'special': '特殊属性',
+			'notBomb': '不可炸',
 		}
 
 		class DisplayInfoBtn extends RoundBtn {
@@ -5923,13 +5924,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.control.updateStatusBar(); // 手动刷新一下地图显伤
 				}
 			}
-			for (let i = 0; i < 5; i++) {
+			const ROW_INFONAME = 6;
+			for (let i = 0; i < ROW_INFONAME; i++) {
 				const tempBtn = new RoundBtn(200, 100 + i * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
 				tempBtn.disable = true;
 				advanceDisplayMenu.registerBtn('temp' + i, tempBtn, setNewInfo(infoNameList[i]));
 			}
-			for (let i = 5; i < l; i++) {
-				const tempBtn = new RoundBtn(300, 100 + (i - 5) * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
+			for (let i = ROW_INFONAME; i < l; i++) {
+				const tempBtn = new RoundBtn(300, 100 + (i - ROW_INFONAME) * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
 				tempBtn.disable = true;
 				advanceDisplayMenu.registerBtn('temp' + i, tempBtn, setNewInfo(infoNameList[i]));
 			}
