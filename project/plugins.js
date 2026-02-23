@@ -2009,7 +2009,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		/**
 		 * 是否捡拾这个物品
 		 */
-		function canGetItem(item, loc, floorId) {
+		function canGetItem(item, loc, floorId = core.status.floorId) {
 			// 可以用于检测道具是否应该被捡起，例如如果捡起后血量超过80%则不捡起可以这么写：
 			// if (item.cls === 'items') {
 			//     let diff = {};
@@ -2035,6 +2035,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			//     )
 			//         return false;
 			// }
+			const floor = core.floors[floorId];
+			if (has(floor.afterGetItem[loc])) return false;
 			if (item.cls === 'items') {
 				const itemEffectType = core.getItemEffectType(item.id);
 				if (core.hasFlag('noRouting_HP') && itemEffectType.includes('hp')) return false;
