@@ -3607,7 +3607,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setTextBaseline(ctx, "middle");
 				// 绘制物品数量 ×几
 				const numText = "×" + num;
-				core.fillText(ctx, numText, x0 + 220, dy + this.oneItemHeight / 2, 'white', '18px Verdana');
+				core.fillText(ctx, numText, x0 + 218, dy + this.oneItemHeight / 2, 'white', '18px Verdana');
 
 				// 绘制物品名称
 				const markedItems = core.getFlag('markedItems', []);
@@ -3760,19 +3760,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillText(ctx, "类型", 20, 75, 'crimson', '14px Verdana');
 				core.fillText(ctx, "【" + getItemClsName(item) + "】", 50, 75, 'rgb(47, 49, 54)', '14px Verdana'); // 物品类型 e.g.【永久道具】
 
-				core.fillText(ctx, "ID", 20, 95, 'crimson', '14px Verdana');
-				core.fillText(ctx, item.id, 50, 95, 'rgb(47, 49, 54)', '14px Verdana');
-
-				if (UI.type === 'all') { // 显示物品累计使用的次数，将作为排序依据
-					core.fillText(ctx, "累计使用", 20, 113, 'crimson', '14px Verdana');
+				if (UI.type === 'all') { // 显示物品累计使用的次数
+					core.fillText(ctx, "累计使用", 20, 95, 'crimson', '14px Verdana');
 					const itemsUsedCount = core.getFlag('itemsUsedCount', {});
-					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 113, 'rgb(47, 49, 54)', '14px Verdana');
+					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 95, 'rgb(47, 49, 54)', '14px Verdana');
 				}
 				const rawItemText = core.replaceText(item.text) ?? "";
 				const itemText = rawItemText + ((UI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
 				core.drawTextContent(ctx, itemText, {
 					left: 20,
-					top: 125,
+					top: 110,
 					bold: false,
 					color: "black",
 					align: "left",
@@ -3993,8 +3990,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/** 道具背包 */
 			get toolInv() {
 				if (!this._toolInv) {
-					// @todo 扩容，toolInv范围包括背景，而不只是道具栏本身
-					// this._toolInv = new ToolInventory(15, 40, 225, 360, 137);
 					this._toolInv = new ToolInventory(0, 0, 240, 416, 137, 11);
 					const pgDown = new ArrowBtn(20, 375, 20, 20, 'left');
 					const pgUp = new ArrowBtn(215, 375, 20, 20, 'right');
@@ -4025,7 +4020,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			/** 装备背包 */
 			get equipInv() {
 				if (!this._equipInv) {
-					// this._equipInv = new EquipInventory(15, 160, 225, 240, 137);
 					this._equipInv = new EquipInventory('equipInventory', 0, 120, 240, 416, 137, 7);
 					const pgDown = new ArrowBtn(20, 255, 20, 20, 'left');
 					const pgUp = new ArrowBtn(215, 255, 20, 20, 'right');;
