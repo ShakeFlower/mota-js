@@ -3127,7 +3127,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			draw() {
 				const { type, toolInv } = UI;
-				if (type === 'equips') return;
 				if (toolInv.subType === this.subType) this.status = 'selected';
 				else this.status = "none";
 				super.draw();
@@ -3517,23 +3516,65 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				UI.itemId = core.status.hero.equipment[totalIndex];
 				this.drawButtonContent();
 			}
+
+			pageUp() {
+				if (!this.canPageUp()) return;
+				this.page++;
+				this.updateItemList();
+				this.btnMap.forEach((btn, key) => {
+					if (btn instanceof EquipBox) {
+						if (Number(key) >= this.currItemList.length) btn.disable = true;
+					}
+				});
+				this.setIndex(Math.min(this.index, this.currItemList.length - 1));
+				this.drawContent();
+			}
+
+			pageDown() {
+				if (!this.canPageDown()) return;
+				this.page--;
+				this.updateItemList();
+				this.btnMap.forEach((btn, key) => {
+					if (btn instanceof EquipBox) {
+						if (Number(key) <= this.currItemList.length - 1) btn.disable = false;
+					}
+				});
+				this.setIndex(this.index);
+				this.drawContent();
+			}
 		}
 
 		/** 展示角色当前背包物品的面板，有道具/装备两种模式 */
 		class InventoryBase extends ItemListBase {
-			constructor(name, x, y, w, h, zIndex) {
+			/**
+			 * @param {*} name 
+			 * @param {string} x 
+			 * @param {number} y 
+			 * @param {number} w 
+			 * @param {number} h 
+			 * @param {number} zIndex 
+			 * @param {number} pageCap 单个页面显示的物品数
+			 */
+			constructor(name, x, y, w, h, zIndex, pageCap) {
 				super(name, x, y, w, h, zIndex);
 
 				/** @type {number} 单个物品占据的列宽 */
 				this.oneItemHeight = 30;
 				/** @type {number} 单个页面显示的物品数, -1是因为最后一行要留给换行按钮*/
-				this.pageCap = Math.floor(h / this.oneItemHeight) - 1;
+				this.pageCap = pageCap;
+				this.marginLeft = 15; // 物品栏左边距
+				this.marginTop = 40; // 物品栏上边距
+				this.x0 = this.x + this.marginLeft; // 物品栏左边距
+				this.y0 = this.y + this.marginTop; 
+				this.w0 = this.w - this.marginLeft - 5; // 物品栏真实宽度
+				this.h0 = this.oneItemHeight * (this.pageCap + 1); // +1是因为最后一行要留给翻页按钮 
 			}
 
 			drawContent() {
 				const ctx = this.createCanvas();
-				const [w, h] = [this.w, this.h];
-				core.fillRect(ctx, 0, 0, w, h, 'rgb(0, 105, 148)');
+				const { x0, y0, w0, h0, marginTop, marginLeft} = this;
+				const { w, h } = this;
+				core.fillRect(ctx, marginLeft, marginTop, w0, h0, 'rgb(0, 105, 148)');
 
 				core.setTextBaseline(ctx, "middle");
 				for (let i = 0; i < this.currItemList.length; i++) {
@@ -3541,14 +3582,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 				core.setTextAlign(ctx, "center");
 				core.setTextBaseline(ctx, "alphabetic");
-				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, h - 4, 'white', '12px Verdana');
+				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, y0 + h0 - 4, 'white', '12px Verdana');
 				super.drawContent();
 			}
 
+			/** @param {number} currIndex  */
 			drawOneItem(currIndex) {
 				const itemId = this.currItemList[currIndex];
 				const ctx = core.dymCanvas[this.name];
-				const y = this.oneItemHeight * currIndex;
+				const { x0, y0, marginTop } = this;
+				const dy = this.oneItemHeight * currIndex + marginTop;
 
 				const item = core.material.items[itemId] || {};
 				const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
@@ -3558,19 +3601,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (item && (hideInfo.hasOwnProperty(itemId) ? hideInfo[itemId] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
 
 				// 绘制物品图标
-				if (core.material.items[itemId]) core.drawIcon(ctx, itemId, 4, y + 6, 18, 18);
+				if (core.material.items[itemId]) core.drawIcon(ctx, itemId, x0 + 4, dy + 6, 18, 18);
 
 				core.setTextAlign(ctx, "right");
 				core.setTextBaseline(ctx, "middle");
 				// 绘制物品数量 ×几
 				const numText = "×" + num;
-				core.fillText(ctx, numText, 220, y + this.oneItemHeight / 2, 'white', '18px Verdana');
+				core.fillText(ctx, numText, x0 + 220, dy + this.oneItemHeight / 2, 'white', '18px Verdana');
 
 				// 绘制物品名称
 				const markedItems = core.getFlag('markedItems', []);
 				const name = item.name || "???";
 				core.setTextAlign(ctx, "left");
-				core.fillText(ctx, name, 24, y + this.oneItemHeight / 2, markedItems.includes(itemId) ? 'gold' : 'white', '18px Verdana', 180);
+				core.fillText(ctx, name, x0 + 24, dy + this.oneItemHeight / 2, markedItems.includes(itemId) ? 'gold' : 'white', '18px Verdana', 180);
 				core.setAlpha(ctx, 1);
 			}
 
@@ -3579,25 +3622,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				super.clear();
 			}
 
-			/** 绘制选中物品的光标，在selectType或index改变时自动执行绘制/擦除 */
+			/** 绘制选中物品的光标，在selectType或index改变时自动执行绘制/擦除
+			 * @param {number} index 选中物品在当前页的序号
+			 */
 			drawSelector(index) {
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h]; // 光标绘制是绝对坐标
-				core.drawUIEventSelector(1, 'winskin.png', x, y + index * this.oneItemHeight, w, this.oneItemHeight, 140);
+				const [x0, y0, w0] = [this.x0, this.y0, this.w0]; // 光标绘制是绝对坐标
+				core.drawUIEventSelector(1, 'winskin.png', x0, y0 + index * this.oneItemHeight, w0, this.oneItemHeight, 140);
 			}
 
-			/** 选中指定序号的位置，改变选中道具的ID，重绘光标 */
+			/** 选中指定序号的位置，改变选中道具的ID，重绘光标 
+			 * @param {number} index 选中物品在当前页的序号
+			 */
 			setIndex(index) {
 				this.index = index;
 				if (UI.type === 'equips') {
 					UI.equipSlots.index = -1;
 					UI.equipSlots.drawButtonContent(); // 清除装备栏的选中状态
+					UI.selectType = 'toolBox';
 				}
 				this.drawSelector(index);
-				UI.selectType = 'toolBox';
 				UI.itemId = this.currItemList[index];
 			}
 
 			ondownEvent(_x, _y, px, py) {
+				py -= this.marginTop; // 转换为相对于物品栏内部的坐标
 				const index = Math.floor(py / this.oneItemHeight);
 				if (index < 0 || index >= this.currItemList.length) return;
 				if (UI.selectType !== 'toolBox' || this.index !== index) {
@@ -3609,6 +3657,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			onmoveEvent(_x, _y, px, py) {
 				if (UI.isNoHover) return;
+				py -= this.marginTop; // 转换为相对于物品栏内部的坐标
 				const index = Math.floor(py / this.oneItemHeight);
 				if (index < 0 || index >= this.currItemList.length) return;
 				if (UI.selectType !== 'toolBox' || this.index !== index) {
@@ -3618,8 +3667,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		class ToolInventory extends InventoryBase {
-			constructor(x, y, w, h, zIndex) {
-				super('toolInventory', x, y, w, h, zIndex);
+			constructor(x, y, w, h, zIndex, pageCap) {
+				super('toolInventory', x, y, w, h, zIndex, pageCap);
 				/** @type {'all'|'tools'|'constants'} 当前显示哪个子菜单 */
 				this.subType = 'all';
 
@@ -3671,10 +3720,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		class EquipInventory extends InventoryBase {
-			constructor(x, y, w, h, zIndex) {
-				super('equipInventory', x, y, w, h, zIndex);
-			}
-
 			getItemList() {
 				return core.getToolboxItems('equips', core.hasFlag('showHideItem'));
 			}
@@ -3939,44 +3984,51 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (!this._back) {
 					this._back = new ItemBoxBack();
 					const switchModeBtn = new SwitchBtn(385, 5, 24, 24, { strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
-					this._back.registerBtn('switchModeBtn', switchModeBtn, () => this.switchType());
-					// 背景上的按钮不需要随着itemId切换
 					const exitBtn = new ExitBtn(385, 385, 24, 24);
-					this._back.registerBtn('exitBtn', exitBtn, () => this.exit());
-					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
-						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
-						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
-					const noHoverBtn = new NoHoverBtn(210, 10, 24, 24, null, { crossline1: this.isNoHover });
-					this._back.registerBtn('allBtn', allBtn, () => this.toolInv.classify('all'));
-					this._back.registerBtn('toolsBtn', toolsBtn, () => this.toolInv.classify('tools'));
-					this._back.registerBtn('constantsBtn', constantsBtn, () => this.toolInv.classify('constants'));
-					this._back.registerBtn('noHoverBtn', noHoverBtn, () => {
-						this.isNoHover = !this.isNoHover;
-						core.setLocalStorage('itemBoxNoHover', this.isNoHover);
-						noHoverBtn.config.crossline1 = this.isNoHover;
-						this._back?.drawButtonContent();
-					});
-					if (!core.platform.isPC) noHoverBtn.disable = true; // 非PC端本来就触发不了onmove事件，故隐藏此按钮
+					this._back.registerBtns([['exitBtn', exitBtn, UI.exit.bind(UI)],
+					['switchModeBtn', switchModeBtn, UI.switchType.bind(UI)]]);
 				}
 				return this._back;
 			},
 			/** 道具背包 */
 			get toolInv() {
 				if (!this._toolInv) {
-					this._toolInv = new ToolInventory(15, 40, 225, 360, 137);
-					const pgDown = new ArrowBtn(5, 335, 20, 20, 'left');
-					const pgUp = new ArrowBtn(200, 335, 20, 20, 'right');
-					this._toolInv.registerBtn('pgDownBtn', pgDown, () => UI.toolInv.pageDown());
-					this._toolInv.registerBtn('pgUpBtn', pgUp, () => UI.toolInv.pageUp());
+					// @todo 扩容，toolInv范围包括背景，而不只是道具栏本身
+					// this._toolInv = new ToolInventory(15, 40, 225, 360, 137);
+					this._toolInv = new ToolInventory(0, 0, 240, 416, 137, 11);
+					const pgDown = new ArrowBtn(20, 375, 20, 20, 'left');
+					const pgUp = new ArrowBtn(215, 375, 20, 20, 'right');
+					this.toolInv.registerBtns([
+						['pgDownBtn', pgDown, () => UI.toolInv.pageDown()],
+						['pgUpBtn', pgUp, () => UI.toolInv.pageUp()]
+					]);
+					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
+						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
+						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
+					const noHoverBtn = new NoHoverBtn(210, 10, 24, 24, null, { crossline1: this.isNoHover });
+					const noHover = () => {
+						UI.isNoHover = !UI.isNoHover;
+						core.setLocalStorage('itemBoxNoHover', UI.isNoHover);
+						noHoverBtn.config.crossline1 = UI.isNoHover;
+						UI._toolInv?.drawButtonContent();
+					}
+					this._toolInv.registerBtns([
+						['allBtn', allBtn, () => this.toolInv.classify('all')],
+						['toolsBtn', toolsBtn, () => this.toolInv.classify('tools')],
+						['constantsBtn', constantsBtn, () => this.toolInv.classify('constants')],
+						['noHoverBtn', noHoverBtn, noHover]
+					]);
+					if (!core.platform.isPC) noHoverBtn.disable = true; // 非PC端本来就触发不了onmove事件，故隐藏此按钮
 				}
 				return this._toolInv;
 			},
 			/** 装备背包 */
 			get equipInv() {
 				if (!this._equipInv) {
-					this._equipInv = new EquipInventory(15, 160, 225, 240, 137);
-					const pgDown = new ArrowBtn(5, 215, 20, 20, 'left');
-					const pgUp = new ArrowBtn(200, 215, 20, 20, 'right');;
+					// this._equipInv = new EquipInventory(15, 160, 225, 240, 137);
+					this._equipInv = new EquipInventory('equipInventory', 0, 120, 240, 416, 137, 7);
+					const pgDown = new ArrowBtn(20, 255, 20, 20, 'left');
+					const pgUp = new ArrowBtn(215, 255, 20, 20, 'right');;
 					this._equipInv.registerBtn('pgDownBtn', pgDown, () => UI.equipInv.pageDown());
 					this._equipInv.registerBtn('pgUpBtn', pgUp, () => UI.equipInv.pageUp());
 				}
@@ -4029,7 +4081,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					this._equipSlots = new EquipSlots(7, 10, 240, 125, 137);
 					const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
 					const pgDown = new ArrowBtn(0, 56, 14, 14, 'left', config);
-					const pgUp = new ArrowBtn(222, 56, 14, 14, 'right', config);
+					const pgUp = new ArrowBtn(224, 56, 14, 14, 'right', config);
 					this._equipSlots.registerBtn('pgDownBtn', pgDown, () => UI.equipSlots.pageDown());
 					this._equipSlots.registerBtn('pgUpBtn', pgUp, () => UI.equipSlots.pageUp());
 				}
@@ -4064,7 +4116,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.itemInv.updateItemList();
 				this.back.drawContent();
 				this.itemInv.init();
-				this.itemInv.setIndex(this.itemInv.index);
+				if (this.type === 'all') {
+					this.itemInv.setIndex(this.itemInv.index);
+				}
+				else if (this.type === 'equips') {
+					if (UI.selectType === 'toolBox') {
+						this.itemInv.setIndex(this.itemInv.index);
+					}
+					else {
+						this.equipSlots.setIndex(this.equipSlots.index);
+					}
+				}
 			},
 			/** 隐藏 | 取消隐藏当前选中的物品 */
 			hideItem(itemId) {
