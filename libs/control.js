@@ -19,6 +19,8 @@ control.prototype._init = function () {
     this.weathers = {};
     this.resizes = [];
     this.noAutoEvents = true;
+    /** @type {{[canvasName:string]:Function}} */
+    this.dymCanvasResizeEvents = {};
     // --- 注册系统的animationFrame
     this.registerAnimationFrame("totalTime", false, this._animationFrame_totalTime);
     this.registerAnimationFrame("autoSave", true, this._animationFrame_autoSave);
@@ -3638,6 +3640,14 @@ control.prototype._resize_gameGroup = function (obj) {
     }
 }
 
+control.prototype.registerDymCanvasResizeEvent = function (name, event){
+    this.dymCanvasResizeEvents[name] = event;
+}
+
+control.prototype.unregisterDymCanvasResizeEvent = function (name){
+    delete this.dymCanvasResizeEvents[name];
+}
+
 control.prototype._resize_canvas = function (obj) {
     var innerSize = (obj.CANVAS_WIDTH * core.domStyle.scale) + "px";
     if (!core.isPlaying()) {
@@ -3680,6 +3690,10 @@ control.prototype._resize_canvas = function (obj) {
             core.resizeCanvas(ctx, parseFloat(canvas.getAttribute("_width")), parseFloat(canvas.getAttribute("_height")));
             canvas.style.left = parseFloat(canvas.getAttribute("_left")) * core.domStyle.scale + "px";
             canvas.style.top = parseFloat(canvas.getAttribute("_top")) * core.domStyle.scale + "px";
+        }
+        if (this.dymCanvasResizeEvents[name]) {
+            const event = this.dymCanvasResizeEvents[name];
+            event();
         }
     }
     // resize next
