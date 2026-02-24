@@ -900,7 +900,8 @@ maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y, floo
         if (!ignore) return false;
     }
 
-    const checkBlockInfo = core.control.getCheckBlock(floorId);
+    const checkBlockInfo = core.control.getCheckBlock ? core.control.getCheckBlock(floorId) :
+        core.status.checkBlock;
     // 是否存在阻激夹域伤害
     if (checkBlockInfo) {
         if (checkBlockInfo.damage[index]) return false;
