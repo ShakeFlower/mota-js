@@ -203,6 +203,18 @@ type HeroStatus = {
     [key: string]: any
 }
 
+type shop = {
+    id: string,
+    text: string,
+    item: boolean,
+    mustEnable: boolean,
+    /** 能否预览 */disablePreview: boolean,
+    testInList: string,
+    choices: any[],
+    commonEvent: string,
+    [key: string]: any
+}
+
 type gameStatus = {
     played: boolean
     gameOver: boolean
@@ -310,7 +322,9 @@ type gameStatus = {
     }
 
     // event事件
-    shops: {}
+    shops: {
+        [shopName:string]:shop
+    }
     event: {
         id?: string | null
         data: any

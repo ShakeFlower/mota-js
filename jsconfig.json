@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "target": "ES2016",
+    "checkJs": true,
+    "noImplicitAny": false
+  }
+}

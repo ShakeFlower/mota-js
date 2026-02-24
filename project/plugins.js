@@ -10,8 +10,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 在这里写的代码将会在【资源加载前】被执行，此时图片等资源尚未被加载。
 		// 请勿在这里对包括bgm，图片等资源进行操作。
 
-
-		this._afterLoadResources = function () {
+		core.plugin._afterLoadResources = function () {
 			// 本函数将在所有资源加载完毕后，游戏开启前被执行
 			// 可以在这个函数里面对资源进行一些操作。
 			// 若需要进行切分图片，可以使用 core.splitImage() 函数，或直接在全塔属性-图片切分中操作
@@ -22,11 +21,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	},
 	"shop": function () {
 		// 【全局商店】相关的功能
-		// 
-		// 打开一个全局商店
-		// shopId：要打开的商店id；noRoute：是否不计入录像
-		this.openShop = function (shopId, noRoute) {
-			var shop = core.status.shops[shopId];
+		/**
+		 * 打开一个全局商店
+		 * @param {string} shopId 
+		 * @param {boolean} noRoute 
+		 */
+		core.plugin.openShop = function (shopId, noRoute) {
+			const shop = core.status.shops[shopId];
 			// Step 1: 检查能否打开此商店
 			if (!this.canOpenShop(shopId)) {
 				core.drawTip("该商店尚未开启");
@@ -60,8 +61,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return true;
 		}
 
-		////// 将一个全局商店转变成可预览的公共事件 //////
-		this._convertShop = function (shop) {
+		/** 
+		 * @param {shop} shop
+		 * 将一个全局商店转变成可预览的公共事件 
+		 */
+		core.plugin._convertShop = function (shop) {
 			return [
 				{ "type": "function", "function": "function() {core.addFlag('@temp@shop', 1);}" },
 				{
@@ -101,7 +105,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			];
 		}
 
-		this._convertShop_replaceChoices = function (shopId, previewMode) {
+		/**
+		 * @param {string} shopId 
+		 * @param {boolean} previewMode 
+		 */
+		core.plugin._convertShop_replaceChoices = function (shopId, previewMode) {
 			var shop = core.status.shops[shopId];
 			var choices = (shop.choices || []).filter(function (choice) {
 				if (choice.condition == null || choice.condition == '') return true;
@@ -121,31 +129,33 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.insertAction({ "type": "choices", "text": shop.text, "choices": choices });
 		}
 
-		/// 是否访问过某个快捷商店
-		this.isShopVisited = function (id) {
+		/**
+		 * 是否访问过某个快捷商店
+		 */
+		core.plugin.isShopVisited = function (id) {
 			if (!core.hasFlag("__shops__")) core.setFlag("__shops__", {});
-			var shops = core.getFlag("__shops__");
+			const shops = core.getFlag("__shops__");
 			if (!shops[id]) shops[id] = {};
 			return shops[id].visited;
 		}
 
 		/// 当前应当显示的快捷商店列表
-		this.listShopIds = function () {
+		core.plugin.listShopIds = function () {
 			return Object.keys(core.status.shops).filter(function (id) {
 				return core.isShopVisited(id) || !core.status.shops[id].mustEnable;
 			});
 		}
 
-		/// 是否能够打开某个商店
-		this.canOpenShop = function (id) {
+		/** 是否能够打开某个商店 **/ 
+		core.plugin.canOpenShop = function (id) {
 			if (this.isShopVisited(id)) return true;
-			var shop = core.status.shops[id];
+			const shop = core.status.shops[id];
 			if (shop.item || shop.commonEvent || shop.mustEnable) return false;
 			return true;
 		}
 
-		/// 启用或禁用某个快捷商店
-		this.setShopVisited = function (id, visited) {
+		/** 启用或禁用某个快捷商店 */
+		core.plugin.setShopVisited = function (id, visited) {
 			if (!core.hasFlag("__shops__")) core.setFlag("__shops__", {});
 			var shops = core.getFlag("__shops__");
 			if (!shops[id]) shops[id] = {};
@@ -153,8 +163,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			else delete shops[id].visited;
 		}
 
-		/// 能否使用快捷商店
-		this.canUseQuickShop = function (id) {
+		/**
+		 * 能否使用快捷商店
+		 * @param {string} id 
+		 * @returns {'当前楼层不能使用快捷商店。'|null}
+		 */
+		core.plugin.canUseQuickShop = function (id) {
 			// 如果返回一个字符串，表示不能，字符串为不能使用的提示
 			// 返回null代表可以使用
 
@@ -164,7 +178,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return null;
 		}
 
-		var _shouldProcessKeyUp = true;
+		let _shouldProcessKeyUp = true;
 
 		/// 允许商店X键退出
 		core.registerAction('keyUp', 'shops', function (keycode) {
@@ -221,10 +235,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 对于超高层或分区域塔，当在1区时将2区以后的地图删除；1区结束时恢复2区，进二区时删除1区地图，以此类推
 		// 这样可以大幅减少存档空间，以及加快存读档速度
 
-		// 删除楼层
-		// core.removeMaps("MT1", "MT300") 删除MT1~MT300之间的全部层
-		// core.removeMaps("MT10") 只删除MT10层
-		this.removeMaps = function (fromId, toId) {
+		/**
+		 * 删除楼层
+		 * @example // 删除MT1~MT300之间的全部层
+		 * core.removeMaps("MT1", "MT300") 
+		 * @example // 只删除MT10层
+		 * core.removeMaps("MT10")
+		 * @param {string} fromId 
+		 * @param {string} toId 
+		 */
+		function removeMaps(fromId, toId) {
 			toId = toId || fromId;
 			var fromIndex = core.floorIds.indexOf(fromId),
 				toIndex = core.floorIds.indexOf(toId);
@@ -252,11 +272,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.status.maps[floorId].cannotViewMap = true;
 			}
 		}
+		core.plugin.removeMaps = removeMaps;
 
-		// 恢复楼层
-		// core.resumeMaps("MT1", "MT300") 恢复MT1~MT300之间的全部层
-		// core.resumeMaps("MT10") 只恢复MT10层
-		this.resumeMaps = function (fromId, toId) {
+		/**
+		 * 恢复楼层
+		 * @example // 恢复MT1~MT300之间的全部层
+		 * core.resumeMaps("MT1", "MT300")
+		 * @example // 只恢复MT10层
+		 * core.resumeMaps("MT10")
+		 * @param {string} fromId 
+		 * @param {string} toId 
+		 */
+		function resumeMaps(fromId, toId) {
 			toId = toId || fromId;
 			var fromIndex = core.floorIds.indexOf(fromId),
 				toIndex = core.floorIds.indexOf(toId);
@@ -269,14 +296,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.status.maps[floorId] = core.loadFloor(floorId);
 			}
 		}
+		core.plugin.resumeMaps = resumeMaps;
 
-		// 分区砍层相关
-		var inAnyPartition = function (floorId) {
-			var inPartition = false;
+		/** 分区砍层相关
+		 * @param {string} floorId
+		 */
+		const inAnyPartition = function (floorId) {
+			let inPartition = false;
 			(core.floorPartitions || []).forEach(function (floor) {
-				var fromIndex = core.floorIds.indexOf(floor[0]);
-				var toIndex = core.floorIds.indexOf(floor[1]);
-				var index = core.floorIds.indexOf(floorId);
+				const fromIndex = core.floorIds.indexOf(floor[0]);
+				let toIndex = core.floorIds.indexOf(floor[1]);
+				const index = core.floorIds.indexOf(floorId);
 				if (fromIndex < 0 || index < 0) return;
 				if (toIndex < 0) toIndex = core.floorIds.length - 1;
 				if (index >= fromIndex && index <= toIndex) inPartition = true;
@@ -284,8 +314,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return inPartition;
 		}
 
-		// 分区砍层
-		this.autoRemoveMaps = function (floorId) {
+		/**
+		 * 分区砍层
+		 * @param {string} floorId
+		 **/
+		function autoRemoveMaps(floorId) {
 			if (main.mode != 'play' || !inAnyPartition(floorId)) return;
 			// 根据分区信息自动砍层与恢复
 			(core.floorPartitions || []).forEach(function (floor) {
@@ -301,6 +334,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			});
 		}
+		core.plugin.autoRemoveMaps = autoRemoveMaps;
 	},
 	"fiveLayers": function () {
 		// 是否启用五图层（增加背景2层和前景2层） 将__enable置为true即会启用；启用后请保存后刷新编辑器
@@ -1926,7 +1960,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		// 每走一步后自动拾取的判定要放在阻击结算之后，见libs，并不写在本插件当中
 
-		this.autoClear = auto;
+		core.plugin.autoClear = auto;
 
 		function willLvUp(exp) {
 			const nextExp = core.getNextLvUpNeed();
@@ -3593,7 +3627,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const ctx = core.dymCanvas[this.name];
 				const { x0, y0, marginTop } = this;
 				const dy = this.oneItemHeight * currIndex + marginTop;
-
+				/** @type {Item} */
 				const item = core.material.items[itemId] || {};
 				const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
 
