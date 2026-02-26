@@ -444,6 +444,8 @@ control.prototype._initStatistics = function (totalTime) {
             'extraDamage': 0,
             'moveDirectly': 0,
             'ignoreSteps': 0,
+            'oneDefEffect': 0,
+            'oneMdefEffect': 0,
         }
 }
 

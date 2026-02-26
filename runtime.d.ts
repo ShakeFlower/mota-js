@@ -198,7 +198,9 @@ type HeroStatus = {
         moveDirectly: number
         poisonDamage: number
         start: number
-        totalTime: number
+        totalTime: number,
+        oneDefEffect: number,
+        oneMdefEffect: number,
     }
     [key: string]: any
 }
@@ -1641,6 +1643,18 @@ interface enemys {
      * @returns 总伤害的减少量
      */
     getDefDamage(enemy: string | Enemy, k?: number, x?: number, y?: number, floorId?: string): number
+
+    /**
+     * 计算再加若干点护盾能使某只敌人对主角的总伤害降低多少
+     * @example core.nextCriticals('greenSlime', 10, 0, 0, 'MT0') // 再加10点防御能使绿头怪的伤害降低多少
+     * @param enemy 敌人id或敌人对象
+     * @param k 假设主角增加的护盾，可选，默认为1
+     * @param x 敌人的横坐标，可选
+     * @param y 敌人的纵坐标，可选
+     * @param floorId 敌人所在的地图，可选
+     * @returns 总伤害的减少量
+     */
+    getMdefDamage(enemy: string | Enemy, k?: number, x?: number, y?: number, floorId?: string): number
 
     /**
      * 获得某张地图的敌人集合，用于手册绘制
@@ -3358,7 +3372,10 @@ declare class PaginationClass extends MenuBaseClass {
 
 type CoreMixin = {
     firstData: { [x: string]: any }
-    /** 全塔属性开关 */flags: { [flagName: string]: boolean | number}
+    /** 全塔属性开关 */flags: { 
+        statusBarItems: string[]
+        [flagName: string]: boolean | number
+    }
     /** 全局数值 */values:
     {
         /** 全局帧动画时间 */animateSpeed: number;

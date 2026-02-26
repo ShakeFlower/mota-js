@@ -407,6 +407,16 @@ enemys.prototype.getDefDamage = function (enemy, k, x, y, floorId) {
     return nowDamage - nextDamage;
 }
 
+////// N魔防减伤计算 //////
+enemys.prototype.getMdefDamage = function (enemy, k, x, y, floorId) {
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
+    k = k || 1;
+    const nowDamage = this._getDamage(enemy, null, x, y, floorId);
+    const nextDamage = this._getDamage(enemy, { "mdef": core.status.hero.mdef + k }, x, y, floorId);
+    if (nowDamage == null || nextDamage == null) return "???";
+    return nowDamage - nextDamage;
+}
+
 enemys.prototype.getEnemyInfo = function (enemy, hero, x, y, floorId) {
     if (enemy == null) return null;
     if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);

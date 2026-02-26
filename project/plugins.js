@@ -10129,7 +10129,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					+ "受到的总伤害为" + core.formatBigNumber(statistics.battleDamage + statistics.poisonDamage + statistics.extraDamage)
 					+ "，其中战斗伤害" + core.formatBigNumber(statistics.battleDamage) + "点"
 					+ (core.flags.statusBarItems.indexOf('enableDebuff') >= 0 ? ("，中毒伤害" + core.formatBigNumber(statistics.poisonDamage) + "点") : "")
-					+ "，领域/夹击/阻击/血网伤害" + core.formatBigNumber(statistics.extraDamage) + "点。";
+					+ "，领域/夹击/阻击/血网伤害" + core.formatBigNumber(statistics.extraDamage) + "点。\n\n"
+					+ "1防御累计减伤为" + core.formatBigNumber(statistics.oneDefEffect || 0)
+					+ "，1护盾累计减伤为" + core.formatBigNumber(statistics.oneMdefEffect || 0) + "。";
 				core.drawTextContent(ctx, str, {
 					left: 30, top: 30, color: "black", maxWidth: 360, fontSize: 14
 				});

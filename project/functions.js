@@ -271,6 +271,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 		"afterBattle": function (enemyId, x, y) {
 			// 战斗结束后触发的事件
 
+			const floorId = core.status.floorId;
 			var enemy = core.getEnemyValue(enemyId, null, x, y);
 			var special = enemy.special;
 
@@ -307,6 +308,11 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.events.lose('战斗失败');
 				return;
 			}
+
+			const defDamage = core.enemys.getDefDamage(enemy, -1, x, y, floorId);
+			if (typeof defDamage === "number") core.status.hero.statistics.oneDefEffect -= defDamage;
+			const mdefDamage = core.enemys.getMdefDamage(enemy, -1, x, y, floorId);
+			if (typeof mdefDamage === "number") core.status.hero.statistics.oneMdefEffect -= mdefDamage;
 
 			// 扣减体力值并记录统计数据
 			core.status.hero.hp -= damage;
