@@ -146,7 +146,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			});
 		}
 
-		/** 是否能够打开某个商店 **/ 
+		/** 是否能够打开某个商店 **/
 		core.plugin.canOpenShop = function (id) {
 			if (this.isShopVisited(id)) return true;
 			const shop = core.status.shops[id];
@@ -2916,7 +2916,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					], arrowStyle);
 			}
 		}
-		this.uiBase = {
+		core.plugin.uiBase = {
 			ButtonBase, RoundBtn, IconBtn, ExitBtn,
 			ArrowBtn, MenuBase, Pagination, KeyCodeEnum
 		};
@@ -3600,14 +3600,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.marginLeft = 15; // 物品栏左边距
 				this.marginTop = 40; // 物品栏上边距
 				this.x0 = this.x + this.marginLeft; // 物品栏左边距
-				this.y0 = this.y + this.marginTop; 
+				this.y0 = this.y + this.marginTop;
 				this.w0 = this.w - this.marginLeft - 5; // 物品栏真实宽度
 				this.h0 = this.oneItemHeight * (this.pageCap + 1); // +1是因为最后一行要留给翻页按钮 
 			}
 
 			drawContent() {
 				const ctx = this.createCanvas();
-				const { x0, y0, w0, h0, marginTop, marginLeft} = this;
+				const { x0, y0, w0, h0, marginTop, marginLeft } = this;
 				const { w, h } = this;
 				core.fillRect(ctx, marginLeft, marginTop, w0, h0, 'rgb(0, 105, 148)');
 
@@ -4997,7 +4997,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			},
 			autoSaveBeforePickItem: {
 				getName: () => '拾取物品自动保存:' + (core.getLocalStorage('autoSaveBeforePickItem') ? '开' : '关'),
-				effect: () => {	
+				effect: () => {
 					invertLocalStorage('autoSaveBeforePickItem');
 				},
 				text: '拾取地上物品前自动存档。',
@@ -9742,5 +9742,567 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.drawLine("back", 240, 240 + core.__PIXELS__ / 2, 240 + core.__PIXELS__, 240 + core.__PIXELS__ / 2, [100, 100, 240, 0.4], 2);
 			}
 		};
+	},
+	"statistics": function () {
+		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
+		let __enable = true;
+		if (!__enable) return;
+
+		const PX = core.__PIXELS__,
+			SIZE = core.__SIZE__;
+		const {
+			ButtonBase,
+			RoundBtn,
+			IconBtn,
+			ExitBtn,
+			ArrowBtn,
+			MenuBase,
+			Pagination,
+			KeyCodeEnum
+		} = core.plugin.uiBase;
+
+		// 每次退出数据统计时清空,并且清空statistics变量
+		/**
+		 * @typedef {{[itemName:string]:{count:number, [floorId:string]:number}}} objCount
+		 * @typedef {{count:number,money:number,exp:number,point:number,}} enemys
+		 * @typedef {{count:number,hp:number,atk:number,def:number,mdef:number}} items
+		 * @typedef {{toolsCount:objCount,gemsCount:objCount,
+		 * equipsCount:objCount,enemysCount:objCount,
+		 * enemys:enemys,items:items,}} floorStatistic
+		 * @typedef {{[floorId:string]:floorStatistic}} statistics
+		 */
+		/** @type {statistics} */
+		let statistics = {};
+
+		function getFloorStat(floorId) {
+			const stat = {
+				toolsCount: { total: 0, },
+				gemsCount: { total: 0, },
+				equipsCount: { total: 0, },
+				enemysCount: { total: 0, },
+				enemys: { count: 0, money: 0, exp: 0, point: 0, },
+				items: { count: 0, hp: 0, atk: 0, def: 0, mdef: 0, },
+			};
+			core.maps.extractBlocks(floorId);
+			const blocks = core.status.maps[floorId].blocks;
+			for (let i = 0, l = blocks.length; i < l; i++) {
+				const block = blocks[i];
+				const cls = block.event.cls, id = block.event.id;
+				if (cls === "enemys" || cls === "enemy48") {
+					const enemy = core.material.enemys[block.event.id];
+					stat.enemys.count++;
+					stat.enemys.money += enemy.money || 0;
+					stat.enemys.exp += enemy.exp || 0;
+					stat.enemys.point += enemy.point || 0;
+
+					stat.enemysCount.total++;
+					if (!stat.enemysCount[id]) stat.enemysCount[id] = 0;
+					stat.enemysCount[id]++;
+				}
+				else if (cls === "items") {
+					// 圣水享受特殊待遇，不参与统计
+					if (id === "superPotion") continue;
+					core.setFlag("__statistics__", true);
+					if (core.material.items[id].cls === "items") {
+						// hero是进存档的，必定可序列化
+						const temp = JSON.parse(JSON.stringify(core.status.hero));
+						const ratio = core.status.thisMap.ratio;
+						core.status.thisMap.ratio = core.clone(core.status.maps[floorId].ratio);
+						const effectObj = core.items.getItemEffectValue(id, ratio);
+						for (let statusName in effectObj) {
+							if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
+						} // @todo 修改血瓶宝石显示
+						if (core.material.items[id].itemEffect != null) {
+							try { eval(core.material.items[id].itemEffect); }
+							catch (e) { }
+						}
+						core.status.thisMap.ratio = ratio;
+						["hp", "atk", "def", "mdef"].forEach(status => {
+							stat.items[status] += core.status.hero[status] - temp[status];
+						});
+						core.status.hero = temp;
+						window.hero = core.status.hero;
+						window.flags = core.status.hero.flags;
+						stat.gemsCount.total++;
+						if (!stat.gemsCount[id]) stat.gemsCount[id] = 0;
+						stat.gemsCount[id]++;
+					}
+					else if (core.material.items[id].cls === "tools") {
+						stat.toolsCount.total++;
+						if (!stat.toolsCount[id]) stat.toolsCount[id] = 0;
+						stat.toolsCount[id]++;
+					}
+					else if (core.material.items[id].cls === "equips") {
+						stat.equipsCount.total++;
+						if (!stat.equipsCount[id]) stat.equipsCount[id] = 0;
+						stat.equipsCount[id]++;
+					}
+				}
+				else if (block.event.trigger === "openDoor") {
+					stat.toolsCount.total++;
+					if (!stat.toolsCount[id]) stat.toolsCount[id] = 0;
+					stat.toolsCount[id]++;
+				}
+			}
+			return stat;
+		}
+
+		function addToFormer(obj1, obj2) {
+			for (let i in obj2) {
+				if (!obj1[i]) obj1[i] = 0;
+				obj1[i] += obj2[i];
+			}
+		}
+
+		/**
+		 * @param {{total:number, [itemId:string]:{total:number,[floorId:string]:number}}} obj1
+		 * @param {{total:number, [itemId:string]:number}} obj2  
+		 */
+		function addCountToFormer(obj1, obj2, floorId) {
+			obj1.total += obj2.total;
+			for (let itemId in obj2) {
+				if (!obj1[itemId]) obj1[itemId] = { total: 0 };
+				if (!obj2[itemId]) continue;
+				obj1[itemId].total += obj2[itemId];
+				obj1[itemId][floorId] = obj2[itemId];
+			}
+		}
+
+		/**
+		 * @typedef {{total:number,[floorId:string]:number}} ObjSTAT
+		 * @typedef {{toolsCount:ObjSTAT,gemsCount:ObjSTAT,
+		 * equipsCount:ObjSTAT,enemysCount:ObjSTAT,
+		 * enemys:enemys,items:items}} STAT
+		 */
+		/**
+		 * @param {string[]} floorList 要统计的楼层的列表
+		 */
+		function getFloorListStat(floorList) {
+			/** @type {STAT} */
+			const stat = {
+				toolsCount: { total: 0, },
+				gemsCount: { total: 0, },
+				equipsCount: { total: 0, },
+				enemysCount: { total: 0, },
+				enemys: { count: 0, money: 0, exp: 0, point: 0, },
+				items: { count: 0, hp: 0, atk: 0, def: 0, mdef: 0, },
+			}
+			floorList.forEach(floorId => {
+				if (!statistics[floorId]) statistics[floorId] = getFloorStat(floorId);
+				addToFormer(stat.enemys, statistics[floorId].enemys);
+				addToFormer(stat.items, statistics[floorId].items);
+				addCountToFormer(stat.toolsCount, statistics[floorId].toolsCount, floorId);
+				addCountToFormer(stat.gemsCount, statistics[floorId].gemsCount, floorId);
+				addCountToFormer(stat.equipsCount, statistics[floorId].equipsCount, floorId);
+				addCountToFormer(stat.enemysCount, statistics[floorId].enemysCount, floorId);
+			});
+			return stat;
+		}
+
+		class FloorBtn extends ButtonBase {
+			constructor(x, y, w, h) {
+				super(x, y, w, h);
+				this.floorId = "";
+			}
+
+			draw() {
+				const { x, y, w, h, floorId, ctx } = this;
+				let strokeStyle = "black";
+				if (core.markedFloorIds[floorId]) strokeStyle = "yellow";
+				if (this.menu.areaBorder === floorId) strokeStyle = "orange";
+				core.ui.strokeRect(ctx, x - 1, y - 1, w + 2, h + 2, strokeStyle, 2);
+				core.maps.drawThumbnail(floorId, null, {
+					x,
+					y,
+					ctx,
+					damage: false,
+					noHD: true,
+					size: w
+				});
+				core.setTextAlign(ctx, "center");
+				if (floorId === core.status.floorId) {
+					core.ui.fillBoldText(ctx, "当前层", x + w / 2, y + h / 2, "red", "white", "12px Verdana");
+				}
+				core.ui.fillText(ctx, floorId, x + w / 2, y + h + 12, "black", "12px Verdana");
+				core.ui.fillText(ctx, core.status.maps[floorId].name, x + w / 2, y + h + 24, "black", "12px Verdana");
+			}
+		}
+
+		class FloorStatisticsMenu extends MenuBase {
+			constructor(name, toListen, x, y, w, h, zIndex, capacity) {
+				super(name, toListen, x, y, w, h, zIndex);
+				/** 一页的地图容量 */
+				this.capacity = capacity;
+				this.totalFloorList = this.getTotalFloorList();
+				this.page = Math.floor(this.totalFloorList.indexOf(core.status.floorId) / capacity);
+				this.floorList = this.getFloorList();
+				/** 区域选择时的起始楼层*/this.areaBorder = "";
+				/** 是否处于区域选择模式下 */this.areaSelectOn = false;
+			}
+
+			updateBtnInfo() {
+				this.btnMap.forEach((btn, key) => {
+					if (btn instanceof FloorBtn) {
+						btn.disable = (key >= this.floorList.length);
+						btn.floorId = this.floorList[key];
+					}
+				});
+			}
+
+			drawContent() {
+				const { x, y, w, h, zIndex, name } = this;
+				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
+				this.updateBtnInfo();
+				super.drawContent();
+			}
+
+			getTotalFloorList() {
+				return core.floorIds.filter(floorId => {
+					const floorData = core.status.maps[floorId];
+					if (floorData.deleted) return false; // 被砍层插件砍掉的地图不计入
+					if (floorData.cannotViewMap && floorData !== core.status.floorId) return false;
+					return true;
+				})
+			}
+
+			getFloorList() {
+				return this.totalFloorList.slice(this.page * this.capacity,
+					Math.min((this.page + 1) * this.capacity), this.totalFloorList.length);
+			}
+
+			pageDown() {
+				if (this.page > 0) {
+					this.page--;
+					this.floorList = this.getFloorList();
+					this.drawContent();
+				}
+			}
+
+			pageUp() {
+				if ((this.page + 1) * this.capacity < this.totalFloorList.length) {
+					this.page++;
+					this.floorList = this.getFloorList();
+					this.drawContent();
+				}
+			}
+		}
+
+		class FloorStatisticsTextMenu extends MenuBase {
+			constructor(name, toListen, x, y, w, h, zIndex) {
+				super(name, toListen, x, y, w, h, zIndex);
+				this.statItemList = core.ui.uidata.drawStatistics();
+				/** @type {STAT|null} */
+				this.stat = null;
+				this.itemPage = 0; // 道具列表到了第几页
+				this.floorPage = 0; // 楼层列表到了第几页
+				this.ROW = 7; // 表格行数
+				this.COLUMN = 5; // 表格列数
+				this.itemList = []; // 要统计的元件的id列表
+				this.floorList = []; //要统计的楼层的id列表
+				/** @type {"tools"|"items"|"equips"|"enemys"} */
+				this.mode = "tools";
+			}
+
+			getFloorList() {
+				const floorList = [];
+				for (let floorId in core.markedFloorIds) {
+					if (core.markedFloorIds[floorId]) floorList.push(floorId);
+				}
+				return floorList;
+			}
+
+			getItemList(count) {
+				let itemList = null;
+				const sortFunc = (a, b) => count[b].total - count[a].total;
+				if (this.mode === "tools") {
+					const doorNameList = [];
+					const itemNameList = [];
+					for (let i in count) {
+						if (i === "total") continue;
+						if (core.material.items[i]) itemNameList.push(i);
+						else doorNameList.push(i);
+					}
+					itemList = [...doorNameList.sort(sortFunc), ...itemNameList.sort(sortFunc)];
+				}
+				else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
+				return itemList;
+			}
+
+			getStat() {
+				return getFloorListStat(this.floorList);
+			}
+
+			itemPageDown() {
+				if (this.itemPage > 0) this.itemPage--;
+				this.drawContent();
+			}
+
+			itemPageUp() {
+				if ((this.itemPage + 1) * this.ROW < this.itemList.length) this.itemPage++;
+				this.drawContent();
+			}
+
+			floorPageDown() {
+				if (this.floorPage > 0) this.floorPage--;
+				this.drawContent();
+			}
+
+			floorPageUp() {
+				if ((this.floorPage + 1) * this.COLUMN < this.floorList.length) this.floorPage++;
+				this.drawContent();
+			}
+
+			/** @param {ObjSTAT} count  */
+			drawTable(ctx, count) {
+				const { itemPage, floorPage, ROW, COLUMN, itemList, floorList } = this;
+
+				const curritemList = itemList.slice(itemPage * ROW,
+					Math.min((itemPage + 1) * ROW, itemList.length));
+				const currFloorList = floorList.slice(floorPage * COLUMN,
+					Math.min((floorPage + 1) * COLUMN, floorList.length));
+
+				core.ui.setTextBaseline(ctx, "top");
+				core.ui.setTextAlign(ctx, "right");
+				for (let i = -1, l = curritemList.length; i < l; i++) {
+					let id, name, total;
+					if (i !== -1) {
+						id = curritemList[i];
+						name = core.material.items[id]?.name || core.material.enemys[id]?.name ||
+							core.getBlockById(id).event.name || "";
+						total = count[id].total || 0;
+					}
+					core.ui.strokeRect(ctx, 20, 155 + 25 * i, 80, 25, "black");
+					for (let j = -1, l1 = currFloorList.length; j < l1; j++) {
+						core.ui.strokeRect(ctx, 150 + 50 * j, 155 + 25 * i, 50, 25, "black");
+						const floorId = currFloorList[j];
+						const floorCountStr = count[id]?.[currFloorList[j]] || "-";
+						const text = (i === -1) ? ((j === -1) ? "总数" : floorId) :
+							((j === -1) ? total : floorCountStr);
+						core.ui.fillText(ctx, text, 194 + 50 * j, 163 + 25 * i,
+							(text === "-") ? "gray" : "black", "12px Verdana");
+					}
+					if (i === -1) continue; // i=-1是表头
+					core.ui.drawIcon(ctx, id, 25, 160 + 25 * i, 16, 16);
+					core.ui.fillText(ctx, name, 94, 163 + 25 * i, "black", name.length < 5 ? "12px Verdana" : "8px Verdana");
+				}
+			}
+
+			drawContent() {
+				if (!this.stat) return;
+				const { x, y, w, h, zIndex, name, stat } = this;
+				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
+				const { enemys, items, toolsCount, gemsCount, equipsCount, enemysCount } = stat;
+				const enemyText = `给定地图中共有怪物${enemys.count}个` +
+					(enemys.money > 0 ? `，总金币${enemys.money}.` : '') +
+					(enemys.exp > 0 ? `，总经验${enemys.exp}` : '') +
+					(enemys.point > 0 ? `，总加点${enemys.point}` : '') + "。";
+				let gemText = '';
+				const itemEffectText = `所有即捡即用物品共计加生命值${items.hp}点` +
+					`，\n攻击${items.atk}点` +
+					`，防御${items.def}点` +
+					`，护盾${items.mdef}点` + "。";
+				const text = enemyText + '\n' + itemEffectText;
+				core.ui.drawTextContent(ctx, text, {
+					maxWidth: 360, color: "black", left: 20, top: 10,
+					fontSize: 14
+				});
+				let count = toolsCount;
+				if (this.mode === "items") count = gemsCount;
+				else if (this.mode === "equips") count = equipsCount;
+				else if (this.mode === "enemys") count = enemysCount;
+				this.itemList = this.getItemList(count);
+				this.drawTable(ctx, count);
+				super.drawContent();
+			}
+		}
+
+		class PlayerStatisticsMenu extends MenuBase {
+			drawContent() {
+				const { name, x, y, w, h, zIndex } = this;
+				const ctx = this.createCanvas(name, x, y, w, h, zIndex);
+				const statistics = core.status.hero.statistics;
+				const str = "当前总步数：" + core.status.hero.steps + "，当前游戏时长：" + core.formatTime(statistics.currTime)
+					+ "，总游戏时长" + core.formatTime(statistics.totalTime)
+					+ "。\n瞬间移动次数：" + statistics.moveDirectly + "，共计少走" + statistics.ignoreSteps + "步。"
+					+ "\n\n总计通过血瓶恢复生命值为" + core.formatBigNumber(statistics.hp) + "点。\n\n"
+					+ "总计打死了" + statistics.battle + "个怪物，得到了" + core.formatBigNumber(statistics.money) + "金币，" + core.formatBigNumber(statistics.exp) + "点经验。\n\n"
+					+ "受到的总伤害为" + core.formatBigNumber(statistics.battleDamage + statistics.poisonDamage + statistics.extraDamage)
+					+ "，其中战斗伤害" + core.formatBigNumber(statistics.battleDamage) + "点"
+					+ (core.flags.statusBarItems.indexOf('enableDebuff') >= 0 ? ("，中毒伤害" + core.formatBigNumber(statistics.poisonDamage) + "点") : "")
+					+ "，领域/夹击/阻击/血网伤害" + core.formatBigNumber(statistics.extraDamage) + "点。";
+				core.drawTextContent(ctx, str, {
+					left: 30, top: 30, color: "black", maxWidth: 360, fontSize: 14
+				});
+			}
+		}
+
+		class StatisticsMenu extends Pagination {
+			drawContent() {
+				const { x, y, w, h, zIndex, name } = this;
+				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
+				core.ui.fillRect(ctx, x, y, w, h, "#E2E2E2");
+				super.drawContent();
+			}
+		}
+
+		function StatisticsMenuFactory() {
+			const ROW = 3, COLUMN = 4;
+			const floorStatisticsMenu = new FloorStatisticsMenu("floorStatistics", ["ondown"],
+				0, 50, PX, PX - 50, 132, ROW * COLUMN);
+			const floorStatisticsTextMenu = new FloorStatisticsTextMenu("floorStatisticsText", ["ondown"],
+				0, 50, PX, PX - 50, 132);
+			const playerStatisticsMenu = new PlayerStatisticsMenu("playerStatistics", ["ondown"],
+				0, 50, PX, PX - 50, 132);
+			const staticsMenu = new StatisticsMenu(
+				[floorStatisticsMenu, floorStatisticsTextMenu, playerStatisticsMenu],
+				0, "statistics", ["ondown"], 0, 0, PX, PX, 131);
+
+			const floorStatisticsList = [];
+			/** @this {FloorBtn} */
+			const mark = function () {
+				/** @type {FloorStatisticsMenu} */
+				const menu = this.menu;
+				if (menu.areaSelectOn) {
+					if (!menu.areaBorder) menu.areaBorder = this.floorId;
+					else {
+						let index1 = menu.totalFloorList.indexOf(menu.areaBorder),
+							index2 = menu.totalFloorList.indexOf(this.floorId);
+						if (index2 < index1) [index1, index2] = [index2, index1];
+						menu.totalFloorList.slice(index1, index2 + 1).forEach(floorId => {
+							core.markedFloorIds[floorId] = true;
+						});
+						menu.areaSelectOn = false;
+						menu.areaBorder = "";
+					}
+				}
+				else {
+					core.markedFloorIds[this.floorId] = !core.markedFloorIds[this.floorId];
+				}
+				menu.drawContent();
+			};
+			for (let i = 0; i < ROW; i++) {
+				for (let j = 0; j < COLUMN; j++) {
+					const floorBtn = new FloorBtn(43 + j * 90, 20 + i * 100, 60, 60);
+					floorStatisticsList.push([i * COLUMN + j, floorBtn, mark.bind(floorBtn)]);
+				}
+			}
+			const pgDownBtn = new ArrowBtn(10, 145, 16, 16, "left"),
+				pgUpBtn = new ArrowBtn(390, 145, 16, 16, "right");
+			floorStatisticsList.push(["pgDown", pgDownBtn, floorStatisticsMenu.pageDown.bind(floorStatisticsMenu)],
+				["pgUp", pgUpBtn, floorStatisticsMenu.pageUp.bind(floorStatisticsMenu)]);
+			const checkAllBtn = new RoundBtn(30, 320, 50, 20, "全选");
+			const inverseBtn = new RoundBtn(90, 320, 50, 20, "反选");
+			const clearSelectBtn = new RoundBtn(150, 320, 60, 20, "全不选");
+			const areaSelectBtn = new RoundBtn(220, 320, 76, 20, "区域选择");
+			const getOutcomeBtn = new RoundBtn(306, 320, 76, 20, "统计所选");
+			floorStatisticsList.push(
+				["checkAll", checkAllBtn, () => {
+					floorStatisticsMenu.totalFloorList.forEach(floorId => {
+						core.markedFloorIds[floorId] = true;
+					});
+					floorStatisticsMenu.drawContent();
+				}],
+				["inverse", inverseBtn, () => {
+					floorStatisticsMenu.totalFloorList.forEach(floorId => {
+						core.markedFloorIds[floorId] = !core.markedFloorIds[floorId];
+					});
+					floorStatisticsMenu.drawContent();
+				}],
+				["clearSelect", clearSelectBtn, () => {
+					floorStatisticsMenu.totalFloorList.forEach(floorId => {
+						core.markedFloorIds[floorId] = false;
+					});
+					floorStatisticsMenu.drawContent();
+				}],
+				["areaSelect", areaSelectBtn, () => {
+					if (!floorStatisticsMenu.areaSelectOn) {
+						floorStatisticsMenu.areaSelectOn = true;
+						core.drawSuccessTip("请依次选择目标区域的起始楼层和终点楼层");
+					}
+					else {
+						floorStatisticsMenu.areaSelectOn = true;
+						floorStatisticsMenu.areaBorder = "";
+						core.drawFailTip("选择已取消");
+					}
+				}],
+				["getOutcome", getOutcomeBtn, () => {
+					const floorList = [];
+					for (let floorId in core.markedFloorIds) {
+						if (core.markedFloorIds[floorId]) floorList.push(floorId);
+					}
+					floorStatisticsTextMenu.floorList = floorStatisticsTextMenu.getFloorList();
+					floorStatisticsTextMenu.stat = floorStatisticsTextMenu.getStat();
+					staticsMenu.changePage(1);
+				}]);
+			floorStatisticsMenu.registerBtns(floorStatisticsList);
+
+			const config = { font: "14px Verdana", selectedFillStyle: "#5B8DEF" };
+			const toolStatBtn = new RoundBtn(20, 90, 90, 20, "消耗品和门", config);
+			const itemStatBtn = new RoundBtn(125, 90, 70, 20, "血瓶宝石", config);
+			const equipStatBtn = new RoundBtn(215, 90, 40, 20, "装备", config);
+			const enemyStatBtn = new RoundBtn(275, 90, 40, 20, "敌人", config);
+			const itemDownBtn = new ArrowBtn(20, 335, 16, 16, "left");
+			const itemUpBtn = new ArrowBtn(40, 335, 16, 16, "right");
+			const floorDownBtn = new ArrowBtn(360, 335, 16, 16, "left");
+			const floorUpBtn = new ArrowBtn(380, 335, 16, 16, "right");
+
+			const changeMode = (btn, mode) => () => {
+				floorStatisticsTextMenu.btnMap.forEach(ele => {
+					ele.status = (btn === ele) ? "selected" : "none";
+				});
+				floorStatisticsTextMenu.mode = mode;
+				floorStatisticsTextMenu.itemPage = 0;
+				floorStatisticsTextMenu.drawContent();
+			};
+
+			floorStatisticsTextMenu.registerBtns([
+				["toolStat", toolStatBtn, changeMode(toolStatBtn, "tools")],
+				["itemStat", itemStatBtn, changeMode(itemStatBtn, "items")],
+				["equipStat", equipStatBtn, changeMode(equipStatBtn, "equips")],
+				["enemyStat", enemyStatBtn, changeMode(enemyStatBtn, "enemys")],
+				["itemDown", itemDownBtn, () => floorStatisticsTextMenu.itemPageDown()],
+				["itemUp", itemUpBtn, () => floorStatisticsTextMenu.itemPageUp()],
+				["floorDown", floorDownBtn, () => floorStatisticsTextMenu.floorPageDown()],
+				["floorUp", floorUpBtn, () => floorStatisticsTextMenu.floorPageUp()],
+			]);
+			toolStatBtn.status = "selected";
+
+			const exitBtn = new ExitBtn(380, 10, 24, 24);
+			const mainConfig = { fillStyle: "LightSteelBlue", selectedFillStyle: "blue" } // 120+80+8=208
+			const floorBtn = new RoundBtn(120, 20, 80, 20, "楼层数据", mainConfig);
+			const playerBtn = new RoundBtn(216, 20, 80, 20, "玩家数据", mainConfig);
+			floorBtn.status = "selected";
+			const exit = () => {
+				setTimeout(() => {
+					staticsMenu.clear();
+					core.unlockControl();
+				}, 1);
+			}
+			staticsMenu.registerBtns([
+				["exit", exitBtn, exit],
+				["floor", floorBtn, () => {
+					floorBtn.status = "selected";
+					playerBtn.status = "none";
+					staticsMenu.changePage(0);
+					staticsMenu.drawButtonContent();
+				}],
+				["player", playerBtn, () => {
+					floorBtn.status = "none";
+					playerBtn.status = "selected";
+					staticsMenu.changePage(2);
+					staticsMenu.drawButtonContent();
+				}],
+			]);
+			return staticsMenu;
+		}
+
+		function _drawStatistics() {
+			core.ui.closePanel();
+			core.control.lockControl();
+			const staticsMenu = StatisticsMenuFactory();
+			staticsMenu.init();
+			staticsMenu.initOnePage(0);
+		}
+		core.ui._drawStatistics = _drawStatistics;
 	}
 }
