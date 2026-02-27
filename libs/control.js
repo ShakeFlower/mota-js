@@ -440,6 +440,7 @@ control.prototype._initStatistics = function (totalTime) {
             'money': 0,
             'exp': 0,
             'battleDamage': 0,
+            'damagePerFloor': {},
             'poisonDamage': 0,
             'extraDamage': 0,
             'moveDirectly': 0,
@@ -1167,15 +1168,26 @@ control.prototype.updateCheckBlock = function (floorId) {
 ////// 检查并执行领域、夹击、阻击事件 //////
 
 control.prototype.checkBlock = function () {
-    var x = core.getHeroLoc('x'), y = core.getHeroLoc('y'), loc = x + "," + y;
-    var damage = core.status.checkBlock.damage[loc];
+    const floorId = core.status.floorId;
+    const x = core.getHeroLoc('x'), y = core.getHeroLoc('y'), loc = x + "," + y;
+    const damage = core.status.checkBlock.damage[loc];
     if (damage) {
         core.status.hero.hp -= damage;
-        var text = (Object.keys(core.status.checkBlock.type[loc] || {}).join("，")) || "伤害";
+        const text = (Object.keys(core.status.checkBlock.type[loc] || {}).join("，")) || "伤害";
         core.drawTip("受到" + text + damage + "点");
         core.drawHeroAnimate("zone");
         this._checkBlock_disableQuickShop();
         core.status.hero.statistics.extraDamage += damage;
+        if (!core.status.hero.statistics.damagePerFloor) {
+            core.status.hero.statistics.damagePerFloor = {};
+        }
+        if (!core.status.hero.statistics.damagePerFloor[floorId]) {
+            core.status.hero.statistics.damagePerFloor[floorId] = {
+                battleDamage: 0,
+                extraDamage: 0,
+            };
+        }
+        core.status.hero.statistics.damagePerFloor[floorId].extraDamage += damage;
         if (core.status.hero.hp <= 0) {
             core.status.hero.hp = 0;
             core.updateStatusBar(false, true);
@@ -1186,6 +1198,7 @@ control.prototype.checkBlock = function () {
         }
     }
     let actions = [];
+    
 
     const ambushAction = this._checkBlock_ambush(core.status.checkBlock.ambush[loc]);
     if (ambushAction.length > 0) core.push(actions, ambushAction);

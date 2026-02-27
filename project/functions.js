@@ -318,6 +318,16 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.status.hero.hp -= damage;
 			core.status.hero.statistics.battleDamage += damage;
 			core.status.hero.statistics.battle++;
+			if (!core.status.hero.statistics.damagePerFloor) {
+				core.status.hero.statistics.damagePerFloor = {};
+			}
+			if (!core.status.hero.statistics.damagePerFloor[floorId]) {
+				core.status.hero.statistics.damagePerFloor[floorId] = {
+					battleDamage: 0,
+					extraDamage: 0,
+				};
+			}
+			core.status.hero.statistics.damagePerFloor[floorId].battleDamage += damage;
 
 			// 计算当前怪物的支援怪物
 			// guard:一个形如[[1, 1, 'greenSlime'], [[2, 2, 'redSlime']]]的数组

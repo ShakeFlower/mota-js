@@ -9751,14 +9751,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const PX = core.__PIXELS__,
 			SIZE = core.__SIZE__;
 		const {
-			ButtonBase,
-			RoundBtn,
-			IconBtn,
-			ExitBtn,
-			ArrowBtn,
-			MenuBase,
-			Pagination,
-			KeyCodeEnum
+			ButtonBase, RoundBtn, IconBtn, ExitBtn,
+			ArrowBtn, MenuBase, Pagination, KeyCodeEnum
 		} = core.plugin.uiBase;
 
 		// 每次退出数据统计时清空,并且清空statistics变量
@@ -9855,7 +9849,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		/**
-		 * @param {{total:number, [itemId:string]:{total:number,[floorId:string]:number}}} obj1
+		 * @param {{total:number} & {[itemId:string]:{[floorId:string]:number}}} obj1
 		 * @param {{total:number, [itemId:string]:number}} obj2  
 		 */
 		function addCountToFormer(obj1, obj2, floorId) {
@@ -9872,7 +9866,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @typedef {{total:number,[floorId:string]:number}} ObjSTAT
 		 * @typedef {{toolsCount:ObjSTAT,gemsCount:ObjSTAT,
 		 * equipsCount:ObjSTAT,enemysCount:ObjSTAT,
-		 * enemys:enemys,items:items}} STAT
+		 * enemys:enemys,items:items,
+		 * battleDamage:ObjSTAT, extraDamage:ObjSTAT}} STAT
 		 */
 		/**
 		 * @param {string[]} floorList 要统计的楼层的列表
@@ -9886,7 +9881,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				enemysCount: { total: 0, },
 				enemys: { count: 0, money: 0, exp: 0, point: 0, },
 				items: { count: 0, hp: 0, atk: 0, def: 0, mdef: 0, },
-			}
+				battleDamage: { total: 0 },
+				extraDamage: { total: 0 },
+			};
+			const damagePerFloor = core.status.hero.statistics.damagePerFloor;
 			floorList.forEach(floorId => {
 				if (!statistics[floorId]) statistics[floorId] = getFloorStat(floorId);
 				addToFormer(stat.enemys, statistics[floorId].enemys);
@@ -9895,6 +9893,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				addCountToFormer(stat.gemsCount, statistics[floorId].gemsCount, floorId);
 				addCountToFormer(stat.equipsCount, statistics[floorId].equipsCount, floorId);
 				addCountToFormer(stat.enemysCount, statistics[floorId].enemysCount, floorId);
+				if (damagePerFloor[floorId]) {
+					const battleDamage = damagePerFloor[floorId].battleDamage || 0;
+					const extraDamage = damagePerFloor[floorId].extraDamage || 0;
+					stat.battleDamage[floorId] = battleDamage;
+					stat.battleDamage["total"] += battleDamage;
+					stat.extraDamage[floorId] = extraDamage;
+					stat.extraDamage["total"] += extraDamage;
+				}
 			});
 			return stat;
 		}
@@ -9903,6 +9909,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor(x, y, w, h) {
 				super(x, y, w, h);
 				this.floorId = "";
+				/** @type {number} */this.key;
+				/** @type {FloorStatisticsMenu} */ this.menu;
 			}
 
 			draw() {
@@ -9960,14 +9968,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return core.floorIds.filter(floorId => {
 					const floorData = core.status.maps[floorId];
 					if (floorData.deleted) return false; // 被砍层插件砍掉的地图不计入
-					if (floorData.cannotViewMap && floorData !== core.status.floorId) return false;
+					if (floorData.cannotViewMap && floorId !== core.status.floorId) return false;
 					return true;
 				})
 			}
 
 			getFloorList() {
 				return this.totalFloorList.slice(this.page * this.capacity,
-					Math.min((this.page + 1) * this.capacity), this.totalFloorList.length);
+					Math.min((this.page + 1) * this.capacity, this.totalFloorList.length));
 			}
 
 			pageDown() {
@@ -9999,7 +10007,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.COLUMN = 5; // 表格列数
 				this.itemList = []; // 要统计的元件的id列表
 				this.floorList = []; //要统计的楼层的id列表
-				/** @type {"tools"|"items"|"equips"|"enemys"} */
+				/** @type {"tools"|"items"|"equips"|"enemys"|"damage"} */
 				this.mode = "tools";
 			}
 
@@ -10024,6 +10032,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					itemList = [...doorNameList.sort(sortFunc), ...itemNameList.sort(sortFunc)];
 				}
+				else if (this.mode === "damage") itemList = ["battleDamage", "extraDamage"];
 				else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
 				return itemList;
 			}
@@ -10067,8 +10076,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					let id, name, total;
 					if (i !== -1) {
 						id = curritemList[i];
-						name = core.material.items[id]?.name || core.material.enemys[id]?.name ||
-							core.getBlockById(id).event.name || "";
+						if (this.mode !== "damage") {
+							name = core.material.items[id]?.name || core.material.enemys[id]?.name ||
+								core.getBlockById(id).event.name || "";
+						}
+						else {
+							name = (id === "battleDamage") ? "战斗伤害" :
+								(id === "extraDamage") ? "地图伤害" : "";
+						}
 						total = count[id].total || 0;
 					}
 					core.ui.strokeRect(ctx, 20, 155 + 25 * i, 80, 25, "black");
@@ -10084,6 +10099,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (i === -1) continue; // i=-1是表头
 					core.ui.drawIcon(ctx, id, 25, 160 + 25 * i, 16, 16);
 					core.ui.fillText(ctx, name, 94, 163 + 25 * i, "black", name.length < 5 ? "12px Verdana" : "8px Verdana");
+					
 				}
 			}
 
@@ -10091,7 +10107,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (!this.stat) return;
 				const { x, y, w, h, zIndex, name, stat } = this;
 				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				const { enemys, items, toolsCount, gemsCount, equipsCount, enemysCount } = stat;
+				const { enemys, items, toolsCount, gemsCount, equipsCount,
+					enemysCount, battleDamage, extraDamage } = stat;
 				const enemyText = `给定地图中共有怪物${enemys.count}个` +
 					(enemys.money > 0 ? `，总金币${enemys.money}.` : '') +
 					(enemys.exp > 0 ? `，总经验${enemys.exp}` : '') +
@@ -10110,6 +10127,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (this.mode === "items") count = gemsCount;
 				else if (this.mode === "equips") count = equipsCount;
 				else if (this.mode === "enemys") count = enemysCount;
+				else if (this.mode === "damage") count = { battleDamage, extraDamage };
 				this.itemList = this.getItemList(count);
 				this.drawTable(ctx, count);
 				super.drawContent();
@@ -10123,7 +10141,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const statistics = core.status.hero.statistics;
 				const str = "当前总步数：" + core.status.hero.steps + "，当前游戏时长：" + core.formatTime(statistics.currTime)
 					+ "，总游戏时长" + core.formatTime(statistics.totalTime)
-					+ "。\n瞬间移动次数：" + statistics.moveDirectly + "，共计少走" + statistics.ignoreSteps + "步。"
+					+ "。瞬间移动次数：" + statistics.moveDirectly + "，共计少走" + statistics.ignoreSteps + "步。"
 					+ "\n\n总计通过血瓶恢复生命值为" + core.formatBigNumber(statistics.hp) + "点。\n\n"
 					+ "总计打死了" + statistics.battle + "个怪物，得到了" + core.formatBigNumber(statistics.money) + "金币，" + core.formatBigNumber(statistics.exp) + "点经验。\n\n"
 					+ "受到的总伤害为" + core.formatBigNumber(statistics.battleDamage + statistics.poisonDamage + statistics.extraDamage)
@@ -10133,7 +10151,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					+ "1防御累计减伤为" + core.formatBigNumber(statistics.oneDefEffect || 0)
 					+ "，1护盾累计减伤为" + core.formatBigNumber(statistics.oneMdefEffect || 0) + "。";
 				core.drawTextContent(ctx, str, {
-					left: 30, top: 30, color: "black", maxWidth: 360, fontSize: 14
+					left: 30, top: 20, color: "black", maxWidth: 360, fontSize: 14
 				});
 			}
 		}
@@ -10243,6 +10261,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const itemStatBtn = new RoundBtn(125, 90, 70, 20, "血瓶宝石", config);
 			const equipStatBtn = new RoundBtn(215, 90, 40, 20, "装备", config);
 			const enemyStatBtn = new RoundBtn(275, 90, 40, 20, "敌人", config);
+			const damageStatBtn = new RoundBtn(335, 90, 40, 20, "伤害", config);
 			const itemDownBtn = new ArrowBtn(20, 335, 16, 16, "left");
 			const itemUpBtn = new ArrowBtn(40, 335, 16, 16, "right");
 			const floorDownBtn = new ArrowBtn(360, 335, 16, 16, "left");
@@ -10262,6 +10281,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				["itemStat", itemStatBtn, changeMode(itemStatBtn, "items")],
 				["equipStat", equipStatBtn, changeMode(equipStatBtn, "equips")],
 				["enemyStat", enemyStatBtn, changeMode(enemyStatBtn, "enemys")],
+				["damageStat", damageStatBtn, changeMode(enemyStatBtn, "damage")],
 				["itemDown", itemDownBtn, () => floorStatisticsTextMenu.itemPageDown()],
 				["itemUp", itemUpBtn, () => floorStatisticsTextMenu.itemPageUp()],
 				["floorDown", floorDownBtn, () => floorStatisticsTextMenu.floorPageDown()],

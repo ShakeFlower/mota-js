@@ -189,6 +189,13 @@ type HeroStatus = {
     statistics: {
         battle: number
         battleDamage: number
+        /** 每层累计受到的伤害 */
+        damagePerFloor: {
+            [floorId: string]: {
+                battleDamage?: number;
+                extraDamage?: number
+            }
+        }
         currTime: number
         exp: number
         extraDamage: number
@@ -197,7 +204,7 @@ type HeroStatus = {
         money: number
         moveDirectly: number
         poisonDamage: number
-        start: number
+        start?: number
         totalTime: number,
         oneDefEffect: number,
         oneMdefEffect: number,
