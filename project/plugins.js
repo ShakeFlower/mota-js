@@ -1781,7 +1781,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// core.bigmap.threshold = 256;
 		const origin = core.control.updateStatusBar;
 		core.updateStatusBar = core.control.updateStatusBar = function () {
-			if (core.getFlag('__statistics__')) return;
+			if (core.hasFlag('__statistics__')) return;
 			else return origin.apply(core.control, arguments);
 		}
 
@@ -10295,6 +10295,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const playerBtn = new RoundBtn(216, 20, 80, 20, "玩家数据", mainConfig);
 			floorBtn.status = "selected";
 			const exit = () => {
+				core.setFlag("__statistics__", null);
 				setTimeout(() => {
 					staticsMenu.clear();
 					core.unlockControl();
