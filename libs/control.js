@@ -440,14 +440,38 @@ control.prototype._initStatistics = function (totalTime) {
             'money': 0,
             'exp': 0,
             'battleDamage': 0,
-            'damagePerFloor': {},
             'poisonDamage': 0,
             'extraDamage': 0,
+            'vampireExtraLoss': 0,
+            'damagePerFloor': {},
             'moveDirectly': 0,
             'ignoreSteps': 0,
             'oneDefEffect': 0,
             'oneMdefEffect': 0,
         }
+}
+
+/**
+ * @param {'battleDamage'|'poisonDamage'|'extraDamage'|'vampireExtraLoss'} key 
+ * @param {number} value 
+ * @param {string} [floorId]
+ */
+control.prototype.addFloorStatistics = function (key, value, floorId) {
+    if (!floorId) floorId = core.status.floorId;
+    const statistics = core.status.hero.statistics;
+    if (key !== 'battleDamage' && key !== 'poisonDamage' && key !== 'extraDamage' &&
+        key !== 'vampireExtraLoss'
+    ) return;
+    if (!statistics.damagePerFloor) {
+        statistics.damagePerFloor = {};
+    }
+    if (!statistics.damagePerFloor[floorId]) {
+        statistics.damagePerFloor[floorId] = {};
+    }
+    if (!statistics.damagePerFloor[floorId][key]) {
+        statistics.damagePerFloor[floorId][key] = 0;
+    }
+    statistics.damagePerFloor[floorId][key] += value;
 }
 
 // ------ 自动寻路，人物行走 ------ //
@@ -1181,13 +1205,9 @@ control.prototype.checkBlock = function () {
         if (!core.status.hero.statistics.damagePerFloor) {
             core.status.hero.statistics.damagePerFloor = {};
         }
-        if (!core.status.hero.statistics.damagePerFloor[floorId]) {
-            core.status.hero.statistics.damagePerFloor[floorId] = {
-                battleDamage: 0,
-                extraDamage: 0,
-            };
+        if (core.control.addFloorStatistics) {
+            core.control.addFloorStatistics("extraDamage", damage, floorId);
         }
-        core.status.hero.statistics.damagePerFloor[floorId].extraDamage += damage;
         if (core.status.hero.hp <= 0) {
             core.status.hero.hp = 0;
             core.updateStatusBar(false, true);
@@ -1199,7 +1219,6 @@ control.prototype.checkBlock = function () {
     }
     let actions = [];
     
-
     const ambushAction = this._checkBlock_ambush(core.status.checkBlock.ambush[loc]);
     if (ambushAction.length > 0) core.push(actions, ambushAction);
 
@@ -1385,7 +1404,8 @@ control.prototype.getEnemyValueString = function(name, blockId, x, y, floorId) {
     const colorMap = {
         hp: '#55ff55', atk: '#ff5555',
         def: '#5555ff', money: '#ffff55', exp: '#ffaa33',
-        criticalDamage: '#B22222', defDamage: '#1E90FF'
+        criticalDamage: '#B22222', defDamage: '#1E90FF',
+        vampireDiff:'#f20c00',
     }
     switch (name) {
         case "damage":
@@ -1424,6 +1444,12 @@ control.prototype.getEnemyValueString = function(name, blockId, x, y, floorId) {
         case "defDamage":
             const defDamage = core.enemys.getDefDamage(blockId, 1, x, y, floorId);
             return { text: defDamage, color: colorMap.defDamage };
+        case "vampireDiff":
+            const info = { text: "", color: colorMap.vampireDiff };
+            if (!core.enemys.getVampireExtraLoss) return info;
+            const loss = core.enemys.getVampireExtraLoss(blockId, x, y, floorId);
+            if (loss != null) info.text = `+${loss}`;
+            return info;
         case "special":
             const specialData = core.getLocalStorage('specialIconData', {});
             const special = core.enemys.getEnemyValue(blockId, 'special', x, y, floorId);

@@ -5770,7 +5770,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			'atk': core.control.getStatusLabel('atk'), 'def': core.control.getStatusLabel('def'),
 			'money': core.control.getStatusLabel('money'), 'exp': core.control.getStatusLabel('exp'),
 			'criticalDamage': '临界减伤', 'defDamage': '1防减伤', 'special': '特殊属性',
-			'notBomb': '不可炸',
+			'notBomb': '不可炸', 'vampireDiff': '吸血额外受伤'
 		}
 
 		class DisplayInfoBtn extends RoundBtn {
@@ -5853,6 +5853,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						btn.infoName = infoName;
 						const name = infoNameMap[infoName];
 						btn.text = name;
+						if (name.length >= 5) {
+							if (!btn.config) btn.config = {};
+							btn.config.font = "12px Verdana";
+						}
 					}
 					else {
 						btn.infoName = null;
@@ -5945,6 +5949,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				btn4 = new DisplayInfoBtn(50, 200, 75, 20, 'rightup', 1),
 				btn5 = new DisplayInfoBtn(50, 225, 75, 20, 'rightup', 2),
 				btn6 = new DisplayInfoBtn(50, 250, 75, 20, 'rightup', 3);
+			/** 一行显示几个选项 */
+			const ROW_INFONAME = 6;
 			const infoNameList = Object.keys(infoNameMap);
 			const l = infoNameList.length;
 
@@ -5961,17 +5967,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.control.updateStatusBar(); // 手动刷新一下地图显伤
 				}
 			}
-			const ROW_INFONAME = 6;
-			for (let i = 0; i < ROW_INFONAME; i++) {
-				const tempBtn = new RoundBtn(200, 100 + i * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
+			for (let i = 0; i < l; i++) {
+				const name = infoNameMap[infoNameList[i]];
+				const config = {
+					fillStyle: 'Azure',
+					font: name.length >= 5 ? "12px Verdana" : "14px Verdana",
+				}
+				const x = (i >= ROW_INFONAME) ? 300 : 200;
+				const y = 100 + 25 * ((i >= ROW_INFONAME) ? (i - ROW_INFONAME) : i);
+				const tempBtn = new RoundBtn(x, y, 80, 20, name, config);
 				tempBtn.disable = true;
 				advanceDisplayMenu.registerBtn('temp' + i, tempBtn, setNewInfo(infoNameList[i]));
 			}
-			for (let i = ROW_INFONAME; i < l; i++) {
-				const tempBtn = new RoundBtn(300, 100 + (i - ROW_INFONAME) * 25, 80, 20, infoNameMap[infoNameList[i]], { fillStyle: 'Azure' });
-				tempBtn.disable = true;
-				advanceDisplayMenu.registerBtn('temp' + i, tempBtn, setNewInfo(infoNameList[i]));
-			}
+
 			const change = function (btn) {
 				return function () {
 					if (btn.infoName) {
@@ -9852,7 +9860,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		/**
-		 * @param {{total:number} & {[itemId:string]:{[floorId:string]:number}}} obj1
+		 * @param {{total:number; [itemId:string]:{[floorId:string]:number}}} obj1
 		 * @param {{total:number, [itemId:string]:number}} obj2  
 		 */
 		function addCountToFormer(obj1, obj2, floorId) {
@@ -9866,7 +9874,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		/**
-		 * @typedef {{total:number,[floorId:string]:number}} ObjSTAT
+		 * @typedef {{total:number;[floorId:string]:number}} ObjSTAT
 		 * @typedef {{toolsCount:ObjSTAT,gemsCount:ObjSTAT,
 		 * equipsCount:ObjSTAT,enemysCount:ObjSTAT,
 		 * enemys:enemys,items:items,
@@ -9876,6 +9884,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @param {string[]} floorList 要统计的楼层的列表
 		 */
 		function getFloorListStat(floorList) {
+			const statistics = core.status.hero.statistics;
+			const damagePerFloor = statistics.damagePerFloor;
 			/** @type {STAT} */
 			const stat = {
 				toolsCount: { total: 0, },
@@ -9884,10 +9894,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				enemysCount: { total: 0, },
 				enemys: { count: 0, money: 0, exp: 0, point: 0, },
 				items: { count: 0, hp: 0, atk: 0, def: 0, mdef: 0, },
-				battleDamage: { total: 0 },
-				extraDamage: { total: 0 },
+				battleDamage: { total: statistics.battleDamage },
+				extraDamage: { total: statistics.extraDamage },
+				poisonDamage: { total: statistics.poisonDamage },
+				vampireExtraLoss: { total: statistics.vampireExtraLoss },
 			};
-			const damagePerFloor = core.status.hero.statistics.damagePerFloor;
 			floorList.forEach(floorId => {
 				if (!statistics[floorId]) statistics[floorId] = getFloorStat(floorId);
 				addToFormer(stat.enemys, statistics[floorId].enemys);
@@ -9897,14 +9908,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				addCountToFormer(stat.equipsCount, statistics[floorId].equipsCount, floorId);
 				addCountToFormer(stat.enemysCount, statistics[floorId].enemysCount, floorId);
 				if (damagePerFloor[floorId]) {
-					const battleDamage = damagePerFloor[floorId].battleDamage || 0;
-					const extraDamage = damagePerFloor[floorId].extraDamage || 0;
-					stat.battleDamage[floorId] = battleDamage;
-					stat.battleDamage["total"] += battleDamage;
-					stat.extraDamage[floorId] = extraDamage;
-					stat.extraDamage["total"] += extraDamage;
+					["battleDamage","extraDamage","poisonDamage","vampireExtraLoss"].forEach(key=>{
+						stat[key][floorId] = damagePerFloor[floorId]?.[key] || 0;
+					});
 				}
 			});
+			console.log(stat);
 			return stat;
 		}
 
@@ -10035,7 +10044,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					itemList = [...doorNameList.sort(sortFunc), ...itemNameList.sort(sortFunc)];
 				}
-				else if (this.mode === "damage") itemList = ["battleDamage", "extraDamage"];
+				else if (this.mode === "damage") {
+					itemList = ["battleDamage", "extraDamage"];
+					if (core.status.hero.statistics.poisonDamage > 0) itemList.push("poisonDamage");
+					if (core.status.hero.statistics?.vampireExtraLoss > 0) itemList.push("vampireExtraLoss");
+				}
 				else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
 				return itemList;
 			}
@@ -10084,9 +10097,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 								core.getBlockById(id).event.name || "";
 						}
 						else {
-							name = (id === "battleDamage") ? "战斗伤害" :
-								(id === "extraDamage") ? "地图伤害" : "";
+							if (id === "battleDamage") name = "战斗伤害";
+							else if (id === "extraDamage") name = "地图伤害";
+							else if (id === "poisonDamage") name = "中毒伤害";
+							else if (id === "vampireExtraLoss") name = "吸血额外伤害";
 						}
+						console.log(count[id]);
+						if (count[id]==null) debugger;
 						total = count[id].total || 0;
 					}
 					core.ui.strokeRect(ctx, 20, 155 + 25 * i, 80, 25, "black");
@@ -10110,8 +10127,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (!this.stat) return;
 				const { x, y, w, h, zIndex, name, stat } = this;
 				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				const { enemys, items, toolsCount, gemsCount, equipsCount,
-					enemysCount, battleDamage, extraDamage } = stat;
+				const { enemys, items, toolsCount, gemsCount, equipsCount, enemysCount,
+					battleDamage, extraDamage, poisonDamage, vampireExtraLoss } = stat;
 				const enemyText = `给定地图中共有怪物${enemys.count}个` +
 					(enemys.money > 0 ? `，总金币${enemys.money}.` : '') +
 					(enemys.exp > 0 ? `，总经验${enemys.exp}` : '') +
@@ -10130,7 +10147,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (this.mode === "items") count = gemsCount;
 				else if (this.mode === "equips") count = equipsCount;
 				else if (this.mode === "enemys") count = enemysCount;
-				else if (this.mode === "damage") count = { battleDamage, extraDamage };
+				else if (this.mode === "damage") count = { battleDamage, extraDamage, poisonDamage, vampireExtraLoss };
 				this.itemList = this.getItemList(count);
 				this.drawTable(ctx, count);
 				super.drawContent();
@@ -10142,17 +10159,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const { name, x, y, w, h, zIndex } = this;
 				const ctx = this.createCanvas(name, x, y, w, h, zIndex);
 				const statistics = core.status.hero.statistics;
-				const str = "当前总步数：" + core.status.hero.steps + "，当前游戏时长：" + core.formatTime(statistics.currTime)
-					+ "，总游戏时长" + core.formatTime(statistics.totalTime)
-					+ "。瞬间移动次数：" + statistics.moveDirectly + "，共计少走" + statistics.ignoreSteps + "步。"
-					+ "\n\n总计通过血瓶恢复生命值为" + core.formatBigNumber(statistics.hp) + "点。\n\n"
-					+ "总计打死了" + statistics.battle + "个怪物，得到了" + core.formatBigNumber(statistics.money) + "金币，" + core.formatBigNumber(statistics.exp) + "点经验。\n\n"
-					+ "受到的总伤害为" + core.formatBigNumber(statistics.battleDamage + statistics.poisonDamage + statistics.extraDamage)
-					+ "，其中战斗伤害" + core.formatBigNumber(statistics.battleDamage) + "点"
-					+ (core.flags.statusBarItems.indexOf('enableDebuff') >= 0 ? ("，中毒伤害" + core.formatBigNumber(statistics.poisonDamage) + "点") : "")
-					+ "，领域/夹击/阻击/血网伤害" + core.formatBigNumber(statistics.extraDamage) + "点。\n\n"
-					+ "1防御累计减伤为" + core.formatBigNumber(statistics.oneDefEffect || 0)
-					+ "，1护盾累计减伤为" + core.formatBigNumber(statistics.oneMdefEffect || 0) + "。";
+				const str = `当前总步数：${core.status.hero.steps}，当前游戏时长：${core.formatTime(statistics.currTime)}，总游戏时长${core.formatTime(statistics.totalTime)}。瞬间移动次数：${statistics.moveDirectly}，共计少走${statistics.ignoreSteps}步。
+
+总计通过血瓶恢复生命值为${core.formatBigNumber(statistics.hp)}点。
+
+总计打死了${statistics.battle}个怪物，得到了${core.formatBigNumber(statistics.money)}金币，${core.formatBigNumber(statistics.exp)}点经验。
+
+受到的总伤害为${core.formatBigNumber(statistics.battleDamage + statistics.poisonDamage + statistics.extraDamage)}，其中战斗伤害${core.formatBigNumber(statistics.battleDamage)}点${core.flags.statusBarItems.indexOf('enableDebuff') >= 0 ? `，中毒伤害${core.formatBigNumber(statistics.poisonDamage)}点` : ""}，领域/夹击/阻击/血网伤害${core.formatBigNumber(statistics.extraDamage)}点。
+${statistics["vampireExtraLoss"] > 0 ? `吸血怪物累计对你造成超出最低伤害的额外伤害${core.formatBigNumber(statistics["vampireExtraLoss"])}点。` : ``}
+${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.formatBigNumber(statistics.oneDefEffect || 0)}` : ""}${statistics.hasOwnProperty("oneMdefEffect") ? `，1护盾累计减伤为${core.formatBigNumber(statistics.oneMdefEffect || 0)}` : ""}。
+`;
 				core.drawTextContent(ctx, str, {
 					left: 30, top: 20, color: "black", maxWidth: 360, fontSize: 14
 				});
@@ -10284,7 +10300,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				["itemStat", itemStatBtn, changeMode(itemStatBtn, "items")],
 				["equipStat", equipStatBtn, changeMode(equipStatBtn, "equips")],
 				["enemyStat", enemyStatBtn, changeMode(enemyStatBtn, "enemys")],
-				["damageStat", damageStatBtn, changeMode(enemyStatBtn, "damage")],
+				["damageStat", damageStatBtn, changeMode(damageStatBtn, "damage")],
 				["itemDown", itemDownBtn, () => floorStatisticsTextMenu.itemPageDown()],
 				["itemUp", itemUpBtn, () => floorStatisticsTextMenu.itemPageUp()],
 				["floorDown", floorDownBtn, () => floorStatisticsTextMenu.floorPageDown()],

@@ -417,6 +417,38 @@ enemys.prototype.getMdefDamage = function (enemy, k, x, y, floorId) {
     return nowDamage - nextDamage;
 }
 
+/**
+ * 计算和吸血怪物当前的战斗伤害比最低战斗伤害高多少。返回null说明打不过或怪物不吸血
+ * @param {string|Enemy} enemy 
+ * @param {number} [x] 
+ * @param {number} [y] 
+ * @param {string} [floorId]
+ * @param {{hp:number,atk:number,def:number,mdef:number}} [heroStatus] 未填时默认使用角色当前属性计算
+ * @returns {null|number}
+ */
+enemys.prototype.getVampireExtraLoss = function (enemy, x, y, floorId, heroStatus) {
+    if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);
+    if (!core.enemys.hasSpecial(enemy, 11)) return null;
+    if (!heroStatus) heroStatus = {
+        hp: core.status.hero.hp, atk: core.status.hero.atk,
+        def: core.status.hero.def, mdef: core.status.hero.mdef,
+    }
+    let damageInfo = core.enemys.getDamageInfo(enemy, heroStatus, x, y, floorId);
+    const initDamage = damageInfo.damage;
+    if (damageInfo == null) return null;
+    // 二分HP
+    let start = 1,
+        end = 100 * damageInfo.damage;
+    while (start < end) {
+        let mid = Math.floor((start + end) / 2);
+        heroStatus.hp = mid;
+        damageInfo = core.enemys.getDamageInfo(enemy, heroStatus, x, y, floorId);
+        if (damageInfo != null && damageInfo.damage < heroStatus.hp) end = mid;
+        else start = mid + 1;
+    }
+    return initDamage - start;
+}
+
 enemys.prototype.getEnemyInfo = function (enemy, hero, x, y, floorId) {
     if (enemy == null) return null;
     if (typeof enemy == 'string') enemy = core.getEnemyValue(enemy, null, x, y, floorId);

@@ -196,6 +196,8 @@ type HeroStatus = {
             [floorId: string]: {
                 battleDamage?: number;
                 extraDamage?: number
+                poisonDamage?: number;
+                vampireExtraLoss?: number;
             }
         }
         currTime: number
@@ -206,6 +208,7 @@ type HeroStatus = {
         money: number
         moveDirectly: number
         poisonDamage: number
+        vampireExtraLoss: number
         start?: number
         totalTime: number,
         oneDefEffect: number,
@@ -1014,6 +1017,12 @@ interface control {
      * @param type 重新设置指定类型的已注册resize事件
      */
     resize(type?:string): void
+
+    /**
+     * 291改新增函数，在楼层数据统计中添加指定项目的值
+     */
+    addFloorStatistics(key: 'battleDamage' | 'poisonDamage' | 'extraDamage' | 'vampireExtraLoss',
+        value: number, floorId?: string): void
 }
 
 /**@file events.js将处理所有和事件相关的操作。 */
@@ -1664,6 +1673,18 @@ interface enemys {
      * @returns 总伤害的减少量
      */
     getMdefDamage(enemy: string | Enemy, k?: number, x?: number, y?: number, floorId?: string): number
+
+    /**
+     * 计算和吸血怪物当前的战斗伤害比最低战斗伤害高多少。返回null说明打不过或怪物不吸血
+     * @param {string|Enemy} enemy 
+     * @param {number} [x] 
+     * @param {number} [y] 
+     * @param {string} [floorId]
+     * @param {{hp:number,atk:number,def:number,mdef:number}} [heroStatus] 未填时默认使用角色当前属性计算
+     * @returns {null|number}
+     */
+    getVampireExtraLoss(enemy: string | Enemy, x?: number, y?: number,
+        floorId?: string, heroStatus?: { hp: number, atk: number, def: number, mdef: number })
 
     /**
      * 获得某张地图的敌人集合，用于手册绘制

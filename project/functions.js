@@ -309,25 +309,29 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				return;
 			}
 
+			// 记录统计数据
+			const statistics = core.status.hero.statistics;
+			statistics.battleDamage += damage;
+			core.control.addFloorStatistics("battleDamage", damage);
+			statistics.battle++;
+			// 1防收益
 			const defDamage = core.enemys.getDefDamage(enemy, -1, x, y, floorId);
-			if (typeof defDamage === "number") core.status.hero.statistics.oneDefEffect -= defDamage;
-			const mdefDamage = core.enemys.getMdefDamage(enemy, -1, x, y, floorId);
-			if (typeof mdefDamage === "number") core.status.hero.statistics.oneMdefEffect -= mdefDamage;
+			if (typeof defDamage === "number") statistics.oneDefEffect -= defDamage;
 
-			// 扣减体力值并记录统计数据
+			// 1护盾收益
+			const mdefDamage = core.enemys.getMdefDamage(enemy, -1, x, y, floorId);
+			if (typeof mdefDamage === "number") statistics.oneMdefEffect -= mdefDamage;
+
+			// 吸血额外伤害，必须放在实际扣减角色体力值之前，否则算出来是错的
+			const vampireExtraLoss = core.enemys.getVampireExtraLoss(enemy, x, y, floorId);
+			if (vampireExtraLoss !== null) {
+				statistics.vampireExtraLoss += vampireExtraLoss;
+				core.control.addFloorStatistics("vampireExtraLoss", vampireExtraLoss);
+			}
+
+			// 扣减体力值
 			core.status.hero.hp -= damage;
-			core.status.hero.statistics.battleDamage += damage;
-			core.status.hero.statistics.battle++;
-			if (!core.status.hero.statistics.damagePerFloor) {
-				core.status.hero.statistics.damagePerFloor = {};
-			}
-			if (!core.status.hero.statistics.damagePerFloor[floorId]) {
-				core.status.hero.statistics.damagePerFloor[floorId] = {
-					battleDamage: 0,
-					extraDamage: 0,
-				};
-			}
-			core.status.hero.statistics.damagePerFloor[floorId].battleDamage += damage;
+
 
 			// 计算当前怪物的支援怪物
 			// guard:一个形如[[1, 1, 'greenSlime'], [[2, 2, 'redSlime']]]的数组
@@ -1604,6 +1608,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 检查中毒状态的扣血和死亡
 			if (core.hasFlag('poison')) {
 				core.status.hero.statistics.poisonDamage += core.values.poisonDamage;
+				if (core.control.addFloorStatistics) {
+					core.control.addFloorStatistics("poisonDamage", core.values.poisonDamage);
+				}
 				core.status.hero.hp -= core.values.poisonDamage;
 				if (core.status.hero.hp <= 0) {
 					core.status.hero.hp = 0;
@@ -1666,6 +1673,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					var damage = ignoreSteps * core.values.poisonDamage;
 					if (damage >= core.status.hero.hp) return false;
 					core.status.hero.statistics.poisonDamage += damage;
+					if (core.control.addFloorStatistics) {
+						core.control.addFloorStatistics("poisonDamage", damage);
+					}
 					core.status.hero.hp -= damage;
 				}
 
