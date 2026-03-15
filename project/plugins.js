@@ -3627,7 +3627,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const ctx = core.dymCanvas[this.name];
 				const { x0, y0, marginTop } = this;
 				const dy = this.oneItemHeight * currIndex + marginTop;
-				/** @type {Item} */
+				/** @type {Item|{}} */
 				const item = core.material.items[itemId] || {};
 				const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
 
@@ -3973,8 +3973,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function clearItemBoxCache() {
 			UI._itemId = '';
 			UI.selectType = 'toolBox';
-			[UI._toolInv, UI._equipInv, UI._equipSlots].forEach((menu) => {
-				if (menu) menu.index = 0;
+			[UI._toolInv, UI._equipInv, UI._equipSlots].forEach(menu => {
+				if (menu) {
+					menu.index = 0;
+					menu.page = 0;
+				}
 			});
 		} // 每次存读档，及进行录像回放时调用，清空之前选中的道具信息
 		this.clearItemBoxCache = clearItemBoxCache;
