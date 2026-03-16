@@ -178,6 +178,8 @@ enemys.prototype._calSpecialContent = function (enemy, content) {
 
 ////// 获得某个点上某个怪物的某项属性 //////
 enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
+    // 对enemys数据的修改会进存档，enemy应该是可序列化的
+    const clone = (typeof structuredClone === 'function') ? structuredClone : (ele) => JSON.parse(JSON.stringify(ele));
     floorId = floorId || core.status.floorId;
 
     const pointInfo = (((flags.enemyOnPoint || {})[floorId] || {})[x + "," + y] || {});
@@ -195,7 +197,7 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
         enemy = core.material.enemys[enemy];
         if (enemy == null) return null;
     }
-    enemy = core.clone(enemy);
+    enemy = clone(enemy);
 
     if (!core.isset(name)) { // 仅name不填时返回该enemy的完整数据，有x,y将用该点信息覆盖core.material.enemys相应属性
         for (let status in pointInfo) {

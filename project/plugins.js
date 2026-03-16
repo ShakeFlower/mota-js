@@ -1824,6 +1824,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return ratio;
 		}
 
+		// 因为core.status.hero是进存档的，必定可序列化
+		const clone = (typeof structuredClone === 'function') ? structuredClone : (ele) => JSON.parse(JSON.stringify(ele));
+
+		// 数值类型的属性(包含装备的百分比提升项)
+		const statusName = new Set(['atk', 'atkper', 'def', 'defper', 'mdef', 'mdefper', 'hp',
+			'hpmax', 'hpmaxper', 'mana', 'manamax', 'money', 'exp']);
 		// 获取宝石信息 并绘制
 		this.getItemDetail = function (floorId) {
 			if (!core.getFlag('itemDetail')) return;
@@ -1833,9 +1839,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.status.thisMap.ratio = core.status.maps[floorId].ratio;
 			let diff = {};
 			const before = core.status.hero;
-			const hero = core.clone(core.status.hero);
+			const hero = clone(core.status.hero); 
 			const handler = {
 				set(target, key, v) {
+					if (!statusName.has(key)) return true; // 非数值类型的属性就不用记了，显示也没有意义
 					diff[key] = v - (target[key] || 0);
 					if (!diff[key]) diff[key] = void 0;
 					return true;
@@ -1878,9 +1885,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					case 'items': {
 						// 跟数据统计原理一样 执行效果 前后比较
 						core.setFlag('__statistics__', true);
-						try {
-							eval(item.itemEffect);
-						} catch (error) { }
+						if (item.itemEffect != null) {
+							try {
+								eval(item.itemEffect);
+							} catch (error) { }
+						}
 						const ratio = getRatio();
 						const effectObj = core.getItemEffectValue(id, ratio);
 						for (let statusName in effectObj) {
@@ -1916,26 +1925,32 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				switch (name) {
 					case 'atk':
 					case 'atkper':
-						color = ' #FF7A7A';
+						color = '#FF7A7A';
 						break;
 					case 'def':
 					case 'defper':
-						color = ' #00E6F1';
+						color = '#00E6F1';
 						break;
 					case 'mdef':
 					case 'mdefper':
-						color = ' #6EFF83';
+						color = '#6EFF83';
 						break;
 					case 'hp':
-						color = ' #A4FF00';
+						color = '#A4FF00';
 						break;
 					case 'hpmax':
 					case 'hpmaxper':
-						color = ' #F9FF00';
+						color = '#F9FF00';
 						break;
 					case 'mana':
 					case 'manamax':
-						color = ' #CC6666';
+						color = '#CC6666';
+						break;
+					case 'money':
+						color = '#FFD700';
+						break;
+					case 'exp':
+						color = '#BA55D3';
 						break;
 				}
 				// 绘制
@@ -9779,6 +9794,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		/** @type {statistics} */
 		let statistics = {};
 
+		// 因为core.status.hero是进存档的，必定可序列化
+		const clone = (typeof structuredClone === 'function') ? structuredClone : (ele) => JSON.parse(JSON.stringify(ele));
+
 		function getFloorStat(floorId) {
 			const stat = {
 				toolsCount: { total: 0, },
@@ -9790,9 +9808,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 			core.maps.extractBlocks(floorId);
 			const blocks = core.status.maps[floorId].blocks;
+			const temp = clone(core.status.hero);
+			const ratio = core.status.thisMap.ratio;
+			core.setFlag("__statistics__", true);
+			// 在样板中对ratio使用了clone，这很奇怪，因为ratio似乎应该是一个number值，先改过来，看看会不会出问题
+			core.status.thisMap.ratio = core.status.maps[floorId].ratio;
+
 			for (let i = 0, l = blocks.length; i < l; i++) {
 				const block = blocks[i];
-				const cls = block.event.cls, id = block.event.id;
+				const cls = block.event.cls,
+					id = block.event.id;
 				if (cls === "enemys" || cls === "enemy48") {
 					const enemy = core.material.enemys[block.event.id];
 					stat.enemys.count++;
@@ -9803,52 +9828,43 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					stat.enemysCount.total++;
 					if (!stat.enemysCount[id]) stat.enemysCount[id] = 0;
 					stat.enemysCount[id]++;
-				}
-				else if (cls === "items") {
-					// 圣水享受特殊待遇，不参与统计
+				} else if (cls === "items") {
+					// 圣水享受特殊待遇，不参与统计，凡是效果依赖角色当前属性的物品都不应该统计，因为不知道实际吃到的时候角色是什么状态
 					if (id === "superPotion") continue;
-					core.setFlag("__statistics__", true);
 					if (core.material.items[id].cls === "items") {
-						// hero是进存档的，必定可序列化
-						const temp = JSON.parse(JSON.stringify(core.status.hero));
-						const ratio = core.status.thisMap.ratio;
-						core.status.thisMap.ratio = core.clone(core.status.maps[floorId].ratio);
-						const effectObj = core.items.getItemEffectValue(id, ratio);
+						const effectObj = core.items.getItemEffectValue(id);
 						for (let statusName in effectObj) {
 							if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
-						} // @todo 修改血瓶宝石显示
+						} 
 						if (core.material.items[id].itemEffect != null) {
-							try { eval(core.material.items[id].itemEffect); }
-							catch (e) { }
+							try { eval(core.material.items[id].itemEffect); } catch (e) { }
 						}
-						core.status.thisMap.ratio = ratio;
-						["hp", "atk", "def", "mdef"].forEach(status => {
-							stat.items[status] += core.status.hero[status] - temp[status];
-						});
-						core.status.hero = temp;
-						window.hero = core.status.hero;
-						window.flags = core.status.hero.flags;
 						stat.gemsCount.total++;
 						if (!stat.gemsCount[id]) stat.gemsCount[id] = 0;
 						stat.gemsCount[id]++;
-					}
-					else if (core.material.items[id].cls === "tools") {
+					} else if (core.material.items[id].cls === "tools") {
 						stat.toolsCount.total++;
 						if (!stat.toolsCount[id]) stat.toolsCount[id] = 0;
 						stat.toolsCount[id]++;
-					}
-					else if (core.material.items[id].cls === "equips") {
+					} else if (core.material.items[id].cls === "equips") {
 						stat.equipsCount.total++;
 						if (!stat.equipsCount[id]) stat.equipsCount[id] = 0;
 						stat.equipsCount[id]++;
 					}
-				}
-				else if (block.event.trigger === "openDoor") {
+				} else if (block.event.trigger === "openDoor") {
 					stat.toolsCount.total++;
 					if (!stat.toolsCount[id]) stat.toolsCount[id] = 0;
 					stat.toolsCount[id]++;
 				}
 			}
+			["hp", "atk", "def", "mdef"].forEach(status => {
+				stat.items[status] = core.status.hero[status] - temp[status];
+			});
+			core.setFlag("__statistics__", false);
+			core.status.thisMap.ratio = ratio;
+			core.status.hero = temp;
+			window.hero = core.status.hero;
+			window.flags = core.status.hero.flags;
 			return stat;
 		}
 
@@ -9878,7 +9894,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @typedef {{toolsCount:ObjSTAT,gemsCount:ObjSTAT,
 		 * equipsCount:ObjSTAT,enemysCount:ObjSTAT,
 		 * enemys:enemys,items:items,
-		 * battleDamage:ObjSTAT, extraDamage:ObjSTAT}} STAT
+		 * battleDamage:ObjSTAT, extraDamage:ObjSTAT,
+		 * poisonDamage:ObjSTAT, vampireExtraLoss:ObjSTAT,}} STAT
 		 */
 		/**
 		 * @param {string[]} floorList 要统计的楼层的列表
@@ -9913,7 +9930,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					});
 				}
 			});
-			console.log(stat);
 			return stat;
 		}
 
