@@ -61,7 +61,7 @@ ActionParser.prototype.parse = function (obj,type) {
       return MotaActionBlocks['levelChoose_m'].xmlText([text_choices]);
 
     case 'floorPartition':
-      if(!obj) obj=[];
+      if (!obj || obj.length === 0) obj = [[core.floorIds[0]]];
       var text_choices = null;
       for(var ii=obj.length-1,choice;choice=obj[ii];ii--) {
         text_choices=MotaActionBlocks['floorPartitionItem'].xmlText([choice[0], choice[1]||"", text_choices]);
@@ -69,7 +69,7 @@ ActionParser.prototype.parse = function (obj,type) {
       return MotaActionBlocks['floorPartition_m'].xmlText([text_choices]);
 
     case 'equip':
-      if (!obj) obj = {};
+      if (!obj) obj = { type: 0, value: { atk: 10 } };
       var buildEquip = function (obj) {
         obj = obj || {};
         var text_choices = null;
@@ -87,6 +87,7 @@ ActionParser.prototype.parse = function (obj,type) {
 
     case 'itemEffect':
       if (!obj) obj = {};
+      if (!obj.value) obj.value = { 'atk:o': 'core.values.redGem' };
       var buildItemEffect = function (obj) {
         obj = obj || {};
         var text_choices = null;
@@ -105,7 +106,8 @@ ActionParser.prototype.parse = function (obj,type) {
       return MotaActionBlocks['itemEffect_m'].xmlText([obj.sound, buildItemEffect(obj.value)]);
 
       case 'doorInfo':
-        if(!obj) obj={};
+        if (!obj) obj = {};
+        if (!obj.keys) obj.keys = { 'yellowKey': 1 };
         var buildKeys = function (obj) {
           obj = obj || {};
           var text_choices = null;
