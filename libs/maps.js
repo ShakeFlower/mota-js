@@ -832,8 +832,7 @@ maps.prototype._canMoveDirectly_checkGlobal = function (floorId) {
 }
 
 maps.prototype._canMoveDirectly_checkStartPoint = function (sx, sy, floorId) {
-    let checkBlockInfo = core.getCheckBlock(floorId);
-    if (checkBlockInfo && checkBlockInfo.damage[sx + "," + sy]) return false;
+    if (core.status.checkBlock.damage[sx + "," + sy]) return false;
     var block = core.getBlock(sx, sy, floorId);
     if (block != null) {
         // 只有起点是传送点才是能无视
@@ -900,8 +899,7 @@ maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y, floo
         if (!ignore) return false;
     }
 
-    const checkBlockInfo = core.control.getCheckBlock ? core.control.getCheckBlock(floorId) :
-        core.status.checkBlock;
+    const checkBlockInfo = core.status.checkBlock;
     // 是否存在阻激夹域伤害
     if (checkBlockInfo) {
         if (checkBlockInfo.damage[index]) return false;
@@ -909,7 +907,7 @@ maps.prototype._canMoveDirectly_checkNextPoint = function (blocksObj, x, y, floo
         // 是否存在捕捉
         if (checkBlockInfo.ambush[index]) return false;
         // 是否在追猎的视野中
-        if (checkBlockInfo.chase[index]) return false;
+        if (checkBlockInfo.chase?.[index]) return false;
     }
     return true;
 }

@@ -838,9 +838,6 @@ interface control {
     /** 更新跟随者坐标 */
     updateFollowers(): void
 
-    /** 获取某一层的checkBlock信息 */
-    getCheckBlock(floorId?: string): gameStatus['checkBlock'] | undefined;
-
     /** 更新领域、夹击、阻击的伤害地图 */
     updateCheckBlock(floorId?: string): boolean
 
