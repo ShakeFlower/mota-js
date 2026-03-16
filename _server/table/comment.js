@@ -111,11 +111,17 @@ var comment_c456ea59_6018_45ef_8bcc_211a24c627dc = {
 					"_docs": "能否使用或装备",
 					"_data": "当前能否使用或装备该道具，仅对cls不为items有效。null表示始终不可使用但可装备"
 				},
-				"noAutoSaveBeforeUse": {
+				"noAutoSaveBeforeToolUse": {
 					"_leaf": true,
 					"_type": "checkbox",
-					"_docs": "使用前不自动存档",
-					"_data": "勾选时，即使设置中开启了使用(tools类)道具前自动存档，对此道具也无效",
+					"_docs": "使用此tools前不自动存档",
+					"_data": "本项只对tools类道具生效。勾选时，即使设置中开启了使用道具前自动存档，此道具也不自动存档",
+				},
+				"autoSaveBeforeConstantUse": {
+					"_leaf": true,
+					"_type": "checkbox",
+					"_docs": "使用此constants前自动存档",
+					"_data": "本项只对constants类道具生效。勾选时，如果设置中开启了使用道具前自动存档，此道具会进行自动存档",
 				}
 			}
 		},

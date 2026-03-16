@@ -426,7 +426,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"text": "可以破坏勇士面前的墙",
 		"useItemEffect": "(function () {\n\tvar canBreak = function (x, y) {\n\t\tvar block = core.getBlock(x, y);\n\t\tif (block == null || block.disable) return false;\n\t\treturn block.event.canBreak;\n\t};\n\n\tvar success = false;\n\tvar pickaxeFourDirections = false; // 是否多方向破；如果是将其改成true\n\tif (pickaxeFourDirections) {\n\t\tlet hasAutoSaved = false;\n\t\t// 多方向破\n\t\tfor (var direction in core.utils.scan) { // 多方向破默认四方向，如需改成八方向请将这两个scan改为scan2\n\t\t\tvar delta = core.utils.scan[direction];\n\t\t\tvar nx = core.getHeroLoc('x') + delta.x,\n\t\t\t\tny = core.getHeroLoc('y') + delta.y;\n\t\t\tif (canBreak(nx, ny)) {\n\t\t\t\tif (core.getLocalStorage(\"autoSaveBeforeUseItem\")) {\n\t\t\t\t\tif (!hasAutoSaved) core.control.autosave();\n\t\t\t\t\thasAutoSaved = true;\n\t\t\t\t}\n\t\t\t\tcore.removeBlock(nx, ny);\n\t\t\t\tsuccess = true;\n\t\t\t}\n\t\t}\n\t} else {\n\t\t// 仅破当前\n\t\tif (canBreak(core.nextX(), core.nextY())) {\n\t\t\tif (core.getLocalStorage(\"autoSaveBeforeUseItem\")) {\n\t\t\t\tcore.control.autosave();\n\t\t\t}\n\t\t\tcore.removeBlock(core.nextX(), core.nextY());\n\t\t\tsuccess = true;\n\t\t}\n\t}\n\n\tif (success) {\n\t\tcore.playSound('破墙镐');\n\t\tcore.drawTip(core.material.items[itemId].name + '使用成功', itemId);\n\t} else {\n\t\t// 无法使用\n\t\tcore.playSound('操作失败');\n\t\tcore.drawTip(\"当前无法使用\" + core.material.items[itemId].name, itemId);\n\t\tcore.addItem(itemId, 1);\n\t\treturn;\n\t}\n})();",
 		"canUseItemEffect": "true",
-		"noAutoSaveBeforeUse": true
+		"noAutoSaveBeforeToolUse": true
 	},
 	"icePickaxe": {
 		"cls": "tools",
@@ -441,7 +441,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"text": "可以炸掉勇士面前的怪物",
 		"useItemEffect": "(function () {\n\tconst bombList = []; // 炸掉的怪物坐标列表\n\tconst todo = []; // 炸弹后事件\n\tlet money = 0,\n\t\texp = 0; // 炸弹获得的金币和经验\n\n\tconst canBomb = function (x, y) {\n\t\tvar block = core.getBlock(x, y);\n\t\tif (block == null || block.disable || block.event.cls.indexOf('enemy') != 0) return false;\n\t\tvar enemy = core.getEnemyValue(block.event.id, null, x, y);\n\t\treturn { enemy, notBomb: enemy.notBomb };\n\t};\n\n\tlet hasAutoSaved = false;\n\n\tconst bomb = function (x, y) {\n\t\tconst { enemy, notBomb } = canBomb(x, y);\n\t\tif (!enemy) {\n\t\t\tcore.drawFailTip('该点不是敌人！');\n\t\t\treturn;\n\t\t}\n\t\tif (notBomb) {\n\t\t\tcore.drawFailTip('该点敌人不可炸！');\n\t\t\treturn;\n\t\t}\n\t\tif (core.getLocalStorage(\"autoSaveBeforeUseItem\")) {\n\t\t\tif (!hasAutoSaved) core.control.autosave();\n\t\t\thasAutoSaved = true;\n\t\t}\n\t\tbombList.push([x, y]);\n\t\tmoney += enemy.money || 0;\n\t\texp += enemy.exp || 0;\n\t\tcore.push(todo, core.floors[core.status.floorId].afterBattle[x + \",\" + y]);\n\t\tcore.push(todo, enemy.afterBattle);\n\t\tcore.removeBlock(x, y);\n\t}\n\n\t// 如果要多方向可炸，把这里的false改成true\n\tif (false) {\n\t\tvar scan = core.utils.scan; // 多方向炸时默认四方向，如果要改成八方向炸可以改成 core.utils.scan2\n\t\tfor (var direction in scan) {\n\t\t\tvar delta = scan[direction];\n\t\t\tbomb(core.getHeroLoc('x') + delta.x, core.getHeroLoc('y') + delta.y);\n\t\t}\n\t} else {\n\t\t// 仅炸当前\n\t\tbomb(core.nextX(), core.nextY());\n\t}\n\n\tif (bombList.length == 0) {\n\t\tcore.playSound('操作失败');\n\t\tcore.drawTip('当前无法使用' + core.material.items[itemId].name, itemId);\n\t\tcore.addItem(itemId, 1);\n\t\treturn;\n\t}\n\n\tcore.playSound('炸弹');\n\tcore.drawTip(core.material.items[itemId].name + '使用成功', itemId);\n\n\t// 取消这里的注释可以炸弹后获得金币和经验\n\t// core.status.hero.money += money;\n\t// core.status.hero.exp += exp;\n\n\t// 取消这里的注释可以炸弹引发战后事件\n\t// if (todo.length > 0) core.insertAction(todo);\n\n})();",
 		"canUseItemEffect": "true",
-		"noAutoSaveBeforeUse": true
+		"noAutoSaveBeforeToolUse": true
 	},
 	"centerFly": {
 		"cls": "tools",
@@ -575,7 +575,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 				"value": "100*flag:input"
 			}
 		],
-		"noAutoSaveBeforeUse": true
+		"noAutoSaveBeforeToolUse": true
 	},
 	"pack": {
 		"cls": "items",
