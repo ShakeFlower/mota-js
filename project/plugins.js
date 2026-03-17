@@ -1210,6 +1210,1513 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_loadData.call(core.control, data, callback);
 		}
 	},
+	"platFly": function () {
+		// 本插件可以给平面塔启用一个带小地图的楼传，默认关闭
+		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
+		var __enable = false;
+		if (!__enable) return;
+
+		/* 第一步：复制到插件
+		 * 第二步：将flag:usePlatFly改为true可将带地图的楼传启用
+		 * 第三步：将flag:__useMinimap__设为true可开启小地图，该操作需切换楼层
+		 * 修改小地图的缩放可以修改flag:userScale，默认为1
+		 * 注意：楼层转换必须使用楼层坐标，而不是前一楼、后一楼
+		 * 关于操作：上楼和下楼操作为PgUp和PgDn，后退10层和前进10层操作为,（<）和.（>）
+		 * 注意：请尽量保证地图传送的地方物理位置正好对准（即把地图拼接上箭头位置恰好对齐）否则连线的位置可能不准
+		 * 分区说明：用普通事件的楼层转换（红点）代替楼层转换（绿点）即可
+		 * 说明：紫色表示目前可以到达却没有到达过的地图（所以这是一个具有探索性的地图插件）
+		 */
+		// 录像验证直接干掉这个插件
+		if (main.replayChecking) return;
+		// *** --- 以下数据为用户可修改数据 修改后不影响该插件的基本功能 --- *** //
+		// 检测楼层转换的图块id
+		var leftPortal = "leftPortal", // 左
+			rightPortal = "rightPortal", // 右
+			upPortal = "upPortal", // 上
+			downPortal = "downPortal", // 下
+			upFloor = "upFloor", // 上楼
+			downFloor = "downFloor"; // 下楼
+		// 一些常用默认值
+		var defaultScale = 1, // 默认缩放比率
+			defaultLoop = 5, // 绘制地图时的循环检测地图路线次数，loop为5说明最远的地图可以用6步到达
+			defaultOpacity = 0.6, // 默认不透明度
+			defaultMinorAlpha = defaultOpacity / 2; // 3D绘图时，不与当前层处于同一高度层的默认初始不透明度，不透明度会随着层数的增加或减少而减少
+		// *** --- 用户修改区 END --- *** //
+		//  其余可自定义内容均用 //***--- 包裹着
+
+		/* -----------------------------------下面是一些调用案例
+		 * 
+		 * 如果想在状态栏显示可以在状态栏自绘里这么写：
+		 core.drawFlyMap(ctx, 你想要的左上角横坐标, 你想要的左上角纵坐标, 你想要的宽度, 你想要的高度, core.status.floorId, {fromUser: true, opacity: 1, loop: 3, use3D:false});
+		 * 
+		 * -----------------------------------以下为高深区域，如果不必要可以不看
+		 * 
+		 * 主要函数说明（这几个函数异常强大，善用可以有弄一些有意思的东西，既然作者都说强大了，那就是特别强大）
+		 * core.drawFlyMap(ctx : string, x?: number, y?: number, width?:number, height?:number, floorId?:string, config?:any): void
+		 * 参数说明：
+		 * ctx:画布，如果不存在则会新建x,y,width,height参数的画布
+		 * x,y,width,height:画布不存在时创建该数据的画布，如果存在，那么在画布的x,y位置绘制宽度为width，高度为height的地图
+		 * floorId:以该楼层为中心绘制
+		 * config:配制参数，包括以下内容（该参数为对象）
+		 * 	 fromUser:是否循环绘制（为false时只绘制一层，否则绘制5层）
+		 * 	 oriFloor:这个不用管就好，具体原理比较复杂，不填或者和floorId一样就行
+		 * 	 scale:缩放比率，这个是绝对比率，与画布大小无关，默认为1
+		 * 	 interval:地图间的间距，默认为width / 24
+		 * 	 deltaH:3D地图的纵向高度差，默认为绘制高度（height）/ 4
+		 * 	 noErase:是否不清空画布再绘制，默认为false
+		 * 	 fromMini:是否是在小地图上绘制时调用的（无自动缩放和自动定位）
+		 * 	 loop:绘制层数，fromUser为true时才有用，默认为5
+		 * 	 opacity:不透明度，默认为0.6
+		 * 	 minorAlpha:3D地图的不与当前层在同一高度的楼层的初始不透明度，默认为opacity/2
+		 * 	 layer:平面模式下绘制的楼层高度，当前所在层为0，上楼则+1，下楼则-1，默认为0，只有当use3D为false且可以绘制3D地图时有效
+		 * 	 use3D:是否启用3D绘图，前提是所有地图不都在同一高度，默认为false
+		 * 	 reLeft:3D重新定位画布的左位置，默认为-240
+		 * 	 reTop:3D重新定位画布的上位置，默认为-240
+		 * 	 clearCache:是否清除缓存重算，默认为false
+		 * 	 map:这个是最强大的功能了，可以将自定义地图插入，以绘制自定义地图
+		 * 	 自定义地图格式：{"left_0_7":"MT1", "right_2_7":"MT2"}以此类推也可以"left_0_7,right_3_7,up_1_0"这种套娃，使用的前提是指定位置得有相应方向的箭头，不然会出错，注意楼层id是到往的楼层的id，如果想绘制3D地图，可以这么写：{"top_1_3,left_0_7": "1_MT1"}，前面的1_必须写，上楼为top，下楼为bottom
+		 * 	 默认取自floorId地图
+		 * 如有疑问可在造塔群@古祠
+		 * 
+		 * core.getFlyMap(floorId?:string, fromUser?:boolean, oriFloor?:string, loop?:number):Object
+		 * 参数说明:floorId:以该楼层为中心绘制
+		 * fromUser:是否循环绘制（为false时只绘制一层，否则绘制5层）
+		 * oriFloor:这个不用管就好，具体原理比较复杂，填null或者和floorId一样就行
+		 * loop:绘制层数，fromUser为true时才有用，默认为5
+		 */
+
+		////// 绘制楼层传送器 //////
+		var originDrawFly = core.ui.drawFly;
+		ui.prototype.drawFly = function (page) {
+			if (!flags.usePlatFly || core.isReplaying()) return originDrawFly.call(core.ui, page);
+			core.status.event.data = page;
+			var floorId = core.floorIds[page];
+			core.clearMap('ui');
+			core.setAlpha('ui', 0.85);
+			core.fillRect('ui', 0, 0, this.PIXEL, this.PIXEL, '#000000');
+			core.setAlpha('ui', 1);
+			var size = this.PIXEL;
+			//***--- 楼传绘制 可根据自己的需求更改 更改之后注意更改点击操作的函数
+			// 背景
+			core.drawThumbnail(floorId, null, { ctx: 'ui', x: 0, y: 0, size: size, damage: true, fromFly: true });
+			core.fillRect("ui", 0, 65, 32, size - 130, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size, 65, -32, size - 130, [0, 0, 0, 0.7]);
+			core.fillRect("ui", 65, 0, size / 2 - 114, 32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", 65, size, size / 2 - 114, -32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size / 2 + 49, 0, size / 2 - 114, 32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size / 2 + 49, size, size / 2 - 114, -32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size / 2 - 47, 0, 94, 32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size / 2 - 47, size, 94, -32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", 0, 0, 63, 32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size, 0, -63, 32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", 0, 32, 32, 31, [0, 0, 0, 0.7]);
+			core.fillRect("ui", 0, size - 32, 32, -31, [0, 0, 0, 0.7]);
+			core.fillRect("ui", 0, size, 63, -32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size, size, -63, -32, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size, size - 32, -32, -31, [0, 0, 0, 0.7]);
+			core.fillRect("ui", size, 32, -32, 31, [0, 0, 0, 0.7]);
+			core.setTextAlign("ui", "center");
+			// 文字
+			if (core.getFloorByDirection("left", floorId))
+				core.fillText("ui", "←", 16, size / 2 + 10, core.hasVisitedFloor(core.getFloorByDirection("left",
+					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
+			if (core.getFloorByDirection("right", floorId))
+				core.fillText("ui", "→", size - 16, size / 2 + 10, core.hasVisitedFloor(core.getFloorByDirection("right",
+					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
+			if (core.getFloorByDirection("up", floorId))
+				core.fillText("ui", "↑", size / 2, 28, core.hasVisitedFloor(core.getFloorByDirection("up",
+					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
+			if (core.getFloorByDirection("down", floorId))
+				core.fillText("ui", "↓", size / 2, size - 4, core.hasVisitedFloor(core.getFloorByDirection("down",
+					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
+			if (core.getFloorByDirection("top", floorId))
+				core.fillText("ui", "上楼", size / 4 + 8, 24, core.hasVisitedFloor(core.getFloorByDirection("top",
+					floorId)) ? "#ffffff" : "#ff22ff", "22px " + core.status.globalAttribute.font);
+			if (core.getFloorByDirection("bottom", floorId))
+				core.fillText("ui", "下楼", size / 4 * 3 - 8, 24, core.hasVisitedFloor(core.getFloorByDirection("bottom",
+					floorId)) ? "#ffffff" : "#ff22ff", "22px " + core.status.globalAttribute.font);
+			core.fillText("ui", "退10层", size / 4 + 8, size - 8, core.actions._getNextFlyFloor(-1) == page ? "#ff22ff" : "#ffffff",
+				"22px " + core.status.globalAttribute.font);
+			core.fillText("ui", "进10层", size / 4 * 3 - 8, size - 8, core.actions._getNextFlyFloor(1) == page ? "#ff22ff" : "#ffffff",
+				"22px " + core.status.globalAttribute.font);
+			core.fillText("ui", "退出", 32, 24, "#ffffff", "22px " + core.status.globalAttribute.font);
+			core.fillText("ui", "楼层名", 32, size - 8, "#ffffff", "22px " + core.status.globalAttribute.font);
+			core.fillText("ui", "（B）", 16, size - 40, "#ffffff", "22px " + core.status.globalAttribute.font);
+			core.createCanvas("mapOnUi", -240, -240, size + 480, size + 480, 150);
+			core.drawFlyMap("mapOnUi", 240, 240, size, size, floorId, { fromUser: true, oriFloor: floorId, use3D: flags.use3D });
+			if (core.can3D(floorId) && !flags.in3D)
+				core.fillText("ui", "3D模式", size - 32, 24, "#ffffff", "20px " + core.status.globalAttribute.font);
+			if (flags.in3D)
+				core.fillText("ui", "2D模式", size - 32, 24, "#ffffff", "20px " + core.status.globalAttribute.font);
+			if (core.can3D(floorId)) core.fillText("ui", "（Z）", size - 16, 56, "#ffffff", "20px " + core.status.globalAttribute.font);
+			if (flags.flyTitle) {
+				var style = document.getElementById("ui").getContext("2d");
+				style.shadowColor = "rgba(0, 0, 0, 1)";
+				style.shadowBlur = 5;
+				core.fillRect("ui", size / 4, size / 4, size / 2, size / 8, [180, 180, 180, 0.7]);
+				core.strokeRect("ui", size / 4, size / 4, size / 2, size / 8, [255, 255, 255, 0.7], 3);
+				style.shadowOffsetX = 4;
+				style.shadowOffsetY = 2;
+				core.fillText("ui", (core.status.maps[floorId] || {}).title, size / 2, size / 16 * 5 + 11, "#ffffff",
+					"32px " + core.status.globalAttribute.font);
+				style.shadowColor = "none";
+				style.shadowBlur = 0;
+				style.shadowOffsetX = 0;
+				style.shadowOffsetY = 0;
+			}
+			//***--- 楼传绘制
+		};
+		////// 楼层传送器界面时的点击操作 //////
+		var originClickFly = core.actions._clickFly;
+		actions.prototype._clickFly = function (x, y) {
+			if (!flags.usePlatFly || core.isReplaying()) return originClickFly.call(core.actions, x, y);
+			var page = core.status.event.data;
+			var floorId = core.floorIds[page];
+			//***--- 点击操作 可以修改的地方只有x,y坐标 其余不可修改
+			if (x <= 2 && y <= 1) {
+				core.playSound('取消');
+				core.deleteCanvas("mapOnUi")
+				core.ui.closePanel();
+				return;
+			}
+			// 3D模式
+			if (x >= core.__SIZE__ - 2 && y <= 1) {
+				if (core.can3D(floorId) && !flags.in3D)
+					flags.use3D = true;
+				if (flags.in3D) flags.use3D = false;
+				core.playSound('光标移动');
+				core.ui.drawFly(page);
+				return;
+			}
+			// 显示名称
+			if (x <= 1 && y >= core.__SIZE__ - 2) {
+				if (flags.flyTitle) flags.flyTitle = false;
+				else flags.flyTitle = true;
+				core.playSound('光标移动');
+				core.ui.drawFly(page);
+				return;
+			}
+			// 飞过去
+			if (x > 1 && x < core.__SIZE__ - 1 && y > 1 && y < core.__SIZE__ - 1) {
+				if (core.status.maps[core.status.floorId].canFlyFrom &&
+					core.status.maps[core.floorIds[core.status.event.data]].canFlyTo &&
+					core.hasVisitedFloor(core.floorIds[core.status.event.data])) {
+					core.deleteCanvas("mapOnUi");
+				}
+				core.flyTo(core.floorIds[core.status.event.data]);
+			}
+			// 前进10层 后退10层
+			if (y > core.__SIZE__ - 2 && core.actions._getNextFlyFloor(-1) != page &&
+				x >= 2 && x <= Math.floor(core.__SIZE__ / 2) - 2) {
+				core.ui.drawFly(this._getNextFlyFloor(-10));
+				core.playSound("光标移动");
+			}
+			if (y > core.__SIZE__ - 2 && core.actions._getNextFlyFloor(1) != page &&
+				x >= Math.ceil(core.__SIZE__ / 2) + 1 && x <= core.__SIZE__ - 3) {
+				core.ui.drawFly(this._getNextFlyFloor(10));
+				core.playSound("光标移动");
+			}
+			// 获取索引
+			function getId(direction) {
+				var id = core.getFloorByDirection(direction, floorId);
+				for (var i in core.floorIds) {
+					if (core.floorIds[i] == id) return parseInt(i);
+				}
+			}
+			// 上下左右和上下楼
+			if (x < 1 && core.getFloorByDirection("left", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("left", floorId)) && y >= 2 && y < core.__SIZE__ - 2) {
+				core.playSound("光标移动");
+				core.drawFly(getId("left"));
+			}
+			if (x > core.__SIZE__ - 2 && core.getFloorByDirection("right", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("right", floorId)) && y >= 2 && y < core.__SIZE__ - 2) {
+				core.playSound("光标移动");
+				core.drawFly(getId("right"));
+			}
+			if (y < 1 && core.getFloorByDirection("up", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("up", floorId)) &&
+				x >= Math.floor(core.__SIZE__ / 2) - 1 && x <= Math.ceil(core.__SIZE__ / 2)) {
+				core.playSound("光标移动");
+				core.drawFly(getId("up"));
+			}
+			if (y > core.__SIZE__ - 2 && core.getFloorByDirection("down", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("down", floorId)) &&
+				x >= Math.floor(core.__SIZE__ / 2) - 1 && x <= Math.ceil(core.__SIZE__ / 2)) {
+				core.playSound("光标移动");
+				core.drawFly(getId("down"));
+			}
+			if (y < 1 && x >= 2 && x <= Math.floor(core.__SIZE__ / 2) - 2 &&
+				core.getFloorByDirection("top", floorId) && core.hasVisitedFloor(core.getFloorByDirection("top", floorId))) {
+				core.playSound("光标移动");
+				core.drawFly(getId("top"));
+			}
+			if (y < 1 && x >= Math.ceil(core.__SIZE__ / 2) + 1 && x <= core.__SIZE__ - 3 &&
+				core.getFloorByDirection("bottom", floorId) && core.hasVisitedFloor(core.getFloorByDirection("bottom", floorId))) {
+				core.playSound("光标移动");
+				core.drawFly(getId("bottom"));
+			}
+			return;
+			//***--- 点击操作
+		};
+		////// 楼层传送器界面时，按下某个键的操作 //////
+		var originKeyDownFly = core.actions._keyDownFly;
+		actions.prototype._keyDownFly = function (keycode) {
+			if (!flags.usePlatFly || core.isReplaying()) return originKeyDownFly.call(core.actions, keycode);
+			var page = core.status.event.data;
+			var floorId = core.floorIds[page];
+			// 获取索引
+			function getId(direction) {
+				var id = core.getFloorByDirection(direction, floorId);
+				for (var i in core.floorIds) {
+					if (core.floorIds[i] == id) return parseInt(i);
+				}
+			}
+			//***--- 按键操作 只可以修改按键的keycode
+			if (keycode == 37 && core.getFloorByDirection("left", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("left", floorId))) {
+				core.playSound('光标移动');
+				core.ui.drawFly(getId("left"));
+			} else if (keycode == 38 && core.getFloorByDirection("up", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("up", floorId))) {
+				core.playSound('光标移动');
+				core.ui.drawFly(getId("up"));
+			} else if (keycode == 39 && core.getFloorByDirection("right", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("right", floorId))) {
+				core.playSound('光标移动');
+				core.ui.drawFly(getId("right"));
+			} else if (keycode == 40 && core.getFloorByDirection("down", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("down", floorId))) {
+				core.playSound('光标移动');
+				core.ui.drawFly(getId("down"));
+			} else if (keycode == 33 && core.getFloorByDirection("top", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("top", floorId))) {
+				core.playSound('光标移动');
+				core.ui.drawFly(getId("top"));
+			} else if (keycode == 34 && core.getFloorByDirection("bottom", floorId) &&
+				core.hasVisitedFloor(core.getFloorByDirection("bottom", floorId))) {
+				core.playSound('光标移动');
+				core.ui.drawFly(getId("bottom"));
+			} else if (keycode == 90) {
+				if (core.can3D(floorId) && !flags.in3D)
+					flags.use3D = true;
+				if (flags.in3D) flags.use3D = false;
+				core.playSound('光标移动');
+				core.ui.drawFly(page);
+			} else if (keycode == 66) { // 地图名
+				if (flags.flyTitle) flags.flyTitle = false;
+				else flags.flyTitle = true;
+				core.playSound('光标移动');
+				core.ui.drawFly(page);
+			} else if (keycode == 188 && core.actions._getNextFlyFloor(-1) != page) { // 退10层
+				core.ui.drawFly(this._getNextFlyFloor(-10));
+				core.playSound("光标移动");
+			} else if (keycode == 190 && core.actions._getNextFlyFloor(1) != page) { // 进10层
+				core.ui.drawFly(this._getNextFlyFloor(10));
+				core.playSound("光标移动");
+			}
+			return;
+			//***--- 按键操作
+		};
+		////// 楼层传送器界面时，放开某个键的操作 //////
+		var originKeyUpFly = core.actions._keyUpFly;
+		actions.prototype._keyUpFly = function (keycode) {
+			if (!flags.usePlatFly || core.isReplaying()) return originKeyUpFly.call(core.actions, keycode);
+			if (keycode == 71 || keycode == 27 || keycode == 88) {
+				core.playSound('取消');
+				core.deleteCanvas("mapOnUi");
+				core.ui.closePanel();
+			}
+			if (keycode == 13 || keycode == 32 || keycode == 67)
+				this._clickFly(this.HSIZE - 1, this.HSIZE - 1);
+			return;
+		};
+		////// 点击楼层传送器时的打开操作 //////
+		events.prototype.useFly = function (fromUserAction) {
+			if (core.isReplaying()) return;
+
+			// 从“浏览地图”页面：尝试直接传送到该层
+			if (core.status.event.id == 'viewMaps') {
+				if (!core.hasItem('fly')) {
+					core.playSound('操作失败');
+					core.drawTip('你没有' + core.material.items['fly'].name, 'fly');
+				} else if (!core.canUseItem('fly')) {
+					core.playSound('操作失败');
+					core.drawTip('无法传送到当前层', 'fly');
+				} else {
+					core.flyTo(core.status.event.data.floorId);
+				}
+				return;
+			}
+			if (!this._checkStatus('fly', fromUserAction, true)) {
+				core.deleteCanvas('mapOnUi');
+				return;
+			}
+			if (core.flags.flyNearStair && !core.nearStair()) {
+				core.playSound('操作失败');
+				core.drawTip("只有在楼梯边才能使用" + core.material.items['fly'].name, 'fly');
+				core.unlockControl();
+				core.status.event.data = null;
+				core.status.event.id = null;
+				return;
+			}
+			if (!core.canUseItem('fly')) {
+				core.playSound('操作失败');
+				core.drawTip(core.material.items['fly'].name + "好像失效了", 'fly');
+				core.unlockControl();
+				core.status.event.data = null;
+				core.status.event.id = null;
+				return;
+			}
+			core.playSound('打开界面');
+			core.useItem('fly', true);
+			return;
+		};
+		// 获取区域平面地图
+		this.getFlyMap = function (floorId, fromUser, oriFloor, loop, clearCache) {
+			floorId = floorId || core.status.floorId;
+			if (floorId == oriFloor && !fromUser) return;
+			oriFloor = oriFloor || core.status.floorId;
+			if (!floorId) return;
+			// 判断是否需要缓存
+			function needCache(fromUser) {
+				if (fromUser && !core.status.flyMap[floorId]) return true;
+				if (!fromUser && !core.status.flyMap.cache[floorId]) return true;
+				return false;
+			}
+			// 缓存，加快运行速率
+			if (!core.status.flyMap) core.status.flyMap = {};
+			if (!core.status.flyMap.cache) core.status.flyMap.cache = {};
+			if (!core.status.layer) core.status.layer = {};
+			if (!core.status.layer[floorId]) core.status.layer[floorId] = {};
+			if (core.status.flyMap.cache[floorId] && fromUser) delete core.status.flyMap.cache[floorId]
+			if (core.status.flyMap[floorId] && !fromUser) delete core.status.flyMap[floorId]
+			if (needCache(fromUser) || clearCache) {
+				// 初始化
+				core.status.flyMap[floorId] = {};
+				core.status.flyMap[floorId].thisMap = {};
+				core.extractBlocks(floorId);
+				core.status.maps[floorId].blocks.forEach(function (block) {
+					var id = block.event.id;
+					var x = block.x,
+						y = block.y;
+					var trigger = block.event.trigger;
+					if (trigger != "changeFloor" && trigger != "upFloor" && trigger != "downFloor") return;
+					// 是箭头且可以切换地图
+					var toFloor = block.event.data.floorId;
+					// 加入相应位置
+					// 箭头
+					if (id == leftPortal) {
+						core.status.flyMap[floorId].thisMap["left_" + x + "_" + y] = toFloor;
+					}
+					if (id == upPortal) {
+						core.status.flyMap[floorId].thisMap["up_" + x + "_" + y] = toFloor;
+					}
+					if (id == rightPortal) {
+						core.status.flyMap[floorId].thisMap["right_" + x + "_" + y] = toFloor;
+					}
+					if (id == downPortal) {
+						core.status.flyMap[floorId].thisMap["down_" + x + "_" + y] = toFloor;
+					}
+					// 上下楼
+					if (id == upFloor) {
+						core.status.flyMap[floorId].thisMap["top_" + x + "_" + y] = toFloor;
+						core.status.layer[floorId].top = true;
+					}
+					if (id == downFloor) {
+						core.status.flyMap[floorId].thisMap["bottom_" + x + "_" + y] = toFloor;
+						core.status.layer[floorId].bottom = true;
+					}
+				});
+				// 把下几层接着检测出来
+				if (fromUser) {
+					var usedId = {};
+					for (var c = 1; c <= loop; c++) {
+						for (var i in core.status.flyMap[floorId].thisMap) {
+							var link = core.status.flyMap[floorId].thisMap;
+							if (!core.hasVisitedFloor(link[i]) || link[i] instanceof Object || usedId[link[i]]) continue;
+							usedId[link[i]] = true;
+							var next = core.getFlyMap(link[i], false, oriFloor);
+							for (var to in next) {
+								if (!core.status.layer[next[to]]) core.status.layer[next[to]] = {};
+								core.status.flyMap[floorId].thisMap[i + ',' + to] = next[to];
+							}
+						}
+					}
+				}
+				// 把先上再下之类的去掉
+				if (fromUser) {
+					for (var i in core.status.flyMap[floorId].thisMap) {
+						var route = i.split(",");
+						for (var one = 0; one <= route.length - 2; one++) {
+							var step = route[one],
+								next = route[one + 1];
+							if ((step.startsWith("up") && next.startsWith("down")) ||
+								(step.startsWith("down") && next.startsWith("up")) ||
+								(step.startsWith("left") && next.startsWith("right")) ||
+								(step.startsWith("right") && next.startsWith("left")) ||
+								(step.startsWith("top") && next.startsWith("bottom")) ||
+								(step.startsWith("bottom") && next.startsWith("top"))) {
+								delete core.status.flyMap[floorId].thisMap[i];
+							}
+						}
+					}
+				}
+				// 非当前层不能存此类缓存
+				if (!fromUser) {
+					core.status.flyMap.cache = {};
+					core.status.flyMap.cache[floorId] = {};
+					core.status.flyMap.cache[floorId].thisMap = core.status.flyMap[floorId].thisMap;
+					delete core.status.flyMap[floorId];
+				}
+				return fromUser ? core.status.flyMap[floorId].thisMap : core.status.flyMap.cache[floorId].thisMap;
+			} else { // 直接使用缓存
+				return fromUser ? core.status.flyMap[floorId].thisMap : core.status.flyMap.cache[floorId].thisMap;
+			}
+		};
+		this.can3D = function (floorId) {
+			var map = core.getFlyMap(floorId, true, floorId);
+			for (var route in map) {
+				if (route.indexOf("top") >= 0 || route.indexOf("bottom") >= 0)
+					return true;
+			}
+			return false;
+		};
+		// 绘制地图
+		this.drawFlyMap = function (ctx, x, y, width, height, floorId, config) {
+			// 初始化配置项
+			//***--- 初始化 可以修改 || 后的默认值 参数说明在开头的高深区域中
+			var fromUser = config.fromUser || false,
+				oriFloor = config.oriFloor || core.status.floorId,
+				scale = config.scale || null,
+				interval = config.interval || (width / 24),
+				noErase = config.noErase || false,
+				fromMini = config.fromMini || false,
+				loop = config.loop || defaultLoop,
+				opacity = config.opacity || defaultOpacity,
+				layer = config.layer || 0,
+				use3D = config.use3D || false,
+				clearCache = config.clearCache || false,
+				map = config.map || null;
+			//***--- 初始化
+			map = map || core.getFlyMap(floorId, fromUser, oriFloor, loop, clearCache);
+			floorId = floorId || core.status.floorId;
+			if (!floorId) return;
+			// 检测是否需要3D绘图
+			if (!fromMini && use3D) {
+				for (var route in map) {
+					if (route.indexOf("top") >= 0 || route.indexOf("bottom") >= 0) {
+						config.map = map;
+						return core.draw3DFlyMap(ctx, x, y, width, height, floorId, config);
+					}
+				}
+			}
+			if (layer != 0 && !use3D) {
+				var canLayer = false
+				for (var route in map) {
+					if (route.indexOf("top") >= 0 || route.indexOf("bottom") >= 0) {
+						canLayer = true;
+						break;
+					}
+				}
+				if (!canLayer) layer = 0;
+			}
+			flags.in3D = false;
+			// 初始化
+			var userScale = true;
+			var newCreate = false;
+			if (!scale) {
+				userScale = false;
+				scale = scale || defaultScale;
+			}
+			if (!core.dymCanvas[ctx]) {
+				core.createCanvas(ctx, x, y, width, height, 140);
+				newCreate = true;
+			}
+			x = x || 0;
+			y = y || 0;
+			// 获得canvas属性
+			width = width || document.getElementById(ctx).width;
+			height = height || document.getElementById(ctx).height;
+			var oLeft = document.getElementById(ctx).offsetLeft / core.domStyle.scale,
+				oTop = document.getElementById(ctx).offsetTop / core.domStyle.scale;
+			// 重置大地图和楼传地图的canvas位置
+			if (ctx == "mapOnUi") core.relocateCanvas("mapOnUi", -240, -240);
+			if (!noErase)
+				core.clearMap(ctx);
+			var horCenter = Math.floor(width / 2),
+				uprCenter = Math.floor(height / 2);
+			if (!newCreate) {
+				horCenter += x;
+				uprCenter += y;
+			}
+			var centerX = horCenter,
+				centerY = uprCenter;
+			var left = centerX,
+				right = centerX,
+				up = centerY,
+				down = centerY;
+			var used = {};
+			var haveLayer = {};
+			var nx = horCenter,
+				ny = uprCenter;
+			// 先把所在楼层绘制了
+			if (layer == 0) {
+				var nw = core.status.maps[floorId].width * 2 * scale,
+					nh = core.status.maps[floorId].height * 2 * scale;
+				core.setAlpha(ctx, 1);
+				core.fillRect(ctx, centerX - nw / 2, centerY - nh / 2, nw, nh, "#000000");
+				core.strokeRect(ctx, centerX - nw / 2, centerY - nh / 2, nw, nh, "#ffff22", 3 * scale);
+				// 当前层上下楼显示
+				if (!haveLayer[floorId]) {
+					core.setAlpha(ctx, 1);
+					var needLayer = core.status.layer[floorId];
+					if (needLayer.top && needLayer.bottom) {
+						core.drawIcon(ctx, "upFloor", centerX - core.__SIZE__ * scale,
+							centerY - core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
+						core.drawIcon(ctx, "downFloor", centerX - nw / 2 + core.__SIZE__ * scale,
+							centerY - nh / 2 + core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
+					}
+					if (needLayer.top && !needLayer.bottom) {
+						core.drawIcon(ctx, "upFloor", centerX - Math.min(nw, nh) / 2, centerY - Math.min(nw, nh) / 2,
+							Math.min(nw, nh), Math.min(nw, nh));
+					}
+					if (!needLayer.top && needLayer.bottom) {
+						core.drawIcon(ctx, "downFloor", centerX - Math.min(nw, nh) / 2, centerY - Math.min(nw, nh) / 2,
+							Math.min(nw, nh), Math.min(nw, nh));
+					}
+					haveLayer[floorId] = true;
+				}
+				// 四侧最远位置
+				if (left > centerX - nw / 2) left = centerX - nw / 2;
+				if (right < centerX + nw / 2) right = centerX + nw / 2;
+				if (down < centerY + nh / 2) down = centerY + nh / 2;
+				if (up > centerY - nh / 2) up = centerY - nh / 2;
+			}
+			core.setAlpha(ctx, opacity);
+			for (var route in map) { // 绘制楼层和线条
+				var rouArr = route.split(",");
+				// 检索路线及画线
+				// 初始化
+				centerX = nx;
+				centerY = ny;
+				var nowFloor = floorId || core.status.floorId;
+				var nowLayer = 0;
+				for (var one in rouArr) { // 一个一个检测
+					var step = rouArr[one].split("_");
+					var cx = step[1],
+						cy = step[2];
+					// 获得当前图块
+					core.getMapBlocksObj(nowFloor, true);
+					var nowBlock = core.status.mapBlockObjs[nowFloor][cx + ',' + cy];
+					if (!nowBlock) continue;
+					var toLoc = nowBlock.event.data.loc,
+						toFloor = nowBlock.event.data.floorId;
+					var needLayer = core.status.layer[toFloor];
+					// 当前层宽度和高度
+					var nw = core.status.maps[nowFloor].width * 2 * scale,
+						nh = core.status.maps[nowFloor].height * 2 * scale;
+					// 目标层宽度和高度
+					var tw = core.status.maps[toFloor].width * 2 * scale,
+						th = core.status.maps[toFloor].height * 2 * scale;
+					// 将当前层变为toFloor
+					nowFloor = toFloor;
+					// 超范围不画
+					if ((centerX > oLeft + x + width || centerX < oLeft + x || centerY > oTop + y + height ||
+						centerY < oTop + y) && userScale && !fromMini && ctx != "mapOnUi") continue;
+					// 绘制toFloor层
+					core.setAlpha(ctx, opacity);
+					// 确定center 根据箭头自适配 同时绘制线条 我已经看不懂了
+					if (!use3D && (step[0] == "top" || step[0] == "bottom") && layer == 0) break;
+					if (step[0] == "top") nowLayer++;
+					if (step[0] == "bottom") nowLayer--;
+					if (step[0] == 'left') {
+						var shouldTo = th / 2,
+							realTo = toLoc[1] * 2 * scale;
+						var shouldFrom = nh / 2,
+							realFrom = step[2] * 2 * scale;
+						if (nowLayer == layer) {
+							core.drawLine(ctx, centerX - nw / 2, centerY + realFrom - shouldFrom,
+								centerX - nw / 2 - interval, centerY + realFrom - shouldFrom, "#ffffff", 5 * scale);
+							core.drawLine(ctx, centerX - nw / 2, centerY + realFrom - shouldFrom,
+								centerX - nw / 2 - interval, centerY + realFrom - shouldFrom, "#000000", 2 * scale);
+						}
+						centerX -= nw / 2 + tw / 2 + interval;
+						centerY += shouldTo - realTo + realFrom - shouldFrom;
+					}
+					if (step[0] == 'right') {
+						var shouldTo = th / 2,
+							realTo = toLoc[1] * 2 * scale;
+						var shouldFrom = nh / 2,
+							realFrom = step[2] * 2 * scale;
+						if (nowLayer == layer) {
+							core.drawLine(ctx, centerX + nw / 2, centerY + realFrom - shouldFrom,
+								centerX + nw / 2 + interval, centerY + realFrom - shouldFrom, "#ffffff", 5 * scale);
+							core.drawLine(ctx, centerX + nw / 2, centerY + realFrom - shouldFrom,
+								centerX + nw / 2 + interval, centerY + realFrom - shouldFrom, "#000000", 2 * scale);
+						}
+						centerX += nw / 2 + tw / 2 + interval;
+						centerY += shouldTo - realTo + realFrom - shouldFrom;
+					}
+					if (step[0] == 'up') {
+						var shouldTo = tw / 2,
+							realTo = toLoc[0] * 2 * scale;
+						var shouldFrom = nw / 2,
+							realFrom = step[1] * 2 * scale;
+						if (nowLayer == layer) {
+							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY - nh / 2,
+								centerX + realFrom - shouldFrom, centerY - nh / 2 - interval, "#ffffff", 5 * scale);
+							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY - nh / 2,
+								centerX + realFrom - shouldFrom, centerY - nh / 2 - interval, "#000000", 2 * scale);
+						}
+						centerY -= nh / 2 + th / 2 + interval;
+						centerX += shouldTo - realTo + realFrom - shouldFrom;
+					}
+					if (step[0] == 'down') {
+						var shouldTo = tw / 2,
+							realTo = toLoc[0] * 2 * scale;
+						var shouldFrom = nw / 2,
+							realFrom = step[1] * 2 * scale;
+						if (nowLayer == layer) {
+							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY + nh / 2,
+								centerX + realFrom - shouldFrom, centerY + nh / 2 + interval, "#ffffff", 5 * scale);
+							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY + nh / 2,
+								centerX + realFrom - shouldFrom, centerY + nh / 2 + interval, "#000000", 2 * scale);
+						}
+						centerY += nh / 2 + th / 2 + interval;
+						centerX += shouldTo - realTo + realFrom - shouldFrom;
+					}
+					// 只有和目标层高度相同时才绘制
+					if (nowLayer != layer) continue;
+					// 超范围的不画
+					if ((centerX > oLeft + x + width || centerX < oLeft + x || centerY > oTop + y + height ||
+						centerY < oTop + y) && userScale && !fromMini && ctx != "mapOnUi") continue;
+					// 四侧最远位置
+					if (left > centerX - tw / 2) left = centerX - tw / 2;
+					if (right < centerX + tw / 2) right = centerX + tw / 2;
+					if (down < centerY + th / 2) down = centerY + th / 2;
+					if (up > centerY - th / 2) up = centerY - th / 2;
+					// 画过了不画
+					if (used[toFloor]) continue;
+					used[toFloor] = true;
+					// 画地图格
+					if (core.hasVisitedFloor(toFloor)) {
+						core.fillRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#000000");
+						core.strokeRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#ffffff", 3 * scale);
+					} else {
+						core.fillRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#ff22ff");
+						core.strokeRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#ffffff", 3 * scale);
+						break;
+					}
+					// 上下楼显示
+					if (haveLayer[toFloor]) continue;
+					core.setAlpha(ctx, opacity);
+					if (needLayer.top && needLayer.bottom) {
+						core.drawIcon(ctx, "upFloor", centerX - core.__SIZE__ * scale,
+							centerY - core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
+						core.drawIcon(ctx, "downFloor", centerX - tw / 2 + core.__SIZE__ * scale,
+							centerY - th / 2 + core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
+					}
+					if (needLayer.top && !needLayer.bottom) {
+						core.drawIcon(ctx, "upFloor", centerX - Math.min(tw, th) / 2, centerY - Math.min(tw, th) / 2,
+							Math.min(tw, th), Math.min(tw, th));
+					}
+					if (!needLayer.top && needLayer.bottom) {
+						core.drawIcon(ctx, "downFloor", centerX - Math.min(tw, th) / 2, centerY - Math.min(tw, th) / 2,
+							Math.min(tw, th), Math.min(tw, th));
+					}
+					haveLayer[toFloor] = true;
+				}
+			}
+			// 自动缩放
+			if ((right - left > core.__PIXELS__ - 64 || down - up > core.__PIXELS__ - 64) && !userScale && !fromMini) {
+				scale = 1 / (Math.max(right - left, down - up) / (core.__PIXELS__ - 64));
+				var con = { fromUser: fromUser, oriFloor: oriFloor, scale: scale, interval: interval * scale, layer: layer, opacity: opacity, loop: loop };
+				return core.drawFlyMap(ctx, x, y, width, height, floorId, con);
+			}
+			// 大地图和楼层地图自适配定位
+			if (ctx == "mapOnUi" && !fromMini && (left - nx < -128 || right - nx > 128 ||
+				up - ny < -128 || down - ny > 128)) {
+				core.relocateCanvas("mapOnUi", -240 + (-left - right + 2 * nx) / 2, -240 + (-up - down + 2 * ny) / 2);
+			}
+		};
+		// 3D绘图
+		this.draw3DFlyMap = function (ctx, x, y, width, height, floorId, config) {
+			// 初始化配置项
+			//***--- 初始化 同上一个初始化
+			var fromUser = config.fromUser || false,
+				oriFloor = config.oriFloor || core.status.floorId,
+				scale = config.scale || null,
+				interval = config.interval || (width / 24),
+				deltaH = config.deltaH || (height / 8),
+				noErase = config.noErase || false,
+				fromMini = config.fromMini || false,
+				loop = config.loop || defaultLoop,
+				opacity = config.opacity || defaultOpacity,
+				minorAlpha = config.minorAlpha || defaultMinorAlpha,
+				reLeft = config.reLeft || -240,
+				reTop = config.reTop || -240,
+				clearCache = config.clearCache || false,
+				map = config.map || null;
+			//***--- 初始化
+			map = map || core.getFlyMap(floorId, fromUser, oriFloor, loop, clearCache);
+			// 当前层是否一个人在一层
+			var alone = true;
+			for (var route in map) {
+				if (route.startsWith("left") || route.startsWith("right") ||
+					route.startsWith("up") || route.startsWith("down")) {
+					alone = false;
+					break;
+				}
+			}
+			// 是则增加一个先上再下的路径
+			if (alone) {
+				for (var route in map) {
+					if (route.startsWith("top")) {
+						var first = route.split(",")[0].split("_");
+						break;
+					}
+				}
+				var success = false;
+				core.getMapBlocksObj(nowFloor, true);
+				var nowBlock = core.status.mapBlockObjs[floorId][first[1] + "," + first[2]];
+				var toFloor = nowBlock.event.data.floorId;
+				core.extractBlocks(toFloor);
+				core.status.maps[toFloor].blocks.forEach(function (block) {
+					var id = block.event.id;
+					var x = block.x,
+						y = block.y;
+					var trigger = block.event.trigger;
+					if (trigger != "changeFloor") return;
+					if (id == "downFloor") {
+						map["top_" + first[1] + "_" + first[2] + "," + "bottom_" + x + "_" + y] = floorId;
+						success = true;
+						return;
+					}
+				});
+				// 添加先上再下失败 尝试先下再上
+				if (!success) {
+					for (var route in map) {
+						if (route.startsWith("bottom")) {
+							var first = route.split(",")[0].split("_");
+							break;
+						}
+					}
+					var nowBlock = core.status.mapBlockObjs[floorId][first[1] + "," + first[2]];
+					var toFloor = nowBlock.event.data.floorId;
+					core.extractBlocks(toFloor);
+					core.status.maps[toFloor].blocks.forEach(function (block) {
+						var id = block.event.id;
+						var x = block.x,
+							y = block.y;
+						var trigger = block.event.trigger;
+						if (trigger != "changeFloor") return;
+						if (id == "upFloor") {
+							map["bottom_" + first[1] + "_" + first[2] + "," + "top_" + x + "_" + y] = floorId;
+							success = true;
+							return;
+						}
+					});
+				}
+			}
+			floorId = floorId || core.status.floorId;
+			if (!floorId) return;
+			flags.in3D = true;
+			// 初始化
+			// 获得排序过的楼层路径
+			map = core.sortFloor(map);
+			map = map.map;
+			var userScale = true;
+			var newCreate = false;
+			if (!scale) {
+				userScale = false;
+				scale = scale || defaultScale;
+			}
+			if (!core.dymCanvas[ctx]) {
+				core.createCanvas(ctx, x, y, width, height, 140);
+				newCreate = true;
+			}
+			x = x || 0;
+			y = y || 0;
+			// 获得canvas属性
+			width = width || document.getElementById(ctx).width;
+			height = height || document.getElementById(ctx).height;
+			// 重置canvas位置
+			core.relocateCanvas(ctx, reLeft, reTop);
+			if (!noErase)
+				core.clearMap(ctx);
+			var horCenter = Math.floor(width / 2),
+				uprCenter = Math.floor(height / 2);
+			if (!newCreate) {
+				horCenter += x;
+				uprCenter += y;
+			}
+			// 单元格的中心点 即水平线中点处
+			var centerX = horCenter,
+				centerY = uprCenter;
+			var left = centerX,
+				right = centerX,
+				up = centerY,
+				down = centerY;
+			var used = {};
+			var nx = horCenter,
+				ny = uprCenter;
+			// 开始绘制
+			for (var i = 0; i < map.length; i++) {
+				var route = map[i][0];
+				var nowLayer = map[i][1];
+				var everyLayer = 0;
+				route = route.split(",");
+				// 每条路线初始化
+				centerX = horCenter;
+				centerY = uprCenter;
+				centerX += core.status.maps[floorId].height * scale * Math.SQRT2 / 4;
+				if (flags.viewingLayer) {
+					centerY += deltaH * flags.viewingLayer;
+				}
+				var nowFloor = floorId || core.status.floorId;
+				for (var one = 0; one < route.length; one++) {
+					var step = route[one].split("_");
+					var cx = step[1],
+						cy = step[2];
+					// 检测高度，是否与nowLayer一致 不一致在处理完center以后不绘制
+					if (step[0] == "top") everyLayer++;
+					if (step[0] == "bottom") everyLayer--;
+					// 获得当前图块
+					core.getMapBlocksObj(nowFloor, true);
+					var nowBlock = core.status.mapBlockObjs[nowFloor][cx + ',' + cy];
+					if (!nowBlock) continue;
+					var toLoc = nowBlock.event.data.loc,
+						toFloor = nowBlock.event.data.floorId;
+					// 当前层宽度和高度
+					// 斜二测画法
+					var nw = core.status.maps[nowFloor].width * 2 * scale,
+						nh = core.status.maps[nowFloor].height * scale * Math.SQRT2 / 2;
+					// 目标层宽度和高度
+					var tw = core.status.maps[toFloor].width * 2 * scale,
+						th = core.status.maps[toFloor].height * scale * Math.SQRT2 / 2;
+					if (!(toLoc instanceof Array)) {
+						toLoc = [Math.floor(tw / 4 / scale), Math.floor(th / 4 / scale)];
+					}
+					// 绘制当前层
+					if (nowLayer == 0 && !used[floorId]) {
+						core.setAlpha(ctx, 1);
+						used[floorId] = true;
+						var nowW = core.status.maps[floorId].width * 2 * scale;
+						var nowH = core.status.maps[floorId].height * scale * Math.SQRT2 / 2;
+						var nodes = [
+							[centerX - nowW / 2 - nowH / 2, centerY + nowH / 2],
+							[centerX + nowW / 2 - nowH / 2, centerY + nowH / 2],
+							[centerX + nowW / 2 + nowH / 2, centerY - nowH / 2],
+							[centerX - nowW / 2 + nowH / 2, centerY - nowH / 2]
+						];
+						core.fillPolygon(ctx, nodes, "#000000");
+						core.strokePolygon(ctx, nodes, "#ffff22", 1.5 * scale);
+						// 四侧最远位置
+						if (left > centerX - nw / 2 - nh / 2 && nowLayer == (flags.viewingLayer || 0)) left = centerX - nw / 2 - nh / 2;
+						if (right < centerX + nw / 2 + nh / 2 && nowLayer == (flags.viewingLayer || 0)) right = centerX + nw / 2 + nh / 2;
+					}
+					// 将当前层变为toFloor
+					var fromFloor = nowFloor;
+					nowFloor = toFloor;
+					// 计算center 画同层间的线 我已经看不懂了
+					// 设置不透明度
+					if (nowLayer == (flags.viewingLayer || 0)) {
+						core.setAlpha(ctx, opacity);
+					} else {
+						core.setAlpha(ctx, minorAlpha * Math.max(0, 1 - 0.34 * Math.abs(nowLayer - (flags.viewingLayer || 0))));
+					}
+					if (step[0] == "left") {
+						var shouldFrom = nh / 2,
+							realFrom = cy * scale * Math.SQRT2 / 2;
+						var shouldTo = th / 2,
+							realTo = toLoc[1] * scale * Math.SQRT2 / 2;
+						if (everyLayer == nowLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
+							core.drawLine(ctx, centerX - nw / 2 + nh / 2 - realFrom, centerY + realFrom - shouldFrom,
+								centerX - nw / 2 - interval + nh / 2 - realFrom, centerY + realFrom - shouldFrom, "#ffffff", 2 * scale);
+						centerX -= nw / 2 + tw / 2 + interval + shouldTo - realTo + realFrom - shouldFrom;
+						centerY += shouldTo - realTo + realFrom - shouldFrom;
+					}
+					if (step[0] == "right") {
+						var shouldFrom = nh / 2,
+							realFrom = cy * scale * Math.SQRT2 / 2;
+						var shouldTo = th / 2,
+							realTo = toLoc[1] * scale * Math.SQRT2 / 2;
+						if (nowLayer == everyLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
+							core.drawLine(ctx, centerX + nw / 2 + nh / 2 - realFrom, centerY + realFrom - shouldFrom,
+								centerX + nw / 2 + interval + nh / 2 - realFrom, centerY + realFrom - shouldFrom, "#ffffff", 2 * scale);
+						centerX += nw / 2 + tw / 2 + interval - (shouldTo - realTo + realFrom - shouldFrom);
+						centerY += shouldTo - realTo + realFrom - shouldFrom;
+					}
+					if (step[0] == "up") {
+						var shouldTo = tw / 2,
+							realTo = toLoc[0] * scale * 2;
+						var shouldFrom = nw / 2,
+							realFrom = cx * scale * 2;
+						if (nowLayer == everyLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
+							core.drawLine(ctx, centerX + realFrom - shouldFrom + nh / 2, centerY - nh / 2, centerX + realFrom -
+								shouldFrom + interval * Math.SQRT2 / 4 + nh / 2, centerY - nh / 2 - interval * Math.SQRT2 / 4, "#ffffff", 2 * scale);
+						centerY -= nh / 2 + th / 2 + interval * Math.SQRT2 / 4;
+						centerX += shouldTo - realTo + realFrom - shouldFrom + (nh / 2 + th / 2 + interval * Math.SQRT2 / 4);
+					}
+					if (step[0] == "down") {
+						var shouldTo = tw / 2,
+							realTo = toLoc[0] * scale * 2;
+						var shouldFrom = nw / 2,
+							realFrom = cx * scale * 2;
+						if (nowLayer == everyLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
+							core.drawLine(ctx, centerX + realFrom - shouldFrom - nh / 2, centerY + nh / 2, centerX + realFrom -
+								shouldFrom - interval * Math.SQRT2 / 4 - nh / 2, centerY + nh / 2 + interval * Math.SQRT2 / 4, "#ffffff", 2 * scale);
+						centerY += nh / 2 + th / 2 + interval * Math.SQRT2 / 4;
+						centerX += shouldTo - realTo + realFrom - shouldFrom - (nh / 2 + th / 2 + interval * Math.SQRT2 / 4);
+					}
+					if (step[0] == "top") {
+						centerY -= deltaH;
+					}
+					if (step[0] == "bottom") {
+						centerY += deltaH;
+					}
+					if (everyLayer == nowLayer && step[0] != "top" && step[0] != "bottom") {
+						used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy] = true;
+						used[toFloor + "_" + fromFloor + "_" + toLoc[0] + "_" + toLoc[1]] = true;
+					}
+					if (everyLayer != nowLayer) continue;
+					// 四侧最远位置
+					if (!flags.viewingLayer) {
+						if (left > centerX - tw / 2 - th / 2 && nowLayer == (flags.viewingLayer || 0)) left = centerX - tw / 2 - th / 2;
+						if (right < centerX + tw / 2 + th / 2 && nowLayer == (flags.viewingLayer || 0)) right = centerX + tw / 2 + th / 2;
+						if (down < centerY + th / 2 && nowLayer == (flags.viewingLayer || 0)) down = centerY + th / 2;
+						if (up > centerY - th / 2 && nowLayer == (flags.viewingLayer || 0)) up = centerY - th / 2;
+					}
+					// 不同高度层之间的连线
+					if (!used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy]) {
+						core.setAlpha(ctx, opacity * Math.max(0, 1 - 0.34 * Math.abs(nowLayer - (flags.viewingLayer || 0))));
+						if (step[0] == "top") {
+							core.drawLine(ctx, centerX, centerY + deltaH, centerX, centerY, "#ffffff", 5 * scale);
+							core.drawLine(ctx, centerX, centerY + deltaH, centerX, centerY, "#000000", 2 * scale);
+							used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy] = true;
+							used[toFloor + "_" + fromFloor + "_" + toLoc[0] + "_" + toLoc[1]] = true;
+						}
+					}
+					if (!used[toFloor]) {
+						used[toFloor] = true;
+						// 设置不透明度
+						if (nowLayer == (flags.viewingLayer || 0)) {
+							core.setAlpha(ctx, opacity);
+						} else {
+							core.setAlpha(ctx, minorAlpha * Math.max(0, 1 - 0.34 * Math.abs(nowLayer - (flags.viewingLayer || 0))));
+						}
+						// 画地图
+						var nodes = [
+							[centerX - tw / 2 - th / 2, centerY + th / 2], // 左下
+							[centerX + tw / 2 - th / 2, centerY + th / 2], // 右下
+							[centerX + tw / 2 + th / 2, centerY - th / 2], // 右上
+							[centerX - tw / 2 + th / 2, centerY - th / 2] // 左上
+						];
+						if (core.hasVisitedFloor(toFloor)) {
+							core.fillPolygon(ctx, nodes, "#000000");
+						} else {
+							core.fillPolygon(ctx, nodes, "#ff22ff");
+						}
+						core.strokePolygon(ctx, nodes, "#ffffff", 1.5 * scale);
+					}
+					// 不同高度层之间的连线
+					if (!used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy]) {
+						if (step[0] == "bottom") {
+							core.drawLine(ctx, centerX, centerY, centerX, centerY - deltaH, "#ffffff", 5 * scale);
+							core.drawLine(ctx, centerX, centerY, centerX, centerY - deltaH, "#000000", 2 * scale);
+							used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy] = true;
+							used[toFloor + "_" + fromFloor + "_" + toLoc[0] + "_" + toLoc[1]] = true;
+						}
+					}
+				}
+			}
+			// 自动缩放
+			if ((right - left > core.__PIXELS__ - 64 || down - up > core.__PIXELS__ - 64) && !userScale && !fromMini) {
+				scale = 1 / (Math.max(right - left, down - up) / (core.__PIXELS__ - 64));
+				var con = { fromUser: fromUser, oriFloor: oriFloor, scale: scale, interval: interval * scale, opacity: opacity, loop: loop, use3D: true };
+				return core.draw3DFlyMap(ctx, x, y, width, height, floorId, con);
+			}
+			// 大地图和楼层地图自适配定位
+			if (ctx == "mapOnUi")
+				core.relocateCanvas("mapOnUi", -240 + (-left - right + 2 * nx) / 2, -240 + (-up - down + 2 * ny) / 2);
+		};
+		// 不同高度楼层排序
+		this.sortFloor = function (map) {
+			map = map || core.getFlyMap(null, true);
+			var totalLayer = 1,
+				topLayer = 0,
+				bottomLayer = 0,
+				nowLayer = 0;
+			// 拆分map
+			for (var i in map) {
+				var route = i.split(",");
+				nowLayer = 0;
+				for (var one in route) {
+					var step = route[one].split("_");
+					// 层数处理 并记录每一层的层数
+					if (step[0] == "top") {
+						nowLayer++;
+						map[i] = nowLayer + "_" + map[i];
+						if (nowLayer > topLayer) topLayer = nowLayer;
+					}
+					if (step[0] == "bottom") {
+						nowLayer--;
+						map[i] = nowLayer + "_" + map[i];
+						if (nowLayer < bottomLayer) bottomLayer = nowLayer;
+					}
+				}
+			}
+			// 总层数
+			totalLayer = topLayer - bottomLayer + 1;
+			// 按楼层高度由低到高排序
+			// 先变成数组
+			var mapArr = [];
+			for (var one in map) {
+				mapArr.push([one, parseInt(map[one]) || 0]);
+			}
+			// 再sort
+			mapArr.sort(function (a, b) { return a[1] - b[1]; });
+			return { map: mapArr, totalLayer: totalLayer, top: topLayer, bottom: bottomLayer };
+		};
+		// 由方向获得楼层坐标
+		this.getFloorByDirection = function (direction, floorId) {
+			floorId = floorId || core.status.floorId;
+			var route = core.getFlyMap(floorId);
+			for (var step in route) {
+				if (step.indexOf(direction) >= 0) {
+					return route[step];
+				}
+			}
+			return null;
+		};
+		////// 转换楼层结束的事件 检查小地图 //////
+		var originAfterChangeFloor = core.events.afterChangeFloor;
+		events.prototype.afterChangeFloor = function (floorId) {
+			if (!flags.__useMinimap__ || core.isReplaying()) {
+				core.deleteCanvas("minimap");
+				core.deleteCanvas("mapArrow");
+				core.unregisterAction("ondown", "closeMinimap");
+				core.unregisterAction("ondown", "openMinimap");
+				return originAfterChangeFloor.call(core.events, floorId);
+			}
+			if (main.mode != 'play') return;
+			this.eventdata.afterChangeFloor(floorId);
+			// 防止小地图出问题
+			core.unregisterAction("ondown", "closeMinimap");
+			core.unregisterAction("ondown", "openMinimap");
+			// 切换小地图
+			core.checkMinimap(true, true);
+			return;
+		};
+		////// 瞬间移动 检查小地图 //////
+		var originMoveDirectly = core.control.moveDirectly;
+		control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
+			if (!flags.__useMinimap__ || core.isReplaying())
+				return originMoveDirectly.call(core.control, destX, destY, ignoreSteps);
+			var canMoveDirectly = this.controldata.moveDirectly(destX, destY, ignoreSteps);
+			if (canMoveDirectly) core.checkMinimap();
+			return canMoveDirectly;
+		};
+		////// 每移动一格后执行的事件 检查小地图 //////
+		var originMoveOneStep = core.control.moveOneStep;
+		control.prototype.moveOneStep = function (callback) {
+			if (!flags.__useMinimap__ || core.isReplaying())
+				return originMoveOneStep.call(core.control, callback);
+			this.controldata.moveOneStep(callback);
+			core.checkMinimap();
+		};
+		// 检查小地图开闭情况 改变小地图位置
+		this.checkMinimap = function (fromUser, reDraw) {
+			if (!flags.__useMinimap__ || core.isReplaying()) {
+				core.unregisterAction("ondown", "closeMinimap");
+				core.unregisterAction("ondown", "openMinimap");
+				core.deleteCanvas("mapArrow");
+				core.deleteCanvas("minimap");
+				return;
+			}
+			reDraw = reDraw || false;
+			// 是否重绘
+			if (reDraw) {
+				if (flags.minimap) core.drawMinimap(flags.__onLeft__);
+				else core.drawClosedMap(flags.__onLeft__);
+			}
+			var hx = core.status.hero.loc.x;
+			var opened = flags.minimap;
+			var onLeft = hx >= Math.ceil(core.__SIZE__ / 3 * 2);
+			fromUser = fromUser || false; // 开关小地图相关
+			if (!flags.__onLeft__) flags.__onLeft__ = false;
+			// 如果地图上没有小地图 画到右边
+			if (!core.dymCanvas.mapArrow && !core.dymCanvas.minimap && !reDraw) {
+				if (flags.minimap) core.drawMinimap();
+				else core.drawClosedMap();
+				flags.__onLeft__ = false;
+			}
+			// 人物在中间 不执行
+			if (hx >= Math.ceil(core.__SIZE__ / 3 + core.bigmap.offsetX / 32) &&
+				hx <= Math.floor(core.__SIZE__ / 3 * 2 + core.bigmap.offsetX / 32)) return;
+			// 重定位画布 和 翻转
+			// 挪到右边
+			if (!onLeft && (flags.__onLeft__ || fromUser)) {
+				flags.__onLeft__ = false;
+				if (opened) {
+					core.relocateCanvas("minimap", core.__PIXELS__ - 120, 0);
+					core.relocateCanvas("mapArrow", core.__PIXELS__ - 140, 0);
+					document.getElementById('mapArrow').style.transform = 'none';
+				} else {
+					core.relocateCanvas("minimap", core.__PIXELS__, 0);
+					core.relocateCanvas("mapArrow", core.__PIXELS__ - 20, 0);
+					document.getElementById('mapArrow').style.transform = 'none';
+				}
+			}
+			// 挪到左边
+			if (onLeft && (!flags.__onLeft__ || fromUser)) {
+				flags.__onLeft__ = true;
+				if (opened) {
+					core.relocateCanvas("minimap", 0, 0);
+					core.relocateCanvas("mapArrow", 120, 0);
+					document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
+				} else {
+					core.relocateCanvas("minimap", -120, 0);
+					core.relocateCanvas("mapArrow", 0, 0);
+					document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
+				}
+			}
+		};
+		// 点击小地图的action
+		this.registerMinimapAction = function (open) {
+			if (!open) {
+				core.registerAction("ondown", "closeMinimap", function (x, y, px, py) {
+					if (!flags.__onLeft__) {
+						if (px >= core.__PIXELS__ - 140 && px <= core.__PIXELS__ - 120 &&
+							py >= 0 && py <= 120) {
+							core.closeMinimap();
+							core.unregisterAction("ondown", "closeMinimap");
+							return true;
+						}
+						if (px >= core.__PIXELS__ - 120 && py <= 120) {
+							core.playSound("打开界面");
+							core.drawTotalMap();
+							return true;
+						}
+					} else {
+						if (px >= 120 && px <= 140 && py >= 0 && py <= 120) {
+							core.closeMinimap();
+							core.unregisterAction("ondown", "closeMinimap");
+							return true;
+						}
+						if (px <= 120 && py <= 120) {
+							core.playSound("打开界面");
+							core.drawTotalMap();
+							return true;
+						}
+					}
+				}, 10);
+			} else {
+				core.registerAction("ondown", "openMinimap", function (x, y, px, py) {
+					if (!flags.__onLeft__) {
+						if (px >= core.__PIXELS__ - 20 && py <= 120) {
+							core.openMinimap();
+							core.unregisterAction("ondown", "openMinimap");
+							return true;
+						}
+					} else {
+						if (px <= 20 && py <= 120) {
+							core.openMinimap();
+							core.unregisterAction("ondown", "openMinimap");
+							return true;
+						}
+					}
+				}, 10);
+			}
+		};
+		// 地图上的小地图
+		this.drawMinimap = function (toLeft) {
+			if (!flags.__useMinimap__) {
+				core.deleteCanvas("mapArrow");
+				core.deleteCanvas("minimap");
+				return;
+			}
+			var scale = 1.3 / core.status.thisMap.width * 15 * (flags.userScale || 1);
+			if (1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1) < scale)
+				scale = 1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1);
+			// 绘制
+			core.createCanvas("minimap", core.__PIXELS__ - 120, 0, 120, 120, 100);
+			core.createCanvas("mapArrow", core.__PIXELS__ - 140, 0, 20, 120, 100);
+			if (toLeft) {
+				core.relocateCanvas("minimap", 0, 0);
+				core.relocateCanvas("mapArrow", 120, 0);
+				document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
+			}
+			core.clearMap("minimap");
+			core.clearMap("mapArrow");
+			// 黑色底
+			core.fillRect("minimap", 0, 0, 120, 120, [0, 0, 0, 0.6]);
+			var config = { fromUser: true, oriFloor: core.status.floorId, scale: scale, interval: 10, noErase: true, fromMini: true };
+			core.drawFlyMap("minimap", 0, 0, 120, 120, core.status.floorId, config);
+			// 向右箭头
+			core.fillRect("mapArrow", 0, 0, 20, 120, [230, 230, 230, 0.9]);
+			core.drawLine("mapArrow", 0, 20, 20, 20, [100, 100, 100, 0.9], 2);
+			core.drawLine("mapArrow", 0, 100, 20, 100, [100, 100, 100, 0.9], 2);
+			core.setTextAlign("mapArrow", "center");
+			core.fillText("mapArrow", ">", 10, 67, [100, 100, 100, 0.9], "20px Verdana");
+			core.registerMinimapAction(false);
+		};
+		// 关闭小地图
+		this.closeMinimap = function () {
+			if (!flags.__useMinimap__) {
+				core.deleteCanvas("mapArrow");
+				core.deleteCanvas("minimap");
+				return;
+			}
+			var onLeft = flags.__onLeft__;
+			var frame = 0;
+			var x = core.__PIXELS__,
+				a = 0.096,
+				speed = 4.8;
+			if (onLeft) {
+				x = 260;
+				a = -a;
+				speed = -speed;
+			}
+			var interval = setInterval(function () {
+				core.relocateCanvas("mapArrow", x - 140, 0);
+				if (!onLeft)
+					core.relocateCanvas("minimap", x - 120, 0);
+				else core.relocateCanvas("minimap", x - 260, 0);
+				speed -= a;
+				x += speed;
+				if (frame == 50) {
+					flags.minimap = false;
+					clearInterval(interval);
+					core.drawClosedMap(onLeft);
+					core.checkMinimap(true);
+				}
+				frame++;
+			}, 20);
+		};
+		// 合上的小地图
+		this.drawClosedMap = function (toLeft) {
+			if (!flags.__useMinimap__) {
+				core.deleteCanvas("mapArrow");
+				core.deleteCanvas("minimap");
+				return;
+			}
+			var scale = 1.3 / core.status.thisMap.width * 15 * (flags.userScale || 1);
+			if (1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1) < scale)
+				scale = 1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1);
+			// 绘制
+			core.createCanvas("minimap", core.__PIXELS__, 0, 120, 120, 100);
+			core.createCanvas("mapArrow", core.__PIXELS__ - 20, 0, 20, 120, 100);
+			core.clearMap("minimap");
+			core.clearMap("mapArrow");
+			if (toLeft) {
+				core.relocateCanvas("minimap", -120, 0);
+				core.relocateCanvas("mapArrow", 0, 0);
+				document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
+			}
+			// 黑色底
+			core.fillRect("minimap", 0, 0, 120, 120, [0, 0, 0, 0.6]);
+			var config = { fromUser: true, oriFloor: core.status.floorId, scale: scale, interval: 10, noErase: true, fromMini: true };
+			core.drawFlyMap("minimap", 0, 0, 120, 120, core.status.floorId, config);
+			// 向左箭头
+			core.fillRect("mapArrow", 0, 0, 20, 120, [230, 230, 230, 0.9]);
+			core.drawLine("mapArrow", 0, 20, 20, 20, [100, 100, 100, 0.9], 2);
+			core.drawLine("mapArrow", 0, 100, 20, 100, [100, 100, 100, 0.9], 2);
+			core.setTextAlign("mapArrow", "center");
+			core.fillText("mapArrow", "<", 10, 67, [100, 100, 100, 0.9], "20px Verdana");
+			core.registerMinimapAction(true);
+		};
+		// 打开小地图
+		this.openMinimap = function () {
+			if (!flags.__useMinimap__) {
+				core.deleteCanvas("mapArrow");
+				core.deleteCanvas("minimap");
+				return;
+			}
+			var onLeft = flags.__onLeft__;
+			var frame = 0;
+			var x = 120 + core.__PIXELS__,
+				a = 0.096,
+				speed = 4.8;
+			if (onLeft) {
+				x = 140;
+				a = -a;
+				speed = -speed;
+			}
+			var interval = setInterval(function () {
+				core.relocateCanvas("mapArrow", x - 140, 0);
+				if (!flags.__onLeft__)
+					core.relocateCanvas("minimap", x - 120, 0);
+				else core.relocateCanvas("minimap", x - 260, 0);
+				speed -= a;
+				x -= speed;
+				if (frame == 50) {
+					flags.minimap = true;
+					clearInterval(interval);
+					core.drawMinimap(onLeft);
+					core.checkMinimap(true);
+				}
+				frame++;
+			}, 20);
+		};
+		// 大地图
+		this.drawTotalMap = function (floorId) {
+			floorId = floorId || core.status.floorId;
+			core.status.event.id = "totalMap";
+			core.lockControl();
+			if (!flags.viewingLayer) flags.viewingLayer = 0;
+			var loop = 5;
+			if (flags.worldMap) loop = core.floorIds.length;
+			// 大地图时点击和键盘操作
+			core.registerAction("ondown", "onDownTmap", function (x, y) {
+				if (core.status.event.id == "totalMap") {
+					if (y < 1 && x <= Math.floor(core.__SIZE__ / 2) - 2) { // 上移一层
+						if (flags.viewingLayer < core.sortFloor().top) {
+							flags.viewingLayer++;
+							core.playSound('光标移动');
+							core.drawTotalMap();
+						}
+						return true;
+					}
+					if (y < 1 && x >= Math.ceil(core.__SIZE__ / 2) + 1) { // 下移一层
+						if (flags.viewingLayer > core.sortFloor().bottom) {
+							flags.viewingLayer--;
+							core.playSound('光标移动');
+							core.drawTotalMap();
+						}
+						return true;
+					}
+					if (y < 1 && x < Math.ceil(core.__SIZE__ / 2) + 1 && x > Math.floor(core.__SIZE__ / 2) - 2) {
+						// 区域地图
+						if (flags.worldMap) {
+							flags.worldMap = false;
+							flags.viewingLayer = 0;
+						} else flags.worldMap = true;
+						core.playSound('光标移动');
+						core.drawTotalMap();
+						return true;
+					}
+					if (y >= core.__SIZE__ - 1 && x <= Math.floor(core.__SIZE__ / 2)) { // 3D
+						if (core.can3D(floorId) && !flags.in3D) flags.use3D = true;
+						if (flags.in3D) flags.use3D = false;
+						flags.mapHint = false;
+						core.playSound('光标移动');
+						core.drawTotalMap();
+						return true;
+					}
+					if (y >= core.__SIZE__ - 1 && x >= Math.ceil(core.__SIZE__ / 2)) { // hint
+						if (flags.in3D) {
+							if (!flags.mapHint) flags.mapHint = true;
+							else flags.mapHint = false;
+							core.playSound('光标移动');
+							core.drawTotalMap();
+						}
+						return true;
+					}
+					flags.viewingLayer = 0;
+					core.playSound("取消")
+					core.deleteCanvas("mapOnUi");
+					core.deleteCanvas("back");
+					core.deleteCanvas("tips");
+					core.closePanel();
+					core.unregisterAction("ondown", "onDownTmap");
+					return true;
+				}
+			}, 110);
+			core.registerAction("keyUp", "keyUpTmap", function (keycode) {
+				if (core.status.event.id == "totalMap") {
+					if (keycode == 33) { // PgUp
+						if (flags.viewingLayer < core.sortFloor().top) {
+							flags.viewingLayer++;
+							core.playSound('光标移动');
+							core.drawTotalMap();
+						}
+						return true;
+					}
+					if (keycode == 34) { // PgDn
+						if (flags.viewingLayer > core.sortFloor().bottom) {
+							flags.viewingLayer--;
+							core.playSound('光标移动');
+							core.drawTotalMap();
+						}
+						return true;
+					}
+					if (keycode == 90) { // Z
+						if (core.can3D(floorId) && !flags.in3D) flags.use3D = true;
+						if (flags.in3D) flags.use3D = false;
+						flags.mapHint = false;
+						core.playSound('光标移动');
+						core.drawTotalMap();
+						return true;
+					}
+					if (keycode == 84) { // T
+						if (flags.in3D) {
+							if (!flags.mapHint) flags.mapHint = true;
+							else flags.mapHint = false;
+							core.playSound('光标移动');
+							core.drawTotalMap();
+						}
+						return true;
+					}
+					if (keycode == 87) { // W
+						if (flags.worldMap) {
+							flags.worldMap = false;
+							flags.viewingLayer = 0;
+						} else flags.worldMap = true;
+						core.playSound('光标移动');
+						core.drawTotalMap();
+						return true;
+					}
+					flags.viewingLayer = 0;
+					core.playSound("取消")
+					core.deleteCanvas("mapOnUi");
+					core.deleteCanvas("back");
+					core.deleteCanvas("tips");
+					core.closePanel();
+					core.unregisterAction("keyUp", "keyUpTmap");
+					return true;
+				}
+			}, 110);
+			// 开始画
+			core.createCanvas("mapOnUi", -240, -240, core.__PIXELS__ + 480, core.__PIXELS__ + 480, 150);
+			core.createCanvas("back", -240, -240, core.__PIXELS__ + 480, core.__PIXELS__ + 480, 140);
+			core.createCanvas("tips", 0, 0, core.__PIXELS__, core.__PIXELS__, 160);
+			var ctx = document.getElementById("tips").getContext("2d");
+			ctx.shadowOffsetX = 0;
+			ctx.shadowOffsetY = 0;
+			ctx.shadowBlur = 5;
+			ctx.shadowColor = "rgba(100, 100, 255, 1)";
+			core.fillRect("back", -240, -240, core.__PIXELS__ + 480, core.__PIXELS__ + 480, [0, 0, 0, 0.9]);
+			core.fillRect("tips", 0, 0, core.__PIXELS__ / 2 - 50, 32, [200, 200, 200, 0.8]);
+			core.fillRect("tips", core.__PIXELS__ / 2 + 50, 0, core.__PIXELS__ / 2 - 50, 32, [200, 200, 200, 0.8]);
+			core.fillRect("tips", core.__PIXELS__ / 2 - 46, 0, 92, 32, [200, 200, 200, 0.8]);
+			core.drawLine("tips", 0, 32, core.__PIXELS__ / 2 - 50, 32, [50, 50, 50, 0.8], 3);
+			core.drawLine("tips", core.__PIXELS__ / 2 + 50, 32, core.__PIXELS__, 32, [50, 50, 50, 0.8], 3);
+			core.drawLine("tips", core.__PIXELS__ / 2 - 46, 32, core.__PIXELS__ / 2 + 46, 32, [50, 50, 50, 0.8], 3);
+			core.fillRect("tips", 0, core.__PIXELS__, core.__PIXELS__ / 2 - 5, -32, [200, 200, 200, 0.8]);
+			core.fillRect("tips", core.__PIXELS__ / 2 + 5, core.__PIXELS__, core.__PIXELS__ / 2 - 5, -32, [200, 200, 200, 0.8]);
+			core.drawLine("tips", 0, core.__PIXELS__ - 32, core.__PIXELS__ / 2 - 5, core.__PIXELS__ - 32, [50, 50, 50, 0.8], 3);
+			core.drawLine("tips", core.__PIXELS__ / 2 + 5, core.__PIXELS__ - 32, core.__PIXELS__, core.__PIXELS__ - 32, [50, 50, 50, 0.8], 3);
+			core.setTextAlign("tips", "center");
+			core.fillText("tips", "上移一层", core.__PIXELS__ / 4 - 23, 24, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
+			core.fillText("tips", "下移一层", core.__PIXELS__ / 4 * 3 + 23, 24, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
+			core.fillText("tips", flags.worldMap ? "小地图" : "区域地图", core.__PIXELS__ / 2, 24, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
+			core.drawFlyMap("mapOnUi", 240, 240, core.__PIXELS__, core.__PIXELS__,
+				floorId, { fromUser: true, opacity: 1, oriFloor: floorId, noErase: true, use3D: flags.use3D, layer: flags.viewingLayer, loop: loop, clearCache: true });
+			if (flags.in3D)
+				core.fillText("tips", "参考线（T）", core.__PIXELS__ / 4 * 3, core.__PIXELS__ - 8, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
+			if (core.can3D(floorId) && !flags.in3D)
+				core.fillText("tips", "3D模式（Z）", core.__PIXELS__ / 4, core.__PIXELS__ - 8, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
+			if (flags.in3D)
+				core.fillText("tips", "2D模式（Z）", core.__PIXELS__ / 4, core.__PIXELS__ - 8, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
+			if (flags.mapHint) {
+				core.drawLine("back", 240, 240 + core.__PIXELS__, 240 + core.__PIXELS__, 240, [100, 100, 240, 0.4], 2);
+				core.drawLine("back", 240 + core.__PIXELS__ / 2, 240, 240 + core.__PIXELS__ / 2, 240 + core.__PIXELS__, [100, 100, 240, 0.4], 2);
+				core.drawLine("back", 240, 240 + core.__PIXELS__ / 2, 240 + core.__PIXELS__, 240 + core.__PIXELS__ / 2, [100, 100, 240, 0.4], 2);
+			}
+		};
+	},
 	"advancedAnimation": function () {
 		// -------------------- 插件说明 -------------------- //
 		// github仓库：https://github.com/unanmed/animate
@@ -1839,7 +3346,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.status.thisMap.ratio = core.status.maps[floorId].ratio;
 			let diff = {};
 			const before = core.status.hero;
-			const hero = clone(core.status.hero); 
+			const hero = clone(core.status.hero);
 			const handler = {
 				set(target, key, v) {
 					if (!statusName.has(key)) return true; // 非数值类型的属性就不用记了，显示也没有意义
@@ -2906,29 +4413,61 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor(x, y, w, h, dir, config) {
 				super(x, y, w, h);
 				this.config = config || {};
-				/** @type {'left'|'right'} */
+				/** @type {'left'|'right'|'up'|'down'} */
 				this.dir = dir;
 			}
 
 			draw() {
+				const isVertical = (this.dir === "up") || (this.dir === "down");
 				const {
-					marginLeft = 6, marginTop = 5, marginRight = 4,
-					backStyle = 'gray', arrowStyle = 'black'
+					/** 箭头尖端到所指的边的距离 **/
+					marginTip = isVertical ? 5 : 4,
+					/** 箭头两侧到各自最接近的边的距离 **/
+					marginSide = isVertical ? 5 : 5,
+					/**  箭头尾部到最接近的边的距离 **/
+					marginTail = isVertical ? 5 : 6,
+					backStyle = 'gray',
+					arrowStyle = 'black'
 				} = this.config || {};
+
 				const { x, y, w, h, ctx } = this;
+
 				core.fillRoundRect(ctx, x, y, w, h, 3, backStyle);
-				if (this.dir === 'left')
-					core.fillPolygon(ctx, [
-						[x + w - marginLeft, y + marginTop],
-						[x + w - marginLeft, y + h - marginTop],
-						[x + marginRight, y + h / 2]
-					], arrowStyle);
-				else if (this.dir === 'right')
-					core.fillPolygon(ctx, [
-						[x + marginLeft, y + marginTop],
-						[x + marginLeft, y + h - marginTop],
-						[x + w - marginRight, y + h / 2]
-					], arrowStyle);
+
+				let points = [];
+
+				if (this.dir === 'left') {
+					points = [
+						[x + marginTip, y + h / 2],                   
+						[x + w - marginTail, y + marginSide],         
+						[x + w - marginTail, y + h - marginSide]      
+					];
+				}
+				else if (this.dir === 'right') {
+					points = [
+						[x + w - marginTip, y + h / 2],   
+						[x + marginTail, y + marginSide], 
+						[x + marginTail, y + h - marginSide]
+					];
+				}
+				else if (this.dir === 'up') {
+					points = [
+						[x + w / 2, y + marginTip], 
+						[x + marginSide, y + h - marginTail], 
+						[x + w - marginSide, y + h - marginTail] 
+					];
+				}
+				else if (this.dir === 'down') {
+					points = [
+						[x + w / 2, y + h - marginTip], 
+						[x + marginSide, y + marginTail], 
+						[x + w - marginSide, y + marginTail] 
+					];
+				}
+
+				if (points.length > 0) {
+					core.fillPolygon(ctx, points, arrowStyle);
+				}
 			}
 		}
 		core.plugin.uiBase = {
@@ -3133,7 +4672,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 		// #endregion
-		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, KeyCodeEnum } = core.plugin.uiBase;
+		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, ArrowBtn, KeyCodeEnum } = core.plugin.uiBase;
 		// #region 绘制用到的按钮类
 
 		/** 隐藏物品的按钮 */
@@ -3215,37 +4754,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const ctx = this.ctx;
 				const { x, y, w, h } = this;
 				core.drawImage(ctx, "mousewheel.png", x, y, w, h);
-			}
-		}
-
-		class ArrowBtn extends ButtonBase {
-			constructor(x, y, w, h, dir, config) {
-				super(x, y, w, h);
-				this.config = config || {};
-				/** @type {'left'|'right'} */
-				this.dir = dir;
-			}
-
-			draw() {
-				const {
-					marginLeft = 6, marginTop = 5, marginRight = 4,
-					backStyle = 'gray', arrowStyle = 'black'
-				} = this.config || {};
-				const ctx = this.ctx;
-				core.fillRoundRect(ctx, this.x, this.y, this.w, this.h, 3, backStyle);
-				if (this.dir === 'left')
-					core.fillPolygon(ctx, [
-						[this.x + this.w - marginLeft, this.y + marginTop],
-						[this.x + this.w - marginLeft, this.y + this.h - marginTop],
-						[this.x + marginRight, this.y + this.h / 2]
-					], arrowStyle);
-				else if (this.dir === 'right')
-					core.fillPolygon(ctx, [
-						[this.x + marginLeft, this.y + marginTop],
-						[this.x + marginLeft, this.y + this.h - marginTop],
-						[this.x + this.w - marginRight, this.y + this.h / 2]
-					], arrowStyle);
-				core.setAlpha(ctx, 1);
 			}
 		}
 
@@ -4126,7 +5634,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			get equipSlots() {
 				if (!this._equipSlots) {
 					this._equipSlots = new EquipSlots(7, 10, 240, 125, 137);
-					const config = { marginLeft: 4, marginTop: 3, marginRight: 2 };
+					const config = { marginTail: 4, marginSide: 3, marginTip: 2 };
 					const pgDown = new ArrowBtn(0, 56, 14, 14, 'left', config);
 					const pgUp = new ArrowBtn(224, 56, 14, 14, 'right', config);
 					this._equipSlots.registerBtn('pgDownBtn', pgDown, () => UI.equipSlots.pageDown());
@@ -8262,1513 +9770,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.ui._drawSwitchs_sounds();
 		};
 	},
-	"platFly": function () {
-		// 本插件可以给平面塔启用一个带小地图的楼传，默认关闭
-		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
-		var __enable = false;
-		if (!__enable) return;
-
-		/* 第一步：复制到插件
-		 * 第二步：将flag:usePlatFly改为true可将带地图的楼传启用
-		 * 第三步：将flag:__useMinimap__设为true可开启小地图，该操作需切换楼层
-		 * 修改小地图的缩放可以修改flag:userScale，默认为1
-		 * 注意：楼层转换必须使用楼层坐标，而不是前一楼、后一楼
-		 * 关于操作：上楼和下楼操作为PgUp和PgDn，后退10层和前进10层操作为,（<）和.（>）
-		 * 注意：请尽量保证地图传送的地方物理位置正好对准（即把地图拼接上箭头位置恰好对齐）否则连线的位置可能不准
-		 * 分区说明：用普通事件的楼层转换（红点）代替楼层转换（绿点）即可
-		 * 说明：紫色表示目前可以到达却没有到达过的地图（所以这是一个具有探索性的地图插件）
-		 */
-		// 录像验证直接干掉这个插件
-		if (main.replayChecking) return;
-		// *** --- 以下数据为用户可修改数据 修改后不影响该插件的基本功能 --- *** //
-		// 检测楼层转换的图块id
-		var leftPortal = "leftPortal", // 左
-			rightPortal = "rightPortal", // 右
-			upPortal = "upPortal", // 上
-			downPortal = "downPortal", // 下
-			upFloor = "upFloor", // 上楼
-			downFloor = "downFloor"; // 下楼
-		// 一些常用默认值
-		var defaultScale = 1, // 默认缩放比率
-			defaultLoop = 5, // 绘制地图时的循环检测地图路线次数，loop为5说明最远的地图可以用6步到达
-			defaultOpacity = 0.6, // 默认不透明度
-			defaultMinorAlpha = defaultOpacity / 2; // 3D绘图时，不与当前层处于同一高度层的默认初始不透明度，不透明度会随着层数的增加或减少而减少
-		// *** --- 用户修改区 END --- *** //
-		//  其余可自定义内容均用 //***--- 包裹着
-
-		/* -----------------------------------下面是一些调用案例
-		 * 
-		 * 如果想在状态栏显示可以在状态栏自绘里这么写：
-		 core.drawFlyMap(ctx, 你想要的左上角横坐标, 你想要的左上角纵坐标, 你想要的宽度, 你想要的高度, core.status.floorId, {fromUser: true, opacity: 1, loop: 3, use3D:false});
-		 * 
-		 * -----------------------------------以下为高深区域，如果不必要可以不看
-		 * 
-		 * 主要函数说明（这几个函数异常强大，善用可以有弄一些有意思的东西，既然作者都说强大了，那就是特别强大）
-		 * core.drawFlyMap(ctx : string, x?: number, y?: number, width?:number, height?:number, floorId?:string, config?:any): void
-		 * 参数说明：
-		 * ctx:画布，如果不存在则会新建x,y,width,height参数的画布
-		 * x,y,width,height:画布不存在时创建该数据的画布，如果存在，那么在画布的x,y位置绘制宽度为width，高度为height的地图
-		 * floorId:以该楼层为中心绘制
-		 * config:配制参数，包括以下内容（该参数为对象）
-		 * 	 fromUser:是否循环绘制（为false时只绘制一层，否则绘制5层）
-		 * 	 oriFloor:这个不用管就好，具体原理比较复杂，不填或者和floorId一样就行
-		 * 	 scale:缩放比率，这个是绝对比率，与画布大小无关，默认为1
-		 * 	 interval:地图间的间距，默认为width / 24
-		 * 	 deltaH:3D地图的纵向高度差，默认为绘制高度（height）/ 4
-		 * 	 noErase:是否不清空画布再绘制，默认为false
-		 * 	 fromMini:是否是在小地图上绘制时调用的（无自动缩放和自动定位）
-		 * 	 loop:绘制层数，fromUser为true时才有用，默认为5
-		 * 	 opacity:不透明度，默认为0.6
-		 * 	 minorAlpha:3D地图的不与当前层在同一高度的楼层的初始不透明度，默认为opacity/2
-		 * 	 layer:平面模式下绘制的楼层高度，当前所在层为0，上楼则+1，下楼则-1，默认为0，只有当use3D为false且可以绘制3D地图时有效
-		 * 	 use3D:是否启用3D绘图，前提是所有地图不都在同一高度，默认为false
-		 * 	 reLeft:3D重新定位画布的左位置，默认为-240
-		 * 	 reTop:3D重新定位画布的上位置，默认为-240
-		 * 	 clearCache:是否清除缓存重算，默认为false
-		 * 	 map:这个是最强大的功能了，可以将自定义地图插入，以绘制自定义地图
-		 * 	 自定义地图格式：{"left_0_7":"MT1", "right_2_7":"MT2"}以此类推也可以"left_0_7,right_3_7,up_1_0"这种套娃，使用的前提是指定位置得有相应方向的箭头，不然会出错，注意楼层id是到往的楼层的id，如果想绘制3D地图，可以这么写：{"top_1_3,left_0_7": "1_MT1"}，前面的1_必须写，上楼为top，下楼为bottom
-		 * 	 默认取自floorId地图
-		 * 如有疑问可在造塔群@古祠
-		 * 
-		 * core.getFlyMap(floorId?:string, fromUser?:boolean, oriFloor?:string, loop?:number):Object
-		 * 参数说明:floorId:以该楼层为中心绘制
-		 * fromUser:是否循环绘制（为false时只绘制一层，否则绘制5层）
-		 * oriFloor:这个不用管就好，具体原理比较复杂，填null或者和floorId一样就行
-		 * loop:绘制层数，fromUser为true时才有用，默认为5
-		 */
-
-		////// 绘制楼层传送器 //////
-		var originDrawFly = core.ui.drawFly;
-		ui.prototype.drawFly = function (page) {
-			if (!flags.usePlatFly || core.isReplaying()) return originDrawFly.call(core.ui, page);
-			core.status.event.data = page;
-			var floorId = core.floorIds[page];
-			core.clearMap('ui');
-			core.setAlpha('ui', 0.85);
-			core.fillRect('ui', 0, 0, this.PIXEL, this.PIXEL, '#000000');
-			core.setAlpha('ui', 1);
-			var size = this.PIXEL;
-			//***--- 楼传绘制 可根据自己的需求更改 更改之后注意更改点击操作的函数
-			// 背景
-			core.drawThumbnail(floorId, null, { ctx: 'ui', x: 0, y: 0, size: size, damage: true, fromFly: true });
-			core.fillRect("ui", 0, 65, 32, size - 130, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size, 65, -32, size - 130, [0, 0, 0, 0.7]);
-			core.fillRect("ui", 65, 0, size / 2 - 114, 32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", 65, size, size / 2 - 114, -32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size / 2 + 49, 0, size / 2 - 114, 32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size / 2 + 49, size, size / 2 - 114, -32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size / 2 - 47, 0, 94, 32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size / 2 - 47, size, 94, -32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", 0, 0, 63, 32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size, 0, -63, 32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", 0, 32, 32, 31, [0, 0, 0, 0.7]);
-			core.fillRect("ui", 0, size - 32, 32, -31, [0, 0, 0, 0.7]);
-			core.fillRect("ui", 0, size, 63, -32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size, size, -63, -32, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size, size - 32, -32, -31, [0, 0, 0, 0.7]);
-			core.fillRect("ui", size, 32, -32, 31, [0, 0, 0, 0.7]);
-			core.setTextAlign("ui", "center");
-			// 文字
-			if (core.getFloorByDirection("left", floorId))
-				core.fillText("ui", "←", 16, size / 2 + 10, core.hasVisitedFloor(core.getFloorByDirection("left",
-					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
-			if (core.getFloorByDirection("right", floorId))
-				core.fillText("ui", "→", size - 16, size / 2 + 10, core.hasVisitedFloor(core.getFloorByDirection("right",
-					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
-			if (core.getFloorByDirection("up", floorId))
-				core.fillText("ui", "↑", size / 2, 28, core.hasVisitedFloor(core.getFloorByDirection("up",
-					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
-			if (core.getFloorByDirection("down", floorId))
-				core.fillText("ui", "↓", size / 2, size - 4, core.hasVisitedFloor(core.getFloorByDirection("down",
-					floorId)) ? "#ffffff" : "#ff22ff", "26px Verdana");
-			if (core.getFloorByDirection("top", floorId))
-				core.fillText("ui", "上楼", size / 4 + 8, 24, core.hasVisitedFloor(core.getFloorByDirection("top",
-					floorId)) ? "#ffffff" : "#ff22ff", "22px " + core.status.globalAttribute.font);
-			if (core.getFloorByDirection("bottom", floorId))
-				core.fillText("ui", "下楼", size / 4 * 3 - 8, 24, core.hasVisitedFloor(core.getFloorByDirection("bottom",
-					floorId)) ? "#ffffff" : "#ff22ff", "22px " + core.status.globalAttribute.font);
-			core.fillText("ui", "退10层", size / 4 + 8, size - 8, core.actions._getNextFlyFloor(-1) == page ? "#ff22ff" : "#ffffff",
-				"22px " + core.status.globalAttribute.font);
-			core.fillText("ui", "进10层", size / 4 * 3 - 8, size - 8, core.actions._getNextFlyFloor(1) == page ? "#ff22ff" : "#ffffff",
-				"22px " + core.status.globalAttribute.font);
-			core.fillText("ui", "退出", 32, 24, "#ffffff", "22px " + core.status.globalAttribute.font);
-			core.fillText("ui", "楼层名", 32, size - 8, "#ffffff", "22px " + core.status.globalAttribute.font);
-			core.fillText("ui", "（B）", 16, size - 40, "#ffffff", "22px " + core.status.globalAttribute.font);
-			core.createCanvas("mapOnUi", -240, -240, size + 480, size + 480, 150);
-			core.drawFlyMap("mapOnUi", 240, 240, size, size, floorId, { fromUser: true, oriFloor: floorId, use3D: flags.use3D });
-			if (core.can3D(floorId) && !flags.in3D)
-				core.fillText("ui", "3D模式", size - 32, 24, "#ffffff", "20px " + core.status.globalAttribute.font);
-			if (flags.in3D)
-				core.fillText("ui", "2D模式", size - 32, 24, "#ffffff", "20px " + core.status.globalAttribute.font);
-			if (core.can3D(floorId)) core.fillText("ui", "（Z）", size - 16, 56, "#ffffff", "20px " + core.status.globalAttribute.font);
-			if (flags.flyTitle) {
-				var style = document.getElementById("ui").getContext("2d");
-				style.shadowColor = "rgba(0, 0, 0, 1)";
-				style.shadowBlur = 5;
-				core.fillRect("ui", size / 4, size / 4, size / 2, size / 8, [180, 180, 180, 0.7]);
-				core.strokeRect("ui", size / 4, size / 4, size / 2, size / 8, [255, 255, 255, 0.7], 3);
-				style.shadowOffsetX = 4;
-				style.shadowOffsetY = 2;
-				core.fillText("ui", (core.status.maps[floorId] || {}).title, size / 2, size / 16 * 5 + 11, "#ffffff",
-					"32px " + core.status.globalAttribute.font);
-				style.shadowColor = "none";
-				style.shadowBlur = 0;
-				style.shadowOffsetX = 0;
-				style.shadowOffsetY = 0;
-			}
-			//***--- 楼传绘制
-		};
-		////// 楼层传送器界面时的点击操作 //////
-		var originClickFly = core.actions._clickFly;
-		actions.prototype._clickFly = function (x, y) {
-			if (!flags.usePlatFly || core.isReplaying()) return originClickFly.call(core.actions, x, y);
-			var page = core.status.event.data;
-			var floorId = core.floorIds[page];
-			//***--- 点击操作 可以修改的地方只有x,y坐标 其余不可修改
-			if (x <= 2 && y <= 1) {
-				core.playSound('取消');
-				core.deleteCanvas("mapOnUi")
-				core.ui.closePanel();
-				return;
-			}
-			// 3D模式
-			if (x >= core.__SIZE__ - 2 && y <= 1) {
-				if (core.can3D(floorId) && !flags.in3D)
-					flags.use3D = true;
-				if (flags.in3D) flags.use3D = false;
-				core.playSound('光标移动');
-				core.ui.drawFly(page);
-				return;
-			}
-			// 显示名称
-			if (x <= 1 && y >= core.__SIZE__ - 2) {
-				if (flags.flyTitle) flags.flyTitle = false;
-				else flags.flyTitle = true;
-				core.playSound('光标移动');
-				core.ui.drawFly(page);
-				return;
-			}
-			// 飞过去
-			if (x > 1 && x < core.__SIZE__ - 1 && y > 1 && y < core.__SIZE__ - 1) {
-				if (core.status.maps[core.status.floorId].canFlyFrom &&
-					core.status.maps[core.floorIds[core.status.event.data]].canFlyTo &&
-					core.hasVisitedFloor(core.floorIds[core.status.event.data])) {
-					core.deleteCanvas("mapOnUi");
-				}
-				core.flyTo(core.floorIds[core.status.event.data]);
-			}
-			// 前进10层 后退10层
-			if (y > core.__SIZE__ - 2 && core.actions._getNextFlyFloor(-1) != page &&
-				x >= 2 && x <= Math.floor(core.__SIZE__ / 2) - 2) {
-				core.ui.drawFly(this._getNextFlyFloor(-10));
-				core.playSound("光标移动");
-			}
-			if (y > core.__SIZE__ - 2 && core.actions._getNextFlyFloor(1) != page &&
-				x >= Math.ceil(core.__SIZE__ / 2) + 1 && x <= core.__SIZE__ - 3) {
-				core.ui.drawFly(this._getNextFlyFloor(10));
-				core.playSound("光标移动");
-			}
-			// 获取索引
-			function getId(direction) {
-				var id = core.getFloorByDirection(direction, floorId);
-				for (var i in core.floorIds) {
-					if (core.floorIds[i] == id) return parseInt(i);
-				}
-			}
-			// 上下左右和上下楼
-			if (x < 1 && core.getFloorByDirection("left", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("left", floorId)) && y >= 2 && y < core.__SIZE__ - 2) {
-				core.playSound("光标移动");
-				core.drawFly(getId("left"));
-			}
-			if (x > core.__SIZE__ - 2 && core.getFloorByDirection("right", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("right", floorId)) && y >= 2 && y < core.__SIZE__ - 2) {
-				core.playSound("光标移动");
-				core.drawFly(getId("right"));
-			}
-			if (y < 1 && core.getFloorByDirection("up", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("up", floorId)) &&
-				x >= Math.floor(core.__SIZE__ / 2) - 1 && x <= Math.ceil(core.__SIZE__ / 2)) {
-				core.playSound("光标移动");
-				core.drawFly(getId("up"));
-			}
-			if (y > core.__SIZE__ - 2 && core.getFloorByDirection("down", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("down", floorId)) &&
-				x >= Math.floor(core.__SIZE__ / 2) - 1 && x <= Math.ceil(core.__SIZE__ / 2)) {
-				core.playSound("光标移动");
-				core.drawFly(getId("down"));
-			}
-			if (y < 1 && x >= 2 && x <= Math.floor(core.__SIZE__ / 2) - 2 &&
-				core.getFloorByDirection("top", floorId) && core.hasVisitedFloor(core.getFloorByDirection("top", floorId))) {
-				core.playSound("光标移动");
-				core.drawFly(getId("top"));
-			}
-			if (y < 1 && x >= Math.ceil(core.__SIZE__ / 2) + 1 && x <= core.__SIZE__ - 3 &&
-				core.getFloorByDirection("bottom", floorId) && core.hasVisitedFloor(core.getFloorByDirection("bottom", floorId))) {
-				core.playSound("光标移动");
-				core.drawFly(getId("bottom"));
-			}
-			return;
-			//***--- 点击操作
-		};
-		////// 楼层传送器界面时，按下某个键的操作 //////
-		var originKeyDownFly = core.actions._keyDownFly;
-		actions.prototype._keyDownFly = function (keycode) {
-			if (!flags.usePlatFly || core.isReplaying()) return originKeyDownFly.call(core.actions, keycode);
-			var page = core.status.event.data;
-			var floorId = core.floorIds[page];
-			// 获取索引
-			function getId(direction) {
-				var id = core.getFloorByDirection(direction, floorId);
-				for (var i in core.floorIds) {
-					if (core.floorIds[i] == id) return parseInt(i);
-				}
-			}
-			//***--- 按键操作 只可以修改按键的keycode
-			if (keycode == 37 && core.getFloorByDirection("left", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("left", floorId))) {
-				core.playSound('光标移动');
-				core.ui.drawFly(getId("left"));
-			} else if (keycode == 38 && core.getFloorByDirection("up", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("up", floorId))) {
-				core.playSound('光标移动');
-				core.ui.drawFly(getId("up"));
-			} else if (keycode == 39 && core.getFloorByDirection("right", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("right", floorId))) {
-				core.playSound('光标移动');
-				core.ui.drawFly(getId("right"));
-			} else if (keycode == 40 && core.getFloorByDirection("down", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("down", floorId))) {
-				core.playSound('光标移动');
-				core.ui.drawFly(getId("down"));
-			} else if (keycode == 33 && core.getFloorByDirection("top", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("top", floorId))) {
-				core.playSound('光标移动');
-				core.ui.drawFly(getId("top"));
-			} else if (keycode == 34 && core.getFloorByDirection("bottom", floorId) &&
-				core.hasVisitedFloor(core.getFloorByDirection("bottom", floorId))) {
-				core.playSound('光标移动');
-				core.ui.drawFly(getId("bottom"));
-			} else if (keycode == 90) {
-				if (core.can3D(floorId) && !flags.in3D)
-					flags.use3D = true;
-				if (flags.in3D) flags.use3D = false;
-				core.playSound('光标移动');
-				core.ui.drawFly(page);
-			} else if (keycode == 66) { // 地图名
-				if (flags.flyTitle) flags.flyTitle = false;
-				else flags.flyTitle = true;
-				core.playSound('光标移动');
-				core.ui.drawFly(page);
-			} else if (keycode == 188 && core.actions._getNextFlyFloor(-1) != page) { // 退10层
-				core.ui.drawFly(this._getNextFlyFloor(-10));
-				core.playSound("光标移动");
-			} else if (keycode == 190 && core.actions._getNextFlyFloor(1) != page) { // 进10层
-				core.ui.drawFly(this._getNextFlyFloor(10));
-				core.playSound("光标移动");
-			}
-			return;
-			//***--- 按键操作
-		};
-		////// 楼层传送器界面时，放开某个键的操作 //////
-		var originKeyUpFly = core.actions._keyUpFly;
-		actions.prototype._keyUpFly = function (keycode) {
-			if (!flags.usePlatFly || core.isReplaying()) return originKeyUpFly.call(core.actions, keycode);
-			if (keycode == 71 || keycode == 27 || keycode == 88) {
-				core.playSound('取消');
-				core.deleteCanvas("mapOnUi");
-				core.ui.closePanel();
-			}
-			if (keycode == 13 || keycode == 32 || keycode == 67)
-				this._clickFly(this.HSIZE - 1, this.HSIZE - 1);
-			return;
-		};
-		////// 点击楼层传送器时的打开操作 //////
-		events.prototype.useFly = function (fromUserAction) {
-			if (core.isReplaying()) return;
-
-			// 从“浏览地图”页面：尝试直接传送到该层
-			if (core.status.event.id == 'viewMaps') {
-				if (!core.hasItem('fly')) {
-					core.playSound('操作失败');
-					core.drawTip('你没有' + core.material.items['fly'].name, 'fly');
-				} else if (!core.canUseItem('fly')) {
-					core.playSound('操作失败');
-					core.drawTip('无法传送到当前层', 'fly');
-				} else {
-					core.flyTo(core.status.event.data.floorId);
-				}
-				return;
-			}
-			if (!this._checkStatus('fly', fromUserAction, true)) {
-				core.deleteCanvas('mapOnUi');
-				return;
-			}
-			if (core.flags.flyNearStair && !core.nearStair()) {
-				core.playSound('操作失败');
-				core.drawTip("只有在楼梯边才能使用" + core.material.items['fly'].name, 'fly');
-				core.unlockControl();
-				core.status.event.data = null;
-				core.status.event.id = null;
-				return;
-			}
-			if (!core.canUseItem('fly')) {
-				core.playSound('操作失败');
-				core.drawTip(core.material.items['fly'].name + "好像失效了", 'fly');
-				core.unlockControl();
-				core.status.event.data = null;
-				core.status.event.id = null;
-				return;
-			}
-			core.playSound('打开界面');
-			core.useItem('fly', true);
-			return;
-		};
-		// 获取区域平面地图
-		this.getFlyMap = function (floorId, fromUser, oriFloor, loop, clearCache) {
-			floorId = floorId || core.status.floorId;
-			if (floorId == oriFloor && !fromUser) return;
-			oriFloor = oriFloor || core.status.floorId;
-			if (!floorId) return;
-			// 判断是否需要缓存
-			function needCache(fromUser) {
-				if (fromUser && !core.status.flyMap[floorId]) return true;
-				if (!fromUser && !core.status.flyMap.cache[floorId]) return true;
-				return false;
-			}
-			// 缓存，加快运行速率
-			if (!core.status.flyMap) core.status.flyMap = {};
-			if (!core.status.flyMap.cache) core.status.flyMap.cache = {};
-			if (!core.status.layer) core.status.layer = {};
-			if (!core.status.layer[floorId]) core.status.layer[floorId] = {};
-			if (core.status.flyMap.cache[floorId] && fromUser) delete core.status.flyMap.cache[floorId]
-			if (core.status.flyMap[floorId] && !fromUser) delete core.status.flyMap[floorId]
-			if (needCache(fromUser) || clearCache) {
-				// 初始化
-				core.status.flyMap[floorId] = {};
-				core.status.flyMap[floorId].thisMap = {};
-				core.extractBlocks(floorId);
-				core.status.maps[floorId].blocks.forEach(function (block) {
-					var id = block.event.id;
-					var x = block.x,
-						y = block.y;
-					var trigger = block.event.trigger;
-					if (trigger != "changeFloor" && trigger != "upFloor" && trigger != "downFloor") return;
-					// 是箭头且可以切换地图
-					var toFloor = block.event.data.floorId;
-					// 加入相应位置
-					// 箭头
-					if (id == leftPortal) {
-						core.status.flyMap[floorId].thisMap["left_" + x + "_" + y] = toFloor;
-					}
-					if (id == upPortal) {
-						core.status.flyMap[floorId].thisMap["up_" + x + "_" + y] = toFloor;
-					}
-					if (id == rightPortal) {
-						core.status.flyMap[floorId].thisMap["right_" + x + "_" + y] = toFloor;
-					}
-					if (id == downPortal) {
-						core.status.flyMap[floorId].thisMap["down_" + x + "_" + y] = toFloor;
-					}
-					// 上下楼
-					if (id == upFloor) {
-						core.status.flyMap[floorId].thisMap["top_" + x + "_" + y] = toFloor;
-						core.status.layer[floorId].top = true;
-					}
-					if (id == downFloor) {
-						core.status.flyMap[floorId].thisMap["bottom_" + x + "_" + y] = toFloor;
-						core.status.layer[floorId].bottom = true;
-					}
-				});
-				// 把下几层接着检测出来
-				if (fromUser) {
-					var usedId = {};
-					for (var c = 1; c <= loop; c++) {
-						for (var i in core.status.flyMap[floorId].thisMap) {
-							var link = core.status.flyMap[floorId].thisMap;
-							if (!core.hasVisitedFloor(link[i]) || link[i] instanceof Object || usedId[link[i]]) continue;
-							usedId[link[i]] = true;
-							var next = core.getFlyMap(link[i], false, oriFloor);
-							for (var to in next) {
-								if (!core.status.layer[next[to]]) core.status.layer[next[to]] = {};
-								core.status.flyMap[floorId].thisMap[i + ',' + to] = next[to];
-							}
-						}
-					}
-				}
-				// 把先上再下之类的去掉
-				if (fromUser) {
-					for (var i in core.status.flyMap[floorId].thisMap) {
-						var route = i.split(",");
-						for (var one = 0; one <= route.length - 2; one++) {
-							var step = route[one],
-								next = route[one + 1];
-							if ((step.startsWith("up") && next.startsWith("down")) ||
-								(step.startsWith("down") && next.startsWith("up")) ||
-								(step.startsWith("left") && next.startsWith("right")) ||
-								(step.startsWith("right") && next.startsWith("left")) ||
-								(step.startsWith("top") && next.startsWith("bottom")) ||
-								(step.startsWith("bottom") && next.startsWith("top"))) {
-								delete core.status.flyMap[floorId].thisMap[i];
-							}
-						}
-					}
-				}
-				// 非当前层不能存此类缓存
-				if (!fromUser) {
-					core.status.flyMap.cache = {};
-					core.status.flyMap.cache[floorId] = {};
-					core.status.flyMap.cache[floorId].thisMap = core.status.flyMap[floorId].thisMap;
-					delete core.status.flyMap[floorId];
-				}
-				return fromUser ? core.status.flyMap[floorId].thisMap : core.status.flyMap.cache[floorId].thisMap;
-			} else { // 直接使用缓存
-				return fromUser ? core.status.flyMap[floorId].thisMap : core.status.flyMap.cache[floorId].thisMap;
-			}
-		};
-		this.can3D = function (floorId) {
-			var map = core.getFlyMap(floorId, true, floorId);
-			for (var route in map) {
-				if (route.indexOf("top") >= 0 || route.indexOf("bottom") >= 0)
-					return true;
-			}
-			return false;
-		};
-		// 绘制地图
-		this.drawFlyMap = function (ctx, x, y, width, height, floorId, config) {
-			// 初始化配置项
-			//***--- 初始化 可以修改 || 后的默认值 参数说明在开头的高深区域中
-			var fromUser = config.fromUser || false,
-				oriFloor = config.oriFloor || core.status.floorId,
-				scale = config.scale || null,
-				interval = config.interval || (width / 24),
-				noErase = config.noErase || false,
-				fromMini = config.fromMini || false,
-				loop = config.loop || defaultLoop,
-				opacity = config.opacity || defaultOpacity,
-				layer = config.layer || 0,
-				use3D = config.use3D || false,
-				clearCache = config.clearCache || false,
-				map = config.map || null;
-			//***--- 初始化
-			map = map || core.getFlyMap(floorId, fromUser, oriFloor, loop, clearCache);
-			floorId = floorId || core.status.floorId;
-			if (!floorId) return;
-			// 检测是否需要3D绘图
-			if (!fromMini && use3D) {
-				for (var route in map) {
-					if (route.indexOf("top") >= 0 || route.indexOf("bottom") >= 0) {
-						config.map = map;
-						return core.draw3DFlyMap(ctx, x, y, width, height, floorId, config);
-					}
-				}
-			}
-			if (layer != 0 && !use3D) {
-				var canLayer = false
-				for (var route in map) {
-					if (route.indexOf("top") >= 0 || route.indexOf("bottom") >= 0) {
-						canLayer = true;
-						break;
-					}
-				}
-				if (!canLayer) layer = 0;
-			}
-			flags.in3D = false;
-			// 初始化
-			var userScale = true;
-			var newCreate = false;
-			if (!scale) {
-				userScale = false;
-				scale = scale || defaultScale;
-			}
-			if (!core.dymCanvas[ctx]) {
-				core.createCanvas(ctx, x, y, width, height, 140);
-				newCreate = true;
-			}
-			x = x || 0;
-			y = y || 0;
-			// 获得canvas属性
-			width = width || document.getElementById(ctx).width;
-			height = height || document.getElementById(ctx).height;
-			var oLeft = document.getElementById(ctx).offsetLeft / core.domStyle.scale,
-				oTop = document.getElementById(ctx).offsetTop / core.domStyle.scale;
-			// 重置大地图和楼传地图的canvas位置
-			if (ctx == "mapOnUi") core.relocateCanvas("mapOnUi", -240, -240);
-			if (!noErase)
-				core.clearMap(ctx);
-			var horCenter = Math.floor(width / 2),
-				uprCenter = Math.floor(height / 2);
-			if (!newCreate) {
-				horCenter += x;
-				uprCenter += y;
-			}
-			var centerX = horCenter,
-				centerY = uprCenter;
-			var left = centerX,
-				right = centerX,
-				up = centerY,
-				down = centerY;
-			var used = {};
-			var haveLayer = {};
-			var nx = horCenter,
-				ny = uprCenter;
-			// 先把所在楼层绘制了
-			if (layer == 0) {
-				var nw = core.status.maps[floorId].width * 2 * scale,
-					nh = core.status.maps[floorId].height * 2 * scale;
-				core.setAlpha(ctx, 1);
-				core.fillRect(ctx, centerX - nw / 2, centerY - nh / 2, nw, nh, "#000000");
-				core.strokeRect(ctx, centerX - nw / 2, centerY - nh / 2, nw, nh, "#ffff22", 3 * scale);
-				// 当前层上下楼显示
-				if (!haveLayer[floorId]) {
-					core.setAlpha(ctx, 1);
-					var needLayer = core.status.layer[floorId];
-					if (needLayer.top && needLayer.bottom) {
-						core.drawIcon(ctx, "upFloor", centerX - core.__SIZE__ * scale,
-							centerY - core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
-						core.drawIcon(ctx, "downFloor", centerX - nw / 2 + core.__SIZE__ * scale,
-							centerY - nh / 2 + core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
-					}
-					if (needLayer.top && !needLayer.bottom) {
-						core.drawIcon(ctx, "upFloor", centerX - Math.min(nw, nh) / 2, centerY - Math.min(nw, nh) / 2,
-							Math.min(nw, nh), Math.min(nw, nh));
-					}
-					if (!needLayer.top && needLayer.bottom) {
-						core.drawIcon(ctx, "downFloor", centerX - Math.min(nw, nh) / 2, centerY - Math.min(nw, nh) / 2,
-							Math.min(nw, nh), Math.min(nw, nh));
-					}
-					haveLayer[floorId] = true;
-				}
-				// 四侧最远位置
-				if (left > centerX - nw / 2) left = centerX - nw / 2;
-				if (right < centerX + nw / 2) right = centerX + nw / 2;
-				if (down < centerY + nh / 2) down = centerY + nh / 2;
-				if (up > centerY - nh / 2) up = centerY - nh / 2;
-			}
-			core.setAlpha(ctx, opacity);
-			for (var route in map) { // 绘制楼层和线条
-				var rouArr = route.split(",");
-				// 检索路线及画线
-				// 初始化
-				centerX = nx;
-				centerY = ny;
-				var nowFloor = floorId || core.status.floorId;
-				var nowLayer = 0;
-				for (var one in rouArr) { // 一个一个检测
-					var step = rouArr[one].split("_");
-					var cx = step[1],
-						cy = step[2];
-					// 获得当前图块
-					core.getMapBlocksObj(nowFloor, true);
-					var nowBlock = core.status.mapBlockObjs[nowFloor][cx + ',' + cy];
-					if (!nowBlock) continue;
-					var toLoc = nowBlock.event.data.loc,
-						toFloor = nowBlock.event.data.floorId;
-					var needLayer = core.status.layer[toFloor];
-					// 当前层宽度和高度
-					var nw = core.status.maps[nowFloor].width * 2 * scale,
-						nh = core.status.maps[nowFloor].height * 2 * scale;
-					// 目标层宽度和高度
-					var tw = core.status.maps[toFloor].width * 2 * scale,
-						th = core.status.maps[toFloor].height * 2 * scale;
-					// 将当前层变为toFloor
-					nowFloor = toFloor;
-					// 超范围不画
-					if ((centerX > oLeft + x + width || centerX < oLeft + x || centerY > oTop + y + height ||
-						centerY < oTop + y) && userScale && !fromMini && ctx != "mapOnUi") continue;
-					// 绘制toFloor层
-					core.setAlpha(ctx, opacity);
-					// 确定center 根据箭头自适配 同时绘制线条 我已经看不懂了
-					if (!use3D && (step[0] == "top" || step[0] == "bottom") && layer == 0) break;
-					if (step[0] == "top") nowLayer++;
-					if (step[0] == "bottom") nowLayer--;
-					if (step[0] == 'left') {
-						var shouldTo = th / 2,
-							realTo = toLoc[1] * 2 * scale;
-						var shouldFrom = nh / 2,
-							realFrom = step[2] * 2 * scale;
-						if (nowLayer == layer) {
-							core.drawLine(ctx, centerX - nw / 2, centerY + realFrom - shouldFrom,
-								centerX - nw / 2 - interval, centerY + realFrom - shouldFrom, "#ffffff", 5 * scale);
-							core.drawLine(ctx, centerX - nw / 2, centerY + realFrom - shouldFrom,
-								centerX - nw / 2 - interval, centerY + realFrom - shouldFrom, "#000000", 2 * scale);
-						}
-						centerX -= nw / 2 + tw / 2 + interval;
-						centerY += shouldTo - realTo + realFrom - shouldFrom;
-					}
-					if (step[0] == 'right') {
-						var shouldTo = th / 2,
-							realTo = toLoc[1] * 2 * scale;
-						var shouldFrom = nh / 2,
-							realFrom = step[2] * 2 * scale;
-						if (nowLayer == layer) {
-							core.drawLine(ctx, centerX + nw / 2, centerY + realFrom - shouldFrom,
-								centerX + nw / 2 + interval, centerY + realFrom - shouldFrom, "#ffffff", 5 * scale);
-							core.drawLine(ctx, centerX + nw / 2, centerY + realFrom - shouldFrom,
-								centerX + nw / 2 + interval, centerY + realFrom - shouldFrom, "#000000", 2 * scale);
-						}
-						centerX += nw / 2 + tw / 2 + interval;
-						centerY += shouldTo - realTo + realFrom - shouldFrom;
-					}
-					if (step[0] == 'up') {
-						var shouldTo = tw / 2,
-							realTo = toLoc[0] * 2 * scale;
-						var shouldFrom = nw / 2,
-							realFrom = step[1] * 2 * scale;
-						if (nowLayer == layer) {
-							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY - nh / 2,
-								centerX + realFrom - shouldFrom, centerY - nh / 2 - interval, "#ffffff", 5 * scale);
-							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY - nh / 2,
-								centerX + realFrom - shouldFrom, centerY - nh / 2 - interval, "#000000", 2 * scale);
-						}
-						centerY -= nh / 2 + th / 2 + interval;
-						centerX += shouldTo - realTo + realFrom - shouldFrom;
-					}
-					if (step[0] == 'down') {
-						var shouldTo = tw / 2,
-							realTo = toLoc[0] * 2 * scale;
-						var shouldFrom = nw / 2,
-							realFrom = step[1] * 2 * scale;
-						if (nowLayer == layer) {
-							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY + nh / 2,
-								centerX + realFrom - shouldFrom, centerY + nh / 2 + interval, "#ffffff", 5 * scale);
-							core.drawLine(ctx, centerX + realFrom - shouldFrom, centerY + nh / 2,
-								centerX + realFrom - shouldFrom, centerY + nh / 2 + interval, "#000000", 2 * scale);
-						}
-						centerY += nh / 2 + th / 2 + interval;
-						centerX += shouldTo - realTo + realFrom - shouldFrom;
-					}
-					// 只有和目标层高度相同时才绘制
-					if (nowLayer != layer) continue;
-					// 超范围的不画
-					if ((centerX > oLeft + x + width || centerX < oLeft + x || centerY > oTop + y + height ||
-						centerY < oTop + y) && userScale && !fromMini && ctx != "mapOnUi") continue;
-					// 四侧最远位置
-					if (left > centerX - tw / 2) left = centerX - tw / 2;
-					if (right < centerX + tw / 2) right = centerX + tw / 2;
-					if (down < centerY + th / 2) down = centerY + th / 2;
-					if (up > centerY - th / 2) up = centerY - th / 2;
-					// 画过了不画
-					if (used[toFloor]) continue;
-					used[toFloor] = true;
-					// 画地图格
-					if (core.hasVisitedFloor(toFloor)) {
-						core.fillRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#000000");
-						core.strokeRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#ffffff", 3 * scale);
-					} else {
-						core.fillRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#ff22ff");
-						core.strokeRect(ctx, centerX - tw / 2, centerY - th / 2, tw, th, "#ffffff", 3 * scale);
-						break;
-					}
-					// 上下楼显示
-					if (haveLayer[toFloor]) continue;
-					core.setAlpha(ctx, opacity);
-					if (needLayer.top && needLayer.bottom) {
-						core.drawIcon(ctx, "upFloor", centerX - core.__SIZE__ * scale,
-							centerY - core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
-						core.drawIcon(ctx, "downFloor", centerX - tw / 2 + core.__SIZE__ * scale,
-							centerY - th / 2 + core.__SIZE__ * scale, core.__SIZE__ * scale, core.__SIZE__ * scale);
-					}
-					if (needLayer.top && !needLayer.bottom) {
-						core.drawIcon(ctx, "upFloor", centerX - Math.min(tw, th) / 2, centerY - Math.min(tw, th) / 2,
-							Math.min(tw, th), Math.min(tw, th));
-					}
-					if (!needLayer.top && needLayer.bottom) {
-						core.drawIcon(ctx, "downFloor", centerX - Math.min(tw, th) / 2, centerY - Math.min(tw, th) / 2,
-							Math.min(tw, th), Math.min(tw, th));
-					}
-					haveLayer[toFloor] = true;
-				}
-			}
-			// 自动缩放
-			if ((right - left > core.__PIXELS__ - 64 || down - up > core.__PIXELS__ - 64) && !userScale && !fromMini) {
-				scale = 1 / (Math.max(right - left, down - up) / (core.__PIXELS__ - 64));
-				var con = { fromUser: fromUser, oriFloor: oriFloor, scale: scale, interval: interval * scale, layer: layer, opacity: opacity, loop: loop };
-				return core.drawFlyMap(ctx, x, y, width, height, floorId, con);
-			}
-			// 大地图和楼层地图自适配定位
-			if (ctx == "mapOnUi" && !fromMini && (left - nx < -128 || right - nx > 128 ||
-				up - ny < -128 || down - ny > 128)) {
-				core.relocateCanvas("mapOnUi", -240 + (-left - right + 2 * nx) / 2, -240 + (-up - down + 2 * ny) / 2);
-			}
-		};
-		// 3D绘图
-		this.draw3DFlyMap = function (ctx, x, y, width, height, floorId, config) {
-			// 初始化配置项
-			//***--- 初始化 同上一个初始化
-			var fromUser = config.fromUser || false,
-				oriFloor = config.oriFloor || core.status.floorId,
-				scale = config.scale || null,
-				interval = config.interval || (width / 24),
-				deltaH = config.deltaH || (height / 8),
-				noErase = config.noErase || false,
-				fromMini = config.fromMini || false,
-				loop = config.loop || defaultLoop,
-				opacity = config.opacity || defaultOpacity,
-				minorAlpha = config.minorAlpha || defaultMinorAlpha,
-				reLeft = config.reLeft || -240,
-				reTop = config.reTop || -240,
-				clearCache = config.clearCache || false,
-				map = config.map || null;
-			//***--- 初始化
-			map = map || core.getFlyMap(floorId, fromUser, oriFloor, loop, clearCache);
-			// 当前层是否一个人在一层
-			var alone = true;
-			for (var route in map) {
-				if (route.startsWith("left") || route.startsWith("right") ||
-					route.startsWith("up") || route.startsWith("down")) {
-					alone = false;
-					break;
-				}
-			}
-			// 是则增加一个先上再下的路径
-			if (alone) {
-				for (var route in map) {
-					if (route.startsWith("top")) {
-						var first = route.split(",")[0].split("_");
-						break;
-					}
-				}
-				var success = false;
-				core.getMapBlocksObj(nowFloor, true);
-				var nowBlock = core.status.mapBlockObjs[floorId][first[1] + "," + first[2]];
-				var toFloor = nowBlock.event.data.floorId;
-				core.extractBlocks(toFloor);
-				core.status.maps[toFloor].blocks.forEach(function (block) {
-					var id = block.event.id;
-					var x = block.x,
-						y = block.y;
-					var trigger = block.event.trigger;
-					if (trigger != "changeFloor") return;
-					if (id == "downFloor") {
-						map["top_" + first[1] + "_" + first[2] + "," + "bottom_" + x + "_" + y] = floorId;
-						success = true;
-						return;
-					}
-				});
-				// 添加先上再下失败 尝试先下再上
-				if (!success) {
-					for (var route in map) {
-						if (route.startsWith("bottom")) {
-							var first = route.split(",")[0].split("_");
-							break;
-						}
-					}
-					var nowBlock = core.status.mapBlockObjs[floorId][first[1] + "," + first[2]];
-					var toFloor = nowBlock.event.data.floorId;
-					core.extractBlocks(toFloor);
-					core.status.maps[toFloor].blocks.forEach(function (block) {
-						var id = block.event.id;
-						var x = block.x,
-							y = block.y;
-						var trigger = block.event.trigger;
-						if (trigger != "changeFloor") return;
-						if (id == "upFloor") {
-							map["bottom_" + first[1] + "_" + first[2] + "," + "top_" + x + "_" + y] = floorId;
-							success = true;
-							return;
-						}
-					});
-				}
-			}
-			floorId = floorId || core.status.floorId;
-			if (!floorId) return;
-			flags.in3D = true;
-			// 初始化
-			// 获得排序过的楼层路径
-			map = core.sortFloor(map);
-			map = map.map;
-			var userScale = true;
-			var newCreate = false;
-			if (!scale) {
-				userScale = false;
-				scale = scale || defaultScale;
-			}
-			if (!core.dymCanvas[ctx]) {
-				core.createCanvas(ctx, x, y, width, height, 140);
-				newCreate = true;
-			}
-			x = x || 0;
-			y = y || 0;
-			// 获得canvas属性
-			width = width || document.getElementById(ctx).width;
-			height = height || document.getElementById(ctx).height;
-			// 重置canvas位置
-			core.relocateCanvas(ctx, reLeft, reTop);
-			if (!noErase)
-				core.clearMap(ctx);
-			var horCenter = Math.floor(width / 2),
-				uprCenter = Math.floor(height / 2);
-			if (!newCreate) {
-				horCenter += x;
-				uprCenter += y;
-			}
-			// 单元格的中心点 即水平线中点处
-			var centerX = horCenter,
-				centerY = uprCenter;
-			var left = centerX,
-				right = centerX,
-				up = centerY,
-				down = centerY;
-			var used = {};
-			var nx = horCenter,
-				ny = uprCenter;
-			// 开始绘制
-			for (var i = 0; i < map.length; i++) {
-				var route = map[i][0];
-				var nowLayer = map[i][1];
-				var everyLayer = 0;
-				route = route.split(",");
-				// 每条路线初始化
-				centerX = horCenter;
-				centerY = uprCenter;
-				centerX += core.status.maps[floorId].height * scale * Math.SQRT2 / 4;
-				if (flags.viewingLayer) {
-					centerY += deltaH * flags.viewingLayer;
-				}
-				var nowFloor = floorId || core.status.floorId;
-				for (var one = 0; one < route.length; one++) {
-					var step = route[one].split("_");
-					var cx = step[1],
-						cy = step[2];
-					// 检测高度，是否与nowLayer一致 不一致在处理完center以后不绘制
-					if (step[0] == "top") everyLayer++;
-					if (step[0] == "bottom") everyLayer--;
-					// 获得当前图块
-					core.getMapBlocksObj(nowFloor, true);
-					var nowBlock = core.status.mapBlockObjs[nowFloor][cx + ',' + cy];
-					if (!nowBlock) continue;
-					var toLoc = nowBlock.event.data.loc,
-						toFloor = nowBlock.event.data.floorId;
-					// 当前层宽度和高度
-					// 斜二测画法
-					var nw = core.status.maps[nowFloor].width * 2 * scale,
-						nh = core.status.maps[nowFloor].height * scale * Math.SQRT2 / 2;
-					// 目标层宽度和高度
-					var tw = core.status.maps[toFloor].width * 2 * scale,
-						th = core.status.maps[toFloor].height * scale * Math.SQRT2 / 2;
-					if (!(toLoc instanceof Array)) {
-						toLoc = [Math.floor(tw / 4 / scale), Math.floor(th / 4 / scale)];
-					}
-					// 绘制当前层
-					if (nowLayer == 0 && !used[floorId]) {
-						core.setAlpha(ctx, 1);
-						used[floorId] = true;
-						var nowW = core.status.maps[floorId].width * 2 * scale;
-						var nowH = core.status.maps[floorId].height * scale * Math.SQRT2 / 2;
-						var nodes = [
-							[centerX - nowW / 2 - nowH / 2, centerY + nowH / 2],
-							[centerX + nowW / 2 - nowH / 2, centerY + nowH / 2],
-							[centerX + nowW / 2 + nowH / 2, centerY - nowH / 2],
-							[centerX - nowW / 2 + nowH / 2, centerY - nowH / 2]
-						];
-						core.fillPolygon(ctx, nodes, "#000000");
-						core.strokePolygon(ctx, nodes, "#ffff22", 1.5 * scale);
-						// 四侧最远位置
-						if (left > centerX - nw / 2 - nh / 2 && nowLayer == (flags.viewingLayer || 0)) left = centerX - nw / 2 - nh / 2;
-						if (right < centerX + nw / 2 + nh / 2 && nowLayer == (flags.viewingLayer || 0)) right = centerX + nw / 2 + nh / 2;
-					}
-					// 将当前层变为toFloor
-					var fromFloor = nowFloor;
-					nowFloor = toFloor;
-					// 计算center 画同层间的线 我已经看不懂了
-					// 设置不透明度
-					if (nowLayer == (flags.viewingLayer || 0)) {
-						core.setAlpha(ctx, opacity);
-					} else {
-						core.setAlpha(ctx, minorAlpha * Math.max(0, 1 - 0.34 * Math.abs(nowLayer - (flags.viewingLayer || 0))));
-					}
-					if (step[0] == "left") {
-						var shouldFrom = nh / 2,
-							realFrom = cy * scale * Math.SQRT2 / 2;
-						var shouldTo = th / 2,
-							realTo = toLoc[1] * scale * Math.SQRT2 / 2;
-						if (everyLayer == nowLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
-							core.drawLine(ctx, centerX - nw / 2 + nh / 2 - realFrom, centerY + realFrom - shouldFrom,
-								centerX - nw / 2 - interval + nh / 2 - realFrom, centerY + realFrom - shouldFrom, "#ffffff", 2 * scale);
-						centerX -= nw / 2 + tw / 2 + interval + shouldTo - realTo + realFrom - shouldFrom;
-						centerY += shouldTo - realTo + realFrom - shouldFrom;
-					}
-					if (step[0] == "right") {
-						var shouldFrom = nh / 2,
-							realFrom = cy * scale * Math.SQRT2 / 2;
-						var shouldTo = th / 2,
-							realTo = toLoc[1] * scale * Math.SQRT2 / 2;
-						if (nowLayer == everyLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
-							core.drawLine(ctx, centerX + nw / 2 + nh / 2 - realFrom, centerY + realFrom - shouldFrom,
-								centerX + nw / 2 + interval + nh / 2 - realFrom, centerY + realFrom - shouldFrom, "#ffffff", 2 * scale);
-						centerX += nw / 2 + tw / 2 + interval - (shouldTo - realTo + realFrom - shouldFrom);
-						centerY += shouldTo - realTo + realFrom - shouldFrom;
-					}
-					if (step[0] == "up") {
-						var shouldTo = tw / 2,
-							realTo = toLoc[0] * scale * 2;
-						var shouldFrom = nw / 2,
-							realFrom = cx * scale * 2;
-						if (nowLayer == everyLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
-							core.drawLine(ctx, centerX + realFrom - shouldFrom + nh / 2, centerY - nh / 2, centerX + realFrom -
-								shouldFrom + interval * Math.SQRT2 / 4 + nh / 2, centerY - nh / 2 - interval * Math.SQRT2 / 4, "#ffffff", 2 * scale);
-						centerY -= nh / 2 + th / 2 + interval * Math.SQRT2 / 4;
-						centerX += shouldTo - realTo + realFrom - shouldFrom + (nh / 2 + th / 2 + interval * Math.SQRT2 / 4);
-					}
-					if (step[0] == "down") {
-						var shouldTo = tw / 2,
-							realTo = toLoc[0] * scale * 2;
-						var shouldFrom = nw / 2,
-							realFrom = cx * scale * 2;
-						if (nowLayer == everyLayer && !used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy])
-							core.drawLine(ctx, centerX + realFrom - shouldFrom - nh / 2, centerY + nh / 2, centerX + realFrom -
-								shouldFrom - interval * Math.SQRT2 / 4 - nh / 2, centerY + nh / 2 + interval * Math.SQRT2 / 4, "#ffffff", 2 * scale);
-						centerY += nh / 2 + th / 2 + interval * Math.SQRT2 / 4;
-						centerX += shouldTo - realTo + realFrom - shouldFrom - (nh / 2 + th / 2 + interval * Math.SQRT2 / 4);
-					}
-					if (step[0] == "top") {
-						centerY -= deltaH;
-					}
-					if (step[0] == "bottom") {
-						centerY += deltaH;
-					}
-					if (everyLayer == nowLayer && step[0] != "top" && step[0] != "bottom") {
-						used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy] = true;
-						used[toFloor + "_" + fromFloor + "_" + toLoc[0] + "_" + toLoc[1]] = true;
-					}
-					if (everyLayer != nowLayer) continue;
-					// 四侧最远位置
-					if (!flags.viewingLayer) {
-						if (left > centerX - tw / 2 - th / 2 && nowLayer == (flags.viewingLayer || 0)) left = centerX - tw / 2 - th / 2;
-						if (right < centerX + tw / 2 + th / 2 && nowLayer == (flags.viewingLayer || 0)) right = centerX + tw / 2 + th / 2;
-						if (down < centerY + th / 2 && nowLayer == (flags.viewingLayer || 0)) down = centerY + th / 2;
-						if (up > centerY - th / 2 && nowLayer == (flags.viewingLayer || 0)) up = centerY - th / 2;
-					}
-					// 不同高度层之间的连线
-					if (!used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy]) {
-						core.setAlpha(ctx, opacity * Math.max(0, 1 - 0.34 * Math.abs(nowLayer - (flags.viewingLayer || 0))));
-						if (step[0] == "top") {
-							core.drawLine(ctx, centerX, centerY + deltaH, centerX, centerY, "#ffffff", 5 * scale);
-							core.drawLine(ctx, centerX, centerY + deltaH, centerX, centerY, "#000000", 2 * scale);
-							used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy] = true;
-							used[toFloor + "_" + fromFloor + "_" + toLoc[0] + "_" + toLoc[1]] = true;
-						}
-					}
-					if (!used[toFloor]) {
-						used[toFloor] = true;
-						// 设置不透明度
-						if (nowLayer == (flags.viewingLayer || 0)) {
-							core.setAlpha(ctx, opacity);
-						} else {
-							core.setAlpha(ctx, minorAlpha * Math.max(0, 1 - 0.34 * Math.abs(nowLayer - (flags.viewingLayer || 0))));
-						}
-						// 画地图
-						var nodes = [
-							[centerX - tw / 2 - th / 2, centerY + th / 2], // 左下
-							[centerX + tw / 2 - th / 2, centerY + th / 2], // 右下
-							[centerX + tw / 2 + th / 2, centerY - th / 2], // 右上
-							[centerX - tw / 2 + th / 2, centerY - th / 2] // 左上
-						];
-						if (core.hasVisitedFloor(toFloor)) {
-							core.fillPolygon(ctx, nodes, "#000000");
-						} else {
-							core.fillPolygon(ctx, nodes, "#ff22ff");
-						}
-						core.strokePolygon(ctx, nodes, "#ffffff", 1.5 * scale);
-					}
-					// 不同高度层之间的连线
-					if (!used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy]) {
-						if (step[0] == "bottom") {
-							core.drawLine(ctx, centerX, centerY, centerX, centerY - deltaH, "#ffffff", 5 * scale);
-							core.drawLine(ctx, centerX, centerY, centerX, centerY - deltaH, "#000000", 2 * scale);
-							used[fromFloor + "_" + toFloor + "_" + cx + "_" + cy] = true;
-							used[toFloor + "_" + fromFloor + "_" + toLoc[0] + "_" + toLoc[1]] = true;
-						}
-					}
-				}
-			}
-			// 自动缩放
-			if ((right - left > core.__PIXELS__ - 64 || down - up > core.__PIXELS__ - 64) && !userScale && !fromMini) {
-				scale = 1 / (Math.max(right - left, down - up) / (core.__PIXELS__ - 64));
-				var con = { fromUser: fromUser, oriFloor: oriFloor, scale: scale, interval: interval * scale, opacity: opacity, loop: loop, use3D: true };
-				return core.draw3DFlyMap(ctx, x, y, width, height, floorId, con);
-			}
-			// 大地图和楼层地图自适配定位
-			if (ctx == "mapOnUi")
-				core.relocateCanvas("mapOnUi", -240 + (-left - right + 2 * nx) / 2, -240 + (-up - down + 2 * ny) / 2);
-		};
-		// 不同高度楼层排序
-		this.sortFloor = function (map) {
-			map = map || core.getFlyMap(null, true);
-			var totalLayer = 1,
-				topLayer = 0,
-				bottomLayer = 0,
-				nowLayer = 0;
-			// 拆分map
-			for (var i in map) {
-				var route = i.split(",");
-				nowLayer = 0;
-				for (var one in route) {
-					var step = route[one].split("_");
-					// 层数处理 并记录每一层的层数
-					if (step[0] == "top") {
-						nowLayer++;
-						map[i] = nowLayer + "_" + map[i];
-						if (nowLayer > topLayer) topLayer = nowLayer;
-					}
-					if (step[0] == "bottom") {
-						nowLayer--;
-						map[i] = nowLayer + "_" + map[i];
-						if (nowLayer < bottomLayer) bottomLayer = nowLayer;
-					}
-				}
-			}
-			// 总层数
-			totalLayer = topLayer - bottomLayer + 1;
-			// 按楼层高度由低到高排序
-			// 先变成数组
-			var mapArr = [];
-			for (var one in map) {
-				mapArr.push([one, parseInt(map[one]) || 0]);
-			}
-			// 再sort
-			mapArr.sort(function (a, b) { return a[1] - b[1]; });
-			return { map: mapArr, totalLayer: totalLayer, top: topLayer, bottom: bottomLayer };
-		};
-		// 由方向获得楼层坐标
-		this.getFloorByDirection = function (direction, floorId) {
-			floorId = floorId || core.status.floorId;
-			var route = core.getFlyMap(floorId);
-			for (var step in route) {
-				if (step.indexOf(direction) >= 0) {
-					return route[step];
-				}
-			}
-			return null;
-		};
-		////// 转换楼层结束的事件 检查小地图 //////
-		var originAfterChangeFloor = core.events.afterChangeFloor;
-		events.prototype.afterChangeFloor = function (floorId) {
-			if (!flags.__useMinimap__ || core.isReplaying()) {
-				core.deleteCanvas("minimap");
-				core.deleteCanvas("mapArrow");
-				core.unregisterAction("ondown", "closeMinimap");
-				core.unregisterAction("ondown", "openMinimap");
-				return originAfterChangeFloor.call(core.events, floorId);
-			}
-			if (main.mode != 'play') return;
-			this.eventdata.afterChangeFloor(floorId);
-			// 防止小地图出问题
-			core.unregisterAction("ondown", "closeMinimap");
-			core.unregisterAction("ondown", "openMinimap");
-			// 切换小地图
-			core.checkMinimap(true, true);
-			return;
-		};
-		////// 瞬间移动 检查小地图 //////
-		var originMoveDirectly = core.control.moveDirectly;
-		control.prototype.moveDirectly = function (destX, destY, ignoreSteps) {
-			if (!flags.__useMinimap__ || core.isReplaying())
-				return originMoveDirectly.call(core.control, destX, destY, ignoreSteps);
-			var canMoveDirectly = this.controldata.moveDirectly(destX, destY, ignoreSteps);
-			if (canMoveDirectly) core.checkMinimap();
-			return canMoveDirectly;
-		};
-		////// 每移动一格后执行的事件 检查小地图 //////
-		var originMoveOneStep = core.control.moveOneStep;
-		control.prototype.moveOneStep = function (callback) {
-			if (!flags.__useMinimap__ || core.isReplaying())
-				return originMoveOneStep.call(core.control, callback);
-			this.controldata.moveOneStep(callback);
-			core.checkMinimap();
-		};
-		// 检查小地图开闭情况 改变小地图位置
-		this.checkMinimap = function (fromUser, reDraw) {
-			if (!flags.__useMinimap__ || core.isReplaying()) {
-				core.unregisterAction("ondown", "closeMinimap");
-				core.unregisterAction("ondown", "openMinimap");
-				core.deleteCanvas("mapArrow");
-				core.deleteCanvas("minimap");
-				return;
-			}
-			reDraw = reDraw || false;
-			// 是否重绘
-			if (reDraw) {
-				if (flags.minimap) core.drawMinimap(flags.__onLeft__);
-				else core.drawClosedMap(flags.__onLeft__);
-			}
-			var hx = core.status.hero.loc.x;
-			var opened = flags.minimap;
-			var onLeft = hx >= Math.ceil(core.__SIZE__ / 3 * 2);
-			fromUser = fromUser || false; // 开关小地图相关
-			if (!flags.__onLeft__) flags.__onLeft__ = false;
-			// 如果地图上没有小地图 画到右边
-			if (!core.dymCanvas.mapArrow && !core.dymCanvas.minimap && !reDraw) {
-				if (flags.minimap) core.drawMinimap();
-				else core.drawClosedMap();
-				flags.__onLeft__ = false;
-			}
-			// 人物在中间 不执行
-			if (hx >= Math.ceil(core.__SIZE__ / 3 + core.bigmap.offsetX / 32) &&
-				hx <= Math.floor(core.__SIZE__ / 3 * 2 + core.bigmap.offsetX / 32)) return;
-			// 重定位画布 和 翻转
-			// 挪到右边
-			if (!onLeft && (flags.__onLeft__ || fromUser)) {
-				flags.__onLeft__ = false;
-				if (opened) {
-					core.relocateCanvas("minimap", core.__PIXELS__ - 120, 0);
-					core.relocateCanvas("mapArrow", core.__PIXELS__ - 140, 0);
-					document.getElementById('mapArrow').style.transform = 'none';
-				} else {
-					core.relocateCanvas("minimap", core.__PIXELS__, 0);
-					core.relocateCanvas("mapArrow", core.__PIXELS__ - 20, 0);
-					document.getElementById('mapArrow').style.transform = 'none';
-				}
-			}
-			// 挪到左边
-			if (onLeft && (!flags.__onLeft__ || fromUser)) {
-				flags.__onLeft__ = true;
-				if (opened) {
-					core.relocateCanvas("minimap", 0, 0);
-					core.relocateCanvas("mapArrow", 120, 0);
-					document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
-				} else {
-					core.relocateCanvas("minimap", -120, 0);
-					core.relocateCanvas("mapArrow", 0, 0);
-					document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
-				}
-			}
-		};
-		// 点击小地图的action
-		this.registerMinimapAction = function (open) {
-			if (!open) {
-				core.registerAction("ondown", "closeMinimap", function (x, y, px, py) {
-					if (!flags.__onLeft__) {
-						if (px >= core.__PIXELS__ - 140 && px <= core.__PIXELS__ - 120 &&
-							py >= 0 && py <= 120) {
-							core.closeMinimap();
-							core.unregisterAction("ondown", "closeMinimap");
-							return true;
-						}
-						if (px >= core.__PIXELS__ - 120 && py <= 120) {
-							core.playSound("打开界面");
-							core.drawTotalMap();
-							return true;
-						}
-					} else {
-						if (px >= 120 && px <= 140 && py >= 0 && py <= 120) {
-							core.closeMinimap();
-							core.unregisterAction("ondown", "closeMinimap");
-							return true;
-						}
-						if (px <= 120 && py <= 120) {
-							core.playSound("打开界面");
-							core.drawTotalMap();
-							return true;
-						}
-					}
-				}, 10);
-			} else {
-				core.registerAction("ondown", "openMinimap", function (x, y, px, py) {
-					if (!flags.__onLeft__) {
-						if (px >= core.__PIXELS__ - 20 && py <= 120) {
-							core.openMinimap();
-							core.unregisterAction("ondown", "openMinimap");
-							return true;
-						}
-					} else {
-						if (px <= 20 && py <= 120) {
-							core.openMinimap();
-							core.unregisterAction("ondown", "openMinimap");
-							return true;
-						}
-					}
-				}, 10);
-			}
-		};
-		// 地图上的小地图
-		this.drawMinimap = function (toLeft) {
-			if (!flags.__useMinimap__) {
-				core.deleteCanvas("mapArrow");
-				core.deleteCanvas("minimap");
-				return;
-			}
-			var scale = 1.3 / core.status.thisMap.width * 15 * (flags.userScale || 1);
-			if (1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1) < scale)
-				scale = 1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1);
-			// 绘制
-			core.createCanvas("minimap", core.__PIXELS__ - 120, 0, 120, 120, 100);
-			core.createCanvas("mapArrow", core.__PIXELS__ - 140, 0, 20, 120, 100);
-			if (toLeft) {
-				core.relocateCanvas("minimap", 0, 0);
-				core.relocateCanvas("mapArrow", 120, 0);
-				document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
-			}
-			core.clearMap("minimap");
-			core.clearMap("mapArrow");
-			// 黑色底
-			core.fillRect("minimap", 0, 0, 120, 120, [0, 0, 0, 0.6]);
-			var config = { fromUser: true, oriFloor: core.status.floorId, scale: scale, interval: 10, noErase: true, fromMini: true };
-			core.drawFlyMap("minimap", 0, 0, 120, 120, core.status.floorId, config);
-			// 向右箭头
-			core.fillRect("mapArrow", 0, 0, 20, 120, [230, 230, 230, 0.9]);
-			core.drawLine("mapArrow", 0, 20, 20, 20, [100, 100, 100, 0.9], 2);
-			core.drawLine("mapArrow", 0, 100, 20, 100, [100, 100, 100, 0.9], 2);
-			core.setTextAlign("mapArrow", "center");
-			core.fillText("mapArrow", ">", 10, 67, [100, 100, 100, 0.9], "20px Verdana");
-			core.registerMinimapAction(false);
-		};
-		// 关闭小地图
-		this.closeMinimap = function () {
-			if (!flags.__useMinimap__) {
-				core.deleteCanvas("mapArrow");
-				core.deleteCanvas("minimap");
-				return;
-			}
-			var onLeft = flags.__onLeft__;
-			var frame = 0;
-			var x = core.__PIXELS__,
-				a = 0.096,
-				speed = 4.8;
-			if (onLeft) {
-				x = 260;
-				a = -a;
-				speed = -speed;
-			}
-			var interval = setInterval(function () {
-				core.relocateCanvas("mapArrow", x - 140, 0);
-				if (!onLeft)
-					core.relocateCanvas("minimap", x - 120, 0);
-				else core.relocateCanvas("minimap", x - 260, 0);
-				speed -= a;
-				x += speed;
-				if (frame == 50) {
-					flags.minimap = false;
-					clearInterval(interval);
-					core.drawClosedMap(onLeft);
-					core.checkMinimap(true);
-				}
-				frame++;
-			}, 20);
-		};
-		// 合上的小地图
-		this.drawClosedMap = function (toLeft) {
-			if (!flags.__useMinimap__) {
-				core.deleteCanvas("mapArrow");
-				core.deleteCanvas("minimap");
-				return;
-			}
-			var scale = 1.3 / core.status.thisMap.width * 15 * (flags.userScale || 1);
-			if (1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1) < scale)
-				scale = 1.3 / core.status.thisMap.height * 15 * (flags.userScale || 1);
-			// 绘制
-			core.createCanvas("minimap", core.__PIXELS__, 0, 120, 120, 100);
-			core.createCanvas("mapArrow", core.__PIXELS__ - 20, 0, 20, 120, 100);
-			core.clearMap("minimap");
-			core.clearMap("mapArrow");
-			if (toLeft) {
-				core.relocateCanvas("minimap", -120, 0);
-				core.relocateCanvas("mapArrow", 0, 0);
-				document.getElementById('mapArrow').style.transform = 'rotateY(180deg)';
-			}
-			// 黑色底
-			core.fillRect("minimap", 0, 0, 120, 120, [0, 0, 0, 0.6]);
-			var config = { fromUser: true, oriFloor: core.status.floorId, scale: scale, interval: 10, noErase: true, fromMini: true };
-			core.drawFlyMap("minimap", 0, 0, 120, 120, core.status.floorId, config);
-			// 向左箭头
-			core.fillRect("mapArrow", 0, 0, 20, 120, [230, 230, 230, 0.9]);
-			core.drawLine("mapArrow", 0, 20, 20, 20, [100, 100, 100, 0.9], 2);
-			core.drawLine("mapArrow", 0, 100, 20, 100, [100, 100, 100, 0.9], 2);
-			core.setTextAlign("mapArrow", "center");
-			core.fillText("mapArrow", "<", 10, 67, [100, 100, 100, 0.9], "20px Verdana");
-			core.registerMinimapAction(true);
-		};
-		// 打开小地图
-		this.openMinimap = function () {
-			if (!flags.__useMinimap__) {
-				core.deleteCanvas("mapArrow");
-				core.deleteCanvas("minimap");
-				return;
-			}
-			var onLeft = flags.__onLeft__;
-			var frame = 0;
-			var x = 120 + core.__PIXELS__,
-				a = 0.096,
-				speed = 4.8;
-			if (onLeft) {
-				x = 140;
-				a = -a;
-				speed = -speed;
-			}
-			var interval = setInterval(function () {
-				core.relocateCanvas("mapArrow", x - 140, 0);
-				if (!flags.__onLeft__)
-					core.relocateCanvas("minimap", x - 120, 0);
-				else core.relocateCanvas("minimap", x - 260, 0);
-				speed -= a;
-				x -= speed;
-				if (frame == 50) {
-					flags.minimap = true;
-					clearInterval(interval);
-					core.drawMinimap(onLeft);
-					core.checkMinimap(true);
-				}
-				frame++;
-			}, 20);
-		};
-		// 大地图
-		this.drawTotalMap = function (floorId) {
-			floorId = floorId || core.status.floorId;
-			core.status.event.id = "totalMap";
-			core.lockControl();
-			if (!flags.viewingLayer) flags.viewingLayer = 0;
-			var loop = 5;
-			if (flags.worldMap) loop = core.floorIds.length;
-			// 大地图时点击和键盘操作
-			core.registerAction("ondown", "onDownTmap", function (x, y) {
-				if (core.status.event.id == "totalMap") {
-					if (y < 1 && x <= Math.floor(core.__SIZE__ / 2) - 2) { // 上移一层
-						if (flags.viewingLayer < core.sortFloor().top) {
-							flags.viewingLayer++;
-							core.playSound('光标移动');
-							core.drawTotalMap();
-						}
-						return true;
-					}
-					if (y < 1 && x >= Math.ceil(core.__SIZE__ / 2) + 1) { // 下移一层
-						if (flags.viewingLayer > core.sortFloor().bottom) {
-							flags.viewingLayer--;
-							core.playSound('光标移动');
-							core.drawTotalMap();
-						}
-						return true;
-					}
-					if (y < 1 && x < Math.ceil(core.__SIZE__ / 2) + 1 && x > Math.floor(core.__SIZE__ / 2) - 2) {
-						// 区域地图
-						if (flags.worldMap) {
-							flags.worldMap = false;
-							flags.viewingLayer = 0;
-						} else flags.worldMap = true;
-						core.playSound('光标移动');
-						core.drawTotalMap();
-						return true;
-					}
-					if (y >= core.__SIZE__ - 1 && x <= Math.floor(core.__SIZE__ / 2)) { // 3D
-						if (core.can3D(floorId) && !flags.in3D) flags.use3D = true;
-						if (flags.in3D) flags.use3D = false;
-						flags.mapHint = false;
-						core.playSound('光标移动');
-						core.drawTotalMap();
-						return true;
-					}
-					if (y >= core.__SIZE__ - 1 && x >= Math.ceil(core.__SIZE__ / 2)) { // hint
-						if (flags.in3D) {
-							if (!flags.mapHint) flags.mapHint = true;
-							else flags.mapHint = false;
-							core.playSound('光标移动');
-							core.drawTotalMap();
-						}
-						return true;
-					}
-					flags.viewingLayer = 0;
-					core.playSound("取消")
-					core.deleteCanvas("mapOnUi");
-					core.deleteCanvas("back");
-					core.deleteCanvas("tips");
-					core.closePanel();
-					core.unregisterAction("ondown", "onDownTmap");
-					return true;
-				}
-			}, 110);
-			core.registerAction("keyUp", "keyUpTmap", function (keycode) {
-				if (core.status.event.id == "totalMap") {
-					if (keycode == 33) { // PgUp
-						if (flags.viewingLayer < core.sortFloor().top) {
-							flags.viewingLayer++;
-							core.playSound('光标移动');
-							core.drawTotalMap();
-						}
-						return true;
-					}
-					if (keycode == 34) { // PgDn
-						if (flags.viewingLayer > core.sortFloor().bottom) {
-							flags.viewingLayer--;
-							core.playSound('光标移动');
-							core.drawTotalMap();
-						}
-						return true;
-					}
-					if (keycode == 90) { // Z
-						if (core.can3D(floorId) && !flags.in3D) flags.use3D = true;
-						if (flags.in3D) flags.use3D = false;
-						flags.mapHint = false;
-						core.playSound('光标移动');
-						core.drawTotalMap();
-						return true;
-					}
-					if (keycode == 84) { // T
-						if (flags.in3D) {
-							if (!flags.mapHint) flags.mapHint = true;
-							else flags.mapHint = false;
-							core.playSound('光标移动');
-							core.drawTotalMap();
-						}
-						return true;
-					}
-					if (keycode == 87) { // W
-						if (flags.worldMap) {
-							flags.worldMap = false;
-							flags.viewingLayer = 0;
-						} else flags.worldMap = true;
-						core.playSound('光标移动');
-						core.drawTotalMap();
-						return true;
-					}
-					flags.viewingLayer = 0;
-					core.playSound("取消")
-					core.deleteCanvas("mapOnUi");
-					core.deleteCanvas("back");
-					core.deleteCanvas("tips");
-					core.closePanel();
-					core.unregisterAction("keyUp", "keyUpTmap");
-					return true;
-				}
-			}, 110);
-			// 开始画
-			core.createCanvas("mapOnUi", -240, -240, core.__PIXELS__ + 480, core.__PIXELS__ + 480, 150);
-			core.createCanvas("back", -240, -240, core.__PIXELS__ + 480, core.__PIXELS__ + 480, 140);
-			core.createCanvas("tips", 0, 0, core.__PIXELS__, core.__PIXELS__, 160);
-			var ctx = document.getElementById("tips").getContext("2d");
-			ctx.shadowOffsetX = 0;
-			ctx.shadowOffsetY = 0;
-			ctx.shadowBlur = 5;
-			ctx.shadowColor = "rgba(100, 100, 255, 1)";
-			core.fillRect("back", -240, -240, core.__PIXELS__ + 480, core.__PIXELS__ + 480, [0, 0, 0, 0.9]);
-			core.fillRect("tips", 0, 0, core.__PIXELS__ / 2 - 50, 32, [200, 200, 200, 0.8]);
-			core.fillRect("tips", core.__PIXELS__ / 2 + 50, 0, core.__PIXELS__ / 2 - 50, 32, [200, 200, 200, 0.8]);
-			core.fillRect("tips", core.__PIXELS__ / 2 - 46, 0, 92, 32, [200, 200, 200, 0.8]);
-			core.drawLine("tips", 0, 32, core.__PIXELS__ / 2 - 50, 32, [50, 50, 50, 0.8], 3);
-			core.drawLine("tips", core.__PIXELS__ / 2 + 50, 32, core.__PIXELS__, 32, [50, 50, 50, 0.8], 3);
-			core.drawLine("tips", core.__PIXELS__ / 2 - 46, 32, core.__PIXELS__ / 2 + 46, 32, [50, 50, 50, 0.8], 3);
-			core.fillRect("tips", 0, core.__PIXELS__, core.__PIXELS__ / 2 - 5, -32, [200, 200, 200, 0.8]);
-			core.fillRect("tips", core.__PIXELS__ / 2 + 5, core.__PIXELS__, core.__PIXELS__ / 2 - 5, -32, [200, 200, 200, 0.8]);
-			core.drawLine("tips", 0, core.__PIXELS__ - 32, core.__PIXELS__ / 2 - 5, core.__PIXELS__ - 32, [50, 50, 50, 0.8], 3);
-			core.drawLine("tips", core.__PIXELS__ / 2 + 5, core.__PIXELS__ - 32, core.__PIXELS__, core.__PIXELS__ - 32, [50, 50, 50, 0.8], 3);
-			core.setTextAlign("tips", "center");
-			core.fillText("tips", "上移一层", core.__PIXELS__ / 4 - 23, 24, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
-			core.fillText("tips", "下移一层", core.__PIXELS__ / 4 * 3 + 23, 24, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
-			core.fillText("tips", flags.worldMap ? "小地图" : "区域地图", core.__PIXELS__ / 2, 24, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
-			core.drawFlyMap("mapOnUi", 240, 240, core.__PIXELS__, core.__PIXELS__,
-				floorId, { fromUser: true, opacity: 1, oriFloor: floorId, noErase: true, use3D: flags.use3D, layer: flags.viewingLayer, loop: loop, clearCache: true });
-			if (flags.in3D)
-				core.fillText("tips", "参考线（T）", core.__PIXELS__ / 4 * 3, core.__PIXELS__ - 8, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
-			if (core.can3D(floorId) && !flags.in3D)
-				core.fillText("tips", "3D模式（Z）", core.__PIXELS__ / 4, core.__PIXELS__ - 8, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
-			if (flags.in3D)
-				core.fillText("tips", "2D模式（Z）", core.__PIXELS__ / 4, core.__PIXELS__ - 8, [255, 255, 255, 0.8], "24px " + core.status.globalAttribute.font);
-			if (flags.mapHint) {
-				core.drawLine("back", 240, 240 + core.__PIXELS__, 240 + core.__PIXELS__, 240, [100, 100, 240, 0.4], 2);
-				core.drawLine("back", 240 + core.__PIXELS__ / 2, 240, 240 + core.__PIXELS__ / 2, 240 + core.__PIXELS__, [100, 100, 240, 0.4], 2);
-				core.drawLine("back", 240, 240 + core.__PIXELS__ / 2, 240 + core.__PIXELS__, 240 + core.__PIXELS__ / 2, [100, 100, 240, 0.4], 2);
-			}
-		};
-	},
 	"statistics": function () {
 		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
 		let __enable = true;
@@ -9835,7 +9836,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const effectObj = core.items.getItemEffectValue(id);
 						for (let statusName in effectObj) {
 							if (effectObj.hasOwnProperty(statusName)) core.addStatus(statusName, effectObj[statusName]);
-						} 
+						}
 						if (core.material.items[id].itemEffect != null) {
 							try { eval(core.material.items[id].itemEffect); } catch (e) { }
 						}
@@ -9925,7 +9926,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				addCountToFormer(stat.equipsCount, statistics[floorId].equipsCount, floorId);
 				addCountToFormer(stat.enemysCount, statistics[floorId].enemysCount, floorId);
 				if (damagePerFloor[floorId]) {
-					["battleDamage","extraDamage","poisonDamage","vampireExtraLoss"].forEach(key=>{
+					["battleDamage", "extraDamage", "poisonDamage", "vampireExtraLoss"].forEach(key => {
 						stat[key][floorId] = damagePerFloor[floorId]?.[key] || 0;
 					});
 				}
@@ -10026,7 +10027,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		class FloorStatisticsTextMenu extends MenuBase {
 			constructor(name, toListen, x, y, w, h, zIndex) {
 				super(name, toListen, x, y, w, h, zIndex);
-				this.statItemList = core.ui.uidata.drawStatistics();
 				/** @type {STAT|null} */
 				this.stat = null;
 				this.itemPage = 0; // 道具列表到了第几页
@@ -10118,8 +10118,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 							else if (id === "poisonDamage") name = "中毒伤害";
 							else if (id === "vampireExtraLoss") name = "吸血额外伤害";
 						}
-						console.log(count[id]);
-						if (count[id]==null) debugger;
 						total = count[id].total || 0;
 					}
 					core.ui.strokeRect(ctx, 20, 155 + 25 * i, 80, 25, "black");
@@ -10135,7 +10133,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (i === -1) continue; // i=-1是表头
 					core.ui.drawIcon(ctx, id, 25, 160 + 25 * i, 16, 16);
 					core.ui.fillText(ctx, name, 94, 163 + 25 * i, "black", name.length < 5 ? "12px Verdana" : "8px Verdana");
-					
+
 				}
 			}
 
@@ -10208,7 +10206,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 				0, 50, PX, PX - 50, 132);
 			const playerStatisticsMenu = new PlayerStatisticsMenu("playerStatistics", ["ondown"],
 				0, 50, PX, PX - 50, 132);
-			const staticsMenu = new StatisticsMenu(
+			const statisticsMenu = new StatisticsMenu(
 				[floorStatisticsMenu, floorStatisticsTextMenu, playerStatisticsMenu],
 				0, "statistics", ["ondown"], 0, 0, PX, PX, 131);
 
@@ -10287,7 +10285,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 					}
 					floorStatisticsTextMenu.floorList = floorStatisticsTextMenu.getFloorList();
 					floorStatisticsTextMenu.stat = floorStatisticsTextMenu.getStat();
-					staticsMenu.changePage(1);
+					statisticsMenu.changePage(1);
 				}]);
 			floorStatisticsMenu.registerBtns(floorStatisticsList);
 
@@ -10297,8 +10295,8 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			const equipStatBtn = new RoundBtn(215, 90, 40, 20, "装备", config);
 			const enemyStatBtn = new RoundBtn(275, 90, 40, 20, "敌人", config);
 			const damageStatBtn = new RoundBtn(335, 90, 40, 20, "伤害", config);
-			const itemDownBtn = new ArrowBtn(20, 335, 16, 16, "left");
-			const itemUpBtn = new ArrowBtn(40, 335, 16, 16, "right");
+			const itemUpBtn = new ArrowBtn(20, 335, 16, 16, "down");
+			const itemDownBtn = new ArrowBtn(40, 335, 16, 16, "up");
 			const floorDownBtn = new ArrowBtn(360, 335, 16, 16, "left");
 			const floorUpBtn = new ArrowBtn(380, 335, 16, 16, "right");
 
@@ -10331,27 +10329,47 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			floorBtn.status = "selected";
 			const exit = () => {
 				core.setFlag("__statistics__", null);
+				if (core.control.unregisterDymCanvasResizeEvent) {
+					const unregisterRedraw = (menu) => {
+						core.control.unregisterDymCanvasResizeEvent(menu.name);
+					}
+					unregisterRedraw(statisticsMenu);
+					unregisterRedraw(floorStatisticsMenu);
+					unregisterRedraw(floorStatisticsTextMenu);
+					unregisterRedraw(playerStatisticsMenu);
+				}
 				setTimeout(() => {
-					staticsMenu.clear();
+					statisticsMenu.clear();
 					core.unlockControl();
 				}, 1);
 			}
-			staticsMenu.registerBtns([
+			statisticsMenu.registerBtns([
 				["exit", exitBtn, exit],
 				["floor", floorBtn, () => {
 					floorBtn.status = "selected";
 					playerBtn.status = "none";
-					staticsMenu.changePage(0);
-					staticsMenu.drawButtonContent();
+					statisticsMenu.changePage(0);
+					statisticsMenu.drawButtonContent();
 				}],
 				["player", playerBtn, () => {
 					floorBtn.status = "none";
 					playerBtn.status = "selected";
-					staticsMenu.changePage(2);
-					staticsMenu.drawButtonContent();
+					statisticsMenu.changePage(2);
+					statisticsMenu.drawButtonContent();
 				}],
 			]);
-			return staticsMenu;
+			if (core.control.registerDymCanvasResizeEvent) {
+				const registerRedraw = (menu) => {
+					core.control.registerDymCanvasResizeEvent(menu.name, function () {
+						if (menu.onDraw) menu.drawContent();
+					})
+				}
+				registerRedraw(statisticsMenu);
+				registerRedraw(floorStatisticsMenu);
+				registerRedraw(floorStatisticsTextMenu);
+				registerRedraw(playerStatisticsMenu);
+			}
+			return statisticsMenu;
 		}
 
 		function _drawStatistics() {

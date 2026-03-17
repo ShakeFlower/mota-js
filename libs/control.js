@@ -3675,11 +3675,11 @@ control.prototype._resize_gameGroup = function (obj) {
     }
 }
 
-control.prototype.registerDymCanvasResizeEvent = function (name, event){
+control.prototype.registerDymCanvasResizeEvent = function (name, event) {
     this.dymCanvasResizeEvents[name] = event;
 }
 
-control.prototype.unregisterDymCanvasResizeEvent = function (name){
+control.prototype.unregisterDymCanvasResizeEvent = function (name) {
     delete this.dymCanvasResizeEvents[name];
 }
 
@@ -3725,10 +3725,10 @@ control.prototype._resize_canvas = function (obj) {
             core.resizeCanvas(ctx, parseFloat(canvas.getAttribute("_width")), parseFloat(canvas.getAttribute("_height")));
             canvas.style.left = parseFloat(canvas.getAttribute("_left")) * core.domStyle.scale + "px";
             canvas.style.top = parseFloat(canvas.getAttribute("_top")) * core.domStyle.scale + "px";
-        }
-        if (this.dymCanvasResizeEvents[name]) {
-            const event = this.dymCanvasResizeEvents[name];
-            event();
+            if (this.dymCanvasResizeEvents[name]) {
+                const event = this.dymCanvasResizeEvents[name];
+                event();
+            }
         }
     }
     // resize next

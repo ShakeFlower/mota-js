@@ -1020,6 +1020,19 @@ interface control {
      */
     addFloorStatistics(key: 'battleDamage' | 'poisonDamage' | 'extraDamage' | 'vampireExtraLoss',
         value: number, floorId?: string): void
+
+    /**
+     * 291改新增函数，注册指定名称的自定义画布在画面resize时的重绘事件
+     * @param name 自定义画布的名称
+     * @param event resize时的重绘事件
+     */
+    registerDymCanvasResizeEvent(name: string, event: Function): void
+
+    /**
+     * 291改新增函数，取消注册指定名称的自定义画布在画面resize时的重绘事件
+     * @param name 自定义画布的名称
+     */
+    unregisterDymCanvasResizeEvent(name: string): void
 }
 
 /**@file events.js将处理所有和事件相关的操作。 */
