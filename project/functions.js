@@ -314,6 +314,24 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			statistics.battleDamage += damage;
 			core.control.addFloorStatistics("battleDamage", damage);
 			statistics.battle++;
+			if (core.plugin.getUserConfig) {
+				const { damage: damageIntervals } = core.plugin.getUserConfig();
+				const intervalRecord = damageIntervals.record;
+				intervalRecord.forEach(interval => {
+					if (interval.endsWith(",")) {
+						const min = Number(interval.replace(",", ""));
+						if (damage >= min) {
+							core.control.addFloorStatistics(interval, 1);
+						}
+					}
+					else {
+						const [min, max] = interval.split(",").map(x => Number(x));
+						if (damage >= min && damage < max) {
+							core.control.addFloorStatistics(interval, 1);
+						}
+					}
+				});
+			}
 			// 1防收益
 			const defDamage = core.enemys.getDefDamage(enemy, -1, x, y, floorId);
 			if (typeof defDamage === "number") statistics.oneDefEffect -= defDamage;

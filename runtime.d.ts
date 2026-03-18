@@ -2753,7 +2753,7 @@ interface ui {
     setStrokeStyle(name: string | CanvasRenderingContext2D, style: string): void
 
     /** 设置某个canvas的对齐 */
-    setTextAlign(name: string | CanvasRenderingContext2D, align: string): void
+    setTextAlign(name: string | CanvasRenderingContext2D, align: "left" | "right" | "center" | "start" | "end"): void
 
     /** 计算某段文字的宽度 */
     calWidth(name: string | CanvasRenderingContext2D, text: string, font?: string): number
@@ -3184,17 +3184,22 @@ interface plugin {
             BackSpace: 8, Tab: 9, Enter: 13, Esc: 27, SpaceBar: 32,
             PageUp: 33, PageDown: 34, Left: 37, Up: 38, Right: 39,
             Down: 40, C: 67, Q: 81, T: 84,
-        }
-        ButtonBase: ButtonBase
-        RoundBtn: RoundBtn
-        IconBtn: IconBtn
-        ExitBtn: ExitBtn
-        MenuBase: MenuBase
-        Pagination: Pagination
+        };
+        registerResize: (menu: MenuBase) => void;
+        unregisterResize: (menu: MenuBase) => void;
+        ButtonBase: typeof ButtonBase;
+        RoundBtn: typeof RoundBtn;
+        IconBtn: typeof IconBtn;
+        ExitBtn: typeof ExitBtn;
+        ArrowBtn: typeof ArrowBtn;
+        MenuBase: typeof MenuBase;
+        PagedMenu: typeof PagedMenu;
+        MultiTypePagedMenu: typeof MultiTypePagedMenu;
+        Pagination: typeof Pagination;
     }
 
     /** 设置菜单 */
-    settingMenu: MenuBaseClass | undefined
+    settingMenu: MenuBase | undefined
 
     // core.plugin.xxx 可能是任意变量，任意签名和返回值的函数
     [x: string]: any
@@ -3202,13 +3207,9 @@ interface plugin {
 
 /*** 用于绘制的基类 */
 /*** 按钮基类 */
-interface ButtonBase {
-    new(x: number, y: number, w: number, h: number): ButtonBaseClass;
-}
-
 type posFunc = (x: number, y: number, px: number, py: number) => void; 
 
-declare class ButtonBaseClass {
+declare class ButtonBase {
     constructor(x: number, y: number, w: number, h: number);
     /** 按钮判定区域左上角的X坐标 */
     x: number;
@@ -3223,7 +3224,7 @@ declare class ButtonBaseClass {
     /** 按钮是否处于被选中的状态 */
     status: 'selected' | 'none';
     /** 按钮所在的菜单 */
-    menu: MenuBaseClass
+    menu: MenuBase
     /** 按钮所在的画布 */
     ctx: string
     /** 按钮在菜单中的索引 */
@@ -3243,11 +3244,7 @@ declare class ButtonBaseClass {
     inRange(px, py): boolean;
 }
 
-interface RoundBtn {
-    new(x: number, y: number, w: number, h: number, text: string, config?: any): RoundBtnClass;
-}
-
-declare class RoundBtnClass extends ButtonBaseClass {
+declare class RoundBtn extends ButtonBase {
     constructor(x: number, y: number, w: number, h: number, text: string, config?: any);
     /** 按钮绘制的文字 */
     text: string
@@ -3259,11 +3256,7 @@ declare class RoundBtnClass extends ButtonBaseClass {
     }
 }
 
-interface IconBtn {
-    new(x: number, y: number, w: number, h: number, icon: string, config?: any): IconBtnClass;
-}
-
-declare class IconBtnClass extends ButtonBaseClass {
+declare class IconBtn extends ButtonBase {
     constructor(x: number, y: number, w: number, h: number, icon: string, config?: any);
     /** 按钮绘制的图标名称 */
     icon: string
@@ -3274,11 +3267,7 @@ declare class IconBtnClass extends ButtonBaseClass {
     }
 }
 
-interface ExitBtn {
-    new(x: number, y: number, w: number, h: number, config?: any): ExitBtnClass;
-}
-
-declare class ExitBtnClass extends ButtonBaseClass {
+declare class ExitBtn extends ButtonBase {
     constructor(x: number, y: number, w: number, h: number, config?: any);
     /** 按钮的绘制属性配置 */
     config: {
@@ -3286,17 +3275,99 @@ declare class ExitBtnClass extends ButtonBaseClass {
         radius?: number, lineOffsetX?: number, lineWidthX?: number,
     }
 }
+/**
+ * 箭头按钮的配置选项
+ */
+interface ArrowBtnConfig {
+  /**
+   * 箭头尖端到所指的边的距离
+   * 默认值: 垂直方向为 5, 水平方向为 4
+   */
+  marginTip?: number;
 
-interface MenuBase {
-    new(name: string, toListen: eventType[],
-        x?: number | null, y?: number | null, w?: number | null, h?: number | null,
-        zIndex?: number | null): MenuBaseClass;
+  /**
+   * 箭头两侧到各自最接近的边的距离
+   * 默认值: 5
+   */
+  marginSide?: number;
+
+  /**
+   * 箭头尾部到最接近的边的距离
+   * 默认值: 垂直方向为 5, 水平方向为 6
+   */
+  marginTail?: number;
+
+  /**
+   * 背景圆角矩形的填充样式 (颜色字符串或渐变对象)
+   * 默认值: 'gray'
+   */
+  backStyle?: string | CanvasGradient | CanvasPattern;
+
+  /**
+   * 箭头三角形的填充样式 (颜色字符串或渐变对象)
+   * 默认值: 'black'
+   */
+  arrowStyle?: string | CanvasGradient | CanvasPattern;
+}
+
+/**
+ * 箭头方向类型
+ */
+type ArrowDirection = 'left' | 'right' | 'up' | 'down';
+
+/**
+ * 箭头按钮类
+ * 继承自 ButtonBase，绘制带有方向指示箭头的按钮
+ */
+declare class ArrowBtn extends ButtonBase {
+  /**
+   * 【Public】按钮配置对象
+   * 包含边距、颜色等绘制参数
+   */
+  public config: ArrowBtnConfig;
+
+  /**
+   * 【Public】箭头指向方向
+   * 可选值: 'left', 'right', 'up', 'down'
+   */
+  public dir: ArrowDirection;
+
+  /**
+   * 【Public】透明度 (0.0 - 1.0)
+   * 用于控制绘制时的整体透明度
+   */
+  public alpha: number;
+
+  /**
+   * 构造函数
+   * @param x - X坐标
+   * @param y - Y坐标
+   * @param w - 宽度
+   * @param h - 高度
+   * @param dir - 箭头方向 ('left'|'right'|'up'|'down')
+   * @param config - 可选，配置对象。如果不传则使用默认值
+   */
+  constructor(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    dir: ArrowDirection,
+    config?: ArrowBtnConfig
+  );
+
+  /**
+   * 绘制按钮
+   * 绘制背景圆角矩形和指定方向的三角形箭头
+   * 会使用 core.fillRoundRect 和 core.fillPolygon 进行绘制
+   */
+  draw(): void;
 }
 
 type eventType = 'ondown' | 'onmove' | 'onup' | 'keyDown' | 'keyUp' | 'onmousewheel';
 
 /*** 菜单基类 */
-declare class MenuBaseClass {
+declare class MenuBase {
     /**
      * @param name 该菜单使用的画布的名称
      */
@@ -3318,7 +3389,7 @@ declare class MenuBaseClass {
     /** 该画布是否正在被绘制 */
     onDraw: boolean
     /** 该菜单的按钮列表 */
-    btnMap: Map<string | number, ButtonBaseClass>
+    btnMap: Map<string | number, ButtonBase>
 
     ondown(x: number, y: number, rawpx: number, rawpy: number): void
     /** 
@@ -3362,10 +3433,10 @@ declare class MenuBaseClass {
 
 
     /** 注册一个按钮的事件 */
-    registerBtn(key: string | number, button: ButtonBaseClass,
+    registerBtn(key: string | number, button: ButtonBase,
         event?: posFunc | { ondown: posFunc, onmove?: posFunc, onup?: posFunc }): void
     /** 注册若干个按钮的事件 */
-    registerBtns(btns: [key: string | number, button: ButtonBaseClass,
+    registerBtns(btns: [key: string | number, button: ButtonBase,
         event?: posFunc | { ondown: posFunc, onmove?: posFunc, onup?: posFunc }][]): void
 
     /** 创建并返回本菜单的画布 */
@@ -3386,12 +3457,204 @@ declare class MenuBaseClass {
     init(): void
 }
 
-interface Pagination {
-    new(pageList: MenuBase[], currPage: number, name: string, toListen: eventType[],
-        x?: number, y?: number, w?: number, h?: number, zIndex?: number): PaginationClass
+declare class PagedMenu<T = any> extends MenuBase {
+    /**
+     * 【Public】当前页码索引 (从 0 开始)
+     * 外部可直接读写，例如：menu.page = 2;
+     */
+    public page: number;
+
+    /**
+     * 【Public】完整的数据列表
+     * 外部可直接访问或替换整个列表
+     */
+    public totalItemList: T[];
+
+    /**
+     * 【Public】当前页切片后的数据列表
+     * 由 updateCurrItemList 方法计算得出
+     */
+    public currItemList: T[];
+
+    /**
+     * 【Public】每页容量 (每页显示的最大条目数)
+     */
+    public capacity: number;
+
+    /**
+     * 构造函数
+     * @param name - 菜单名称
+     * @param toListen - 要监听的事件集合
+     * @param x - X坐标
+     * @param y - Y坐标
+     * @param w - 宽度
+     * @param h - 高度
+     * @param zIndex - 层级
+     * @param capacity - 每页容量
+     * @param data - 初始完整数据列表
+     */
+    constructor(
+        name: string,
+        toListen: any,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        zIndex: number,
+        capacity: number,
+        data: T[]
+    );
+
+    /**
+     * 绘制内容
+     * 重写此方法以更新 "pageDown" 和 "pageUp" 按钮的透明度状态
+     */
+    drawContent(): void;
+
+    /**
+     * 更新当前页的数据切片 (currItemList)
+     * 
+     * ⚠️ 注意：此类初始化后，必须手动调用一次此方法以填充 currItemList。
+     * 当修改了 page 或 totalItemList 后，也需要重新调用此方法。
+     */
+    updateCurrItemList(): void;
+
+    /**
+     * 检查是否可以向下翻页 (回到上一页)
+     * @returns 如果当前页码 > 0 则返回 true
+     */
+    canPageDown(): boolean;
+
+    /**
+     * 执行向下翻页 (页码 -1)
+     * 如果无法翻页则不执行任何操作。
+     * 翻页成功后会自动调用 updateCurrItemList 和 drawContent。
+     */
+    pageDown(): void;
+
+    /**
+     * 检查是否可以向上翻页 (进入下一页)
+     * @returns 如果还有下一页数据则返回 true
+     */
+    canPageUp(): boolean;
+
+    /**
+     * 执行向上翻页 (页码 +1)
+     * 如果无法翻页则不执行任何操作。
+     * 翻页成功后会自动调用 updateCurrItemList 和 drawContent。
+     */
+    pageUp(): void;
 }
 
-declare class PaginationClass extends MenuBaseClass {
+declare class MultiTypePagedMenu extends MenuBase {
+    /**
+     * 内部状态：当前页码索引
+     * 格式: { type: currentPageIndex }
+     */
+    public page: Record<string, number>;
+
+    /**
+     * 内部状态：完整数据列表
+     * 格式: { type: fullData[] }
+     */
+    public totalItemList: Record<string, any[]>;
+
+    /**
+     * 内部状态：当前页切片数据
+     * 格式: { type: currentSlice[] }
+     */
+    public currItemList: Record<string, any[]>;
+
+    /**
+     * 内部状态：容量配置
+     * 格式: { type: capacityNum }
+     */
+    public capacityConfig: Record<string, number>;
+
+    /**
+     * 内部状态：按钮键名映射
+     * 格式: { type: { down: key, up: key } }
+     */
+    public btnKeyMap: Record<string, BtnKeyMap>;
+
+    /**
+     * 构造函数
+     * @param name - 菜单名称
+     * @param toListen - 要监听的事件集合
+     * @param x - X坐标
+     * @param y - Y坐标
+     * @param w - 宽度
+     * @param h - 高度
+     * @param zIndex - 层级
+     * @param pagesConfig - 分页配置对象
+     */
+    constructor(
+        name: string,
+        toListen: any,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        zIndex: number,
+        pagesConfig: PagesConfig
+    );
+
+    /**
+     * 绘制内容
+     * 重写此方法以更新翻页按钮的透明度状态
+     */
+    drawContent(): void;
+
+    /**
+     * 更新指定类型（或所有类型）的当前页数据切片
+     * @param pageType - 可选，指定要更新的类型。如果不传则更新所有类型
+     */
+    updateCurrItemList(pageType?: string): void;
+
+    /**
+     * 检查指定类型是否可以向下翻页 (回到上一页)
+     * @param pageType - 页面类型
+     * @returns 如果当前页码大于0则返回 true
+     */
+    canPageDown(pageType: string): boolean;
+
+    /**
+     * 执行向下翻页 (页码 -1)
+     * 如果无法翻页则不执行任何操作
+     * @param pageType - 页面类型
+     */
+    pageDown(pageType: string): void;
+
+    /**
+     * 检查指定类型是否可以向上翻页 (进入下一页)
+     * @param pageType - 页面类型
+     * @returns 如果还有下一页数据则返回 true
+     */
+    canPageUp(pageType: string): boolean;
+
+    /**
+     * 执行向上翻页 (页码 +1)
+     * 如果无法翻页则不执行任何操作
+     * @param pageType - 页面类型
+     */
+    pageUp(pageType: string): void;
+
+    /**
+     * 获取指定类型的当前页码 (从0开始)
+     * @param pageType - 页面类型
+     * @returns 当前页码索引
+     */
+    getCurrentPage(pageType: string): number;
+
+    /**
+     * 获取指定类型的总页数
+     * @param pageType - 页面类型
+     * @returns 总页数
+     */
+    getTotalPages(pageType: string): number;
+}
+
+declare class Pagination extends MenuBase {
     constructor(pageList: MenuBase[], currPage: number, name: string, toListen: eventType[],
         x?: number, y?: number, w?: number, h?: number, zIndex?: number);
     /** 页面列表 */

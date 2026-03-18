@@ -3270,6 +3270,2105 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
+	"opusAdaptation": function () {
+		// 将__enable置为false将关闭插件
+		let __enable = true;
+		if (!__enable || main.mode === "editor") return;
+		const { OggOpusDecoderWebWorker } = window["ogg-opus-decoder"];
+		const { OggVorbisDecoderWebWorker } = window["ogg-vorbis-decoder"];
+		const { CodecParser } = window.CodecParser;
+		const { Transition, linear } = core.plugin.animate;
+
+		const audio = new Audio();
+		const AudioStatus = {
+			Playing: 0,
+			Pausing: 1,
+			Paused: 2,
+			Stoping: 3,
+			Stoped: 4,
+		};
+		const supportMap = new Map();
+		const AudioType = {
+			Mp3: "audio/mpeg",
+			Wav: 'audio/wav; codecs="1"',
+			Flac: "audio/flac",
+			Opus: 'audio/ogg; codecs="opus"',
+			Ogg: 'audio/ogg; codecs="vorbis"',
+			Aac: "audio/aac",
+		};
+		/**
+		 * 检查一种音频类型是否能被播放
+		 * @param type 音频类型 AudioType
+		 */
+		function isAudioSupport(type) {
+			if (supportMap.has(type)) return supportMap.get(type);
+			else {
+				const support = audio.canPlayType(type);
+				const canPlay = support === "maybe" || support === "probably";
+				supportMap.set(type, canPlay);
+				return canPlay;
+			}
+		}
+
+		const typeMap = new Map([
+			["ogg", AudioType.Ogg],
+			["mp3", AudioType.Mp3],
+			["wav", AudioType.Wav],
+			["flac", AudioType.Flac],
+			["opus", AudioType.Opus],
+			["aac", AudioType.Aac],
+		]);
+
+		/**
+		 * 根据文件名拓展猜测其类型
+		 * @param file 文件名 string
+		 */
+		function guessTypeByExt(file) {
+			const ext = /\.[a-zA-Z\d]+$/.exec(file);
+			if (!ext?.[0]) return "";
+			const type = ext[0].slice(1);
+			return typeMap.get(type.toLocaleLowerCase()) ?? "";
+		}
+
+		isAudioSupport(AudioType.Ogg);
+		isAudioSupport(AudioType.Mp3);
+		isAudioSupport(AudioType.Wav);
+		isAudioSupport(AudioType.Flac);
+		isAudioSupport(AudioType.Opus);
+		isAudioSupport(AudioType.Aac);
+
+		function isNil(value) {
+			return value === void 0 || value === null;
+		}
+
+		function sleep(time) {
+			return new Promise((res) => setTimeout(res, time));
+		}
+		class AudioEffect {
+			constructor(ac) { }
+			/**
+			 * 连接至其他效果器
+			 * @param target 目标输入 IAudioInput
+			 * @param output 当前效果器输出通道 Number
+			 * @param input 目标效果器的输入通道 Number
+			 */
+			connect(target, output, input) {
+				this.output.connect(target.input, output, input);
+			}
+
+			/**
+			 * 与其他效果器取消连接
+			 * @param target 目标输入 IAudioInput
+			 * @param output 当前效果器输出通道 Number
+			 * @param input 目标效果器的输入通道 Number
+			 */
+			disconnect(target, output, input) {
+				if (!target) {
+					if (!isNil(output)) {
+						this.output.disconnect(output);
+					} else {
+						this.output.disconnect();
+					}
+				} else {
+					if (!isNil(output)) {
+						if (!isNil(input)) {
+							this.output.disconnect(target.input, output, input);
+						} else {
+							this.output.disconnect(target.input, output);
+						}
+					} else {
+						this.output.disconnect(target.input);
+					}
+				}
+			}
+		}
+
+		class StereoEffect extends AudioEffect {
+			constructor(ac) {
+				super(ac);
+				const panner = ac.createPanner();
+				this.input = panner;
+				this.output = panner;
+			}
+
+			/**
+			 * 设置音频朝向，x正方形水平向右，y正方形垂直于地面向上，z正方向垂直屏幕远离用户
+			 * @param x 朝向x坐标 Number
+			 * @param y 朝向y坐标 Number
+			 * @param z 朝向z坐标 Number
+			 */
+			setOrientation(x, y, z) {
+				this.output.orientationX.value = x;
+				this.output.orientationY.value = y;
+				this.output.orientationZ.value = z;
+			}
+			/**
+			 * 设置音频位置，x正方形水平向右，y正方形垂直于地面向上，z正方向垂直屏幕远离用户
+			 * @param x 位置x坐标 Number
+			 * @param y 位置y坐标 Number
+			 * @param z 位置z坐标 Number
+			 */
+			setPosition(x, y, z) {
+				this.output.positionX.value = x;
+				this.output.positionY.value = y;
+				this.output.positionZ.value = z;
+			}
+			end() { }
+
+			start() { }
+		}
+		class VolumeEffect extends AudioEffect {
+			constructor(ac) {
+				super(ac);
+				const gain = ac.createGain();
+				this.input = gain;
+				this.output = gain;
+			}
+
+			/**
+			 * 设置音量大小
+			 * @param volume 音量大小 Number
+			 */
+			setVolume(volume) {
+				this.output.gain.value = volume;
+			}
+
+			/**
+			 * 获取音量大小 Number
+			 */
+			getVolume() {
+				return this.output.gain.value;
+			}
+
+			end() { }
+
+			start() { }
+		}
+		class ChannelVolumeEffect extends AudioEffect {
+			/** 所有的音量控制节点 */
+
+			constructor(ac) {
+				super(ac);
+				/** 所有的音量控制节点 */
+				this.gain = [];
+				const splitter = ac.createChannelSplitter();
+				const merger = ac.createChannelMerger();
+				this.output = merger;
+				this.input = splitter;
+				for (let i = 0; i < 6; i++) {
+					const gain = ac.createGain();
+					splitter.connect(gain, i);
+					gain.connect(merger, 0, i);
+					this.gain.push(gain);
+				}
+			}
+
+			/**
+			 * 设置某个声道的音量大小
+			 * @param channel 要设置的声道，可填0-5 Number
+			 * @param volume 这个声道的音量大小 Number
+			 */
+			setVolume(channel, volume) {
+				if (!this.gain[channel]) return;
+				this.gain[channel].gain.value = volume;
+			}
+
+			/**
+			 * 获取某个声道的音量大小，可填0-5
+			 * @param channel 要获取的声道 Number
+			 */
+			getVolume(channel) {
+				if (!this.gain[channel]) return 0;
+				return this.gain[channel].gain.value;
+			}
+
+			end() { }
+
+			start() { }
+		}
+		class DelayEffect extends AudioEffect {
+			constructor(ac) {
+				super(ac);
+
+				const delay = ac.createDelay();
+				this.input = delay;
+				this.output = delay;
+			}
+
+			/**
+			 * 设置延迟时长
+			 * @param delay 延迟时长，单位秒 Number
+			 */
+			setDelay(delay) {
+				this.output.delayTime.value = delay;
+			}
+
+			/**
+			 * 获取延迟时长
+			 */
+			getDelay() {
+				return this.output.delayTime.value;
+			}
+
+			end() { }
+
+			start() { }
+		}
+		class EchoEffect extends AudioEffect {
+			constructor(ac) {
+				super(ac);
+				/** 当前增益 */
+				this.gain = 0.5;
+				/** 是否正在播放 */
+				this.playing = false;
+				const delay = ac.createDelay();
+				const gain = ac.createGain();
+				gain.gain.value = 0.5;
+				delay.delayTime.value = 0.05;
+				delay.connect(gain);
+				gain.connect(delay);
+				/** 延迟节点 */
+				this.delay = delay;
+				/** 反馈增益节点 */
+				this.gainNode = gain;
+
+				this.input = gain;
+				this.output = gain;
+			}
+
+			/**
+			 * 设置回声反馈增益大小
+			 * @param gain 增益大小，范围 0-1，大于等于1的视为0.5，小于0的视为0 Number
+			 */
+			setFeedbackGain(gain) {
+				const resolved = gain >= 1 ? 0.5 : gain < 0 ? 0 : gain;
+				this.gain = resolved;
+				if (this.playing) this.gainNode.gain.value = resolved;
+			}
+
+			/**
+			 * 设置回声间隔时长
+			 * @param delay 回声时长，范围 0.01-Infinity，小于0.01的视为0.01 Number
+			 */
+			setEchoDelay(delay) {
+				const resolved = delay < 0.01 ? 0.01 : delay;
+				this.delay.delayTime.value = resolved;
+			}
+
+			/**
+			 * 获取反馈节点增益
+			 */
+			getFeedbackGain() {
+				return this.gain;
+			}
+
+			/**
+			 * 获取回声间隔时长
+			 */
+			getEchoDelay() {
+				return this.delay.delayTime.value;
+			}
+
+			end() {
+				this.playing = false;
+				const echoTime = Math.ceil(Math.log(0.001) / Math.log(this.gain)) + 10;
+				sleep(this.delay.delayTime.value * echoTime).then(() => {
+					if (!this.playing) this.gainNode.gain.value = 0;
+				});
+			}
+
+			start() {
+				this.playing = true;
+				this.gainNode.gain.value = this.gain;
+			}
+		}
+
+		class StreamLoader {
+			constructor(url) {
+				/** 传输目标  Set<IStreamReader> */
+				this.target = new Set();
+				this.loading = false;
+			}
+
+			/**
+			 * 将加载流传递给字节流读取对象
+			 * @param reader 字节流读取对象 IStreamReader
+			 */
+			pipe(reader) {
+				if (this.loading) {
+					console.warn(
+						"Cannot pipe new StreamReader object when stream is loading."
+					);
+					return;
+				}
+				this.target.add(reader);
+				reader.piped(this);
+				return this;
+			}
+
+			async start() {
+				if (this.loading) return;
+				this.loading = true;
+				const response = await window.fetch(this.url);
+				const stream = response.body;
+				if (!stream) {
+					console.error("Cannot get reader when fetching '" + this.url + "'.");
+					return;
+				}
+				// 获取读取器
+				this.stream = stream;
+				const reader = response.body?.getReader();
+				const targets = [...this.target];
+
+				await Promise.all(targets.map((v) => v.start(stream, this, response)));
+				if (reader && reader.read) {
+					// 开始流传输
+					while (true) {
+						const { value, done } = await reader.read();
+						await Promise.all(
+							targets.map((v) => v.pump(value, done, response))
+						);
+						if (done) break;
+					}
+				} else {
+					// 如果不支持流传输
+					const buffer = await response.arrayBuffer();
+					const data = new Uint8Array(buffer);
+					await Promise.all(targets.map((v) => v.pump(data, true, response)));
+				}
+
+				this.loading = false;
+				targets.forEach((v) => v.end(true));
+			}
+
+			cancel(reason) {
+				if (!this.stream) return;
+				this.stream.cancel(reason);
+				this.loading = false;
+				this.target.forEach((v) => v.end(false, reason));
+			}
+		}
+
+		/** @type {[string, number[]][]} */
+		const fileSignatures = [
+			[AudioType.Mp3, [0x49, 0x44, 0x33]],
+			[AudioType.Ogg, [0x4f, 0x67, 0x67, 0x53]],
+			[AudioType.Wav, [0x52, 0x49, 0x46, 0x46]],
+			[AudioType.Flac, [0x66, 0x4c, 0x61, 0x43]],
+			[AudioType.Aac, [0xff, 0xf1]],
+			[AudioType.Aac, [0xff, 0xf9]],
+		];
+		/** @type {[string, number[]][]} */
+		const oggHeaders = [
+			[AudioType.Opus, [0x4f, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64]],
+		];
+
+		function checkAudioType(data) {
+			let audioType = "";
+			// 检查头文件获取音频类型，仅检查前256个字节
+			const toCheck = data.slice(0, 256);
+			for (const [type, value] of fileSignatures) {
+				if (value.every((v, i) => toCheck[i] === v)) {
+					audioType = type;
+					break;
+				}
+			}
+			if (audioType === AudioType.Ogg) {
+				// 如果是ogg的话，进一步判断是不是opus
+				for (const [key, value] of oggHeaders) {
+					const has = toCheck.some((_, i) => {
+						return value.every((v, ii) => toCheck[i + ii] === v);
+					});
+					if (has) {
+						audioType = key;
+						break;
+					}
+				}
+			}
+
+			return audioType;
+		}
+		class AudioDecoder {
+			/**
+			 * 注册一个解码器
+			 * @param type 要注册的解码器允许解码的类型
+			 * @param decoder 解码器对象
+			 */
+			static registerDecoder(type, decoder) {
+				if (!this.decoderMap) this.decoderMap = new Map();
+				if (this.decoderMap.has(type)) {
+					console.warn(
+						"Audio stream decoder for audio type '" +
+						type +
+						"' has already existed."
+					);
+					return;
+				}
+
+				this.decoderMap.set(type, decoder);
+			}
+
+			/**
+			 * 解码音频数据
+			 * @param data 音频文件数据
+			 * @param player AudioPlayer实例
+			 */
+			static async decodeAudioData(data, player) {
+				// 检查头文件获取音频类型，仅检查前256个字节
+				const toCheck = data.slice(0, 256);
+				const type = checkAudioType(data);
+				if (type === "") {
+					console.error(
+						"Unknown audio type. Header: '" +
+						[...toCheck]
+							.map((v) => v.toString().padStart(2, "0"))
+							.join(" ")
+							.toUpperCase() +
+						"'"
+					);
+					return null;
+				}
+				if (isAudioSupport(type)) {
+					if (data.buffer instanceof ArrayBuffer) {
+						return player.ac.decodeAudioData(data.buffer);
+					} else {
+						return null;
+					}
+				} else {
+					const Decoder = this.decoderMap.get(type);
+					if (!Decoder) {
+						return null;
+					} else {
+						const decoder = new Decoder();
+						await decoder.create();
+						const decodedData = await decoder.decode(data);
+						if (!decodedData) return null;
+						const buffer = player.ac.createBuffer(
+							decodedData.channelData.length,
+							decodedData.channelData[0].length,
+							decodedData.sampleRate
+						);
+						decodedData.channelData.forEach((v, i) => {
+							buffer.copyToChannel(v, i);
+						});
+						decoder.destroy();
+						return buffer;
+					}
+				}
+			}
+		}
+
+		class VorbisDecoder {
+			/**
+			 * 创建音频解码器
+			 */
+			async create() {
+				this.decoder = new OggVorbisDecoderWebWorker();
+				await this.decoder.ready;
+			}
+			/**
+			 * 摧毁这个解码器
+			 */
+			destroy() {
+				this.decoder?.free();
+			}
+			/**
+			 * 解码流数据
+			 * @param data 流数据
+			 */
+
+			async decode(data) {
+				return this.decoder?.decode(data);
+			}
+			/**
+			 * 解码整个文件
+			 * @param data 文件数据
+			 */
+			async decodeAll(data) {
+				return this.decoder?.decodeFile(data);
+			}
+			/**
+			 * 当音频解码完成后，会调用此函数，需要返回之前还未解析或未返回的音频数据。调用后，该解码器将不会被再次使用
+			 */
+			async flush() {
+				return this.decoder?.flush();
+			}
+		}
+
+		class OpusDecoder {
+			/**
+			 * 创建音频解码器
+			 */
+			async create() {
+				this.decoder = new OggOpusDecoderWebWorker();
+				await this.decoder.ready;
+			}
+			/**
+			 * 摧毁这个解码器
+			 */
+			destroy() {
+				this.decoder?.free();
+			}
+			/**
+			 * 解码流数据
+			 * @param data 流数据
+			 */
+			async decode(data) {
+				return this.decoder?.decode(data);
+			}
+			/**
+			 * 解码整个文件
+			 * @param data 文件数据
+			 */
+			async decodeAll(data) {
+				return this.decoder?.decodeFile(data);
+			}
+			/**
+			 * 当音频解码完成后，会调用此函数，需要返回之前还未解析或未返回的音频数据。调用后，该解码器将不会被再次使用
+			 */
+			async flush() {
+				return await this.decoder?.flush();
+			}
+		}
+		const mimeTypeMap = {
+			[AudioType.Aac]: "audio/aac",
+			[AudioType.Flac]: "audio/flac",
+			[AudioType.Mp3]: "audio/mpeg",
+			[AudioType.Ogg]: "application/ogg",
+			[AudioType.Opus]: "application/ogg",
+			[AudioType.Wav]: "application/ogg",
+		};
+
+		function isOggPage(data) {
+			return !isNil(data.isFirstPage);
+		}
+		class AudioStreamSource {
+			constructor(context) {
+				this.output = context.createBufferSource();
+				/** 是否已经完全加载完毕 */
+				this.loaded = false;
+				/** 是否正在播放 */
+				this.playing = false;
+				/** 已经缓冲了多长时间，如果缓冲完那么跟歌曲时长一致 */
+				this.buffered = 0;
+				/** 已经缓冲的采样点数量 */
+				this.bufferedSamples = 0;
+				/** 歌曲时长，加载完毕之前保持为 0 */
+				this.duration = 0;
+				/** 在流传输阶段，至少缓冲多长时间的音频之后才开始播放，单位秒 */
+				this.bufferPlayDuration = 1;
+				/** 音频的采样率，未成功解析出之前保持为 0 */
+				this.sampleRate = 0;
+				//是否循环播放
+				this.loop = false;
+				/** 上一次播放是从何时开始的 */
+				this.lastStartWhen = 0;
+				/** 开始播放时刻 */
+				this.lastStartTime = 0;
+				/** 上一次播放的缓存长度 */
+				this.lastBufferSamples = 0;
+
+				/** 是否已经获取到头文件 */
+				this.headerRecieved = false;
+				/** 音频类型 */
+				this.audioType = "";
+				/** 每多长时间组成一个缓存 Float32Array */
+				this.bufferChunkSize = 10;
+				/** 缓存音频数据，每 bufferChunkSize 秒钟组成一个 Float32Array，用于流式解码 */
+				this.audioData = [];
+
+				this.errored = false;
+				this.ac = context;
+			}
+			/** 当前已经播放了多长时间 */
+			get currentTime() {
+				return this.ac.currentTime - this.lastStartTime + this.lastStartWhen;
+			}
+			/**
+			 * 设置每个缓存数据的大小，默认为10秒钟一个缓存数据
+			 * @param size 每个缓存数据的时长，单位秒
+			 */
+			setChunkSize(size) {
+				if (this.controller?.loading || this.loaded) return;
+				this.bufferChunkSize = size;
+			}
+
+			piped(controller) {
+				this.controller = controller;
+			}
+
+			async pump(data, done) {
+				if (!data || this.errored) return;
+				if (!this.headerRecieved) {
+					// 检查头文件获取音频类型，仅检查前256个字节
+					const toCheck = data.slice(0, 256);
+					this.audioType = checkAudioType(data);
+					if (!this.audioType) {
+						console.error(
+							"Unknown audio type. Header: '" +
+							[...toCheck]
+								.map((v) => v.toString(16).padStart(2, "0"))
+								.join(" ")
+								.toUpperCase() +
+							"'"
+						);
+						return;
+					}
+					// 创建解码器
+					const Decoder = AudioDecoder.decoderMap.get(this.audioType);
+					if (!Decoder) {
+						this.errored = true;
+						console.error(
+							"Cannot decode stream source type of '" +
+							this.audioType +
+							"', since there is no registered decoder for that type."
+						);
+						return Promise.reject(
+							`Cannot decode stream source type of '${this.audioType}', since there is no registered decoder for that type.`
+						);
+					}
+					this.decoder = new Decoder();
+					// 创建数据解析器
+					const mime = mimeTypeMap[this.audioType];
+					const parser = new CodecParser(mime);
+					this.parser = parser;
+					await this.decoder.create();
+					this.headerRecieved = true;
+				}
+
+				const decoder = this.decoder;
+				const parser = this.parser;
+				if (!decoder || !parser) {
+					this.errored = true;
+					return Promise.reject(
+						"No parser or decoder attached in this AudioStreamSource"
+					);
+				}
+
+				await this.decodeData(data, decoder, parser);
+				if (done) await this.decodeFlushData(decoder, parser);
+				this.checkBufferedPlay();
+			}
+
+			/**
+			 * 检查采样率，如果还未解析出采样率，那么将设置采样率，如果当前采样率与之前不同，那么发出警告
+			 */
+			checkSampleRate(info) {
+				for (const one of info) {
+					const frame = isOggPage(one) ? one.codecFrames[0] : one;
+					if (frame) {
+						const rate = frame.header.sampleRate;
+						if (this.sampleRate === 0) {
+							this.sampleRate = rate;
+							break;
+						} else {
+							if (rate !== this.sampleRate) {
+								console.warn("Sample rate in stream audio must be constant.");
+							}
+						}
+					}
+				}
+			}
+
+			/**
+			 * 解析音频数据
+			 */
+			async decodeData(data, decoder, parser) {
+				// 解析音频数据
+				const audioData = await decoder.decode(data);
+				if (!audioData) return;
+				// @ts-expect-error 库类型声明错误
+				const audioInfo = [...parser.parseChunk(data)];
+
+				// 检查采样率
+				this.checkSampleRate(audioInfo);
+				// 追加音频数据
+				this.appendDecodedData(audioData, audioInfo);
+			}
+
+			/**
+			 * 解码剩余数据
+			 */
+			async decodeFlushData(decoder, parser) {
+				const audioData = await decoder.flush();
+				if (!audioData) return;
+				// @ts-expect-error 库类型声明错误
+				const audioInfo = [...parser.flush()];
+
+				this.checkSampleRate(audioInfo);
+				this.appendDecodedData(audioData, audioInfo);
+			}
+
+			/**
+			 * 追加音频数据
+			 */
+			appendDecodedData(data, info) {
+				const channels = data.channelData.length;
+				if (channels === 0) return;
+				if (this.audioData.length !== channels) {
+					this.audioData = [];
+					for (let i = 0; i < channels; i++) {
+						this.audioData.push([]);
+					}
+				}
+				// 计算出应该放在哪
+				const chunk = this.sampleRate * this.bufferChunkSize;
+				const sampled = this.bufferedSamples;
+				const pushIndex = Math.floor(sampled / chunk);
+				const bufferIndex = sampled % chunk;
+				const dataLength = data.channelData[0].length;
+				let buffered = 0;
+				let nowIndex = pushIndex;
+				let toBuffer = bufferIndex;
+				while (buffered < dataLength) {
+					const rest = toBuffer !== 0 ? chunk - bufferIndex : chunk;
+
+					for (let i = 0; i < channels; i++) {
+						const audioData = this.audioData[i];
+						if (!audioData[nowIndex]) {
+							audioData.push(new Float32Array(chunk));
+						}
+						const toPush = data.channelData[i].slice(buffered, buffered + rest);
+
+						audioData[nowIndex].set(toPush, toBuffer);
+					}
+					buffered += rest;
+					nowIndex++;
+					toBuffer = 0;
+				}
+
+				this.buffered +=
+					info.reduce((prev, curr) => prev + curr.duration, 0) / 1000;
+				this.bufferedSamples += info.reduce(
+					(prev, curr) => prev + curr.samples,
+					0
+				);
+			}
+
+			/**
+			 * 检查已缓冲内容，并在未开始播放时播放
+			 */
+			checkBufferedPlay() {
+				if (this.playing || this.sampleRate === 0) return;
+				const played = this.lastBufferSamples / this.sampleRate;
+				const dt = this.buffered - played;
+				if (this.loaded) {
+					this.playAudio(played);
+					return;
+				}
+				if (dt < this.bufferPlayDuration) return;
+
+				this.lastBufferSamples = this.bufferedSamples;
+				// 需要播放
+				this.mergeBuffers();
+				if (!this.buffer) return;
+				if (this.playing) this.output.stop();
+				this.createSourceNode(this.buffer);
+				this.output.loop = false;
+				this.output.start(0, played);
+				this.lastStartTime = this.ac.currentTime;
+				this.playing = true;
+				this.output.addEventListener("ended", () => {
+					this.playing = false;
+					this.checkBufferedPlay();
+				});
+			}
+
+			mergeBuffers() {
+				const buffer = this.ac.createBuffer(
+					this.audioData.length,
+					this.bufferedSamples,
+					this.sampleRate
+				);
+				const chunk = this.sampleRate * this.bufferChunkSize;
+				const bufferedChunks = Math.floor(this.bufferedSamples / chunk);
+				const restLength = this.bufferedSamples % chunk;
+				for (let i = 0; i < this.audioData.length; i++) {
+					const audio = this.audioData[i];
+					const data = new Float32Array(this.bufferedSamples);
+					for (let j = 0; j < bufferedChunks; j++) {
+						data.set(audio[j], chunk * j);
+					}
+					if (restLength !== 0) {
+						data.set(
+							audio[bufferedChunks].slice(0, restLength),
+							chunk * bufferedChunks
+						);
+					}
+
+					buffer.copyToChannel(data, i, 0);
+				}
+				this.buffer = buffer;
+			}
+
+			async start() {
+				delete this.buffer;
+				this.headerRecieved = false;
+				this.audioType = "";
+				this.errored = false;
+				this.buffered = 0;
+				this.sampleRate = 0;
+				this.bufferedSamples = 0;
+				this.duration = 0;
+				this.loaded = false;
+				if (this.playing) this.output.stop();
+				this.playing = false;
+				this.lastStartTime = this.ac.currentTime;
+			}
+
+			end(done, reason) {
+				if (done && this.buffer) {
+					this.loaded = true;
+					delete this.controller;
+					this.mergeBuffers();
+
+					this.duration = this.buffered;
+					this.audioData = [];
+					this.decoder?.destroy();
+					delete this.decoder;
+					delete this.parser;
+				} else {
+					console.warn(
+						"Unexpected end when loading stream audio, reason: '" +
+						(reason ?? "") +
+						"'"
+					);
+				}
+			}
+
+			playAudio(when) {
+				if (!this.buffer) return;
+				this.lastStartTime = this.ac.currentTime;
+				if (this.playing) this.output.stop();
+				if (this.route.status !== AudioStatus.Playing) {
+					this.route.status = AudioStatus.Playing;
+				}
+				this.createSourceNode(this.buffer);
+				this.output.start(0, when);
+				this.playing = true;
+
+				this.output.addEventListener("ended", () => {
+					this.playing = false;
+					if (this.route.status === AudioStatus.Playing) {
+						this.route.status = AudioStatus.Stoped;
+					}
+					if (this.loop && !this.output.loop) this.play(0);
+				});
+			}
+			/**
+			 * 开始播放这个音频源
+			 */
+			play(when) {
+				if (this.playing || this.errored) return;
+				if (this.loaded && this.buffer) {
+					this.playing = true;
+					this.playAudio(when);
+				} else {
+					this.controller?.start();
+				}
+			}
+
+			createSourceNode(buffer) {
+				if (!this.target) return;
+				const node = this.ac.createBufferSource();
+				node.buffer = buffer;
+				if (this.playing) this.output.stop();
+				this.playing = false;
+				this.output = node;
+				node.connect(this.target.input);
+				node.loop = this.loop;
+			}
+			/**
+			 * 停止播放这个音频源
+			 * @returns 音频暂停的时刻 number
+			 */
+			stop() {
+				if (this.playing) this.output.stop();
+				this.playing = false;
+				return this.ac.currentTime - this.lastStartTime;
+			}
+			/**
+			 * 连接到音频路由图上，每次调用播放的时候都会执行一次
+			 * @param target 连接至的目标 IAudioInput
+			 */
+			connect(target) {
+				this.target = target;
+			}
+			/**
+			 * 设置是否循环播放
+			 * @param loop 是否循环 boolean)
+			 */
+			setLoop(loop) {
+				this.loop = loop;
+			}
+		}
+		class AudioElementSource {
+			constructor(context) {
+				const audio = new Audio();
+				audio.preload = "none";
+				this.output = context.createMediaElementSource(audio);
+				this.audio = audio;
+				this.ac = context;
+				audio.addEventListener("play", () => {
+					this.playing = true;
+					if (this.route.status !== AudioStatus.Playing) {
+						this.route.status = AudioStatus.Playing;
+					}
+				});
+				audio.addEventListener("ended", () => {
+					this.playing = false;
+					if (this.route.status === AudioStatus.Playing) {
+						this.route.status = AudioStatus.Stoped;
+					}
+				});
+			}
+			get duration() {
+				return this.audio.duration;
+			}
+			get currentTime() {
+				return this.audio.currentTime;
+			}
+			/**
+			 * 设置音频源的路径
+			 * @param url 音频路径
+			 */
+			setSource(url) {
+				this.audio.src = url;
+			}
+
+			play(when = 0) {
+				if (this.playing) return;
+				this.audio.currentTime = when;
+				this.audio.play();
+			}
+
+			stop() {
+				this.audio.pause();
+				this.playing = false;
+				if (this.route.status === AudioStatus.Playing) {
+					this.route.status = AudioStatus.Stoped;
+				}
+				return this.audio.currentTime;
+			}
+
+			connect(target) {
+				this.output.connect(target.input);
+			}
+
+			setLoop(loop) {
+				this.audio.loop = loop;
+			}
+		}
+		class AudioBufferSource {
+			constructor(context) {
+				this.output = context.createBufferSource();
+				/** 是否循环 */
+				this.loop = false;
+				/** 上一次播放是从何时开始的 */
+				this.lastStartWhen = 0;
+				/** 播放开始时刻 */
+				this.lastStartTime = 0;
+				this.duration = 0;
+				this.ac = context;
+			}
+			get currentTime() {
+				return this.ac.currentTime - this.lastStartTime + this.lastStartWhen;
+			}
+
+			/**
+			 * 设置音频源数据
+			 * @param buffer 音频源，可以是未解析的 ArrayBuffer，也可以是已解析的 AudioBuffer
+			 */
+			async setBuffer(buffer) {
+				if (buffer instanceof ArrayBuffer) {
+					this.buffer = await this.ac.decodeAudioData(buffer);
+				} else {
+					this.buffer = buffer;
+				}
+				this.duration = this.buffer.duration;
+			}
+
+			play(when) {
+				if (this.playing || !this.buffer) return;
+				this.playing = true;
+				this.lastStartTime = this.ac.currentTime;
+				if (this.route.status !== AudioStatus.Playing) {
+					this.route.status = AudioStatus.Playing;
+				}
+				this.createSourceNode(this.buffer);
+				this.output.start(0, when);
+				this.output.addEventListener("ended", () => {
+					this.playing = false;
+					if (this.route.status === AudioStatus.Playing) {
+						this.route.status = AudioStatus.Stoped;
+					}
+					if (this.loop && !this.output.loop) this.play(0);
+				});
+			}
+
+			createSourceNode(buffer) {
+				if (!this.target) return;
+				const node = this.ac.createBufferSource();
+				node.buffer = buffer;
+				this.output = node;
+				node.connect(this.target.input);
+				node.loop = this.loop;
+			}
+
+			stop() {
+				this.output.stop();
+				return this.ac.currentTime - this.lastStartTime;
+			}
+
+			connect(target) {
+				this.target = target;
+			}
+
+			setLoop(loop) {
+				this.loop = loop;
+			}
+		}
+		class AudioPlayer {
+			constructor() {
+				/** 音频播放上下文 */
+				this.ac = new AudioContext();
+				/** 音量节点 */
+				this.gain = this.ac.createGain();
+				this.gain.connect(this.ac.destination);
+				this.audioRoutes = new Map();
+			}
+			/**
+			 * 解码音频数据
+			 * @param data 音频数据
+			 */
+			decodeAudioData(data) {
+				return AudioDecoder.decodeAudioData(data, this);
+			}
+			/**
+			 * 设置音量
+			 * @param volume 音量
+			 */
+			setVolume(volume) {
+				this.gain.gain.value = volume;
+			}
+
+			/**
+			 * 获取音量
+			 */
+			getVolume() {
+				return this.gain.gain.value;
+			}
+
+			/**
+			 * 创建一个音频源
+			 * @param Source 音频源类
+			 */
+			createSource(Source) {
+				return new Source(this.ac);
+			}
+
+			/**
+			 * 创建一个兼容流式音频源，可以与流式加载相结合，主要用于处理 opus ogg 不兼容的情况
+			 */
+			createStreamSource() {
+				return new AudioStreamSource(this.ac);
+			}
+
+			/**
+			 * 创建一个通过 audio 元素播放的音频源
+			 */
+			createElementSource() {
+				return new AudioElementSource(this.ac);
+			}
+
+			/**
+			 * 创建一个通过 AudioBuffer 播放的音频源
+			 */
+			createBufferSource() {
+				return new AudioBufferSource(this.ac);
+			}
+
+			/**
+			 * 获取音频目的地
+			 */
+			getDestination() {
+				return this.gain;
+			}
+
+			/**
+			 * 创建一个音频效果器
+			 * @param Effect 效果器类
+			 */
+			createEffect(Effect) {
+				return new Effect(this.ac);
+			}
+
+			/**
+			 * 创建一个修改音量的效果器
+			 * ```txt
+			 *             |----------|
+			 * Input ----> | GainNode | ----> Output
+			 *             |----------|
+			 * ```
+			 */
+			createVolumeEffect() {
+				return new VolumeEffect(this.ac);
+			}
+
+			/**
+			 * 创建一个立体声效果器
+			 * ```txt
+			 *             |------------|
+			 * Input ----> | PannerNode | ----> Output
+			 *             |------------|
+			 * ```
+			 */
+			createStereoEffect() {
+				return new StereoEffect(this.ac);
+			}
+
+			/**
+			 * 创建一个修改单个声道音量的效果器
+			 * ```txt
+			 *                                  |----------|
+			 *                               -> | GainNode | \
+			 *             |--------------| /   |----------|  -> |------------|
+			 * Input ----> | SplitterNode |        ......        | MergerNode | ----> Output
+			 *             |--------------| \   |----------|  -> |------------|
+			 *                               -> | GainNode | /
+			 *                                  |----------|
+			 * ```
+			 */
+			createChannelVolumeEffect() {
+				return new ChannelVolumeEffect(this.ac);
+			}
+
+			/**
+			 * 创建一个延迟效果器
+			 *             |-----------|
+			 * Input ----> | DelayNode | ----> Output
+			 *             |-----------|
+			 */
+			createDelay() {
+				return new DelayEffect(this.ac);
+			}
+
+			/**
+			 * 创建一个回声效果器
+			 * ```txt
+			 *             |----------|
+			 * Input ----> | GainNode | ----> Output
+			 *        ^    |----------|   |
+			 *        |                   |
+			 *        |   |------------|  ↓
+			 *        |-- | Delay Node | <--
+			 *            |------------|
+			 * ```
+			 */
+			createEchoEffect() {
+				return new EchoEffect(this.ac);
+			}
+
+			/**
+			 * 创建一个音频播放路由
+			 * @param source 音频源
+			 */
+			createRoute(source) {
+				return new AudioRoute(source, this);
+			}
+
+			/**
+			 * 添加一个音频播放路由，可以直接被播放
+			 * @param id 这个音频播放路由的名称
+			 * @param route 音频播放路由对象
+			 */
+			addRoute(id, route) {
+				if (!this.audioRoutes) this.audioRoutes = new Map();
+				if (this.audioRoutes.has(id)) {
+					console.warn(
+						"Audio route with id of '" +
+						id +
+						"' has already existed. New route will override old route."
+					);
+				}
+				this.audioRoutes.set(id, route);
+			}
+
+			/**
+			 * 根据名称获取音频播放路由对象
+			 * @param id 音频播放路由的名称
+			 */
+			getRoute(id) {
+				return this.audioRoutes.get(id);
+			}
+			/**
+			 * 移除一个音频播放路由
+			 * @param id 要移除的播放路由的名称
+			 */
+			removeRoute(id) {
+				this.audioRoutes.delete(id);
+			}
+			/**
+			 * 播放音频
+			 * @param id 音频名称
+			 * @param when 从音频的哪个位置开始播放，单位秒
+			 */
+			play(id, when) {
+				const route = this.getRoute(id);
+				if (!route) {
+					console.warn(
+						"Cannot play audio route '" +
+						id +
+						"', since there is not added route named it."
+					);
+					return;
+				}
+
+				route.play(when);
+			}
+
+			/**
+			 * 暂停音频播放
+			 * @param id 音频名称
+			 * @returns 当音乐真正停止时兑现
+			 */
+			pause(id) {
+				const route = this.getRoute(id);
+				if (!route) {
+					console.warn(
+						"Cannot pause audio route '" +
+						id +
+						"', since there is not added route named it."
+					);
+					return;
+				}
+				return route.pause();
+			}
+
+			/**
+			 * 停止音频播放
+			 * @param id 音频名称
+			 * @returns 当音乐真正停止时兑现
+			 */
+			stop(id) {
+				const route = this.getRoute(id);
+				if (!route) {
+					console.warn(
+						"Cannot stop audio route '" +
+						id +
+						"', since there is not added route named it."
+					);
+					return;
+				}
+				return route.stop();
+			}
+
+			/**
+			 * 继续音频播放
+			 * @param id 音频名称
+			 */
+			resume(id) {
+				const route = this.getRoute(id);
+				if (!route) {
+					console.warn(
+						"Cannot pause audio route '" +
+						id +
+						"', since there is not added route named it."
+					);
+					return;
+				}
+				route.resume();
+			}
+
+			/**
+			 * 设置听者位置，x正方向水平向右，y正方向垂直于地面向上，z正方向垂直屏幕远离用户
+			 * @param x 位置x坐标
+			 * @param y 位置y坐标
+			 * @param z 位置z坐标
+			 */
+			setListenerPosition(x, y, z) {
+				const listener = this.ac.listener;
+				listener.positionX.value = x;
+				listener.positionY.value = y;
+				listener.positionZ.value = z;
+			}
+
+			/**
+			 * 设置听者朝向，x正方向水平向右，y正方向垂直于地面向上，z正方向垂直屏幕远离用户
+			 * @param x 朝向x坐标
+			 * @param y 朝向y坐标
+			 * @param z 朝向z坐标
+			 */
+			setListenerOrientation(x, y, z) {
+				const listener = this.ac.listener;
+				listener.forwardX.value = x;
+				listener.forwardY.value = y;
+				listener.forwardZ.value = z;
+			}
+
+			/**
+			 * 设置听者头顶朝向，x正方向水平向右，y正方向垂直于地面向上，z正方向垂直屏幕远离用户
+			 * @param x 头顶朝向x坐标
+			 * @param y 头顶朝向y坐标
+			 * @param z 头顶朝向z坐标
+			 */
+			setListenerUp(x, y, z) {
+				const listener = this.ac.listener;
+				listener.upX.value = x;
+				listener.upY.value = y;
+				listener.upZ.value = z;
+			}
+		}
+		class AudioRoute {
+			constructor(source, player) {
+				source.route = this;
+				this.output = source.output;
+
+				/** 效果器路由图 */
+				this.effectRoute = [];
+
+				/** 结束时长，当音频暂停或停止时，会经过这么长时间之后才真正终止播放，期间可以做音频淡入淡出等效果 */
+				this.endTime = 0;
+				/** 暂停时播放了多长时间 */
+				this.pauseCurrentTime = 0;
+				/** 当前播放状态 */
+				this.player = player;
+				this.status = AudioStatus.Stoped;
+
+				this.shouldStop = false;
+				/**
+				 * 每次暂停或停止时自增，用于判断当前正在处理的情况。
+				 * 假如暂停后很快播放，然后很快暂停，那么需要根据这个来判断实际是否应该执行暂停后操作
+				 */
+				this.stopIdentifier = 0;
+				/** 暂停时刻 */
+				this.pauseTime = 0;
+				this.source = source;
+				this.source.player = player;
+			}
+			/** 音频时长，单位秒 */
+			get duration() {
+				return this.source.duration;
+			}
+			/** 当前播放了多长时间，单位秒 */
+			get currentTime() {
+				if (this.status === AudioStatus.Paused) {
+					return this.pauseCurrentTime;
+				} else {
+					return this.source.currentTime;
+				}
+			}
+			set currentTime(time) {
+				this.source.stop();
+				this.source.play(time);
+			}
+			/**
+			 * 设置结束时间，暂停或停止时，会经过这么长时间才终止音频的播放，这期间可以做一下音频淡出的效果。
+			 * @param time 暂停或停止时，经过多长时间之后才会结束音频的播放
+			 */
+			setEndTime(time) {
+				this.endTime = time;
+			}
+
+			/**
+			 * 当音频播放时执行的函数，可以用于音频淡入效果
+			 * @param fn 音频开始播放时执行的函数
+			 */
+			onStart(fn) {
+				this.audioStartHook = fn;
+			}
+
+			/**
+			 * 当音频暂停或停止时执行的函数，可以用于音频淡出效果
+			 * @param fn 音频在暂停或停止时执行的函数，不填时表示取消这个钩子。
+			 *           包含两个参数，第一个参数是结束时长，第二个参数是当前音频播放路由对象
+			 */
+			onEnd(fn) {
+				this.audioEndHook = fn;
+			}
+
+			/**
+			 * 开始播放这个音频
+			 * @param when 从音频的什么时候开始播放，单位秒
+			 */
+			async play(when = 0) {
+				if (this.status === AudioStatus.Playing) return;
+				this.link();
+				await this.player.ac.resume();
+				if (this.effectRoute.length > 0) {
+					const first = this.effectRoute[0];
+					this.source.connect(first);
+					const last = this.effectRoute.at(-1);
+					last.connect({ input: this.player.getDestination() });
+				} else {
+					this.source.connect({ input: this.player.getDestination() });
+				}
+				this.source.play(when);
+				this.status = AudioStatus.Playing;
+				this.pauseTime = 0;
+				this.audioStartHook?.(this);
+				this.startAllEffect();
+				if (this.status !== AudioStatus.Playing) {
+					this.status = AudioStatus.Playing;
+				}
+			}
+
+			/**
+			 * 暂停音频播放
+			 */
+			async pause() {
+				if (this.status !== AudioStatus.Playing) return;
+				this.status = AudioStatus.Pausing;
+				this.stopIdentifier++;
+				const identifier = this.stopIdentifier;
+				if (this.audioEndHook) {
+					this.audioEndHook(this.endTime, this);
+					await sleep(this.endTime);
+				}
+				if (
+					this.status !== AudioStatus.Pausing ||
+					this.stopIdentifier !== identifier
+				) {
+					return;
+				}
+				this.pauseCurrentTime = this.source.currentTime;
+				const time = this.source.stop();
+				this.pauseTime = time;
+				if (this.shouldStop) {
+					this.status = AudioStatus.Stoped;
+					this.endAllEffect();
+
+					this.shouldStop = false;
+				} else {
+					this.status = AudioStatus.Paused;
+					this.endAllEffect();
+				}
+				this.endAllEffect();
+			}
+
+			/**
+			 * 继续音频播放
+			 */
+			resume() {
+				if (this.status === AudioStatus.Playing) return;
+				if (
+					this.status === AudioStatus.Pausing ||
+					this.status === AudioStatus.Stoping
+				) {
+					this.audioStartHook?.(this);
+
+					return;
+				}
+				if (this.status === AudioStatus.Paused) {
+					this.play(this.pauseTime);
+				} else {
+					this.play(0);
+				}
+				this.status = AudioStatus.Playing;
+				this.pauseTime = 0;
+				this.audioStartHook?.(this);
+				this.startAllEffect();
+			}
+
+			/**
+			 * 停止音频播放
+			 */
+			async stop() {
+				if (this.status !== AudioStatus.Playing) {
+					if (this.status === AudioStatus.Pausing) {
+						this.shouldStop = true;
+					}
+					return;
+				}
+				this.status = AudioStatus.Stoping;
+				this.stopIdentifier++;
+				const identifier = this.stopIdentifier;
+				if (this.audioEndHook) {
+					this.audioEndHook(this.endTime, this);
+					await sleep(this.endTime);
+				}
+				if (
+					this.status !== AudioStatus.Stoping ||
+					this.stopIdentifier !== identifier
+				) {
+					return;
+				}
+				this.source.stop();
+				this.status = AudioStatus.Stoped;
+				this.pauseTime = 0;
+				this.endAllEffect();
+			}
+
+			/**
+			 * 添加效果器
+			 * @param effect 要添加的效果，可以是数组，表示一次添加多个
+			 * @param index 从哪个位置开始添加，如果大于数组长度，那么加到末尾，如果小于0，那么将会从后面往前数。默认添加到末尾
+			 */
+			addEffect(effect, index) {
+				if (isNil(index)) {
+					if (effect instanceof Array) {
+						this.effectRoute.push(...effect);
+					} else {
+						this.effectRoute.push(effect);
+					}
+				} else {
+					if (effect instanceof Array) {
+						this.effectRoute.splice(index, 0, ...effect);
+					} else {
+						this.effectRoute.splice(index, 0, effect);
+					}
+				}
+				this.setOutput();
+				if (this.source.playing) this.link();
+			}
+
+			/**
+			 * 移除一个效果器
+			 * @param effect 要移除的效果
+			 */
+			removeEffect(effect) {
+				const index = this.effectRoute.indexOf(effect);
+				if (index === -1) return;
+				this.effectRoute.splice(index, 1);
+				effect.disconnect();
+				this.setOutput();
+				if (this.source.playing) this.link();
+			}
+
+			setOutput() {
+				const effect = this.effectRoute.at(-1);
+				if (!effect) this.output = this.source.output;
+				else this.output = effect.output;
+			}
+
+			/**
+			 * 连接音频路由图
+			 */
+			link() {
+				this.effectRoute.forEach((v) => v.disconnect());
+				this.effectRoute.forEach((v, i) => {
+					const next = this.effectRoute[i + 1];
+					if (next) {
+						v.connect(next);
+					}
+				});
+			}
+
+			startAllEffect() {
+				this.effectRoute.forEach((v) => v.start());
+			}
+
+			endAllEffect() {
+				this.effectRoute.forEach((v) => v.end());
+			}
+		}
+
+		const audioPlayer = new AudioPlayer();
+
+		class BgmController {
+			constructor(player) {
+				this.mainGain = player.createVolumeEffect();
+				this.player = player;
+				/** bgm音频名称的前缀 */
+				this.prefix = "bgms.";
+				/** 每个 bgm 的音量控制器 */
+				this.gain = new Map();
+
+				/** 正在播放的 bgm */
+				this.playingBgm = "";
+				/** 是否正在播放 */
+				this.playing = false;
+
+				/** 是否已经启用 */
+				this.enabled = true;
+				/** 是否屏蔽所有的音乐切换 */
+				this.blocking = false;
+				/** 渐变时长 */
+				this.transitionTime = 2000;
+			}
+
+			/**
+			 * 设置音频渐变时长
+			 * @param time 渐变时长
+			 */
+			setTransitionTime(time) {
+				this.transitionTime = time;
+				for (const [, value] of this.gain) {
+					value.transition.time(time);
+				}
+			}
+
+			/**
+			 * 屏蔽音乐切换
+			 */
+			blockChange() {
+				this.blocking = true;
+			}
+
+			/**
+			 * 取消屏蔽音乐切换
+			 */
+			unblockChange() {
+				this.blocking = false;
+			}
+
+			/**
+			 * 设置总音量大小
+			 * @param volume 音量大小
+			 */
+			setVolume(volume) {
+				this.mainGain.setVolume(volume);
+				this._volume = volume;
+			}
+			/**
+			 * 获取总音量大小
+			 */
+			getVolume() {
+				return this.mainGain.getVolume();
+			}
+			/**
+			 * 设置是否启用
+			 * @param enabled 是否启用
+			 */
+			setEnabled(enabled) {
+				if (enabled) this.resume();
+				else this.stop();
+				this.enabled = enabled;
+			}
+
+			/**
+			 * 设置 bgm 音频名称的前缀
+			 */
+			setPrefix(prefix) {
+				this.prefix = prefix;
+			}
+
+			getId(name) {
+				return `${this.prefix}${name}`;
+			}
+
+			/**
+			 * 根据 bgm 名称获取其 AudioRoute 实例
+			 * @param id 音频名称
+			 */
+			get(id) {
+				return this.player.getRoute(this.getId(id));
+			}
+
+			/**
+			 * 添加一个 bgm
+			 * @param id 要添加的 bgm 的名称
+			 * @param url 指定 bgm 的加载地址
+			 */
+			addBgm(id, url = `project/bgms/${id}`) {
+				const type = guessTypeByExt(id);
+				if (!type) {
+					console.warn(
+						"Unknown audio extension name: '" +
+						id.split(".").slice(0, -1).join(".") +
+						"'"
+					);
+					return;
+				}
+				const gain = this.player.createVolumeEffect();
+				if (isAudioSupport(type)) {
+					const source = audioPlayer.createElementSource();
+					source.setSource(url);
+					source.setLoop(true);
+					const route = new AudioRoute(source, audioPlayer);
+					route.addEffect([gain, this.mainGain]);
+					audioPlayer.addRoute(this.getId(id), route);
+					this.setTransition(id, route, gain);
+				} else {
+					const source = audioPlayer.createStreamSource();
+					const stream = new StreamLoader(url);
+					stream.pipe(source);
+					source.setLoop(true);
+					const route = new AudioRoute(source, audioPlayer);
+					route.addEffect([gain, this.mainGain]);
+					audioPlayer.addRoute(this.getId(id), route);
+					this.setTransition(id, route, gain);
+				}
+			}
+
+			/**
+			 * 移除一个 bgm
+			 * @param id 要移除的 bgm 的名称
+			 */
+			removeBgm(id) {
+				this.player.removeRoute(this.getId(id));
+				const gain = this.gain.get(id);
+				gain?.transition.ticker.destroy();
+				this.gain.delete(id);
+			}
+
+			setTransition(id, route, gain) {
+				const transition = new Transition();
+				transition
+					.time(this.transitionTime)
+					.mode(linear())
+					.transition("volume", 0);
+
+				const tick = () => {
+					gain.setVolume(transition.value.volume);
+				};
+
+				/**
+				 * @param expect 在结束时应该是正在播放还是停止
+				 */
+				const setTick = async (expect) => {
+					transition.ticker.remove(tick);
+					transition.ticker.add(tick);
+					const identifier = route.stopIdentifier;
+					await sleep(this.transitionTime + 500);
+					if (route.status === expect && identifier === route.stopIdentifier) {
+						transition.ticker.remove(tick);
+						if (route.status === AudioStatus.Playing) {
+							gain.setVolume(1);
+						} else {
+							gain.setVolume(0);
+						}
+					}
+				};
+
+				route.onStart(async () => {
+					transition.transition("volume", 1);
+					setTick(AudioStatus.Playing);
+				});
+				route.onEnd(() => {
+					transition.transition("volume", 0);
+					setTick(AudioStatus.Paused);
+				});
+				route.setEndTime(this.transitionTime);
+
+				this.gain.set(id, { effect: gain, transition });
+			}
+
+			/**
+			 * 播放一个 bgm
+			 * @param id 要播放的 bgm 名称
+			 */
+			play(id, when) {
+				if (this.blocking) return;
+				if (id !== this.playingBgm && this.playingBgm) {
+					this.player.pause(this.getId(this.playingBgm));
+				}
+				this.playingBgm = id;
+				if (!this.enabled) return;
+				this.player.play(this.getId(id), when);
+				this.playing = true;
+			}
+
+			/**
+			 * 继续当前的 bgm
+			 */
+			resume() {
+				if (this.blocking || !this.enabled || this.playing) return;
+				if (this.playingBgm) {
+					this.player.resume(this.getId(this.playingBgm));
+				}
+				this.playing = true;
+			}
+
+			/**
+			 * 暂停当前的 bgm
+			 */
+			pause() {
+				if (this.blocking || !this.enabled) return;
+				if (this.playingBgm) {
+					this.player.pause(this.getId(this.playingBgm));
+				}
+				this.playing = false;
+			}
+
+			/**
+			 * 停止当前的 bgm
+			 */
+			stop() {
+				if (this.blocking || !this.enabled) return;
+				if (this.playingBgm) {
+					this.player.stop(this.getId(this.playingBgm));
+				}
+				this.playing = false;
+			}
+		}
+		const bgmController = new BgmController(audioPlayer);
+
+		class SoundPlayer {
+			constructor(player) {
+				/** 每个音效的唯一标识符 */
+				this.num = 0;
+				this.enabled = true;
+				this.gain = player.createVolumeEffect();
+				/** 每个音效的数据 */
+				this.buffer = new Map();
+				/** 所有正在播放的音乐 */
+				this.playing = new Set();
+				this.player = player;
+			}
+			/**
+			 * 设置是否启用音效
+			 * @param enabled 是否启用音效
+			 */
+			setEnabled(enabled) {
+				if (!enabled) this.stopAllSounds();
+				this.enabled = enabled;
+			}
+
+			/**
+			 * 设置音量大小
+			 * @param volume 音量大小
+			 */
+			setVolume(volume) {
+				this.gain.setVolume(volume);
+			}
+			/**
+			 * 获取音量大小
+			 */
+			getVolume() {
+				return this.gain.getVolume();
+			}
+			/**
+			 * 添加一个音效
+			 * @param id 音效名称
+			 * @param data 音效的Uint8Array数据
+			 */
+			async add(id, data) {
+				const buffer = await this.player.decodeAudioData(data);
+				if (!buffer) {
+					console.warn(
+						"Cannot decode sound '" +
+						id +
+						"', since audio file may not supported by 2.b."
+					);
+					return;
+				}
+				this.buffer.set(id, buffer);
+			}
+
+			/**
+			 * 播放一个音效
+			 * @param id 音效名称
+			 * @param position 音频位置，[0, 0, 0]表示正中心，x轴指向水平向右，y轴指向水平向上，z轴指向竖直向上
+			 * @param orientation 音频朝向，[0, 1, 0]表示朝向前方
+			 */
+			play(id, position = [0, 0, 0], orientation = [1, 0, 0]) {
+				if (!this.enabled || !id) return -1;
+				const buffer = this.buffer.get(id);
+				if (!buffer) {
+					console.warn(
+						"Cannot play sound '" +
+						id +
+						"', since there is no added data named it."
+					);
+					return -1;
+				}
+				const soundNum = this.num++;
+
+				const source = this.player.createBufferSource();
+				source.setBuffer(buffer);
+				const route = this.player.createRoute(source);
+				const stereo = this.player.createStereoEffect();
+				stereo.setPosition(position[0], position[1], position[2]);
+				stereo.setOrientation(orientation[0], orientation[1], orientation[2]);
+				route.addEffect([stereo, this.gain]);
+				this.player.addRoute(`sounds.${soundNum}`, route);
+				route.play();
+				source.output.addEventListener("ended", () => {
+					this.playing.delete(soundNum);
+				});
+				this.playing.add(soundNum);
+				return soundNum;
+			}
+
+			/**
+			 * 停止一个音效
+			 * @param num 音效的唯一 id
+			 */
+			stop(num) {
+				const id = `sounds.${num}`;
+				const route = this.player.getRoute(id);
+				if (route) {
+					route.stop();
+					this.player.removeRoute(id);
+					this.playing.delete(num);
+				}
+			}
+
+			/**
+			 * 停止播放所有音效
+			 */
+			stopAllSounds() {
+				this.playing.forEach((v) => {
+					const id = `sounds.${v}`;
+					const route = this.player.getRoute(id);
+					if (route) {
+						route.stop();
+						this.player.removeRoute(id);
+					}
+				});
+				this.playing.clear();
+			}
+		}
+		const soundPlayer = new SoundPlayer(audioPlayer);
+
+		function loadAllBgm() {
+			const data = data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d;
+			for (const bgm of data.main.bgms) {
+				bgmController.addBgm(bgm);
+			}
+		}
+		loadAllBgm();
+		AudioDecoder.registerDecoder(AudioType.Ogg, VorbisDecoder);
+		AudioDecoder.registerDecoder(AudioType.Opus, OpusDecoder);
+
+		core.plugin.audioSystem = {
+			AudioType,
+			AudioDecoder,
+			AudioStatus,
+			checkAudioType,
+			isAudioSupport,
+			audioPlayer,
+			soundPlayer,
+			bgmController,
+			guessTypeByExt,
+			BgmController,
+			SoundPlayer,
+			EchoEffect,
+			DelayEffect,
+			ChannelVolumeEffect,
+			VolumeEffect,
+			StereoEffect,
+			AudioEffect,
+			AudioPlayer,
+			AudioRoute,
+			AudioStreamSource,
+			AudioElementSource,
+			AudioBufferSource,
+			loadAllBgm,
+			StreamLoader,
+		};
+		//bgm相关复写
+		control.prototype.playBgm = (bgm, when) => {
+			bgm = core.getMappedName(bgm);
+			if (main.mode != "play" || !core.material.bgms[bgm]) return;
+			// 如果不允许播放
+			if (!core.musicStatus.bgmStatus) {
+				try {
+					core.musicStatus.playingBgm = bgm;
+					core.musicStatus.lastBgm = bgm;
+					core.material.bgms[bgm].pause();
+				} catch (e) {
+					console.error(e);
+				}
+				return;
+			}
+			core.setMusicBtn();
+
+			try {
+				bgmController.play(bgm, when);
+			} catch (e) {
+				console.log("无法播放BGM " + bgm);
+				console.error(e);
+				core.musicStatus.playingBgm = null;
+			}
+
+		};
+		control.prototype.pauseBgm = () => {
+			bgmController.pause();
+			core.setMusicBtn();
+		};
+
+		control.prototype.resumeBgm = function () {
+			bgmController.resume();
+			core.setMusicBtn();
+		};
+		control.prototype.checkBgm = function () {
+			core.playBgm(bgmController.playingBgm || main.startBgm);
+		};
+		control.prototype.triggerBgm = function () {
+			core.musicStatus.bgmStatus = !core.musicStatus.bgmStatus;
+			if (bgmController.playing) bgmController.pause();
+			else bgmController.resume();
+			core.setMusicBtn();
+			core.setLocalStorage("bgmStatus", core.musicStatus.bgmStatus);
+		};
+		//sound相关复写
+		control.prototype.playSound = function (
+			sound,
+			_pitch,
+			callback,
+			position,
+			orientation
+		) {
+			if (main.mode != "play" || !core.musicStatus.soundStatus) return callback?.();
+			const name = core.getMappedName(sound);
+			const num = soundPlayer.play(name, position, orientation);
+			const route = audioPlayer.getRoute(`sounds.${num}`);
+			if (!route) {
+				callback?.();
+				return -1;
+			} else {
+				sleep(route.duration * 1000).then(() => callback?.());
+				return num;
+			}
+		};
+		control.prototype.stopSound = function (id) {
+			if (isNil(id)) {
+				soundPlayer.stopAllSounds();
+			} else {
+				soundPlayer.stop(id);
+			}
+		};
+		control.prototype.getPlayingSounds = function () {
+			return [...soundPlayer.playing];
+		};
+		//sound加载复写
+		loader.prototype._loadOneSound_decodeData = function (name, data) {
+			if (data instanceof Blob) {
+				var blobReader = new zip.BlobReader(data);
+				blobReader.init(function () {
+					blobReader.readUint8Array(0, blobReader.size, function (uint8) {
+						//core.loader._loadOneSound_decodeData(name, uint8.buffer);
+						soundPlayer.add(name, uint8);
+					});
+				});
+				return;
+			}
+			if (data instanceof ArrayBuffer) {
+				const uint8 = new Uint8Array(data);
+				soundPlayer.add(name, uint8);
+			}
+		};
+		//音量控制复写
+		soundPlayer.setVolume(
+			core.musicStatus.userVolume * core.musicStatus.designVolume
+		);
+		bgmController.setVolume(
+			core.musicStatus.userVolume * core.musicStatus.designVolume
+		);
+		actions.prototype._clickSwitchs_sounds_userVolume = function (delta) {
+			var value = Math.round(Math.sqrt(100 * core.musicStatus.userVolume));
+			if (value == 0 && delta < 0) return;
+			core.musicStatus.userVolume = core.clamp(
+				Math.pow(value + delta, 2) / 100,
+				0,
+				1
+			);
+			//audioContext 音效 不受designVolume 影响
+			if (core.musicStatus.gainNode != null)
+				core.musicStatus.gainNode.gain.value = core.musicStatus.userVolume;
+			soundPlayer.setVolume(
+				core.musicStatus.userVolume * core.musicStatus.designVolume
+			);
+			bgmController.setVolume(
+				core.musicStatus.userVolume * core.musicStatus.designVolume
+			);
+			core.setLocalStorage("userVolume", core.musicStatus.userVolume);
+			core.playSound("确定");
+			core.ui._drawSwitchs_sounds();
+		};
+	},
 	"drawItemDetail": function () {
 		/* 宝石血瓶左下角显示数值
 			 * 需要将 变量：itemDetail改为true才可正常运行
@@ -4079,9 +6178,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 		const KeyCodeEnum = {
-			BackSpace: 8, Tab: 9, Enter: 13, Esc: 27, SpaceBar: 32,
-			PageUp: 33, PageDown: 34, Left: 37, Up: 38, Right: 39,
-			Down: 40, C: 67, Q: 81, T: 84,
+			BackSpace: 8,
+			Tab: 9,
+			Enter: 13,
+			Esc: 27,
+			SpaceBar: 32,
+			PageUp: 33,
+			PageDown: 34,
+			Left: 37,
+			Up: 38,
+			Right: 39,
+			Down: 40,
+			C: 67,
+			Q: 81,
+			T: 84,
 		};
 
 		/** @typedef {'ondown'|'onmove'|'onup'|'keyDown'|'keyUp'|'onmousewheel'} eventType  */
@@ -4215,8 +6325,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				btn.menu = this;
 				btn.ctx = this.name;
 				btn.key = key;
-				if (event == null) { }
-				else if (typeof event === 'function') {
+				if (event == null) { } else if (typeof event === 'function') {
 					btn.ondown = event;
 				} else {
 					const { ondown, onmove, onup } = event;
@@ -4284,12 +6393,209 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		class PagedMenu extends MenuBase {
+			constructor(name, toListen, x, y, w, h, zIndex, capacity, data) {
+				super(name, toListen, x, y, w, h, zIndex);
+				this.page = 0;
+				/** @type {any[]} */
+				this.totalItemList = data;
+				/** @type {any[]} */
+				this.currItemList;
+				this.capacity = capacity;
+			}
+
+			drawContent() {
+				const pageDownBtn = this.btnMap.get("pageDown"),
+					pageUpBtn = this.btnMap.get("pageUp");
+				if (pageDownBtn) pageDownBtn.alpha = this.canPageDown() ? 1 : 0.3;
+				if (pageUpBtn) pageUpBtn.alpha = this.canPageUp() ? 1 : 0.3;
+				super.drawContent();
+			}
+
+			/** 此类初始化时需要调用一次 **/
+			updateCurrItemList() {
+				this.currItemList = this.totalItemList.slice(this.page * this.capacity, (this.page + 1) * this.capacity);
+			}
+
+			canPageDown() {
+				return this.page > 0;
+			}
+
+			pageDown() {
+				if (!this.canPageDown()) return;
+				this.page--;
+				this.updateCurrItemList();
+				this.drawContent();
+			}
+
+			canPageUp() {
+				return (this.page + 1) * this.capacity < this.totalItemList.length
+			}
+
+			pageUp() {
+				if (!this.canPageUp()) return;
+				this.page++;
+				this.updateCurrItemList();
+				this.drawContent();
+			}
+		}
+
+		class MultiTypePagedMenu extends MenuBase {
+			/**
+			 * @param {string} name - 菜单名称
+			 * @param {any} toListen - 要监听的事件集合
+			 * @param {number} x - X坐标
+			 * @param {number} y - Y坐标
+			 * @param {number} w - 宽度
+			 * @param {number} h - 高度
+			 * @param {number} zIndex - 层级
+			 * @param {Object<string, {capacity: number, totalItemList: any[], pageDownBtnKey: string, pageUpBtnKey: string}>} pagesConfig 
+			 *        配置对象，格式示例:
+			 *        {
+			 *          'items': { capacity: 5, totalItemList: [...], pageDownBtnKey: 'btnItemPrev', pageUpBtnKey: 'btnItemNext' },
+			 *          'logs': { capacity: 10, totalItemList: [...], pageDownBtnKey: 'btnLogPrev', pageUpBtnKey: 'btnLogNext' }
+			 *        }
+			 */
+			constructor(name, toListen, x, y, w, h, zIndex, pagesConfig) {
+				super(name, toListen, x, y, w, h, zIndex);
+
+				// 内部状态存储
+				this.page = {};           // { type: currentPageIndex }
+				this.totalItemList = {};  // { type: fullData[] }
+				this.currItemList = {};   // { type: currentSlice[] }
+				this.capacityConfig = {}; // { type: capacityNum }
+
+				// 按钮键名映射存储: { type: { down: key, up: key } }
+				this.btnKeyMap = {};
+
+				for (const type in pagesConfig) {
+					const config = pagesConfig[type];
+					this.capacityConfig[type] = config.capacity;
+					this.totalItemList[type] = config.totalItemList;
+					this.page[type] = 0;
+					this.btnKeyMap[type] = {
+						down: config.pageDownBtnKey,
+						up: config.pageUpBtnKey
+					};
+					this.updateCurrItemList(type);
+				}
+			}
+
+			drawContent() {
+				for (const type in this.btnKeyMap) {
+					const keys = this.btnKeyMap[type];
+
+					if (keys.down) {
+						const btn = this.btnMap.get(keys.down);
+						if (btn) {
+							btn.alpha = this.canPageDown(type) ? 1 : 0.3;
+						}
+					}
+
+					if (keys.up) {
+						const btn = this.btnMap.get(keys.up);
+						if (btn) {
+							btn.alpha = this.canPageUp(type) ? 1 : 0.3;
+						}
+					}
+				}
+				super.drawContent();
+			}
+
+			/**
+			 * @param {string} [pageType] 
+			 */
+			updateCurrItemList(pageType) {
+				if (!pageType) {
+					for (const type in this.page) {
+						this.updateCurrItemList(type);
+					}
+					return;
+				}
+				const currentPage = this.page[pageType] || 0;
+				const capacity = this.capacityConfig[pageType];
+
+				const start = currentPage * capacity;
+				const end = start + capacity;
+
+				this.currItemList[pageType] = this.totalItemList[pageType].slice(start, end);
+			}
+
+			/**
+			 * 检查指定类型是否可以向下翻页 (回到上一页)
+			 * @param {string} pageType 
+			 * @returns {boolean}
+			 */
+			canPageDown(pageType) {
+				return (this.page[pageType] || 0) > 0;
+			}
+
+			/**
+			 * 执行向下翻页 (页码 -1)
+			 * @param {string} pageType 
+			 */
+			pageDown(pageType) {
+				if (!this.canPageDown(pageType)) return;
+
+				this.page[pageType]--;
+				this.updateCurrItemList(pageType);
+				this.drawContent();
+			}
+
+			/**
+			 * 检查指定类型是否可以向上翻页 (进入下一页)
+			 * @param {string} pageType 
+			 * @returns {boolean}
+			 */
+			canPageUp(pageType) {
+				const currentPage = this.page[pageType] || 0;
+				const capacity = this.capacityConfig[pageType];
+				const totalLen = this.totalItemList[pageType] ? this.totalItemList[pageType].length : 0;
+
+				return (currentPage + 1) * capacity < totalLen;
+			}
+
+			/**
+			 * 执行向上翻页 (页码 +1)
+			 * @param {string} pageType 
+			 */
+			pageUp(pageType) {
+				if (!this.canPageUp(pageType)) return;
+
+				this.page[pageType]++;
+				this.updateCurrItemList(pageType);
+				this.drawContent(); // 重绘以更新按钮状态和内容
+			}
+
+			// --- 辅助方法 ---
+			/**
+			 * 获取指定类型的当前页码 (从0开始)
+			 * @param {string} pageType
+			 * @returns {number}
+			 */
+			getCurrentPage(pageType) {
+				return this.page[pageType] || 0;
+			}
+
+			/**
+			 * 获取指定类型的总页数
+			 * @param {string} pageType
+			 * @returns {number}
+			 */
+			getTotalPages(pageType) {
+				const totalLen = this.totalItemList[pageType] ? this.totalItemList[pageType].length : 0;
+				const capacity = this.capacityConfig[pageType];
+				if (!capacity || capacity <= 0) return 0;
+				return Math.ceil(totalLen / capacity);
+			}
+		}
+
 		class Pagination extends MenuBase {
 			constructor(pageList, currPage, name, toListen, x, y, w, h, zIndex) {
 				super(name, toListen, x, y, w, h, zIndex);
 				/**
 				 * 当前页面列表
-				 * @type {Array<MenuBaseClass>}
+				 * @type {Array<MenuBase>}
 				 */
 				this.pageList = pageList;
 				/**
@@ -4415,6 +6721,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.config = config || {};
 				/** @type {'left'|'right'|'up'|'down'} */
 				this.dir = dir;
+				this.alpha = 1;
 			}
 
 			draw() {
@@ -4430,7 +6737,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					arrowStyle = 'black'
 				} = this.config || {};
 
-				const { x, y, w, h, ctx } = this;
+				const { x, y, w, h, ctx, alpha } = this;
+
+				const originAlpha = core.setAlpha(ctx, alpha);
 
 				core.fillRoundRect(ctx, x, y, w, h, 3, backStyle);
 
@@ -4438,41 +6747,55 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 				if (this.dir === 'left') {
 					points = [
-						[x + marginTip, y + h / 2],                   
-						[x + w - marginTail, y + marginSide],         
-						[x + w - marginTail, y + h - marginSide]      
+						[x + marginTip, y + h / 2],
+						[x + w - marginTail, y + marginSide],
+						[x + w - marginTail, y + h - marginSide]
 					];
-				}
-				else if (this.dir === 'right') {
+				} else if (this.dir === 'right') {
 					points = [
-						[x + w - marginTip, y + h / 2],   
-						[x + marginTail, y + marginSide], 
+						[x + w - marginTip, y + h / 2],
+						[x + marginTail, y + marginSide],
 						[x + marginTail, y + h - marginSide]
 					];
-				}
-				else if (this.dir === 'up') {
+				} else if (this.dir === 'up') {
 					points = [
-						[x + w / 2, y + marginTip], 
-						[x + marginSide, y + h - marginTail], 
-						[x + w - marginSide, y + h - marginTail] 
+						[x + w / 2, y + marginTip],
+						[x + marginSide, y + h - marginTail],
+						[x + w - marginSide, y + h - marginTail]
 					];
-				}
-				else if (this.dir === 'down') {
+				} else if (this.dir === 'down') {
 					points = [
-						[x + w / 2, y + h - marginTip], 
-						[x + marginSide, y + marginTail], 
-						[x + w - marginSide, y + marginTail] 
+						[x + w / 2, y + h - marginTip],
+						[x + marginSide, y + marginTail],
+						[x + w - marginSide, y + marginTail]
 					];
 				}
 
 				if (points.length > 0) {
 					core.fillPolygon(ctx, points, arrowStyle);
 				}
+				core.setAlpha(ctx, originAlpha);
 			}
 		}
+		const registerResize = (menu) => {
+			core.control.registerDymCanvasResizeEvent(menu.name, function () {
+				if (menu && menu.onDraw) menu.drawContent();
+			});
+		}
+		const unregisterResize = (menu) => core.control.unregisterDymCanvasResizeEvent(menu.name);
 		core.plugin.uiBase = {
-			ButtonBase, RoundBtn, IconBtn, ExitBtn,
-			ArrowBtn, MenuBase, Pagination, KeyCodeEnum
+			ButtonBase,
+			RoundBtn,
+			IconBtn,
+			ExitBtn,
+			ArrowBtn,
+			MenuBase,
+			PagedMenu,
+			MultiTypePagedMenu,
+			Pagination,
+			KeyCodeEnum,
+			registerResize,
+			unregisterResize,
 		};
 	},
 	"newBackpackLook": function () {
@@ -5337,7 +7660,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId);
 				// 获取快捷键设置按钮当前的图标
 
-				const setHotkeyBtn = /** @type {IconBtnClass} */ (this.btnMap.get('setHotkeyBtn'));
+				const setHotkeyBtn = /** @type {IconBtn} */ (this.btnMap.get('setHotkeyBtn'));
 				if (setHotkeyBtn) {
 					setHotkeyBtn.disable = (UI.type === 'equips');
 					setHotkeyBtn.icon = (currItemHotKey == null) ? 'keyboard' : ('btn' + currItemHotKey);
@@ -7671,2105 +9994,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		// @todo 新版存档界面
 	},
-	"opusAdaptation": function () {
-		// 将__enable置为false将关闭插件
-		let __enable = true;
-		if (!__enable || main.mode === "editor") return;
-		const { OggOpusDecoderWebWorker } = window["ogg-opus-decoder"];
-		const { OggVorbisDecoderWebWorker } = window["ogg-vorbis-decoder"];
-		const { CodecParser } = window.CodecParser;
-		const { Transition, linear } = core.plugin.animate;
-
-		const audio = new Audio();
-		const AudioStatus = {
-			Playing: 0,
-			Pausing: 1,
-			Paused: 2,
-			Stoping: 3,
-			Stoped: 4,
-		};
-		const supportMap = new Map();
-		const AudioType = {
-			Mp3: "audio/mpeg",
-			Wav: 'audio/wav; codecs="1"',
-			Flac: "audio/flac",
-			Opus: 'audio/ogg; codecs="opus"',
-			Ogg: 'audio/ogg; codecs="vorbis"',
-			Aac: "audio/aac",
-		};
-		/**
-		 * 检查一种音频类型是否能被播放
-		 * @param type 音频类型 AudioType
-		 */
-		function isAudioSupport(type) {
-			if (supportMap.has(type)) return supportMap.get(type);
-			else {
-				const support = audio.canPlayType(type);
-				const canPlay = support === "maybe" || support === "probably";
-				supportMap.set(type, canPlay);
-				return canPlay;
-			}
-		}
-
-		const typeMap = new Map([
-			["ogg", AudioType.Ogg],
-			["mp3", AudioType.Mp3],
-			["wav", AudioType.Wav],
-			["flac", AudioType.Flac],
-			["opus", AudioType.Opus],
-			["aac", AudioType.Aac],
-		]);
-
-		/**
-		 * 根据文件名拓展猜测其类型
-		 * @param file 文件名 string
-		 */
-		function guessTypeByExt(file) {
-			const ext = /\.[a-zA-Z\d]+$/.exec(file);
-			if (!ext?.[0]) return "";
-			const type = ext[0].slice(1);
-			return typeMap.get(type.toLocaleLowerCase()) ?? "";
-		}
-
-		isAudioSupport(AudioType.Ogg);
-		isAudioSupport(AudioType.Mp3);
-		isAudioSupport(AudioType.Wav);
-		isAudioSupport(AudioType.Flac);
-		isAudioSupport(AudioType.Opus);
-		isAudioSupport(AudioType.Aac);
-
-		function isNil(value) {
-			return value === void 0 || value === null;
-		}
-
-		function sleep(time) {
-			return new Promise((res) => setTimeout(res, time));
-		}
-		class AudioEffect {
-			constructor(ac) { }
-			/**
-			 * 连接至其他效果器
-			 * @param target 目标输入 IAudioInput
-			 * @param output 当前效果器输出通道 Number
-			 * @param input 目标效果器的输入通道 Number
-			 */
-			connect(target, output, input) {
-				this.output.connect(target.input, output, input);
-			}
-
-			/**
-			 * 与其他效果器取消连接
-			 * @param target 目标输入 IAudioInput
-			 * @param output 当前效果器输出通道 Number
-			 * @param input 目标效果器的输入通道 Number
-			 */
-			disconnect(target, output, input) {
-				if (!target) {
-					if (!isNil(output)) {
-						this.output.disconnect(output);
-					} else {
-						this.output.disconnect();
-					}
-				} else {
-					if (!isNil(output)) {
-						if (!isNil(input)) {
-							this.output.disconnect(target.input, output, input);
-						} else {
-							this.output.disconnect(target.input, output);
-						}
-					} else {
-						this.output.disconnect(target.input);
-					}
-				}
-			}
-		}
-
-		class StereoEffect extends AudioEffect {
-			constructor(ac) {
-				super(ac);
-				const panner = ac.createPanner();
-				this.input = panner;
-				this.output = panner;
-			}
-
-			/**
-			 * 设置音频朝向，x正方形水平向右，y正方形垂直于地面向上，z正方向垂直屏幕远离用户
-			 * @param x 朝向x坐标 Number
-			 * @param y 朝向y坐标 Number
-			 * @param z 朝向z坐标 Number
-			 */
-			setOrientation(x, y, z) {
-				this.output.orientationX.value = x;
-				this.output.orientationY.value = y;
-				this.output.orientationZ.value = z;
-			}
-			/**
-			 * 设置音频位置，x正方形水平向右，y正方形垂直于地面向上，z正方向垂直屏幕远离用户
-			 * @param x 位置x坐标 Number
-			 * @param y 位置y坐标 Number
-			 * @param z 位置z坐标 Number
-			 */
-			setPosition(x, y, z) {
-				this.output.positionX.value = x;
-				this.output.positionY.value = y;
-				this.output.positionZ.value = z;
-			}
-			end() { }
-
-			start() { }
-		}
-		class VolumeEffect extends AudioEffect {
-			constructor(ac) {
-				super(ac);
-				const gain = ac.createGain();
-				this.input = gain;
-				this.output = gain;
-			}
-
-			/**
-			 * 设置音量大小
-			 * @param volume 音量大小 Number
-			 */
-			setVolume(volume) {
-				this.output.gain.value = volume;
-			}
-
-			/**
-			 * 获取音量大小 Number
-			 */
-			getVolume() {
-				return this.output.gain.value;
-			}
-
-			end() { }
-
-			start() { }
-		}
-		class ChannelVolumeEffect extends AudioEffect {
-			/** 所有的音量控制节点 */
-
-			constructor(ac) {
-				super(ac);
-				/** 所有的音量控制节点 */
-				this.gain = [];
-				const splitter = ac.createChannelSplitter();
-				const merger = ac.createChannelMerger();
-				this.output = merger;
-				this.input = splitter;
-				for (let i = 0; i < 6; i++) {
-					const gain = ac.createGain();
-					splitter.connect(gain, i);
-					gain.connect(merger, 0, i);
-					this.gain.push(gain);
-				}
-			}
-
-			/**
-			 * 设置某个声道的音量大小
-			 * @param channel 要设置的声道，可填0-5 Number
-			 * @param volume 这个声道的音量大小 Number
-			 */
-			setVolume(channel, volume) {
-				if (!this.gain[channel]) return;
-				this.gain[channel].gain.value = volume;
-			}
-
-			/**
-			 * 获取某个声道的音量大小，可填0-5
-			 * @param channel 要获取的声道 Number
-			 */
-			getVolume(channel) {
-				if (!this.gain[channel]) return 0;
-				return this.gain[channel].gain.value;
-			}
-
-			end() { }
-
-			start() { }
-		}
-		class DelayEffect extends AudioEffect {
-			constructor(ac) {
-				super(ac);
-
-				const delay = ac.createDelay();
-				this.input = delay;
-				this.output = delay;
-			}
-
-			/**
-			 * 设置延迟时长
-			 * @param delay 延迟时长，单位秒 Number
-			 */
-			setDelay(delay) {
-				this.output.delayTime.value = delay;
-			}
-
-			/**
-			 * 获取延迟时长
-			 */
-			getDelay() {
-				return this.output.delayTime.value;
-			}
-
-			end() { }
-
-			start() { }
-		}
-		class EchoEffect extends AudioEffect {
-			constructor(ac) {
-				super(ac);
-				/** 当前增益 */
-				this.gain = 0.5;
-				/** 是否正在播放 */
-				this.playing = false;
-				const delay = ac.createDelay();
-				const gain = ac.createGain();
-				gain.gain.value = 0.5;
-				delay.delayTime.value = 0.05;
-				delay.connect(gain);
-				gain.connect(delay);
-				/** 延迟节点 */
-				this.delay = delay;
-				/** 反馈增益节点 */
-				this.gainNode = gain;
-
-				this.input = gain;
-				this.output = gain;
-			}
-
-			/**
-			 * 设置回声反馈增益大小
-			 * @param gain 增益大小，范围 0-1，大于等于1的视为0.5，小于0的视为0 Number
-			 */
-			setFeedbackGain(gain) {
-				const resolved = gain >= 1 ? 0.5 : gain < 0 ? 0 : gain;
-				this.gain = resolved;
-				if (this.playing) this.gainNode.gain.value = resolved;
-			}
-
-			/**
-			 * 设置回声间隔时长
-			 * @param delay 回声时长，范围 0.01-Infinity，小于0.01的视为0.01 Number
-			 */
-			setEchoDelay(delay) {
-				const resolved = delay < 0.01 ? 0.01 : delay;
-				this.delay.delayTime.value = resolved;
-			}
-
-			/**
-			 * 获取反馈节点增益
-			 */
-			getFeedbackGain() {
-				return this.gain;
-			}
-
-			/**
-			 * 获取回声间隔时长
-			 */
-			getEchoDelay() {
-				return this.delay.delayTime.value;
-			}
-
-			end() {
-				this.playing = false;
-				const echoTime = Math.ceil(Math.log(0.001) / Math.log(this.gain)) + 10;
-				sleep(this.delay.delayTime.value * echoTime).then(() => {
-					if (!this.playing) this.gainNode.gain.value = 0;
-				});
-			}
-
-			start() {
-				this.playing = true;
-				this.gainNode.gain.value = this.gain;
-			}
-		}
-
-		class StreamLoader {
-			constructor(url) {
-				/** 传输目标  Set<IStreamReader> */
-				this.target = new Set();
-				this.loading = false;
-			}
-
-			/**
-			 * 将加载流传递给字节流读取对象
-			 * @param reader 字节流读取对象 IStreamReader
-			 */
-			pipe(reader) {
-				if (this.loading) {
-					console.warn(
-						"Cannot pipe new StreamReader object when stream is loading."
-					);
-					return;
-				}
-				this.target.add(reader);
-				reader.piped(this);
-				return this;
-			}
-
-			async start() {
-				if (this.loading) return;
-				this.loading = true;
-				const response = await window.fetch(this.url);
-				const stream = response.body;
-				if (!stream) {
-					console.error("Cannot get reader when fetching '" + this.url + "'.");
-					return;
-				}
-				// 获取读取器
-				this.stream = stream;
-				const reader = response.body?.getReader();
-				const targets = [...this.target];
-
-				await Promise.all(targets.map((v) => v.start(stream, this, response)));
-				if (reader && reader.read) {
-					// 开始流传输
-					while (true) {
-						const { value, done } = await reader.read();
-						await Promise.all(
-							targets.map((v) => v.pump(value, done, response))
-						);
-						if (done) break;
-					}
-				} else {
-					// 如果不支持流传输
-					const buffer = await response.arrayBuffer();
-					const data = new Uint8Array(buffer);
-					await Promise.all(targets.map((v) => v.pump(data, true, response)));
-				}
-
-				this.loading = false;
-				targets.forEach((v) => v.end(true));
-			}
-
-			cancel(reason) {
-				if (!this.stream) return;
-				this.stream.cancel(reason);
-				this.loading = false;
-				this.target.forEach((v) => v.end(false, reason));
-			}
-		}
-
-		/** @type {[string, number[]][]} */
-		const fileSignatures = [
-			[AudioType.Mp3, [0x49, 0x44, 0x33]],
-			[AudioType.Ogg, [0x4f, 0x67, 0x67, 0x53]],
-			[AudioType.Wav, [0x52, 0x49, 0x46, 0x46]],
-			[AudioType.Flac, [0x66, 0x4c, 0x61, 0x43]],
-			[AudioType.Aac, [0xff, 0xf1]],
-			[AudioType.Aac, [0xff, 0xf9]],
-		];
-		/** @type {[string, number[]][]} */
-		const oggHeaders = [
-			[AudioType.Opus, [0x4f, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64]],
-		];
-
-		function checkAudioType(data) {
-			let audioType = "";
-			// 检查头文件获取音频类型，仅检查前256个字节
-			const toCheck = data.slice(0, 256);
-			for (const [type, value] of fileSignatures) {
-				if (value.every((v, i) => toCheck[i] === v)) {
-					audioType = type;
-					break;
-				}
-			}
-			if (audioType === AudioType.Ogg) {
-				// 如果是ogg的话，进一步判断是不是opus
-				for (const [key, value] of oggHeaders) {
-					const has = toCheck.some((_, i) => {
-						return value.every((v, ii) => toCheck[i + ii] === v);
-					});
-					if (has) {
-						audioType = key;
-						break;
-					}
-				}
-			}
-
-			return audioType;
-		}
-		class AudioDecoder {
-			/**
-			 * 注册一个解码器
-			 * @param type 要注册的解码器允许解码的类型
-			 * @param decoder 解码器对象
-			 */
-			static registerDecoder(type, decoder) {
-				if (!this.decoderMap) this.decoderMap = new Map();
-				if (this.decoderMap.has(type)) {
-					console.warn(
-						"Audio stream decoder for audio type '" +
-						type +
-						"' has already existed."
-					);
-					return;
-				}
-
-				this.decoderMap.set(type, decoder);
-			}
-
-			/**
-			 * 解码音频数据
-			 * @param data 音频文件数据
-			 * @param player AudioPlayer实例
-			 */
-			static async decodeAudioData(data, player) {
-				// 检查头文件获取音频类型，仅检查前256个字节
-				const toCheck = data.slice(0, 256);
-				const type = checkAudioType(data);
-				if (type === "") {
-					console.error(
-						"Unknown audio type. Header: '" +
-						[...toCheck]
-							.map((v) => v.toString().padStart(2, "0"))
-							.join(" ")
-							.toUpperCase() +
-						"'"
-					);
-					return null;
-				}
-				if (isAudioSupport(type)) {
-					if (data.buffer instanceof ArrayBuffer) {
-						return player.ac.decodeAudioData(data.buffer);
-					} else {
-						return null;
-					}
-				} else {
-					const Decoder = this.decoderMap.get(type);
-					if (!Decoder) {
-						return null;
-					} else {
-						const decoder = new Decoder();
-						await decoder.create();
-						const decodedData = await decoder.decode(data);
-						if (!decodedData) return null;
-						const buffer = player.ac.createBuffer(
-							decodedData.channelData.length,
-							decodedData.channelData[0].length,
-							decodedData.sampleRate
-						);
-						decodedData.channelData.forEach((v, i) => {
-							buffer.copyToChannel(v, i);
-						});
-						decoder.destroy();
-						return buffer;
-					}
-				}
-			}
-		}
-
-		class VorbisDecoder {
-			/**
-			 * 创建音频解码器
-			 */
-			async create() {
-				this.decoder = new OggVorbisDecoderWebWorker();
-				await this.decoder.ready;
-			}
-			/**
-			 * 摧毁这个解码器
-			 */
-			destroy() {
-				this.decoder?.free();
-			}
-			/**
-			 * 解码流数据
-			 * @param data 流数据
-			 */
-
-			async decode(data) {
-				return this.decoder?.decode(data);
-			}
-			/**
-			 * 解码整个文件
-			 * @param data 文件数据
-			 */
-			async decodeAll(data) {
-				return this.decoder?.decodeFile(data);
-			}
-			/**
-			 * 当音频解码完成后，会调用此函数，需要返回之前还未解析或未返回的音频数据。调用后，该解码器将不会被再次使用
-			 */
-			async flush() {
-				return this.decoder?.flush();
-			}
-		}
-
-		class OpusDecoder {
-			/**
-			 * 创建音频解码器
-			 */
-			async create() {
-				this.decoder = new OggOpusDecoderWebWorker();
-				await this.decoder.ready;
-			}
-			/**
-			 * 摧毁这个解码器
-			 */
-			destroy() {
-				this.decoder?.free();
-			}
-			/**
-			 * 解码流数据
-			 * @param data 流数据
-			 */
-			async decode(data) {
-				return this.decoder?.decode(data);
-			}
-			/**
-			 * 解码整个文件
-			 * @param data 文件数据
-			 */
-			async decodeAll(data) {
-				return this.decoder?.decodeFile(data);
-			}
-			/**
-			 * 当音频解码完成后，会调用此函数，需要返回之前还未解析或未返回的音频数据。调用后，该解码器将不会被再次使用
-			 */
-			async flush() {
-				return await this.decoder?.flush();
-			}
-		}
-		const mimeTypeMap = {
-			[AudioType.Aac]: "audio/aac",
-			[AudioType.Flac]: "audio/flac",
-			[AudioType.Mp3]: "audio/mpeg",
-			[AudioType.Ogg]: "application/ogg",
-			[AudioType.Opus]: "application/ogg",
-			[AudioType.Wav]: "application/ogg",
-		};
-
-		function isOggPage(data) {
-			return !isNil(data.isFirstPage);
-		}
-		class AudioStreamSource {
-			constructor(context) {
-				this.output = context.createBufferSource();
-				/** 是否已经完全加载完毕 */
-				this.loaded = false;
-				/** 是否正在播放 */
-				this.playing = false;
-				/** 已经缓冲了多长时间，如果缓冲完那么跟歌曲时长一致 */
-				this.buffered = 0;
-				/** 已经缓冲的采样点数量 */
-				this.bufferedSamples = 0;
-				/** 歌曲时长，加载完毕之前保持为 0 */
-				this.duration = 0;
-				/** 在流传输阶段，至少缓冲多长时间的音频之后才开始播放，单位秒 */
-				this.bufferPlayDuration = 1;
-				/** 音频的采样率，未成功解析出之前保持为 0 */
-				this.sampleRate = 0;
-				//是否循环播放
-				this.loop = false;
-				/** 上一次播放是从何时开始的 */
-				this.lastStartWhen = 0;
-				/** 开始播放时刻 */
-				this.lastStartTime = 0;
-				/** 上一次播放的缓存长度 */
-				this.lastBufferSamples = 0;
-
-				/** 是否已经获取到头文件 */
-				this.headerRecieved = false;
-				/** 音频类型 */
-				this.audioType = "";
-				/** 每多长时间组成一个缓存 Float32Array */
-				this.bufferChunkSize = 10;
-				/** 缓存音频数据，每 bufferChunkSize 秒钟组成一个 Float32Array，用于流式解码 */
-				this.audioData = [];
-
-				this.errored = false;
-				this.ac = context;
-			}
-			/** 当前已经播放了多长时间 */
-			get currentTime() {
-				return this.ac.currentTime - this.lastStartTime + this.lastStartWhen;
-			}
-			/**
-			 * 设置每个缓存数据的大小，默认为10秒钟一个缓存数据
-			 * @param size 每个缓存数据的时长，单位秒
-			 */
-			setChunkSize(size) {
-				if (this.controller?.loading || this.loaded) return;
-				this.bufferChunkSize = size;
-			}
-
-			piped(controller) {
-				this.controller = controller;
-			}
-
-			async pump(data, done) {
-				if (!data || this.errored) return;
-				if (!this.headerRecieved) {
-					// 检查头文件获取音频类型，仅检查前256个字节
-					const toCheck = data.slice(0, 256);
-					this.audioType = checkAudioType(data);
-					if (!this.audioType) {
-						console.error(
-							"Unknown audio type. Header: '" +
-							[...toCheck]
-								.map((v) => v.toString(16).padStart(2, "0"))
-								.join(" ")
-								.toUpperCase() +
-							"'"
-						);
-						return;
-					}
-					// 创建解码器
-					const Decoder = AudioDecoder.decoderMap.get(this.audioType);
-					if (!Decoder) {
-						this.errored = true;
-						console.error(
-							"Cannot decode stream source type of '" +
-							this.audioType +
-							"', since there is no registered decoder for that type."
-						);
-						return Promise.reject(
-							`Cannot decode stream source type of '${this.audioType}', since there is no registered decoder for that type.`
-						);
-					}
-					this.decoder = new Decoder();
-					// 创建数据解析器
-					const mime = mimeTypeMap[this.audioType];
-					const parser = new CodecParser(mime);
-					this.parser = parser;
-					await this.decoder.create();
-					this.headerRecieved = true;
-				}
-
-				const decoder = this.decoder;
-				const parser = this.parser;
-				if (!decoder || !parser) {
-					this.errored = true;
-					return Promise.reject(
-						"No parser or decoder attached in this AudioStreamSource"
-					);
-				}
-
-				await this.decodeData(data, decoder, parser);
-				if (done) await this.decodeFlushData(decoder, parser);
-				this.checkBufferedPlay();
-			}
-
-			/**
-			 * 检查采样率，如果还未解析出采样率，那么将设置采样率，如果当前采样率与之前不同，那么发出警告
-			 */
-			checkSampleRate(info) {
-				for (const one of info) {
-					const frame = isOggPage(one) ? one.codecFrames[0] : one;
-					if (frame) {
-						const rate = frame.header.sampleRate;
-						if (this.sampleRate === 0) {
-							this.sampleRate = rate;
-							break;
-						} else {
-							if (rate !== this.sampleRate) {
-								console.warn("Sample rate in stream audio must be constant.");
-							}
-						}
-					}
-				}
-			}
-
-			/**
-			 * 解析音频数据
-			 */
-			async decodeData(data, decoder, parser) {
-				// 解析音频数据
-				const audioData = await decoder.decode(data);
-				if (!audioData) return;
-				// @ts-expect-error 库类型声明错误
-				const audioInfo = [...parser.parseChunk(data)];
-
-				// 检查采样率
-				this.checkSampleRate(audioInfo);
-				// 追加音频数据
-				this.appendDecodedData(audioData, audioInfo);
-			}
-
-			/**
-			 * 解码剩余数据
-			 */
-			async decodeFlushData(decoder, parser) {
-				const audioData = await decoder.flush();
-				if (!audioData) return;
-				// @ts-expect-error 库类型声明错误
-				const audioInfo = [...parser.flush()];
-
-				this.checkSampleRate(audioInfo);
-				this.appendDecodedData(audioData, audioInfo);
-			}
-
-			/**
-			 * 追加音频数据
-			 */
-			appendDecodedData(data, info) {
-				const channels = data.channelData.length;
-				if (channels === 0) return;
-				if (this.audioData.length !== channels) {
-					this.audioData = [];
-					for (let i = 0; i < channels; i++) {
-						this.audioData.push([]);
-					}
-				}
-				// 计算出应该放在哪
-				const chunk = this.sampleRate * this.bufferChunkSize;
-				const sampled = this.bufferedSamples;
-				const pushIndex = Math.floor(sampled / chunk);
-				const bufferIndex = sampled % chunk;
-				const dataLength = data.channelData[0].length;
-				let buffered = 0;
-				let nowIndex = pushIndex;
-				let toBuffer = bufferIndex;
-				while (buffered < dataLength) {
-					const rest = toBuffer !== 0 ? chunk - bufferIndex : chunk;
-
-					for (let i = 0; i < channels; i++) {
-						const audioData = this.audioData[i];
-						if (!audioData[nowIndex]) {
-							audioData.push(new Float32Array(chunk));
-						}
-						const toPush = data.channelData[i].slice(buffered, buffered + rest);
-
-						audioData[nowIndex].set(toPush, toBuffer);
-					}
-					buffered += rest;
-					nowIndex++;
-					toBuffer = 0;
-				}
-
-				this.buffered +=
-					info.reduce((prev, curr) => prev + curr.duration, 0) / 1000;
-				this.bufferedSamples += info.reduce(
-					(prev, curr) => prev + curr.samples,
-					0
-				);
-			}
-
-			/**
-			 * 检查已缓冲内容，并在未开始播放时播放
-			 */
-			checkBufferedPlay() {
-				if (this.playing || this.sampleRate === 0) return;
-				const played = this.lastBufferSamples / this.sampleRate;
-				const dt = this.buffered - played;
-				if (this.loaded) {
-					this.playAudio(played);
-					return;
-				}
-				if (dt < this.bufferPlayDuration) return;
-
-				this.lastBufferSamples = this.bufferedSamples;
-				// 需要播放
-				this.mergeBuffers();
-				if (!this.buffer) return;
-				if (this.playing) this.output.stop();
-				this.createSourceNode(this.buffer);
-				this.output.loop = false;
-				this.output.start(0, played);
-				this.lastStartTime = this.ac.currentTime;
-				this.playing = true;
-				this.output.addEventListener("ended", () => {
-					this.playing = false;
-					this.checkBufferedPlay();
-				});
-			}
-
-			mergeBuffers() {
-				const buffer = this.ac.createBuffer(
-					this.audioData.length,
-					this.bufferedSamples,
-					this.sampleRate
-				);
-				const chunk = this.sampleRate * this.bufferChunkSize;
-				const bufferedChunks = Math.floor(this.bufferedSamples / chunk);
-				const restLength = this.bufferedSamples % chunk;
-				for (let i = 0; i < this.audioData.length; i++) {
-					const audio = this.audioData[i];
-					const data = new Float32Array(this.bufferedSamples);
-					for (let j = 0; j < bufferedChunks; j++) {
-						data.set(audio[j], chunk * j);
-					}
-					if (restLength !== 0) {
-						data.set(
-							audio[bufferedChunks].slice(0, restLength),
-							chunk * bufferedChunks
-						);
-					}
-
-					buffer.copyToChannel(data, i, 0);
-				}
-				this.buffer = buffer;
-			}
-
-			async start() {
-				delete this.buffer;
-				this.headerRecieved = false;
-				this.audioType = "";
-				this.errored = false;
-				this.buffered = 0;
-				this.sampleRate = 0;
-				this.bufferedSamples = 0;
-				this.duration = 0;
-				this.loaded = false;
-				if (this.playing) this.output.stop();
-				this.playing = false;
-				this.lastStartTime = this.ac.currentTime;
-			}
-
-			end(done, reason) {
-				if (done && this.buffer) {
-					this.loaded = true;
-					delete this.controller;
-					this.mergeBuffers();
-
-					this.duration = this.buffered;
-					this.audioData = [];
-					this.decoder?.destroy();
-					delete this.decoder;
-					delete this.parser;
-				} else {
-					console.warn(
-						"Unexpected end when loading stream audio, reason: '" +
-						(reason ?? "") +
-						"'"
-					);
-				}
-			}
-
-			playAudio(when) {
-				if (!this.buffer) return;
-				this.lastStartTime = this.ac.currentTime;
-				if (this.playing) this.output.stop();
-				if (this.route.status !== AudioStatus.Playing) {
-					this.route.status = AudioStatus.Playing;
-				}
-				this.createSourceNode(this.buffer);
-				this.output.start(0, when);
-				this.playing = true;
-
-				this.output.addEventListener("ended", () => {
-					this.playing = false;
-					if (this.route.status === AudioStatus.Playing) {
-						this.route.status = AudioStatus.Stoped;
-					}
-					if (this.loop && !this.output.loop) this.play(0);
-				});
-			}
-			/**
-			 * 开始播放这个音频源
-			 */
-			play(when) {
-				if (this.playing || this.errored) return;
-				if (this.loaded && this.buffer) {
-					this.playing = true;
-					this.playAudio(when);
-				} else {
-					this.controller?.start();
-				}
-			}
-
-			createSourceNode(buffer) {
-				if (!this.target) return;
-				const node = this.ac.createBufferSource();
-				node.buffer = buffer;
-				if (this.playing) this.output.stop();
-				this.playing = false;
-				this.output = node;
-				node.connect(this.target.input);
-				node.loop = this.loop;
-			}
-			/**
-			 * 停止播放这个音频源
-			 * @returns 音频暂停的时刻 number
-			 */
-			stop() {
-				if (this.playing) this.output.stop();
-				this.playing = false;
-				return this.ac.currentTime - this.lastStartTime;
-			}
-			/**
-			 * 连接到音频路由图上，每次调用播放的时候都会执行一次
-			 * @param target 连接至的目标 IAudioInput
-			 */
-			connect(target) {
-				this.target = target;
-			}
-			/**
-			 * 设置是否循环播放
-			 * @param loop 是否循环 boolean)
-			 */
-			setLoop(loop) {
-				this.loop = loop;
-			}
-		}
-		class AudioElementSource {
-			constructor(context) {
-				const audio = new Audio();
-				audio.preload = "none";
-				this.output = context.createMediaElementSource(audio);
-				this.audio = audio;
-				this.ac = context;
-				audio.addEventListener("play", () => {
-					this.playing = true;
-					if (this.route.status !== AudioStatus.Playing) {
-						this.route.status = AudioStatus.Playing;
-					}
-				});
-				audio.addEventListener("ended", () => {
-					this.playing = false;
-					if (this.route.status === AudioStatus.Playing) {
-						this.route.status = AudioStatus.Stoped;
-					}
-				});
-			}
-			get duration() {
-				return this.audio.duration;
-			}
-			get currentTime() {
-				return this.audio.currentTime;
-			}
-			/**
-			 * 设置音频源的路径
-			 * @param url 音频路径
-			 */
-			setSource(url) {
-				this.audio.src = url;
-			}
-
-			play(when = 0) {
-				if (this.playing) return;
-				this.audio.currentTime = when;
-				this.audio.play();
-			}
-
-			stop() {
-				this.audio.pause();
-				this.playing = false;
-				if (this.route.status === AudioStatus.Playing) {
-					this.route.status = AudioStatus.Stoped;
-				}
-				return this.audio.currentTime;
-			}
-
-			connect(target) {
-				this.output.connect(target.input);
-			}
-
-			setLoop(loop) {
-				this.audio.loop = loop;
-			}
-		}
-		class AudioBufferSource {
-			constructor(context) {
-				this.output = context.createBufferSource();
-				/** 是否循环 */
-				this.loop = false;
-				/** 上一次播放是从何时开始的 */
-				this.lastStartWhen = 0;
-				/** 播放开始时刻 */
-				this.lastStartTime = 0;
-				this.duration = 0;
-				this.ac = context;
-			}
-			get currentTime() {
-				return this.ac.currentTime - this.lastStartTime + this.lastStartWhen;
-			}
-
-			/**
-			 * 设置音频源数据
-			 * @param buffer 音频源，可以是未解析的 ArrayBuffer，也可以是已解析的 AudioBuffer
-			 */
-			async setBuffer(buffer) {
-				if (buffer instanceof ArrayBuffer) {
-					this.buffer = await this.ac.decodeAudioData(buffer);
-				} else {
-					this.buffer = buffer;
-				}
-				this.duration = this.buffer.duration;
-			}
-
-			play(when) {
-				if (this.playing || !this.buffer) return;
-				this.playing = true;
-				this.lastStartTime = this.ac.currentTime;
-				if (this.route.status !== AudioStatus.Playing) {
-					this.route.status = AudioStatus.Playing;
-				}
-				this.createSourceNode(this.buffer);
-				this.output.start(0, when);
-				this.output.addEventListener("ended", () => {
-					this.playing = false;
-					if (this.route.status === AudioStatus.Playing) {
-						this.route.status = AudioStatus.Stoped;
-					}
-					if (this.loop && !this.output.loop) this.play(0);
-				});
-			}
-
-			createSourceNode(buffer) {
-				if (!this.target) return;
-				const node = this.ac.createBufferSource();
-				node.buffer = buffer;
-				this.output = node;
-				node.connect(this.target.input);
-				node.loop = this.loop;
-			}
-
-			stop() {
-				this.output.stop();
-				return this.ac.currentTime - this.lastStartTime;
-			}
-
-			connect(target) {
-				this.target = target;
-			}
-
-			setLoop(loop) {
-				this.loop = loop;
-			}
-		}
-		class AudioPlayer {
-			constructor() {
-				/** 音频播放上下文 */
-				this.ac = new AudioContext();
-				/** 音量节点 */
-				this.gain = this.ac.createGain();
-				this.gain.connect(this.ac.destination);
-				this.audioRoutes = new Map();
-			}
-			/**
-			 * 解码音频数据
-			 * @param data 音频数据
-			 */
-			decodeAudioData(data) {
-				return AudioDecoder.decodeAudioData(data, this);
-			}
-			/**
-			 * 设置音量
-			 * @param volume 音量
-			 */
-			setVolume(volume) {
-				this.gain.gain.value = volume;
-			}
-
-			/**
-			 * 获取音量
-			 */
-			getVolume() {
-				return this.gain.gain.value;
-			}
-
-			/**
-			 * 创建一个音频源
-			 * @param Source 音频源类
-			 */
-			createSource(Source) {
-				return new Source(this.ac);
-			}
-
-			/**
-			 * 创建一个兼容流式音频源，可以与流式加载相结合，主要用于处理 opus ogg 不兼容的情况
-			 */
-			createStreamSource() {
-				return new AudioStreamSource(this.ac);
-			}
-
-			/**
-			 * 创建一个通过 audio 元素播放的音频源
-			 */
-			createElementSource() {
-				return new AudioElementSource(this.ac);
-			}
-
-			/**
-			 * 创建一个通过 AudioBuffer 播放的音频源
-			 */
-			createBufferSource() {
-				return new AudioBufferSource(this.ac);
-			}
-
-			/**
-			 * 获取音频目的地
-			 */
-			getDestination() {
-				return this.gain;
-			}
-
-			/**
-			 * 创建一个音频效果器
-			 * @param Effect 效果器类
-			 */
-			createEffect(Effect) {
-				return new Effect(this.ac);
-			}
-
-			/**
-			 * 创建一个修改音量的效果器
-			 * ```txt
-			 *             |----------|
-			 * Input ----> | GainNode | ----> Output
-			 *             |----------|
-			 * ```
-			 */
-			createVolumeEffect() {
-				return new VolumeEffect(this.ac);
-			}
-
-			/**
-			 * 创建一个立体声效果器
-			 * ```txt
-			 *             |------------|
-			 * Input ----> | PannerNode | ----> Output
-			 *             |------------|
-			 * ```
-			 */
-			createStereoEffect() {
-				return new StereoEffect(this.ac);
-			}
-
-			/**
-			 * 创建一个修改单个声道音量的效果器
-			 * ```txt
-			 *                                  |----------|
-			 *                               -> | GainNode | \
-			 *             |--------------| /   |----------|  -> |------------|
-			 * Input ----> | SplitterNode |        ......        | MergerNode | ----> Output
-			 *             |--------------| \   |----------|  -> |------------|
-			 *                               -> | GainNode | /
-			 *                                  |----------|
-			 * ```
-			 */
-			createChannelVolumeEffect() {
-				return new ChannelVolumeEffect(this.ac);
-			}
-
-			/**
-			 * 创建一个延迟效果器
-			 *             |-----------|
-			 * Input ----> | DelayNode | ----> Output
-			 *             |-----------|
-			 */
-			createDelay() {
-				return new DelayEffect(this.ac);
-			}
-
-			/**
-			 * 创建一个回声效果器
-			 * ```txt
-			 *             |----------|
-			 * Input ----> | GainNode | ----> Output
-			 *        ^    |----------|   |
-			 *        |                   |
-			 *        |   |------------|  ↓
-			 *        |-- | Delay Node | <--
-			 *            |------------|
-			 * ```
-			 */
-			createEchoEffect() {
-				return new EchoEffect(this.ac);
-			}
-
-			/**
-			 * 创建一个音频播放路由
-			 * @param source 音频源
-			 */
-			createRoute(source) {
-				return new AudioRoute(source, this);
-			}
-
-			/**
-			 * 添加一个音频播放路由，可以直接被播放
-			 * @param id 这个音频播放路由的名称
-			 * @param route 音频播放路由对象
-			 */
-			addRoute(id, route) {
-				if (!this.audioRoutes) this.audioRoutes = new Map();
-				if (this.audioRoutes.has(id)) {
-					console.warn(
-						"Audio route with id of '" +
-						id +
-						"' has already existed. New route will override old route."
-					);
-				}
-				this.audioRoutes.set(id, route);
-			}
-
-			/**
-			 * 根据名称获取音频播放路由对象
-			 * @param id 音频播放路由的名称
-			 */
-			getRoute(id) {
-				return this.audioRoutes.get(id);
-			}
-			/**
-			 * 移除一个音频播放路由
-			 * @param id 要移除的播放路由的名称
-			 */
-			removeRoute(id) {
-				this.audioRoutes.delete(id);
-			}
-			/**
-			 * 播放音频
-			 * @param id 音频名称
-			 * @param when 从音频的哪个位置开始播放，单位秒
-			 */
-			play(id, when) {
-				const route = this.getRoute(id);
-				if (!route) {
-					console.warn(
-						"Cannot play audio route '" +
-						id +
-						"', since there is not added route named it."
-					);
-					return;
-				}
-
-				route.play(when);
-			}
-
-			/**
-			 * 暂停音频播放
-			 * @param id 音频名称
-			 * @returns 当音乐真正停止时兑现
-			 */
-			pause(id) {
-				const route = this.getRoute(id);
-				if (!route) {
-					console.warn(
-						"Cannot pause audio route '" +
-						id +
-						"', since there is not added route named it."
-					);
-					return;
-				}
-				return route.pause();
-			}
-
-			/**
-			 * 停止音频播放
-			 * @param id 音频名称
-			 * @returns 当音乐真正停止时兑现
-			 */
-			stop(id) {
-				const route = this.getRoute(id);
-				if (!route) {
-					console.warn(
-						"Cannot stop audio route '" +
-						id +
-						"', since there is not added route named it."
-					);
-					return;
-				}
-				return route.stop();
-			}
-
-			/**
-			 * 继续音频播放
-			 * @param id 音频名称
-			 */
-			resume(id) {
-				const route = this.getRoute(id);
-				if (!route) {
-					console.warn(
-						"Cannot pause audio route '" +
-						id +
-						"', since there is not added route named it."
-					);
-					return;
-				}
-				route.resume();
-			}
-
-			/**
-			 * 设置听者位置，x正方向水平向右，y正方向垂直于地面向上，z正方向垂直屏幕远离用户
-			 * @param x 位置x坐标
-			 * @param y 位置y坐标
-			 * @param z 位置z坐标
-			 */
-			setListenerPosition(x, y, z) {
-				const listener = this.ac.listener;
-				listener.positionX.value = x;
-				listener.positionY.value = y;
-				listener.positionZ.value = z;
-			}
-
-			/**
-			 * 设置听者朝向，x正方向水平向右，y正方向垂直于地面向上，z正方向垂直屏幕远离用户
-			 * @param x 朝向x坐标
-			 * @param y 朝向y坐标
-			 * @param z 朝向z坐标
-			 */
-			setListenerOrientation(x, y, z) {
-				const listener = this.ac.listener;
-				listener.forwardX.value = x;
-				listener.forwardY.value = y;
-				listener.forwardZ.value = z;
-			}
-
-			/**
-			 * 设置听者头顶朝向，x正方向水平向右，y正方向垂直于地面向上，z正方向垂直屏幕远离用户
-			 * @param x 头顶朝向x坐标
-			 * @param y 头顶朝向y坐标
-			 * @param z 头顶朝向z坐标
-			 */
-			setListenerUp(x, y, z) {
-				const listener = this.ac.listener;
-				listener.upX.value = x;
-				listener.upY.value = y;
-				listener.upZ.value = z;
-			}
-		}
-		class AudioRoute {
-			constructor(source, player) {
-				source.route = this;
-				this.output = source.output;
-
-				/** 效果器路由图 */
-				this.effectRoute = [];
-
-				/** 结束时长，当音频暂停或停止时，会经过这么长时间之后才真正终止播放，期间可以做音频淡入淡出等效果 */
-				this.endTime = 0;
-				/** 暂停时播放了多长时间 */
-				this.pauseCurrentTime = 0;
-				/** 当前播放状态 */
-				this.player = player;
-				this.status = AudioStatus.Stoped;
-
-				this.shouldStop = false;
-				/**
-				 * 每次暂停或停止时自增，用于判断当前正在处理的情况。
-				 * 假如暂停后很快播放，然后很快暂停，那么需要根据这个来判断实际是否应该执行暂停后操作
-				 */
-				this.stopIdentifier = 0;
-				/** 暂停时刻 */
-				this.pauseTime = 0;
-				this.source = source;
-				this.source.player = player;
-			}
-			/** 音频时长，单位秒 */
-			get duration() {
-				return this.source.duration;
-			}
-			/** 当前播放了多长时间，单位秒 */
-			get currentTime() {
-				if (this.status === AudioStatus.Paused) {
-					return this.pauseCurrentTime;
-				} else {
-					return this.source.currentTime;
-				}
-			}
-			set currentTime(time) {
-				this.source.stop();
-				this.source.play(time);
-			}
-			/**
-			 * 设置结束时间，暂停或停止时，会经过这么长时间才终止音频的播放，这期间可以做一下音频淡出的效果。
-			 * @param time 暂停或停止时，经过多长时间之后才会结束音频的播放
-			 */
-			setEndTime(time) {
-				this.endTime = time;
-			}
-
-			/**
-			 * 当音频播放时执行的函数，可以用于音频淡入效果
-			 * @param fn 音频开始播放时执行的函数
-			 */
-			onStart(fn) {
-				this.audioStartHook = fn;
-			}
-
-			/**
-			 * 当音频暂停或停止时执行的函数，可以用于音频淡出效果
-			 * @param fn 音频在暂停或停止时执行的函数，不填时表示取消这个钩子。
-			 *           包含两个参数，第一个参数是结束时长，第二个参数是当前音频播放路由对象
-			 */
-			onEnd(fn) {
-				this.audioEndHook = fn;
-			}
-
-			/**
-			 * 开始播放这个音频
-			 * @param when 从音频的什么时候开始播放，单位秒
-			 */
-			async play(when = 0) {
-				if (this.status === AudioStatus.Playing) return;
-				this.link();
-				await this.player.ac.resume();
-				if (this.effectRoute.length > 0) {
-					const first = this.effectRoute[0];
-					this.source.connect(first);
-					const last = this.effectRoute.at(-1);
-					last.connect({ input: this.player.getDestination() });
-				} else {
-					this.source.connect({ input: this.player.getDestination() });
-				}
-				this.source.play(when);
-				this.status = AudioStatus.Playing;
-				this.pauseTime = 0;
-				this.audioStartHook?.(this);
-				this.startAllEffect();
-				if (this.status !== AudioStatus.Playing) {
-					this.status = AudioStatus.Playing;
-				}
-			}
-
-			/**
-			 * 暂停音频播放
-			 */
-			async pause() {
-				if (this.status !== AudioStatus.Playing) return;
-				this.status = AudioStatus.Pausing;
-				this.stopIdentifier++;
-				const identifier = this.stopIdentifier;
-				if (this.audioEndHook) {
-					this.audioEndHook(this.endTime, this);
-					await sleep(this.endTime);
-				}
-				if (
-					this.status !== AudioStatus.Pausing ||
-					this.stopIdentifier !== identifier
-				) {
-					return;
-				}
-				this.pauseCurrentTime = this.source.currentTime;
-				const time = this.source.stop();
-				this.pauseTime = time;
-				if (this.shouldStop) {
-					this.status = AudioStatus.Stoped;
-					this.endAllEffect();
-
-					this.shouldStop = false;
-				} else {
-					this.status = AudioStatus.Paused;
-					this.endAllEffect();
-				}
-				this.endAllEffect();
-			}
-
-			/**
-			 * 继续音频播放
-			 */
-			resume() {
-				if (this.status === AudioStatus.Playing) return;
-				if (
-					this.status === AudioStatus.Pausing ||
-					this.status === AudioStatus.Stoping
-				) {
-					this.audioStartHook?.(this);
-
-					return;
-				}
-				if (this.status === AudioStatus.Paused) {
-					this.play(this.pauseTime);
-				} else {
-					this.play(0);
-				}
-				this.status = AudioStatus.Playing;
-				this.pauseTime = 0;
-				this.audioStartHook?.(this);
-				this.startAllEffect();
-			}
-
-			/**
-			 * 停止音频播放
-			 */
-			async stop() {
-				if (this.status !== AudioStatus.Playing) {
-					if (this.status === AudioStatus.Pausing) {
-						this.shouldStop = true;
-					}
-					return;
-				}
-				this.status = AudioStatus.Stoping;
-				this.stopIdentifier++;
-				const identifier = this.stopIdentifier;
-				if (this.audioEndHook) {
-					this.audioEndHook(this.endTime, this);
-					await sleep(this.endTime);
-				}
-				if (
-					this.status !== AudioStatus.Stoping ||
-					this.stopIdentifier !== identifier
-				) {
-					return;
-				}
-				this.source.stop();
-				this.status = AudioStatus.Stoped;
-				this.pauseTime = 0;
-				this.endAllEffect();
-			}
-
-			/**
-			 * 添加效果器
-			 * @param effect 要添加的效果，可以是数组，表示一次添加多个
-			 * @param index 从哪个位置开始添加，如果大于数组长度，那么加到末尾，如果小于0，那么将会从后面往前数。默认添加到末尾
-			 */
-			addEffect(effect, index) {
-				if (isNil(index)) {
-					if (effect instanceof Array) {
-						this.effectRoute.push(...effect);
-					} else {
-						this.effectRoute.push(effect);
-					}
-				} else {
-					if (effect instanceof Array) {
-						this.effectRoute.splice(index, 0, ...effect);
-					} else {
-						this.effectRoute.splice(index, 0, effect);
-					}
-				}
-				this.setOutput();
-				if (this.source.playing) this.link();
-			}
-
-			/**
-			 * 移除一个效果器
-			 * @param effect 要移除的效果
-			 */
-			removeEffect(effect) {
-				const index = this.effectRoute.indexOf(effect);
-				if (index === -1) return;
-				this.effectRoute.splice(index, 1);
-				effect.disconnect();
-				this.setOutput();
-				if (this.source.playing) this.link();
-			}
-
-			setOutput() {
-				const effect = this.effectRoute.at(-1);
-				if (!effect) this.output = this.source.output;
-				else this.output = effect.output;
-			}
-
-			/**
-			 * 连接音频路由图
-			 */
-			link() {
-				this.effectRoute.forEach((v) => v.disconnect());
-				this.effectRoute.forEach((v, i) => {
-					const next = this.effectRoute[i + 1];
-					if (next) {
-						v.connect(next);
-					}
-				});
-			}
-
-			startAllEffect() {
-				this.effectRoute.forEach((v) => v.start());
-			}
-
-			endAllEffect() {
-				this.effectRoute.forEach((v) => v.end());
-			}
-		}
-
-		const audioPlayer = new AudioPlayer();
-
-		class BgmController {
-			constructor(player) {
-				this.mainGain = player.createVolumeEffect();
-				this.player = player;
-				/** bgm音频名称的前缀 */
-				this.prefix = "bgms.";
-				/** 每个 bgm 的音量控制器 */
-				this.gain = new Map();
-
-				/** 正在播放的 bgm */
-				this.playingBgm = "";
-				/** 是否正在播放 */
-				this.playing = false;
-
-				/** 是否已经启用 */
-				this.enabled = true;
-				/** 是否屏蔽所有的音乐切换 */
-				this.blocking = false;
-				/** 渐变时长 */
-				this.transitionTime = 2000;
-			}
-
-			/**
-			 * 设置音频渐变时长
-			 * @param time 渐变时长
-			 */
-			setTransitionTime(time) {
-				this.transitionTime = time;
-				for (const [, value] of this.gain) {
-					value.transition.time(time);
-				}
-			}
-
-			/**
-			 * 屏蔽音乐切换
-			 */
-			blockChange() {
-				this.blocking = true;
-			}
-
-			/**
-			 * 取消屏蔽音乐切换
-			 */
-			unblockChange() {
-				this.blocking = false;
-			}
-
-			/**
-			 * 设置总音量大小
-			 * @param volume 音量大小
-			 */
-			setVolume(volume) {
-				this.mainGain.setVolume(volume);
-				this._volume = volume;
-			}
-			/**
-			 * 获取总音量大小
-			 */
-			getVolume() {
-				return this.mainGain.getVolume();
-			}
-			/**
-			 * 设置是否启用
-			 * @param enabled 是否启用
-			 */
-			setEnabled(enabled) {
-				if (enabled) this.resume();
-				else this.stop();
-				this.enabled = enabled;
-			}
-
-			/**
-			 * 设置 bgm 音频名称的前缀
-			 */
-			setPrefix(prefix) {
-				this.prefix = prefix;
-			}
-
-			getId(name) {
-				return `${this.prefix}${name}`;
-			}
-
-			/**
-			 * 根据 bgm 名称获取其 AudioRoute 实例
-			 * @param id 音频名称
-			 */
-			get(id) {
-				return this.player.getRoute(this.getId(id));
-			}
-
-			/**
-			 * 添加一个 bgm
-			 * @param id 要添加的 bgm 的名称
-			 * @param url 指定 bgm 的加载地址
-			 */
-			addBgm(id, url = `project/bgms/${id}`) {
-				const type = guessTypeByExt(id);
-				if (!type) {
-					console.warn(
-						"Unknown audio extension name: '" +
-						id.split(".").slice(0, -1).join(".") +
-						"'"
-					);
-					return;
-				}
-				const gain = this.player.createVolumeEffect();
-				if (isAudioSupport(type)) {
-					const source = audioPlayer.createElementSource();
-					source.setSource(url);
-					source.setLoop(true);
-					const route = new AudioRoute(source, audioPlayer);
-					route.addEffect([gain, this.mainGain]);
-					audioPlayer.addRoute(this.getId(id), route);
-					this.setTransition(id, route, gain);
-				} else {
-					const source = audioPlayer.createStreamSource();
-					const stream = new StreamLoader(url);
-					stream.pipe(source);
-					source.setLoop(true);
-					const route = new AudioRoute(source, audioPlayer);
-					route.addEffect([gain, this.mainGain]);
-					audioPlayer.addRoute(this.getId(id), route);
-					this.setTransition(id, route, gain);
-				}
-			}
-
-			/**
-			 * 移除一个 bgm
-			 * @param id 要移除的 bgm 的名称
-			 */
-			removeBgm(id) {
-				this.player.removeRoute(this.getId(id));
-				const gain = this.gain.get(id);
-				gain?.transition.ticker.destroy();
-				this.gain.delete(id);
-			}
-
-			setTransition(id, route, gain) {
-				const transition = new Transition();
-				transition
-					.time(this.transitionTime)
-					.mode(linear())
-					.transition("volume", 0);
-
-				const tick = () => {
-					gain.setVolume(transition.value.volume);
-				};
-
-				/**
-				 * @param expect 在结束时应该是正在播放还是停止
-				 */
-				const setTick = async (expect) => {
-					transition.ticker.remove(tick);
-					transition.ticker.add(tick);
-					const identifier = route.stopIdentifier;
-					await sleep(this.transitionTime + 500);
-					if (route.status === expect && identifier === route.stopIdentifier) {
-						transition.ticker.remove(tick);
-						if (route.status === AudioStatus.Playing) {
-							gain.setVolume(1);
-						} else {
-							gain.setVolume(0);
-						}
-					}
-				};
-
-				route.onStart(async () => {
-					transition.transition("volume", 1);
-					setTick(AudioStatus.Playing);
-				});
-				route.onEnd(() => {
-					transition.transition("volume", 0);
-					setTick(AudioStatus.Paused);
-				});
-				route.setEndTime(this.transitionTime);
-
-				this.gain.set(id, { effect: gain, transition });
-			}
-
-			/**
-			 * 播放一个 bgm
-			 * @param id 要播放的 bgm 名称
-			 */
-			play(id, when) {
-				if (this.blocking) return;
-				if (id !== this.playingBgm && this.playingBgm) {
-					this.player.pause(this.getId(this.playingBgm));
-				}
-				this.playingBgm = id;
-				if (!this.enabled) return;
-				this.player.play(this.getId(id), when);
-				this.playing = true;
-			}
-
-			/**
-			 * 继续当前的 bgm
-			 */
-			resume() {
-				if (this.blocking || !this.enabled || this.playing) return;
-				if (this.playingBgm) {
-					this.player.resume(this.getId(this.playingBgm));
-				}
-				this.playing = true;
-			}
-
-			/**
-			 * 暂停当前的 bgm
-			 */
-			pause() {
-				if (this.blocking || !this.enabled) return;
-				if (this.playingBgm) {
-					this.player.pause(this.getId(this.playingBgm));
-				}
-				this.playing = false;
-			}
-
-			/**
-			 * 停止当前的 bgm
-			 */
-			stop() {
-				if (this.blocking || !this.enabled) return;
-				if (this.playingBgm) {
-					this.player.stop(this.getId(this.playingBgm));
-				}
-				this.playing = false;
-			}
-		}
-		const bgmController = new BgmController(audioPlayer);
-
-		class SoundPlayer {
-			constructor(player) {
-				/** 每个音效的唯一标识符 */
-				this.num = 0;
-				this.enabled = true;
-				this.gain = player.createVolumeEffect();
-				/** 每个音效的数据 */
-				this.buffer = new Map();
-				/** 所有正在播放的音乐 */
-				this.playing = new Set();
-				this.player = player;
-			}
-			/**
-			 * 设置是否启用音效
-			 * @param enabled 是否启用音效
-			 */
-			setEnabled(enabled) {
-				if (!enabled) this.stopAllSounds();
-				this.enabled = enabled;
-			}
-
-			/**
-			 * 设置音量大小
-			 * @param volume 音量大小
-			 */
-			setVolume(volume) {
-				this.gain.setVolume(volume);
-			}
-			/**
-			 * 获取音量大小
-			 */
-			getVolume() {
-				return this.gain.getVolume();
-			}
-			/**
-			 * 添加一个音效
-			 * @param id 音效名称
-			 * @param data 音效的Uint8Array数据
-			 */
-			async add(id, data) {
-				const buffer = await this.player.decodeAudioData(data);
-				if (!buffer) {
-					console.warn(
-						"Cannot decode sound '" +
-						id +
-						"', since audio file may not supported by 2.b."
-					);
-					return;
-				}
-				this.buffer.set(id, buffer);
-			}
-
-			/**
-			 * 播放一个音效
-			 * @param id 音效名称
-			 * @param position 音频位置，[0, 0, 0]表示正中心，x轴指向水平向右，y轴指向水平向上，z轴指向竖直向上
-			 * @param orientation 音频朝向，[0, 1, 0]表示朝向前方
-			 */
-			play(id, position = [0, 0, 0], orientation = [1, 0, 0]) {
-				if (!this.enabled || !id) return -1;
-				const buffer = this.buffer.get(id);
-				if (!buffer) {
-					console.warn(
-						"Cannot play sound '" +
-						id +
-						"', since there is no added data named it."
-					);
-					return -1;
-				}
-				const soundNum = this.num++;
-
-				const source = this.player.createBufferSource();
-				source.setBuffer(buffer);
-				const route = this.player.createRoute(source);
-				const stereo = this.player.createStereoEffect();
-				stereo.setPosition(position[0], position[1], position[2]);
-				stereo.setOrientation(orientation[0], orientation[1], orientation[2]);
-				route.addEffect([stereo, this.gain]);
-				this.player.addRoute(`sounds.${soundNum}`, route);
-				route.play();
-				source.output.addEventListener("ended", () => {
-					this.playing.delete(soundNum);
-				});
-				this.playing.add(soundNum);
-				return soundNum;
-			}
-
-			/**
-			 * 停止一个音效
-			 * @param num 音效的唯一 id
-			 */
-			stop(num) {
-				const id = `sounds.${num}`;
-				const route = this.player.getRoute(id);
-				if (route) {
-					route.stop();
-					this.player.removeRoute(id);
-					this.playing.delete(num);
-				}
-			}
-
-			/**
-			 * 停止播放所有音效
-			 */
-			stopAllSounds() {
-				this.playing.forEach((v) => {
-					const id = `sounds.${v}`;
-					const route = this.player.getRoute(id);
-					if (route) {
-						route.stop();
-						this.player.removeRoute(id);
-					}
-				});
-				this.playing.clear();
-			}
-		}
-		const soundPlayer = new SoundPlayer(audioPlayer);
-
-		function loadAllBgm() {
-			const data = data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d;
-			for (const bgm of data.main.bgms) {
-				bgmController.addBgm(bgm);
-			}
-		}
-		loadAllBgm();
-		AudioDecoder.registerDecoder(AudioType.Ogg, VorbisDecoder);
-		AudioDecoder.registerDecoder(AudioType.Opus, OpusDecoder);
-
-		core.plugin.audioSystem = {
-			AudioType,
-			AudioDecoder,
-			AudioStatus,
-			checkAudioType,
-			isAudioSupport,
-			audioPlayer,
-			soundPlayer,
-			bgmController,
-			guessTypeByExt,
-			BgmController,
-			SoundPlayer,
-			EchoEffect,
-			DelayEffect,
-			ChannelVolumeEffect,
-			VolumeEffect,
-			StereoEffect,
-			AudioEffect,
-			AudioPlayer,
-			AudioRoute,
-			AudioStreamSource,
-			AudioElementSource,
-			AudioBufferSource,
-			loadAllBgm,
-			StreamLoader,
-		};
-		//bgm相关复写
-		control.prototype.playBgm = (bgm, when) => {
-			bgm = core.getMappedName(bgm);
-			if (main.mode != "play" || !core.material.bgms[bgm]) return;
-			// 如果不允许播放
-			if (!core.musicStatus.bgmStatus) {
-				try {
-					core.musicStatus.playingBgm = bgm;
-					core.musicStatus.lastBgm = bgm;
-					core.material.bgms[bgm].pause();
-				} catch (e) {
-					console.error(e);
-				}
-				return;
-			}
-			core.setMusicBtn();
-
-			try {
-				bgmController.play(bgm, when);
-			} catch (e) {
-				console.log("无法播放BGM " + bgm);
-				console.error(e);
-				core.musicStatus.playingBgm = null;
-			}
-
-		};
-		control.prototype.pauseBgm = () => {
-			bgmController.pause();
-			core.setMusicBtn();
-		};
-
-		control.prototype.resumeBgm = function () {
-			bgmController.resume();
-			core.setMusicBtn();
-		};
-		control.prototype.checkBgm = function () {
-			core.playBgm(bgmController.playingBgm || main.startBgm);
-		};
-		control.prototype.triggerBgm = function () {
-			core.musicStatus.bgmStatus = !core.musicStatus.bgmStatus;
-			if (bgmController.playing) bgmController.pause();
-			else bgmController.resume();
-			core.setMusicBtn();
-			core.setLocalStorage("bgmStatus", core.musicStatus.bgmStatus);
-		};
-		//sound相关复写
-		control.prototype.playSound = function (
-			sound,
-			_pitch,
-			callback,
-			position,
-			orientation
-		) {
-			if (main.mode != "play" || !core.musicStatus.soundStatus) return callback?.();
-			const name = core.getMappedName(sound);
-			const num = soundPlayer.play(name, position, orientation);
-			const route = audioPlayer.getRoute(`sounds.${num}`);
-			if (!route) {
-				callback?.();
-				return -1;
-			} else {
-				sleep(route.duration * 1000).then(() => callback?.());
-				return num;
-			}
-		};
-		control.prototype.stopSound = function (id) {
-			if (isNil(id)) {
-				soundPlayer.stopAllSounds();
-			} else {
-				soundPlayer.stop(id);
-			}
-		};
-		control.prototype.getPlayingSounds = function () {
-			return [...soundPlayer.playing];
-		};
-		//sound加载复写
-		loader.prototype._loadOneSound_decodeData = function (name, data) {
-			if (data instanceof Blob) {
-				var blobReader = new zip.BlobReader(data);
-				blobReader.init(function () {
-					blobReader.readUint8Array(0, blobReader.size, function (uint8) {
-						//core.loader._loadOneSound_decodeData(name, uint8.buffer);
-						soundPlayer.add(name, uint8);
-					});
-				});
-				return;
-			}
-			if (data instanceof ArrayBuffer) {
-				const uint8 = new Uint8Array(data);
-				soundPlayer.add(name, uint8);
-			}
-		};
-		//音量控制复写
-		soundPlayer.setVolume(
-			core.musicStatus.userVolume * core.musicStatus.designVolume
-		);
-		bgmController.setVolume(
-			core.musicStatus.userVolume * core.musicStatus.designVolume
-		);
-		actions.prototype._clickSwitchs_sounds_userVolume = function (delta) {
-			var value = Math.round(Math.sqrt(100 * core.musicStatus.userVolume));
-			if (value == 0 && delta < 0) return;
-			core.musicStatus.userVolume = core.clamp(
-				Math.pow(value + delta, 2) / 100,
-				0,
-				1
-			);
-			//audioContext 音效 不受designVolume 影响
-			if (core.musicStatus.gainNode != null)
-				core.musicStatus.gainNode.gain.value = core.musicStatus.userVolume;
-			soundPlayer.setVolume(
-				core.musicStatus.userVolume * core.musicStatus.designVolume
-			);
-			bgmController.setVolume(
-				core.musicStatus.userVolume * core.musicStatus.designVolume
-			);
-			core.setLocalStorage("userVolume", core.musicStatus.userVolume);
-			core.playSound("确定");
-			core.ui._drawSwitchs_sounds();
-		};
-	},
 	"statistics": function () {
 		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
 		let __enable = true;
@@ -9778,8 +10002,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		const PX = core.__PIXELS__,
 			SIZE = core.__SIZE__;
 		const {
-			ButtonBase, RoundBtn, IconBtn, ExitBtn,
-			ArrowBtn, MenuBase, Pagination, KeyCodeEnum
+			ButtonBase,
+			RoundBtn,
+			IconBtn,
+			ExitBtn,
+			ArrowBtn,
+			MenuBase,
+			PagedMenu,
+			MultiTypePagedMenu,
+			Pagination,
+			KeyCodeEnum,
+			registerResize,
+			unregisterResize,
 		} = core.plugin.uiBase;
 
 		// 每次退出数据统计时清空,并且清空statistics变量
@@ -9878,7 +10112,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		/**
 		 * @param {{total:number; [itemId:string]:{[floorId:string]:number}}} obj1
-		 * @param {{total:number, [itemId:string]:number}} obj2  
+		 * @param {{total:number; [itemId:string]:number}} obj2  
 		 */
 		function addCountToFormer(obj1, obj2, floorId) {
 			obj1.total += obj2.total;
@@ -9896,7 +10130,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * equipsCount:ObjSTAT,enemysCount:ObjSTAT,
 		 * enemys:enemys,items:items,
 		 * battleDamage:ObjSTAT, extraDamage:ObjSTAT,
-		 * poisonDamage:ObjSTAT, vampireExtraLoss:ObjSTAT,}} STAT
+		 * poisonDamage:ObjSTAT, vampireExtraLoss:ObjSTAT,
+		 * }} STAT
 		 */
 		/**
 		 * @param {string[]} floorList 要统计的楼层的列表
@@ -9926,9 +10161,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				addCountToFormer(stat.equipsCount, statistics[floorId].equipsCount, floorId);
 				addCountToFormer(stat.enemysCount, statistics[floorId].enemysCount, floorId);
 				if (damagePerFloor[floorId]) {
-					["battleDamage", "extraDamage", "poisonDamage", "vampireExtraLoss"].forEach(key => {
-						stat[key][floorId] = damagePerFloor[floorId]?.[key] || 0;
-					});
+					for (let key in damagePerFloor[floorId]) {
+						if (["battleDamage", "extraDamage", "poisonDamage", "vampireExtraLoss"]
+							.includes(key)
+						) {
+							stat[key][floorId] = damagePerFloor[floorId]?.[key] || 0;
+						}
+						else if (key.includes(",")) {
+							if (!stat[key]) {
+								stat[key] = { total: 0 };
+							}
+							const value = damagePerFloor[floorId]?.[key] || 0;
+							stat[key][floorId] = value;
+							stat[key]["total"] += value;
+						}
+					}
 				}
 			});
 			return stat;
@@ -9938,8 +10185,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			constructor(x, y, w, h) {
 				super(x, y, w, h);
 				this.floorId = "";
-				/** @type {number} */this.key;
-				/** @type {FloorStatisticsMenu} */ this.menu;
+				/** @type {number} */
+				this.key;
+				/** @type {FloorStatisticsMenu} */
+				this.menu;
 			}
 
 			draw() {
@@ -9965,23 +10214,32 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
-		class FloorStatisticsMenu extends MenuBase {
+		function getTotalFloorList() {
+			return core.floorIds.filter(floorId => {
+				const floorData = core.status.maps[floorId];
+				if (floorData.deleted) return false; // 被砍层插件砍掉的地图不计入
+				if (floorData.cannotViewMap && floorId !== core.status.floorId) return false;
+				return true;
+			})
+		}
+
+		class FloorStatisticsMenu extends PagedMenu {
 			constructor(name, toListen, x, y, w, h, zIndex, capacity) {
-				super(name, toListen, x, y, w, h, zIndex);
-				/** 一页的地图容量 */
-				this.capacity = capacity;
-				this.totalFloorList = this.getTotalFloorList();
-				this.page = Math.floor(this.totalFloorList.indexOf(core.status.floorId) / capacity);
-				this.floorList = this.getFloorList();
-				/** 区域选择时的起始楼层*/this.areaBorder = "";
-				/** 是否处于区域选择模式下 */this.areaSelectOn = false;
+				const data = getTotalFloorList();
+				super(name, toListen, x, y, w, h, zIndex, capacity, data);
+				this.page = Math.floor(this.totalItemList.indexOf(core.status.floorId) / capacity);
+				/** 区域选择时的起始楼层*/
+				this.areaBorder = "";
+				/** 是否处于区域选择模式下 */
+				this.areaSelectOn = false;
+				this.updateCurrItemList();
 			}
 
 			updateBtnInfo() {
 				this.btnMap.forEach((btn, key) => {
 					if (btn instanceof FloorBtn) {
-						btn.disable = (key >= this.floorList.length);
-						btn.floorId = this.floorList[key];
+						btn.disable = (key >= this.currItemList.length);
+						btn.floorId = this.currItemList[key];
 					}
 				});
 			}
@@ -9992,63 +10250,74 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				this.updateBtnInfo();
 				super.drawContent();
 			}
+		}
 
-			getTotalFloorList() {
-				return core.floorIds.filter(floorId => {
-					const floorData = core.status.maps[floorId];
-					if (floorData.deleted) return false; // 被砍层插件砍掉的地图不计入
-					if (floorData.cannotViewMap && floorId !== core.status.floorId) return false;
-					return true;
-				})
+		function getNameById(id, mode) {
+			if (mode !== "damage") {
+				return core.material.items[id]?.name || core.material.enemys[id]?.name ||
+					core.getBlockById(id).event.name || "";
 			}
-
-			getFloorList() {
-				return this.totalFloorList.slice(this.page * this.capacity,
-					Math.min((this.page + 1) * this.capacity, this.totalFloorList.length));
-			}
-
-			pageDown() {
-				if (this.page > 0) {
-					this.page--;
-					this.floorList = this.getFloorList();
-					this.drawContent();
-				}
-			}
-
-			pageUp() {
-				if ((this.page + 1) * this.capacity < this.totalFloorList.length) {
-					this.page++;
-					this.floorList = this.getFloorList();
-					this.drawContent();
+			else {
+				if (id === "battleDamage") return "战斗伤害";
+				else if (id === "extraDamage") return "地图伤害";
+				else if (id === "poisonDamage") return "中毒伤害";
+				else if (id === "vampireExtraLoss") return "吸血额外伤害";
+				else if (id === "customizeDamageRange") return "自定伤害区间";
+				else {
+					return "伤害" + id.replace(",", "-"); // 说明是自定义的伤害区间
 				}
 			}
 		}
 
-		class FloorStatisticsTextMenu extends MenuBase {
-			constructor(name, toListen, x, y, w, h, zIndex) {
-				super(name, toListen, x, y, w, h, zIndex);
+		function getUserConfig() {
+			/** @type {StatisticsHeaderConfig} */
+			const statisticsHeaderConfig = core.getLocalStorage("statisticsHeaderConfig", {
+				tools: { ignore: [] },
+				items: { ignore: [] },
+				equips: { ignore: [] },
+				enemys: { ignore: [] },
+				floors: { ignore: [] },
+				damage: { ignore: [], record: [] },
+			});
+			return statisticsHeaderConfig;
+		}
+		this.getUserConfig = getUserConfig;
+
+		class OpenPickHeaderBtn extends ButtonBase {
+			draw() {
+				super.draw();
+				const ctx = this.ctx;
+				const { x, y, w } = this;
+				const [r, offset] = [w / 2, 2];
+				core.fillCircle(ctx, x + r, y + r, r, 'lime');
+				core.drawLine(ctx, x + offset, y + r, x + 2 * r - offset, y + r, 'white', 2);
+				core.drawLine(ctx, x + r, y + offset, x + r, y + 2 * r - offset, 'white', 2);
+			}
+		}
+
+		class FloorStatisticsTextMenu extends MultiTypePagedMenu {
+			constructor(name, toListen, x, y, w, h, zIndex, pagesConfig) {
+				super(name, toListen, x, y, w, h, zIndex, pagesConfig);
 				/** @type {STAT|null} */
 				this.stat = null;
-				this.itemPage = 0; // 道具列表到了第几页
-				this.floorPage = 0; // 楼层列表到了第几页
-				this.ROW = 7; // 表格行数
-				this.COLUMN = 5; // 表格列数
-				this.itemList = []; // 要统计的元件的id列表
-				this.floorList = []; //要统计的楼层的id列表
 				/** @type {"tools"|"items"|"equips"|"enemys"|"damage"} */
 				this.mode = "tools";
+				/** 未被用户过滤的显示项总表 */
+				this.allItemList = null;
 			}
 
-			getFloorList() {
+			updateFloorList() {
 				const floorList = [];
 				for (let floorId in core.markedFloorIds) {
 					if (core.markedFloorIds[floorId]) floorList.push(floorId);
 				}
-				return floorList;
+				this.totalItemList["floors"] = floorList;
+				this.updateCurrItemList("floors");
 			}
 
-			getItemList(count) {
+			updateItemList(count) {
 				let itemList = null;
+				const headerConfig = getUserConfig();
 				const sortFunc = (a, b) => count[b].total - count[a].total;
 				if (this.mode === "tools") {
 					const doorNameList = [];
@@ -10059,66 +10328,38 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						else doorNameList.push(i);
 					}
 					itemList = [...doorNameList.sort(sortFunc), ...itemNameList.sort(sortFunc)];
-				}
-				else if (this.mode === "damage") {
+				} else if (this.mode === "damage") {
 					itemList = ["battleDamage", "extraDamage"];
 					if (core.status.hero.statistics.poisonDamage > 0) itemList.push("poisonDamage");
 					if (core.status.hero.statistics?.vampireExtraLoss > 0) itemList.push("vampireExtraLoss");
-				}
-				else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
-				return itemList;
+					itemList = [...itemList, ...headerConfig["damage"]["record"]];
+				} else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
+				this.allItemList = itemList;
+				const ignoreList = headerConfig[this.mode]["ignore"];
+				// @todo 观察一下网站上这个是否会被polyfill 
+				itemList = [...new Set(itemList).difference(new Set(ignoreList))];
+				this.totalItemList["items"] = itemList;
+				this.updateCurrItemList("items");
 			}
 
-			getStat() {
-				return getFloorListStat(this.floorList);
-			}
-
-			itemPageDown() {
-				if (this.itemPage > 0) this.itemPage--;
-				this.drawContent();
-			}
-
-			itemPageUp() {
-				if ((this.itemPage + 1) * this.ROW < this.itemList.length) this.itemPage++;
-				this.drawContent();
-			}
-
-			floorPageDown() {
-				if (this.floorPage > 0) this.floorPage--;
-				this.drawContent();
-			}
-
-			floorPageUp() {
-				if ((this.floorPage + 1) * this.COLUMN < this.floorList.length) this.floorPage++;
-				this.drawContent();
+			updateStat() {
+				this.stat = getFloorListStat(this.currItemList["floors"]);
 			}
 
 			/** @param {ObjSTAT} count  */
 			drawTable(ctx, count) {
-				const { itemPage, floorPage, ROW, COLUMN, itemList, floorList } = this;
-
-				const curritemList = itemList.slice(itemPage * ROW,
-					Math.min((itemPage + 1) * ROW, itemList.length));
-				const currFloorList = floorList.slice(floorPage * COLUMN,
-					Math.min((floorPage + 1) * COLUMN, floorList.length));
+				const currItemList = this.currItemList["items"];
+				const currFloorList = this.currItemList["floors"];
 
 				core.ui.setTextBaseline(ctx, "top");
 				core.ui.setTextAlign(ctx, "right");
-				for (let i = -1, l = curritemList.length; i < l; i++) {
+				for (let i = -1, l = currItemList.length; i < l; i++) {
 					let id, name, total;
 					if (i !== -1) {
-						id = curritemList[i];
-						if (this.mode !== "damage") {
-							name = core.material.items[id]?.name || core.material.enemys[id]?.name ||
-								core.getBlockById(id).event.name || "";
-						}
-						else {
-							if (id === "battleDamage") name = "战斗伤害";
-							else if (id === "extraDamage") name = "地图伤害";
-							else if (id === "poisonDamage") name = "中毒伤害";
-							else if (id === "vampireExtraLoss") name = "吸血额外伤害";
-						}
-						total = count[id].total || 0;
+						id = currItemList[i];
+						name = getNameById(id, this.mode);
+						// 当id为自定义的伤害区间时，count[id]可能为空
+						total = count[id]?.total || 0;
 					}
 					core.ui.strokeRect(ctx, 20, 155 + 25 * i, 80, 25, "black");
 					for (let j = -1, l1 = currFloorList.length; j < l1; j++) {
@@ -10132,8 +10373,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					}
 					if (i === -1) continue; // i=-1是表头
 					core.ui.drawIcon(ctx, id, 25, 160 + 25 * i, 16, 16);
-					core.ui.fillText(ctx, name, 94, 163 + 25 * i, "black", name.length < 5 ? "12px Verdana" : "8px Verdana");
-
+					core.ui.fillText(ctx, name, 94, 163 + 25 * i, "black", (name.length < 5) ? "12px Verdana" : "8px Verdana");
 				}
 			}
 
@@ -10141,8 +10381,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (!this.stat) return;
 				const { x, y, w, h, zIndex, name, stat } = this;
 				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				const { enemys, items, toolsCount, gemsCount, equipsCount, enemysCount,
-					battleDamage, extraDamage, poisonDamage, vampireExtraLoss } = stat;
+				const {
+					enemys,
+					items,
+					toolsCount,
+					gemsCount,
+					equipsCount,
+					enemysCount,
+					battleDamage,
+					extraDamage,
+					poisonDamage,
+					vampireExtraLoss,
+				} = stat;
 				const enemyText = `给定地图中共有怪物${enemys.count}个` +
 					(enemys.money > 0 ? `，总金币${enemys.money}.` : '') +
 					(enemys.exp > 0 ? `，总经验${enemys.exp}` : '') +
@@ -10154,15 +10404,23 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					`，护盾${items.mdef}点` + "。";
 				const text = enemyText + '\n' + itemEffectText;
 				core.ui.drawTextContent(ctx, text, {
-					maxWidth: 360, color: "black", left: 20, top: 10,
+					maxWidth: 360,
+					color: "black",
+					left: 20,
+					top: 10,
 					fontSize: 14
 				});
 				let count = toolsCount;
 				if (this.mode === "items") count = gemsCount;
 				else if (this.mode === "equips") count = equipsCount;
 				else if (this.mode === "enemys") count = enemysCount;
-				else if (this.mode === "damage") count = { battleDamage, extraDamage, poisonDamage, vampireExtraLoss };
-				this.itemList = this.getItemList(count);
+				else if (this.mode === "damage") {
+					count = { battleDamage, extraDamage, poisonDamage, vampireExtraLoss };
+					for (let key in stat) {
+						if (key.includes(",")) count[key] = stat[key];
+					}
+				};
+				this.updateItemList(count); // 更新物品总表
 				this.drawTable(ctx, count);
 				super.drawContent();
 			}
@@ -10184,7 +10442,11 @@ ${statistics["vampireExtraLoss"] > 0 ? `吸血怪物累计对你造成超出最�
 ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.formatBigNumber(statistics.oneDefEffect || 0)}` : ""}${statistics.hasOwnProperty("oneMdefEffect") ? `，1护盾累计减伤为${core.formatBigNumber(statistics.oneMdefEffect || 0)}` : ""}。
 `;
 				core.drawTextContent(ctx, str, {
-					left: 30, top: 20, color: "black", maxWidth: 360, fontSize: 14
+					left: 30,
+					top: 20,
+					color: "black",
+					maxWidth: 360,
+					fontSize: 14
 				});
 			}
 		}
@@ -10198,19 +10460,219 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			}
 		}
 
-		function StatisticsMenuFactory() {
-			const ROW = 3, COLUMN = 4;
+		class HeaderBtn extends ButtonBase {
+			constructor(x, y, w, h) {
+				super(x, y, w, h);
+				/** @type {string} */
+				this.text;
+				/** @type {boolean} */
+				this.isIgnored;
+			}
+
+			draw() {
+				const { x, y, w, h, ctx, text, isIgnored } = this;
+				const mode = this.menu.mode;
+				core.strokeRect(ctx, x, y, w, h, "black", 2);
+				core.setTextAlign(ctx, "left");
+				core.setTextBaseline(ctx, "middle");
+				const name = getNameById(text, mode);
+				const font = (name.length < 5) ? "12px Verdana" : "8px Verdana";
+				if (mode !== "damage") {
+					core.ui.drawIcon(ctx, text, x + 2, y + 10, 12, 12);
+					core.fillText(ctx, name, x + 15, y + h / 2, "black", font);
+				}
+				else {
+					core.fillText(ctx, name, x + 5, y + h / 2, "black", font);
+				}
+				if (isIgnored) {
+					core.drawLine(ctx, x + 5, y + h / 2, x + w - 2, y + h / 2, "red", 2);
+				}
+			}
+		}
+
+		/**
+		 *  调整统计数据显示项目的菜单
+		 *  @typedef {'tools'|'items'|'equips'|'enemys'|'damage'} StatisticsMode
+		 *  @typedef {{tools:{ignore:string[]},items:{ignore:string[]},
+		 * equips:{ignore:string[]},enemys:{ignore:string[]},
+		 * damage:{ignore:string[],record:string[]},
+		 * }} StatisticsHeaderConfig
+		 **/
+		class PickHeaderMenu extends PagedMenu {
+			/** @param {StatisticsMode} mode  */
+			constructor(name, toListen, x, y, w, h, zIndex, capacity, data, mode) {
+				super(name, toListen, x, y, w, h, zIndex, capacity, data);
+				/** @type {StatisticsMode} */
+				this.mode = mode;
+				/** @type {StatisticsHeaderConfig} */
+				this.userConfig = getUserConfig();
+				this.totalItemList.push("customizeDamageRange");
+				this.updateCurrItemList();
+			}
+
+			addIgnore(ele) {
+				this.userConfig[this.mode].ignore.push(ele);
+			}
+
+			removeIgnore(ele) {
+				const mode = this.mode;
+				this.userConfig[mode].ignore = this.userConfig[mode].ignore
+					.filter(e => e !== ele);
+			}
+
+			addRecord(ele) {
+				if (this.mode !== "damage") return;
+				core.utils.myprompt('输入要记录的伤害范围。格式：0,100 记录伤害0(含)-100(不含)的怪物。第二个数字不填代表无限大', '', (value) => {
+					if (value == null) {
+						core.drawFailTip('错误：不合法的输入!');
+						return;
+					}
+					let min, max;
+					if (!value.includes(",")) {
+						min = Number(value);
+						if (Number.isNaN(min)) {
+							core.drawFailTip('错误：不合法的输入!');
+							return;
+						}
+						value += ",";
+					}
+					else if (value.endsWith(",")) {
+						min = Number(value.replace(",", ""));
+						if (Number.isNaN(min)) {
+							core.drawFailTip('错误：不合法的输入!');
+							return;
+						}
+					}
+					else {
+						const [minStr, maxStr] = value.split(",");
+						min = Number(minStr);
+						max = Number(maxStr);
+						if (Number.isNaN(min) || Number.isNaN(max) || max < min) {
+							core.drawFailTip('错误：不合法的输入!');
+							return;
+						}
+					}
+					this.userConfig["damage"].record.push(value);
+					core.setLocalStorage("statisticsHeaderConfig", this.userConfig);
+					this.totalItemList.push(value);
+					this.updateCurrItemList();
+					this.drawContent();
+				});
+			}
+
+			removeRecord(ele) {
+				if (this.mode !== "damage") return;
+				this.userConfig["damage"].record = this.userConfig["damage"].record
+					.filter(e => e !== ele);
+				this.totalItemList = this.totalItemList.filter(e => e !== ele);
+				this.updateCurrItemList();
+			}
+
+			drawContent() {
+				const { x, y, w, h, zIndex, name } = this;
+				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
+				core.ui.fillRect(ctx, 0, 0, w, h, '#A8CABA');
+				core.ui.strokeRect(ctx, 0, 0, w, h, 'black', 2);
+				core.ui.fillText(ctx, '以下是本菜单的表头，你可以隐藏或重新显', 20, 20, "black", "16px Vedana");
+				core.ui.fillText(ctx, '示某些项目', 20, 40, "black", "16px Vedana");
+
+				core.ui.fillText(ctx, "显示项", 20, 60, "black", "Bold 16px Vedana");
+
+				this.btnMap.forEach((btn, index) => {
+					if (!(btn instanceof HeaderBtn)) return;
+					index = Number(index);
+					if (index < this.capacity) {
+						btn.disable = index >= this.currItemList.length;
+						if (index < this.currItemList.length) {
+							const text = this.currItemList[index];
+							btn.text = text;
+							btn.isIgnored = this.userConfig[this.mode]["ignore"].includes(text);
+						}
+					}
+				});
+				super.drawContent();
+			}
+		}
+
+		function pickHeaderMenuFactory(data, mode, exitEvent) {
+			const ROW = 9,
+				COLUMN = 4;
+			const pickHeaderMenu = new PickHeaderMenu("pickHeader", ["ondown"],
+				30, 30, PX - 60, PX - 60, 133, ROW * COLUMN, data, mode);
+			const headerPageDownBtn = new ArrowBtn(75, 48, 16, 16, "left"),
+				headerPageUpBtn = new ArrowBtn(95, 48, 16, 16, "right");
+			const exitBtn = new ExitBtn(328, 5, 20, 20);
+			const exit = () => {
+				pickHeaderMenu.clear();
+				unregisterResize(pickHeaderMenu);
+				if (exitEvent) exitEvent();
+			}
+			const btnList = [
+				["pageDown", headerPageDownBtn, () => pickHeaderMenu.pageDown()],
+				["pageUp", headerPageUpBtn, () => pickHeaderMenu.pageUp()],
+				["exit", exitBtn, exit],
+			];
+
+			function btnClickEvent(btn) {
+				return function () {
+					const eleName = this.text;
+					if (mode === "damage") {
+						if (eleName === "customizeDamageRange") {
+							this.menu.addRecord(eleName);
+						}
+						else if (eleName.includes(",")) {
+							this.menu.removeRecord(eleName);
+						}
+						else {
+							if (this.isIgnored) this.menu.removeIgnore(eleName);
+							else this.menu.addIgnore(eleName);
+						}
+					}
+					else {
+						if (this.isIgnored) this.menu.removeIgnore(eleName);
+						else this.menu.addIgnore(eleName);
+					}
+					core.setLocalStorage("statisticsHeaderConfig", this.menu.userConfig);
+					this.menu.drawContent();
+				}.bind(btn);
+			}
+
+			for (let i = 0; i < ROW; i++) {
+				for (let j = 0; j < COLUMN; j++) {
+					const btn = new HeaderBtn(20 + 80 * j, 70 + i * 30, 80, 30);
+					btnList.push([i * COLUMN + j, btn, btnClickEvent(btn)]);
+				}
+			}
+			pickHeaderMenu.registerBtns(btnList);
+			return pickHeaderMenu;
+		}
+
+		function statisticsMenuFactory() {
+			const ROW = 3,
+				COLUMN = 4;
 			const floorStatisticsMenu = new FloorStatisticsMenu("floorStatistics", ["ondown"],
 				0, 50, PX, PX - 50, 132, ROW * COLUMN);
 			const floorStatisticsTextMenu = new FloorStatisticsTextMenu("floorStatisticsText", ["ondown"],
-				0, 50, PX, PX - 50, 132);
+				0, 50, PX, PX - 50, 132, {
+				'items': {
+					capacity: 7,
+					totalItemList: [],
+					pageDownBtnKey: "itemsPageDown",
+					pageUpBtnKey: "itemsPageUp"
+				},
+				'floors': {
+					capacity: 5,
+					totalItemList: [],
+					pageDownBtnKey: "floorsPageDown",
+					pageUpBtnKey: "floorsPageUp",
+				}
+			});
 			const playerStatisticsMenu = new PlayerStatisticsMenu("playerStatistics", ["ondown"],
 				0, 50, PX, PX - 50, 132);
 			const statisticsMenu = new StatisticsMenu(
 				[floorStatisticsMenu, floorStatisticsTextMenu, playerStatisticsMenu],
 				0, "statistics", ["ondown"], 0, 0, PX, PX, 131);
 
-			const floorStatisticsList = [];
 			/** @this {FloorBtn} */
 			const mark = function () {
 				/** @type {FloorStatisticsMenu} */
@@ -10218,31 +10680,34 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 				if (menu.areaSelectOn) {
 					if (!menu.areaBorder) menu.areaBorder = this.floorId;
 					else {
-						let index1 = menu.totalFloorList.indexOf(menu.areaBorder),
-							index2 = menu.totalFloorList.indexOf(this.floorId);
+						let index1 = menu.totalItemList.indexOf(menu.areaBorder),
+							index2 = menu.totalItemList.indexOf(this.floorId);
 						if (index2 < index1) [index1, index2] = [index2, index1];
-						menu.totalFloorList.slice(index1, index2 + 1).forEach(floorId => {
+						menu.totalItemList.slice(index1, index2 + 1).forEach(floorId => {
 							core.markedFloorIds[floorId] = true;
 						});
 						menu.areaSelectOn = false;
 						menu.areaBorder = "";
 					}
-				}
-				else {
+				} else {
 					core.markedFloorIds[this.floorId] = !core.markedFloorIds[this.floorId];
 				}
 				menu.drawContent();
 			};
+
+			const pageDownBtn = new ArrowBtn(10, 145, 16, 16, "left"),
+				pageUpBtn = new ArrowBtn(390, 145, 16, 16, "right");
+			const floorStatisticsList = [
+				["pageDown", pageDownBtn, () => floorStatisticsMenu.pageDown()],
+				["pageUp", pageUpBtn, () => floorStatisticsMenu.pageUp()],
+			];
+
 			for (let i = 0; i < ROW; i++) {
 				for (let j = 0; j < COLUMN; j++) {
 					const floorBtn = new FloorBtn(43 + j * 90, 20 + i * 100, 60, 60);
 					floorStatisticsList.push([i * COLUMN + j, floorBtn, mark.bind(floorBtn)]);
 				}
 			}
-			const pgDownBtn = new ArrowBtn(10, 145, 16, 16, "left"),
-				pgUpBtn = new ArrowBtn(390, 145, 16, 16, "right");
-			floorStatisticsList.push(["pgDown", pgDownBtn, floorStatisticsMenu.pageDown.bind(floorStatisticsMenu)],
-				["pgUp", pgUpBtn, floorStatisticsMenu.pageUp.bind(floorStatisticsMenu)]);
 			const checkAllBtn = new RoundBtn(30, 320, 50, 20, "全选");
 			const inverseBtn = new RoundBtn(90, 320, 50, 20, "反选");
 			const clearSelectBtn = new RoundBtn(150, 320, 60, 20, "全不选");
@@ -10250,19 +10715,19 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			const getOutcomeBtn = new RoundBtn(306, 320, 76, 20, "统计所选");
 			floorStatisticsList.push(
 				["checkAll", checkAllBtn, () => {
-					floorStatisticsMenu.totalFloorList.forEach(floorId => {
+					floorStatisticsMenu.totalItemList.forEach(floorId => {
 						core.markedFloorIds[floorId] = true;
 					});
 					floorStatisticsMenu.drawContent();
 				}],
 				["inverse", inverseBtn, () => {
-					floorStatisticsMenu.totalFloorList.forEach(floorId => {
+					floorStatisticsMenu.totalItemList.forEach(floorId => {
 						core.markedFloorIds[floorId] = !core.markedFloorIds[floorId];
 					});
 					floorStatisticsMenu.drawContent();
 				}],
 				["clearSelect", clearSelectBtn, () => {
-					floorStatisticsMenu.totalFloorList.forEach(floorId => {
+					floorStatisticsMenu.totalItemList.forEach(floorId => {
 						core.markedFloorIds[floorId] = false;
 					});
 					floorStatisticsMenu.drawContent();
@@ -10271,25 +10736,21 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 					if (!floorStatisticsMenu.areaSelectOn) {
 						floorStatisticsMenu.areaSelectOn = true;
 						core.drawSuccessTip("请依次选择目标区域的起始楼层和终点楼层");
-					}
-					else {
+					} else {
 						floorStatisticsMenu.areaSelectOn = true;
 						floorStatisticsMenu.areaBorder = "";
 						core.drawFailTip("选择已取消");
 					}
 				}],
 				["getOutcome", getOutcomeBtn, () => {
-					const floorList = [];
-					for (let floorId in core.markedFloorIds) {
-						if (core.markedFloorIds[floorId]) floorList.push(floorId);
-					}
-					floorStatisticsTextMenu.floorList = floorStatisticsTextMenu.getFloorList();
-					floorStatisticsTextMenu.stat = floorStatisticsTextMenu.getStat();
+					floorStatisticsTextMenu.updateFloorList();
+					floorStatisticsTextMenu.updateStat();
 					statisticsMenu.changePage(1);
 				}]);
 			floorStatisticsMenu.registerBtns(floorStatisticsList);
 
 			const config = { font: "14px Verdana", selectedFillStyle: "#5B8DEF" };
+			const pickHeaderBtn = new OpenPickHeaderBtn(25, 132, 20, 20);
 			const toolStatBtn = new RoundBtn(20, 90, 90, 20, "消耗品和门", config);
 			const itemStatBtn = new RoundBtn(125, 90, 70, 20, "血瓶宝石", config);
 			const equipStatBtn = new RoundBtn(215, 90, 40, 20, "装备", config);
@@ -10300,25 +10761,38 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			const floorDownBtn = new ArrowBtn(360, 335, 16, 16, "left");
 			const floorUpBtn = new ArrowBtn(380, 335, 16, 16, "right");
 
+			/** @this {FloorStatisticsTextMenu} */
+			const openPickHeader = function () {
+				statisticsMenu.endListen();
+				this.endListen();
+				const pickHeaderMenu = pickHeaderMenuFactory(this.allItemList, this.mode, function () {
+					statisticsMenu.beginListen();
+					floorStatisticsTextMenu.beginListen();
+					floorStatisticsTextMenu.drawContent();
+				});
+				registerResize(pickHeaderMenu);
+				pickHeaderMenu.init();
+			}.bind(floorStatisticsTextMenu);
 			const changeMode = (btn, mode) => () => {
 				floorStatisticsTextMenu.btnMap.forEach(ele => {
 					ele.status = (btn === ele) ? "selected" : "none";
 				});
 				floorStatisticsTextMenu.mode = mode;
-				floorStatisticsTextMenu.itemPage = 0;
+				floorStatisticsTextMenu.page["items"] = 0;
 				floorStatisticsTextMenu.drawContent();
 			};
 
 			floorStatisticsTextMenu.registerBtns([
+				["pickHeader", pickHeaderBtn, openPickHeader],
 				["toolStat", toolStatBtn, changeMode(toolStatBtn, "tools")],
 				["itemStat", itemStatBtn, changeMode(itemStatBtn, "items")],
 				["equipStat", equipStatBtn, changeMode(equipStatBtn, "equips")],
 				["enemyStat", enemyStatBtn, changeMode(enemyStatBtn, "enemys")],
 				["damageStat", damageStatBtn, changeMode(damageStatBtn, "damage")],
-				["itemDown", itemDownBtn, () => floorStatisticsTextMenu.itemPageDown()],
-				["itemUp", itemUpBtn, () => floorStatisticsTextMenu.itemPageUp()],
-				["floorDown", floorDownBtn, () => floorStatisticsTextMenu.floorPageDown()],
-				["floorUp", floorUpBtn, () => floorStatisticsTextMenu.floorPageUp()],
+				["itemsPageDown", itemDownBtn, () => floorStatisticsTextMenu.pageDown("items")],
+				["itemsPageUp", itemUpBtn, () => floorStatisticsTextMenu.pageUp("items")],
+				["floorsPageDown", floorDownBtn, () => floorStatisticsTextMenu.pageDown("floors")],
+				["floorsPageUp", floorUpBtn, () => floorStatisticsTextMenu.pageUp("floors")],
 			]);
 			toolStatBtn.status = "selected";
 
@@ -10375,7 +10849,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 		function _drawStatistics() {
 			core.ui.closePanel();
 			core.control.lockControl();
-			const staticsMenu = StatisticsMenuFactory();
+			const staticsMenu = statisticsMenuFactory();
 			staticsMenu.init();
 			staticsMenu.initOnePage(0);
 		}

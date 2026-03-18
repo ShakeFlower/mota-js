@@ -459,9 +459,6 @@ control.prototype._initStatistics = function (totalTime) {
 control.prototype.addFloorStatistics = function (key, value, floorId) {
     if (!floorId) floorId = core.status.floorId;
     const statistics = core.status.hero.statistics;
-    if (key !== 'battleDamage' && key !== 'poisonDamage' && key !== 'extraDamage' &&
-        key !== 'vampireExtraLoss'
-    ) return;
     if (!statistics.damagePerFloor) {
         statistics.damagePerFloor = {};
     }
