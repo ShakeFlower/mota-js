@@ -4884,7 +4884,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				/** 是否屏蔽所有的音乐切换 */
 				this.blocking = false;
 				/** 渐变时长 */
-				this.transitionTime = 2000;
+				this.transitionTime = 500;
 			}
 
 			/**
