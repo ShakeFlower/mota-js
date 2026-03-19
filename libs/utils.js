@@ -494,6 +494,22 @@ utils.prototype.deepEqual = function (x, y) {
     return false;
 }
 
+/**
+ * 兼容性的 Set 差集计算
+ * @param {Set} setA 
+ * @param {Set} setB 
+ * @returns {Set}
+ */
+utils.prototype.getSetDifference = function (setA, setB) {
+    // 看起来set.difference并没有被网站polyfill
+    if (typeof setA.difference === 'function') {
+        return setA.difference(setB);
+    }
+
+    return new Set([...setA].filter(item => !setB.has(item)));
+}
+
+
 ////// 裁剪图片 //////
 utils.prototype.splitImage = function (image, width, height) {
     if (typeof image == "string") {

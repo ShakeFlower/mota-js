@@ -9150,7 +9150,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['1,4', 'setHotKey', new SettingButton(40, 280, 150, 25, '5'), 5],
 				['2,4', 'setHotKey', new SettingButton(220, 280, 150, 25, '6'), 6],
 				['1,5', 'setHotKey', new SettingButton(40, 310, 150, 25, '7'), 7],
-				['1,6', 'clearHotKeys', new SettingButton(300, 350, 42, 25)],
+				['2,5', 'setHotKey', new SettingButton(220, 310, 150, 25, '8'), 8],
+				['1,6', 'setHotKey', new SettingButton(40, 340, 150, 25, '9'), 9],
+				['2,6', 'clearHotKeys', new SettingButton(300, 350, 42, 25)],
 			]);
 			return keyMenu;
 		}
@@ -10263,8 +10265,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				else if (id === "poisonDamage") return "中毒伤害";
 				else if (id === "vampireExtraLoss") return "吸血额外伤害";
 				else if (id === "customizeDamageRange") return "自定伤害区间";
-				else {
-					return "伤害" + id.replace(",", "-"); // 说明是自定义的伤害区间
+				else if (id.includes(",")) {
+					// 说明是自定义的伤害区间
+					return "伤" + id.replace(",", id.endsWith(",") ? "+" : "-");
 				}
 			}
 		}
@@ -10336,8 +10339,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				} else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
 				this.allItemList = itemList;
 				const ignoreList = headerConfig[this.mode]["ignore"];
-				// @todo 观察一下网站上这个是否会被polyfill 
-				itemList = [...new Set(itemList).difference(new Set(ignoreList))];
+				itemList = [...core.utils.getSetDifference(new Set(itemList), new Set(ignoreList))];
 				this.totalItemList["items"] = itemList;
 				this.updateCurrItemList("items");
 			}

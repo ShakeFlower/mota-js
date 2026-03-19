@@ -2859,6 +2859,9 @@ interface utils {
     /** 比较两个变量是否值相等 */
     deepEqual(x: unknown, y: unknown): boolean
 
+    /** 获取两个set的差集 */
+    getSetDifference(setA:Set, setB:Set):Set
+
     /**
      * 等比例切分一张图片
      * @example core.splitImage(core.material.images.images['npc48.png'], 32, 48); // 把npc48.png切分成若干32×48px的小人
