@@ -8963,7 +8963,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			},
 			bgm: {
 				getName: () => '音乐:' + (core.musicStatus.bgmStatus ? '开' : '关'),
-				effect: core.actions._clickSwitchs_sounds_bgm,
+				effect: function () {
+					const bc =
+						core.plugin.audioSystem &&
+						core.plugin.audioSystem.bgmController;
+					if (bc) {
+						const saved = bc.transitionTime;
+						bc.setTransitionTime(0);
+						try {
+							core.actions._clickSwitchs_sounds_bgm();
+						} finally {
+							setTimeout(function () {
+								bc.setTransitionTime(saved);
+							}, 0);
+						}
+					} else {
+						core.actions._clickSwitchs_sounds_bgm();
+					}
+				},
 				text: '播放背景音乐。',
 				replay: false,
 			},
