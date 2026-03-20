@@ -10362,7 +10362,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			updateStat() {
-				this.stat = getFloorListStat(this.currItemList["floors"]);
+				this.stat = getFloorListStat(this.totalItemList["floors"]);
 			}
 
 			/** @param {ObjSTAT} count  */
