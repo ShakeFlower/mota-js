@@ -1,8 +1,8 @@
 // @ts-check
 /// <reference path="../runtime.d.ts" />
-var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
+var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 = 
 {
-	"init": function () {
+    "init": function () {
 
 		console.log("插件编写测试");
 
@@ -19,7 +19,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 可以在任何地方（如afterXXX或自定义脚本事件）调用函数，方法为 core.plugin.xxx();
 		// 从V2.6开始，插件中用this.XXX方式定义的函数也会被转发到core中，详见文档-脚本-函数的转发。
 	},
-	"shop": function () {
+    "shop": function () {
 		// 【全局商店】相关的功能
 		/**
 		 * 打开一个全局商店
@@ -229,7 +229,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}, 60);
 	},
-	"removeMap": function () {
+    "removeMap": function () {
 		// 高层塔砍层插件，删除后不会存入存档，不可浏览地图也不可飞到。
 		// 推荐用法：
 		// 对于超高层或分区域塔，当在1区时将2区以后的地图删除；1区结束时恢复2区，进二区时删除1区地图，以此类推
@@ -336,7 +336,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		core.plugin.autoRemoveMaps = autoRemoveMaps;
 	},
-	"fiveLayers": function () {
+    "fiveLayers": function () {
 		// 是否启用五图层（增加背景2层和前景2层） 将__enable置为true即会启用；启用后请保存后刷新编辑器
 		// 背景层2将会覆盖背景层 被事件层覆盖 前景层2将会覆盖前景层
 		// 另外 请注意加入两个新图层 会让大地图的性能降低一些
@@ -529,7 +529,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 	},
-	"itemShop": function () {
+    "itemShop": function () {
 		// 道具商店相关的插件
 		// 可在全塔属性-全局商店中使用「道具商店」事件块进行编辑（如果找不到可以在入口方块中找）
 
@@ -838,7 +838,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-	"enemyLevel": function () {
+    "enemyLevel": function () {
 		// 此插件将提供怪物手册中的怪物境界显示
 		// 使用此插件需要先给每个怪物定义境界，方法如下：
 		// 点击怪物的【配置表格】，找到“【怪物】相关的表格配置”，然后在【名称】仿照增加境界定义：
@@ -926,7 +926,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 
 	},
-	"multiHeros": function () {
+    "multiHeros": function () {
 		// 多角色插件
 		// Step 1: 启用本插件
 		// Step 2: 定义每个新的角色各项初始数据（参见下方注释）
@@ -1071,7 +1071,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag("heroId", toHeroId); // 保存切换到的角色ID
 		}
 	},
-	"heroFourFrames": function () {
+    "heroFourFrames": function () {
 		// 样板的勇士/跟随者移动时只使用2、4两帧，观感较差。本插件可以将四帧全用上。
 
 		// 是否启用本插件
@@ -1124,7 +1124,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return false;
 		}
 	},
-	"startCanvas": function () {
+    "startCanvas": function () {
 		// 使用本插件可以将自绘的标题界面居中。仅在【标题开启事件化】后才有效。
 		// 由于一些技术性的原因，标题界面事件化无法应用到覆盖状态栏的整个界面。
 		// 这是一个较为妥协的插件，会在自绘标题界面时隐藏状态栏、工具栏和边框，并将画布进行居中。
@@ -1210,7 +1210,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			_loadData.call(core.control, data, callback);
 		}
 	},
-	"platFly": function () {
+    "platFly": function () {
 		// 本插件可以给平面塔启用一个带小地图的楼传，默认关闭
 		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
 		var __enable = false;
@@ -2717,7 +2717,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		};
 	},
-	"advancedAnimation": function () {
+    "advancedAnimation": function () {
 		// -------------------- 插件说明 -------------------- //
 		// github仓库：https://github.com/unanmed/animate
 		// npm包名：mutate-animate
@@ -3270,7 +3270,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 
 	},
-	"opusAdaptation": function () {
+    "opusAdaptation": function () {
 		// 将__enable置为false将关闭插件
 		let __enable = true;
 		if (!__enable || main.mode === "editor") return;
@@ -5369,7 +5369,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.ui._drawSwitchs_sounds();
 		};
 	},
-	"drawItemDetail": function () {
+    "drawItemDetail": function () {
 		/* 宝石血瓶左下角显示数值
 			 * 需要将 变量：itemDetail改为true才可正常运行
 			 * 请尽量减少勇士的属性数量，否则可能会出现严重卡顿（划掉，现在你放一万个属性也不会卡）
@@ -5570,7 +5570,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 	},
-	"autoClear": function () {
+    "autoClear": function () {
 		// 在此增加新插件
 		/**
 		 * --------------- 使用说明 ---------------
@@ -5904,7 +5904,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.updateStatusBar();
 		}
 	},
-	"scrollingText": function () {
+    "scrollingText": function () {
 		// 本插件用于绘制在线留言
 		// 说明：https://h5mota.com/bbs/thread/?tid=1017
 		// 目前使用core.http代替帖子中提到的axios
@@ -6133,672 +6133,672 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		//#endregion 
 
 	},
-	"uiBaseClass": function () {
-		// 本插件定义了一些用于绘制的基类
-		/** 
-		 * @typedef {(x:number,y:number,px:number,py:number)=>void} posFunc
+    "uiBaseClass": function () {
+	// 本插件定义了一些用于绘制的基类
+	/** 
+	 * @typedef {(x:number,y:number,px:number,py:number)=>void} posFunc
+	 */
+	/** 按钮基类 */
+	class ButtonBase {
+		constructor(x, y, w, h) {
+			this.x = x;
+			this.y = y;
+			this.w = w;
+			this.h = h;
+			this.disable = false;
+			this.status = 'none';
+
+			// 下面三项在initbtnMap时添加
+			/** 
+			 * @type {MenuBase} 所在的Menu，用于触发重绘等事件 
+			 */
+			// @ts-ignore 将在菜单初始化时传入
+			this.menu;
+			/** @type {string} 所在的Menu的画布名称 */
+			this.ctx = '';
+			/** @type {string|number} 自身在所在的Menu的btnMap中的索引 */
+			this.key = '';
+
+			/** @type {posFunc} */
+			this.ondown = () => {};
+			/** @type {posFunc|undefined} */
+			this.onmove = undefined;
+			/** @type {posFunc|undefined} */
+			this.onup = undefined;
+		}
+
+		/** 绘制该按钮的外观
+		 * @interface 
 		 */
-		/** 按钮基类 */
-		class ButtonBase {
-			constructor(x, y, w, h) {
-				this.x = x;
-				this.y = y;
-				this.w = w;
-				this.h = h;
-				this.disable = false;
-				this.status = 'none';
+		draw() {}
 
-				// 下面三项在initbtnMap时添加
-				/** 
-				 * @type {MenuBase} 所在的Menu，用于触发重绘等事件 
-				 */
-				// @ts-ignore 将在菜单初始化时传入
-				this.menu;
-				/** @type {string} 所在的Menu的画布名称 */
-				this.ctx = '';
-				/** @type {string|number} 自身在所在的Menu的btnMap中的索引 */
-				this.key = '';
-
-				/** @type {posFunc} */
-				this.ondown = () => { };
-				/** @type {posFunc|undefined} */
-				this.onmove = undefined;
-				/** @type {posFunc|undefined} */
-				this.onup = undefined;
-			}
-
-			/** 绘制该按钮的外观
-			 * @interface 
-			 */
-			draw() { }
-
-			/** 默认为矩形判定区 */
-			inRange(px, py) {
-				return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
-			}
+		/** 默认为矩形判定区 */
+		inRange(px, py) {
+			return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
 		}
-		const KeyCodeEnum = {
-			BackSpace: 8,
-			Tab: 9,
-			Enter: 13,
-			Esc: 27,
-			SpaceBar: 32,
-			PageUp: 33,
-			PageDown: 34,
-			Left: 37,
-			Up: 38,
-			Right: 39,
-			Down: 40,
-			C: 67,
-			Q: 81,
-			T: 84,
-		};
+	}
+	const KeyCodeEnum = {
+		BackSpace: 8,
+		Tab: 9,
+		Enter: 13,
+		Esc: 27,
+		SpaceBar: 32,
+		PageUp: 33,
+		PageDown: 34,
+		Left: 37,
+		Up: 38,
+		Right: 39,
+		Down: 40,
+		C: 67,
+		Q: 81,
+		T: 84,
+	};
 
-		/** @typedef {'ondown'|'onmove'|'onup'|'keyDown'|'keyUp'|'onmousewheel'} eventType  */
-		class MenuBase {
-			/** 
-			 * @param {string} name 菜单名称，作为绘制画布时的名称
-			 * @param {eventType[]} [toListen] 
-			 * @param {number} [x] 
-			 * @param {number} [y]
-			 * @param {number} [w]
-			 * @param {number} [h]
-			 * @param {number} [zIndex]
-			 */
-			constructor(name, toListen, x, y, w, h, zIndex) {
-				this.name = name;
-				/** @type {Map<string|number, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
-				this.btnMap = new Map();
-				/** 当前画布是否正被绘制 */
-				this.onDraw = false;
-				/** @type {Set<eventType>} 当前画布需要监听的事件类型 */
-				this.toListen = new Set(toListen);
+	/** @typedef {'ondown'|'onmove'|'onup'|'keyDown'|'keyUp'|'onmousewheel'} eventType  */
+	class MenuBase {
+		/** 
+		 * @param {string} name 菜单名称，作为绘制画布时的名称
+		 * @param {eventType[]} [toListen] 
+		 * @param {number} [x] 
+		 * @param {number} [y]
+		 * @param {number} [w]
+		 * @param {number} [h]
+		 * @param {number} [zIndex]
+		 */
+		constructor(name, toListen, x, y, w, h, zIndex) {
+			this.name = name;
+			/** @type {Map<string|number, ButtonBase>} 本菜单上的按钮列表，每次绘制将触发按钮的draw事件 */
+			this.btnMap = new Map();
+			/** 当前画布是否正被绘制 */
+			this.onDraw = false;
+			/** @type {Set<eventType>} 当前画布需要监听的事件类型 */
+			this.toListen = new Set(toListen);
 
-				this.x = x ?? 0;
-				this.y = y ?? 0;
-				this.w = w ?? core.__PIXELS__;
-				this.h = h ?? core.__PIXELS__;
-				this.zIndex = zIndex ?? 136; // 136比uievent大1
-			}
+			this.x = x ?? 0;
+			this.y = y ?? 0;
+			this.w = w ?? core.__PIXELS__;
+			this.h = h ?? core.__PIXELS__;
+			this.zIndex = zIndex ?? 136; // 136比uievent大1
+		}
 
-			// #region 监听事件
-			/** 返回换算后的画布上的相对坐标 */
-			convertCoordinate(px, py) {
-				return [px - this.x, py - this.y];
-			}
+		// #region 监听事件
+		/** 返回换算后的画布上的相对坐标 */
+		convertCoordinate(px, py) {
+			return [px - this.x, py - this.y];
+		}
 
-			/** 默认为矩形判定区 */
-			inRange(px, py) {
-				return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
-			}
+		/** 默认为矩形判定区 */
+		inRange(px, py) {
+			return px >= this.x && px <= this.x + this.w && py >= this.y && py <= this.y + this.h;
+		}
 
-			ondown(x, y, rawpx, rawpy) {
-				if (!this.inRange(rawpx, rawpy)) return;
-				const [px, py] = this.convertCoordinate(rawpx, rawpy);
-				this.ondownEvent(x, y, px, py);
-				this.ondownBtnEvent(x, y, px, py);
-			}
+		ondown(x, y, rawpx, rawpy) {
+			if (!this.inRange(rawpx, rawpy)) return;
+			const [px, py] = this.convertCoordinate(rawpx, rawpy);
+			this.ondownEvent(x, y, px, py);
+			this.ondownBtnEvent(x, y, px, py);
+		}
 
-			/** 点击画布自身触发的事件
-			 *  @interface 
-			 */
-			ondownEvent(x, y, px, py) { }
+		/** 点击画布自身触发的事件
+		 *  @interface 
+		 */
+		ondownEvent(x, y, px, py) {}
 
-			// btnMap 一个key指向一个对象 包含btn本身，对应事件，是否disable btn本身不包含event 由菜单赋予
+		// btnMap 一个key指向一个对象 包含btn本身，对应事件，是否disable btn本身不包含event 由菜单赋予
 
-			/** 点击画布的按钮触发的事件
-			 * @interface 
-			 */
-			ondownBtnEvent(x, y, px, py) {
-				this.btnMap.forEach((btn) => {
-					if (btn.disable) return;
-					if (btn.inRange(px, py)) {
-						btn.ondown(x, y, px, py);
-					}
-				});
-			}
-
-			/** 屏幕被鼠标滑动或手指拖动时触发的事件
-			 * @interface (x:number,y:number,px:number,py:number):void 
-			 */
-			onmove(x, y, rawpx, rawpy) {
-				if (!this.inRange(rawpx, rawpy)) return;
-				const [px, py] = this.convertCoordinate(rawpx, rawpy);
-				this.onmoveEvent(x, y, px, py);
-				this.onmoveBtnEvent(x, y, px, py);
-			}
-
-			onmoveEvent(x, y, px, py) { }
-
-			onmoveBtnEvent(x, y, px, py) {
-				this.btnMap.forEach((btn) => {
-					if (btn.disable) return;
-					if (btn.inRange(px, py) && btn.onmove) {
-						btn.onmove(x, y, px, py);
-					}
-				});
-			}
-
-			/** 当屏幕被鼠标或手指放开时触发的事件
-			 * @interface (x:number,y:number,px:number,py:number):void
-			 */
-			onup(x, y, rawpx, rawpy) {
-				if (!this.inRange(rawpx, rawpy)) return;
-				const [px, py] = this.convertCoordinate(rawpx, rawpy);
-				this.onupEvent(x, y, px, py);
-				this.onupBtnEvent(x, y, px, py);
-			}
-
-			onupEvent(x, y, px, py) { }
-
-			onupBtnEvent(x, y, px, py) {
-				this.btnMap.forEach((btn) => {
-					if (btn.disable) return;
-					if (btn.inRange(px, py) && btn.onup) {
-						btn.onup(x, y, px, py);
-					}
-				});
-			}
-
-			/** 按键被按下时触发的事件
-			 * @interface (keycode:number)=>void 
-			 */
-			keyDownEvent(keycode) { }
-
-			/** 按键被放开时触发的事件
-			 * @interface (keycode:number,altkey?:boolean,fromReplay?:boolean)=>void)
-			 */
-			keyUpEvent(keycode, altkey, fromReplay) { }
-
-			/** 鼠标滚轮滚动时触发的事件
-			 * @interface (direct:1|-1):void
-			 */
-			onmousewheelEvent(direct) { }
-			// #endregion
-
-			/** 
-			 * @param {string | number} key
-			 * @param {ButtonBase} btn
-			 * @param {posFunc | {ondown:posFunc,onmove?:posFunc,onup?:posFunc}} [event]
-			 */
-			registerBtn(key, btn, event) {
-				btn.menu = this;
-				btn.ctx = this.name;
-				btn.key = key;
-				if (event == null) { } else if (typeof event === 'function') {
-					btn.ondown = event;
-				} else {
-					const { ondown, onmove, onup } = event;
-					btn.ondown = ondown;
-					btn.onmove = onmove;
-					btn.onup = onup;
+		/** 点击画布的按钮触发的事件
+		 * @interface 
+		 */
+		ondownBtnEvent(x, y, px, py) {
+			this.btnMap.forEach((btn) => {
+				if (btn.disable) return;
+				if (btn.inRange(px, py)) {
+					btn.ondown(x, y, px, py);
 				}
-				this.btnMap.set(key, btn);
-			}
+			});
+		}
 
-			registerBtns(arr) {
-				arr.forEach(ele => {
-					const [key, btn, event] = ele;
-					this.registerBtn(key, btn, event);
-				});
-			}
+		/** 屏幕被鼠标滑动或手指拖动时触发的事件
+		 * @interface (x:number,y:number,px:number,py:number):void 
+		 */
+		onmove(x, y, rawpx, rawpy) {
+			if (!this.inRange(rawpx, rawpy)) return;
+			const [px, py] = this.convertCoordinate(rawpx, rawpy);
+			this.onmoveEvent(x, y, px, py);
+			this.onmoveBtnEvent(x, y, px, py);
+		}
 
-			// 创建并返回本菜单的画布
-			createCanvas() {
-				return core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
-			}
+		onmoveEvent(x, y, px, py) {}
 
-			drawButtonContent() {
-				this.btnMap.forEach((button) => {
-					if (!button.disable) button.draw();
-				})
-			}
+		onmoveBtnEvent(x, y, px, py) {
+			this.btnMap.forEach((btn) => {
+				if (btn.disable) return;
+				if (btn.inRange(px, py) && btn.onmove) {
+					btn.onmove(x, y, px, py);
+				}
+			});
+		}
 
-			drawContent() {
-				this.drawButtonContent();
-				this.onDraw = true;
-			}
+		/** 当屏幕被鼠标或手指放开时触发的事件
+		 * @interface (x:number,y:number,px:number,py:number):void
+		 */
+		onup(x, y, rawpx, rawpy) {
+			if (!this.inRange(rawpx, rawpy)) return;
+			const [px, py] = this.convertCoordinate(rawpx, rawpy);
+			this.onupEvent(x, y, px, py);
+			this.onupBtnEvent(x, y, px, py);
+		}
 
-			beginListen() {
-				if (this.toListen.has('ondown')) core.registerAction('ondown', this.name, this.ondown.bind(this), 100);
-				if (this.toListen.has('keyDown')) core.registerAction('keyDown', this.name, this.keyDownEvent.bind(this), 100);
-				if (this.toListen.has('keyUp')) core.registerAction('keyUp', this.name, this.keyUpEvent.bind(this), 100);
-				if (this.toListen.has('onmove')) core.registerAction('onmove', this.name, this.onmove.bind(this), 100)
-				if (this.toListen.has('onup')) core.registerAction('onup', this.name, this.onup.bind(this), 100);
-				if (this.toListen.has('onmousewheel')) core.registerAction('onmousewheel', this.name, this.onmousewheelEvent.bind(this), 100);
-			}
+		onupEvent(x, y, px, py) {}
 
-			endListen() {
-				core.unregisterAction('ondown', this.name);
-				core.unregisterAction('keyDown', this.name);
-				core.unregisterAction('keyUp', this.name);
-				core.unregisterAction('onmove', this.name);
-				core.unregisterAction('onup', this.name);
-				core.unregisterAction('onmousewheel', this.name);
-			}
+		onupBtnEvent(x, y, px, py) {
+			this.btnMap.forEach((btn) => {
+				if (btn.disable) return;
+				if (btn.inRange(px, py) && btn.onup) {
+					btn.onup(x, y, px, py);
+				}
+			});
+		}
 
-			remove() {
-				core.ui.deleteCanvas(this.name);
-				this.onDraw = false;
-			}
+		/** 按键被按下时触发的事件
+		 * @interface (keycode:number)=>void 
+		 */
+		keyDownEvent(keycode) {}
 
-			clear() {
-				this.endListen();
-				this.remove();
-			}
+		/** 按键被放开时触发的事件
+		 * @interface (keycode:number,altkey?:boolean,fromReplay?:boolean)=>void)
+		 */
+		keyUpEvent(keycode, altkey, fromReplay) {}
 
-			init() {
-				this.beginListen();
-				this.drawContent();
+		/** 鼠标滚轮滚动时触发的事件
+		 * @interface (direct:1|-1):void
+		 */
+		onmousewheelEvent(direct) {}
+		// #endregion
+
+		/** 
+		 * @param {string | number} key
+		 * @param {ButtonBase} btn
+		 * @param {posFunc | {ondown:posFunc,onmove?:posFunc,onup?:posFunc}} [event]
+		 */
+		registerBtn(key, btn, event) {
+			btn.menu = this;
+			btn.ctx = this.name;
+			btn.key = key;
+			if (event == null) {} else if (typeof event === 'function') {
+				btn.ondown = event;
+			} else {
+				const { ondown, onmove, onup } = event;
+				btn.ondown = ondown;
+				btn.onmove = onmove;
+				btn.onup = onup;
+			}
+			this.btnMap.set(key, btn);
+		}
+
+		registerBtns(arr) {
+			arr.forEach(ele => {
+				const [key, btn, event] = ele;
+				this.registerBtn(key, btn, event);
+			});
+		}
+
+		// 创建并返回本菜单的画布
+		createCanvas() {
+			return core.createCanvas(this.name, this.x, this.y, this.w, this.h, this.zIndex);
+		}
+
+		drawButtonContent() {
+			this.btnMap.forEach((button) => {
+				if (!button.disable) button.draw();
+			})
+		}
+
+		drawContent() {
+			this.drawButtonContent();
+			this.onDraw = true;
+		}
+
+		beginListen() {
+			if (this.toListen.has('ondown')) core.registerAction('ondown', this.name, this.ondown.bind(this), 100);
+			if (this.toListen.has('keyDown')) core.registerAction('keyDown', this.name, this.keyDownEvent.bind(this), 100);
+			if (this.toListen.has('keyUp')) core.registerAction('keyUp', this.name, this.keyUpEvent.bind(this), 100);
+			if (this.toListen.has('onmove')) core.registerAction('onmove', this.name, this.onmove.bind(this), 100)
+			if (this.toListen.has('onup')) core.registerAction('onup', this.name, this.onup.bind(this), 100);
+			if (this.toListen.has('onmousewheel')) core.registerAction('onmousewheel', this.name, this.onmousewheelEvent.bind(this), 100);
+		}
+
+		endListen() {
+			core.unregisterAction('ondown', this.name);
+			core.unregisterAction('keyDown', this.name);
+			core.unregisterAction('keyUp', this.name);
+			core.unregisterAction('onmove', this.name);
+			core.unregisterAction('onup', this.name);
+			core.unregisterAction('onmousewheel', this.name);
+		}
+
+		remove() {
+			core.ui.deleteCanvas(this.name);
+			this.onDraw = false;
+		}
+
+		clear() {
+			this.endListen();
+			this.remove();
+		}
+
+		init() {
+			this.beginListen();
+			this.drawContent();
+		}
+	}
+
+	class PagedMenu extends MenuBase {
+		constructor(name, toListen, x, y, w, h, zIndex, capacity, data) {
+			super(name, toListen, x, y, w, h, zIndex);
+			this.page = 0;
+			/** @type {any[]} */
+			this.totalItemList = data;
+			/** @type {any[]} */
+			this.currItemList;
+			this.capacity = capacity;
+		}
+
+		drawContent() {
+			const pageDownBtn = this.btnMap.get("pageDown"),
+				pageUpBtn = this.btnMap.get("pageUp");
+			if (pageDownBtn) pageDownBtn.alpha = this.canPageDown() ? 1 : 0.3;
+			if (pageUpBtn) pageUpBtn.alpha = this.canPageUp() ? 1 : 0.3;
+			super.drawContent();
+		}
+
+		/** 此类初始化时需要调用一次 **/
+		updateCurrItemList() {
+			this.currItemList = this.totalItemList.slice(this.page * this.capacity, (this.page + 1) * this.capacity);
+		}
+
+		canPageDown() {
+			return this.page > 0;
+		}
+
+		pageDown() {
+			if (!this.canPageDown()) return;
+			this.page--;
+			this.updateCurrItemList();
+			this.drawContent();
+		}
+
+		canPageUp() {
+			return (this.page + 1) * this.capacity < this.totalItemList.length
+		}
+
+		pageUp() {
+			if (!this.canPageUp()) return;
+			this.page++;
+			this.updateCurrItemList();
+			this.drawContent();
+		}
+	}
+
+	class MultiTypePagedMenu extends MenuBase {
+		/**
+		 * @param {string} name - 菜单名称
+		 * @param {any} toListen - 要监听的事件集合
+		 * @param {number} x - X坐标
+		 * @param {number} y - Y坐标
+		 * @param {number} w - 宽度
+		 * @param {number} h - 高度
+		 * @param {number} zIndex - 层级
+		 * @param {Object<string, {capacity: number, totalItemList: any[], pageDownBtnKey: string, pageUpBtnKey: string}>} pagesConfig 
+		 *        配置对象，格式示例:
+		 *        {
+		 *          'items': { capacity: 5, totalItemList: [...], pageDownBtnKey: 'btnItemPrev', pageUpBtnKey: 'btnItemNext' },
+		 *          'logs': { capacity: 10, totalItemList: [...], pageDownBtnKey: 'btnLogPrev', pageUpBtnKey: 'btnLogNext' }
+		 *        }
+		 */
+		constructor(name, toListen, x, y, w, h, zIndex, pagesConfig) {
+			super(name, toListen, x, y, w, h, zIndex);
+
+			// 内部状态存储
+			this.page = {}; // { type: currentPageIndex }
+			this.totalItemList = {}; // { type: fullData[] }
+			this.currItemList = {}; // { type: currentSlice[] }
+			this.capacityConfig = {}; // { type: capacityNum }
+
+			// 按钮键名映射存储: { type: { down: key, up: key } }
+			this.btnKeyMap = {};
+
+			for (const type in pagesConfig) {
+				const config = pagesConfig[type];
+				this.capacityConfig[type] = config.capacity;
+				this.totalItemList[type] = config.totalItemList;
+				this.page[type] = 0;
+				this.btnKeyMap[type] = {
+					down: config.pageDownBtnKey,
+					up: config.pageUpBtnKey
+				};
+				this.updateCurrItemList(type);
 			}
 		}
 
-		class PagedMenu extends MenuBase {
-			constructor(name, toListen, x, y, w, h, zIndex, capacity, data) {
-				super(name, toListen, x, y, w, h, zIndex);
-				this.page = 0;
-				/** @type {any[]} */
-				this.totalItemList = data;
-				/** @type {any[]} */
-				this.currItemList;
-				this.capacity = capacity;
-			}
+		drawContent() {
+			for (const type in this.btnKeyMap) {
+				const keys = this.btnKeyMap[type];
 
-			drawContent() {
-				const pageDownBtn = this.btnMap.get("pageDown"),
-					pageUpBtn = this.btnMap.get("pageUp");
-				if (pageDownBtn) pageDownBtn.alpha = this.canPageDown() ? 1 : 0.3;
-				if (pageUpBtn) pageUpBtn.alpha = this.canPageUp() ? 1 : 0.3;
-				super.drawContent();
-			}
+				if (keys.down) {
+					const btn = this.btnMap.get(keys.down);
+					if (btn) {
+						btn.alpha = this.canPageDown(type) ? 1 : 0.3;
+					}
+				}
 
-			/** 此类初始化时需要调用一次 **/
-			updateCurrItemList() {
-				this.currItemList = this.totalItemList.slice(this.page * this.capacity, (this.page + 1) * this.capacity);
+				if (keys.up) {
+					const btn = this.btnMap.get(keys.up);
+					if (btn) {
+						btn.alpha = this.canPageUp(type) ? 1 : 0.3;
+					}
+				}
 			}
-
-			canPageDown() {
-				return this.page > 0;
-			}
-
-			pageDown() {
-				if (!this.canPageDown()) return;
-				this.page--;
-				this.updateCurrItemList();
-				this.drawContent();
-			}
-
-			canPageUp() {
-				return (this.page + 1) * this.capacity < this.totalItemList.length
-			}
-
-			pageUp() {
-				if (!this.canPageUp()) return;
-				this.page++;
-				this.updateCurrItemList();
-				this.drawContent();
-			}
+			super.drawContent();
 		}
 
-		class MultiTypePagedMenu extends MenuBase {
-			/**
-			 * @param {string} name - 菜单名称
-			 * @param {any} toListen - 要监听的事件集合
-			 * @param {number} x - X坐标
-			 * @param {number} y - Y坐标
-			 * @param {number} w - 宽度
-			 * @param {number} h - 高度
-			 * @param {number} zIndex - 层级
-			 * @param {Object<string, {capacity: number, totalItemList: any[], pageDownBtnKey: string, pageUpBtnKey: string}>} pagesConfig 
-			 *        配置对象，格式示例:
-			 *        {
-			 *          'items': { capacity: 5, totalItemList: [...], pageDownBtnKey: 'btnItemPrev', pageUpBtnKey: 'btnItemNext' },
-			 *          'logs': { capacity: 10, totalItemList: [...], pageDownBtnKey: 'btnLogPrev', pageUpBtnKey: 'btnLogNext' }
-			 *        }
-			 */
-			constructor(name, toListen, x, y, w, h, zIndex, pagesConfig) {
-				super(name, toListen, x, y, w, h, zIndex);
-
-				// 内部状态存储
-				this.page = {};           // { type: currentPageIndex }
-				this.totalItemList = {};  // { type: fullData[] }
-				this.currItemList = {};   // { type: currentSlice[] }
-				this.capacityConfig = {}; // { type: capacityNum }
-
-				// 按钮键名映射存储: { type: { down: key, up: key } }
-				this.btnKeyMap = {};
-
-				for (const type in pagesConfig) {
-					const config = pagesConfig[type];
-					this.capacityConfig[type] = config.capacity;
-					this.totalItemList[type] = config.totalItemList;
-					this.page[type] = 0;
-					this.btnKeyMap[type] = {
-						down: config.pageDownBtnKey,
-						up: config.pageUpBtnKey
-					};
+		/**
+		 * @param {string} [pageType] 
+		 */
+		updateCurrItemList(pageType) {
+			if (!pageType) {
+				for (const type in this.page) {
 					this.updateCurrItemList(type);
 				}
+				return;
 			}
+			const currentPage = this.page[pageType] || 0;
+			const capacity = this.capacityConfig[pageType];
 
-			drawContent() {
-				for (const type in this.btnKeyMap) {
-					const keys = this.btnKeyMap[type];
+			const start = currentPage * capacity;
+			const end = start + capacity;
 
-					if (keys.down) {
-						const btn = this.btnMap.get(keys.down);
-						if (btn) {
-							btn.alpha = this.canPageDown(type) ? 1 : 0.3;
-						}
-					}
-
-					if (keys.up) {
-						const btn = this.btnMap.get(keys.up);
-						if (btn) {
-							btn.alpha = this.canPageUp(type) ? 1 : 0.3;
-						}
-					}
-				}
-				super.drawContent();
-			}
-
-			/**
-			 * @param {string} [pageType] 
-			 */
-			updateCurrItemList(pageType) {
-				if (!pageType) {
-					for (const type in this.page) {
-						this.updateCurrItemList(type);
-					}
-					return;
-				}
-				const currentPage = this.page[pageType] || 0;
-				const capacity = this.capacityConfig[pageType];
-
-				const start = currentPage * capacity;
-				const end = start + capacity;
-
-				this.currItemList[pageType] = this.totalItemList[pageType].slice(start, end);
-			}
-
-			/**
-			 * 检查指定类型是否可以向下翻页 (回到上一页)
-			 * @param {string} pageType 
-			 * @returns {boolean}
-			 */
-			canPageDown(pageType) {
-				return (this.page[pageType] || 0) > 0;
-			}
-
-			/**
-			 * 执行向下翻页 (页码 -1)
-			 * @param {string} pageType 
-			 */
-			pageDown(pageType) {
-				if (!this.canPageDown(pageType)) return;
-
-				this.page[pageType]--;
-				this.updateCurrItemList(pageType);
-				this.drawContent();
-			}
-
-			/**
-			 * 检查指定类型是否可以向上翻页 (进入下一页)
-			 * @param {string} pageType 
-			 * @returns {boolean}
-			 */
-			canPageUp(pageType) {
-				const currentPage = this.page[pageType] || 0;
-				const capacity = this.capacityConfig[pageType];
-				const totalLen = this.totalItemList[pageType] ? this.totalItemList[pageType].length : 0;
-
-				return (currentPage + 1) * capacity < totalLen;
-			}
-
-			/**
-			 * 执行向上翻页 (页码 +1)
-			 * @param {string} pageType 
-			 */
-			pageUp(pageType) {
-				if (!this.canPageUp(pageType)) return;
-
-				this.page[pageType]++;
-				this.updateCurrItemList(pageType);
-				this.drawContent(); // 重绘以更新按钮状态和内容
-			}
-
-			// --- 辅助方法 ---
-			/**
-			 * 获取指定类型的当前页码 (从0开始)
-			 * @param {string} pageType
-			 * @returns {number}
-			 */
-			getCurrentPage(pageType) {
-				return this.page[pageType] || 0;
-			}
-
-			/**
-			 * 获取指定类型的总页数
-			 * @param {string} pageType
-			 * @returns {number}
-			 */
-			getTotalPages(pageType) {
-				const totalLen = this.totalItemList[pageType] ? this.totalItemList[pageType].length : 0;
-				const capacity = this.capacityConfig[pageType];
-				if (!capacity || capacity <= 0) return 0;
-				return Math.ceil(totalLen / capacity);
-			}
+			this.currItemList[pageType] = this.totalItemList[pageType].slice(start, end);
 		}
 
-		class Pagination extends MenuBase {
-			constructor(pageList, currPage, name, toListen, x, y, w, h, zIndex) {
-				super(name, toListen, x, y, w, h, zIndex);
-				/**
-				 * 当前页面列表
-				 * @type {Array<MenuBase>}
-				 */
-				this.pageList = pageList;
-				/**
-				 * 当前页的序号
-				 * @type {number}
-				 */
-				this.currPage = currPage || 0;
-			}
-
-			initOnePage(index) {
-				this.currPage = index;
-				this.pageList[index].init();
-			}
-
-			changePage(num) {
-				if (num !== this.currPage) {
-					const beforeMenu = this.pageList[this.currPage];
-					beforeMenu.clear();
-				}
-				this.initOnePage(num);
-			}
-
-			pageDown() {
-				if (this.currPage > 0) this.changePage(this.currPage - 1);
-			}
-
-			pageUp() {
-				if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
-			}
-
-			clear() {
-				this.pageList.forEach((page) => page.clear());
-				super.clear();
-			}
+		/**
+		 * 检查指定类型是否可以向下翻页 (回到上一页)
+		 * @param {string} pageType 
+		 * @returns {boolean}
+		 */
+		canPageDown(pageType) {
+			return (this.page[pageType] || 0) > 0;
 		}
 
-		// 圆角带文字的按钮
-		class RoundBtn extends ButtonBase {
-			constructor(x, y, w, h, text, config) {
-				super(x, y, w, h);
-				this.text = text;
-				this.config = config || {};
-			}
+		/**
+		 * 执行向下翻页 (页码 -1)
+		 * @param {string} pageType 
+		 */
+		pageDown(pageType) {
+			if (!this.canPageDown(pageType)) return;
 
-			draw() {
-				const ctx = this.ctx;
-				const { x, y, w, h } = this;
-				const {
-					fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
+			this.page[pageType]--;
+			this.updateCurrItemList(pageType);
+			this.drawContent();
+		}
+
+		/**
+		 * 检查指定类型是否可以向上翻页 (进入下一页)
+		 * @param {string} pageType 
+		 * @returns {boolean}
+		 */
+		canPageUp(pageType) {
+			const currentPage = this.page[pageType] || 0;
+			const capacity = this.capacityConfig[pageType];
+			const totalLen = this.totalItemList[pageType] ? this.totalItemList[pageType].length : 0;
+
+			return (currentPage + 1) * capacity < totalLen;
+		}
+
+		/**
+		 * 执行向上翻页 (页码 +1)
+		 * @param {string} pageType 
+		 */
+		pageUp(pageType) {
+			if (!this.canPageUp(pageType)) return;
+
+			this.page[pageType]++;
+			this.updateCurrItemList(pageType);
+			this.drawContent(); // 重绘以更新按钮状态和内容
+		}
+
+		// --- 辅助方法 ---
+		/**
+		 * 获取指定类型的当前页码 (从0开始)
+		 * @param {string} pageType
+		 * @returns {number}
+		 */
+		getCurrentPage(pageType) {
+			return this.page[pageType] || 0;
+		}
+
+		/**
+		 * 获取指定类型的总页数
+		 * @param {string} pageType
+		 * @returns {number}
+		 */
+		getTotalPages(pageType) {
+			const totalLen = this.totalItemList[pageType] ? this.totalItemList[pageType].length : 0;
+			const capacity = this.capacityConfig[pageType];
+			if (!capacity || capacity <= 0) return 0;
+			return Math.ceil(totalLen / capacity);
+		}
+	}
+
+	class Pagination extends MenuBase {
+		constructor(pageList, currPage, name, toListen, x, y, w, h, zIndex) {
+			super(name, toListen, x, y, w, h, zIndex);
+			/**
+			 * 当前页面列表
+			 * @type {Array<MenuBase>}
+			 */
+			this.pageList = pageList;
+			/**
+			 * 当前页的序号
+			 * @type {number}
+			 */
+			this.currPage = currPage || 0;
+		}
+
+		initOnePage(index) {
+			this.currPage = index;
+			this.pageList[index].init();
+		}
+
+		changePage(num) {
+			if (num !== this.currPage) {
+				const beforeMenu = this.pageList[this.currPage];
+				beforeMenu.clear();
+			}
+			this.initOnePage(num);
+		}
+
+		pageDown() {
+			if (this.currPage > 0) this.changePage(this.currPage - 1);
+		}
+
+		pageUp() {
+			if (this.currPage < this.pageList.length - 1) this.changePage(this.currPage + 1);
+		}
+
+		clear() {
+			this.pageList.forEach((page) => page.clear());
+			super.clear();
+		}
+	}
+
+	// 圆角带文字的按钮
+	class RoundBtn extends ButtonBase {
+		constructor(x, y, w, h, text, config) {
+			super(x, y, w, h);
+			this.text = text;
+			this.config = config || {};
+		}
+
+		draw() {
+			const ctx = this.ctx;
+			const { x, y, w, h } = this;
+			const {
+				fillStyle = 'rgb(204, 204, 204)', strokeStyle = 'black', fontStyle = 'black',
 					selectedFillStyle = 'rgb(255, 51, 153)', selectedstrokeStyle = 'black', selectedFontStyle = 'white',
 					radius = 3, lineWidth = 1, angle = null, font = '16px Verdana'
-				} = this.config || {};
-				core.setTextAlign(ctx, 'center');
-				core.setTextBaseline(ctx, 'alphabetic');
-				if (this.status === 'selected') {
-					core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle, angle);
-					core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth, angle);
-					core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, font);
-				} else {
-					core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
-					core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
-					core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, font);
-				}
+			} = this.config || {};
+			core.setTextAlign(ctx, 'center');
+			core.setTextBaseline(ctx, 'alphabetic');
+			if (this.status === 'selected') {
+				core.fillRoundRect(ctx, x, y, w, h, radius, selectedFillStyle, angle);
+				core.strokeRoundRect(ctx, x, y, w, h, radius, selectedstrokeStyle, lineWidth, angle);
+				core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, selectedFontStyle, font);
+			} else {
+				core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
+				core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
+				core.fillText(ctx, this.text, x + w / 2, y + h / 2 + 5, fontStyle, font);
 			}
 		}
+	}
 
-		class IconBtn extends ButtonBase {
-			constructor(x, y, w, h, icon, config) {
-				super(x, y, w, h);
-				this.icon = icon;
-				this.config = config || {};
-			}
+	class IconBtn extends ButtonBase {
+		constructor(x, y, w, h, icon, config) {
+			super(x, y, w, h);
+			this.icon = icon;
+			this.config = config || {};
+		}
 
-			draw() {
-				const ctx = this.ctx;
-				const { x, y, w, h } = this;
-				const {
-					strokeStyle = 'black', fillStyle = 'white',
+		draw() {
+			const ctx = this.ctx;
+			const { x, y, w, h } = this;
+			const {
+				strokeStyle = 'black', fillStyle = 'white',
 					radius = 3, lineWidth = 1, angle = null, frame = 0,
 					iconX = x, iconY = y, iconW = w, iconH = h,
 					crossline1 = false, crossline2 = false, crossLineOffset = 2,
 					crossLineStyle = 'red', crossLineWidth = 2,
-				} = this.config || {};
-				if (fillStyle !== 'none') core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
-				if (strokeStyle !== 'none') core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
-				core.drawIcon(ctx, this.icon, iconX, iconY, iconW, iconH, frame);
-				if (crossline1) {
-					core.drawLine(ctx, x + crossLineOffset, y + crossLineOffset,
-						x + w - crossLineOffset, y + h - crossLineOffset,
-						crossLineStyle, crossLineWidth);
-				}
-				if (crossline2) {
-					core.drawLine(ctx, x + crossLineOffset, y + h - crossLineOffset,
-						x + w - crossLineOffset, y + crossLineOffset,
-						crossLineStyle, crossLineWidth);
-				}
+			} = this.config || {};
+			if (fillStyle !== 'none') core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle, angle);
+			if (strokeStyle !== 'none') core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle, lineWidth, angle);
+			core.drawIcon(ctx, this.icon, iconX, iconY, iconW, iconH, frame);
+			if (crossline1) {
+				core.drawLine(ctx, x + crossLineOffset, y + crossLineOffset,
+					x + w - crossLineOffset, y + h - crossLineOffset,
+					crossLineStyle, crossLineWidth);
+			}
+			if (crossline2) {
+				core.drawLine(ctx, x + crossLineOffset, y + h - crossLineOffset,
+					x + w - crossLineOffset, y + crossLineOffset,
+					crossLineStyle, crossLineWidth);
 			}
 		}
+	}
 
-		class ExitBtn extends ButtonBase {
-			constructor(x, y, w, h, config) {
-				super(x, y, w, h);
-				this.config = config || {};
-			}
+	class ExitBtn extends ButtonBase {
+		constructor(x, y, w, h, config) {
+			super(x, y, w, h);
+			this.config = config || {};
+		}
 
-			draw() {
-				const ctx = this.ctx;
-				const {
-					strokeStyle = ' #D32F2F', fillStyle = ' #EF5350', lineStyle = 'white',
+		draw() {
+			const ctx = this.ctx;
+			const {
+				strokeStyle = ' #D32F2F', fillStyle = ' #EF5350', lineStyle = 'white',
 					radius = 3, lineOffsetX = 5, lineWidthX = 3,
-				} = this.config || {};
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-				core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
-				core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle);
-				core.drawLine(ctx, x + lineOffsetX, y + lineOffsetX, x + w - lineOffsetX, y + h - lineOffsetX, lineStyle, lineWidthX);
-				core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
-			}
+			} = this.config || {};
+			const [x, y, w, h] = [this.x, this.y, this.w, this.h];
+			core.fillRoundRect(ctx, x, y, w, h, radius, fillStyle);
+			core.strokeRoundRect(ctx, x, y, w, h, radius, strokeStyle);
+			core.drawLine(ctx, x + lineOffsetX, y + lineOffsetX, x + w - lineOffsetX, y + h - lineOffsetX, lineStyle, lineWidthX);
+			core.drawLine(ctx, x + lineOffsetX, y + h - lineOffsetX, x + w - lineOffsetX, y + lineOffsetX, lineStyle, lineWidthX);
+		}
+	}
+
+	class ArrowBtn extends ButtonBase {
+		constructor(x, y, w, h, dir, config) {
+			super(x, y, w, h);
+			this.config = config || {};
+			/** @type {'left'|'right'|'up'|'down'} */
+			this.dir = dir;
+			this.alpha = 1;
 		}
 
-		class ArrowBtn extends ButtonBase {
-			constructor(x, y, w, h, dir, config) {
-				super(x, y, w, h);
-				this.config = config || {};
-				/** @type {'left'|'right'|'up'|'down'} */
-				this.dir = dir;
-				this.alpha = 1;
-			}
-
-			draw() {
-				const isVertical = (this.dir === "up") || (this.dir === "down");
-				const {
-					/** 箭头尖端到所指的边的距离 **/
-					marginTip = isVertical ? 5 : 4,
+		draw() {
+			const isVertical = (this.dir === "up") || (this.dir === "down");
+			const {
+				/** 箭头尖端到所指的边的距离 **/
+				marginTip = isVertical ? 5 : 4,
 					/** 箭头两侧到各自最接近的边的距离 **/
 					marginSide = isVertical ? 5 : 5,
 					/**  箭头尾部到最接近的边的距离 **/
 					marginTail = isVertical ? 5 : 6,
 					backStyle = 'gray',
 					arrowStyle = 'black'
-				} = this.config || {};
+			} = this.config || {};
 
-				const { x, y, w, h, ctx, alpha } = this;
+			const { x, y, w, h, ctx, alpha } = this;
 
-				const originAlpha = core.setAlpha(ctx, alpha);
+			const originAlpha = core.setAlpha(ctx, alpha);
 
-				core.fillRoundRect(ctx, x, y, w, h, 3, backStyle);
+			core.fillRoundRect(ctx, x, y, w, h, 3, backStyle);
 
-				let points = [];
+			let points = [];
 
-				if (this.dir === 'left') {
-					points = [
-						[x + marginTip, y + h / 2],
-						[x + w - marginTail, y + marginSide],
-						[x + w - marginTail, y + h - marginSide]
-					];
-				} else if (this.dir === 'right') {
-					points = [
-						[x + w - marginTip, y + h / 2],
-						[x + marginTail, y + marginSide],
-						[x + marginTail, y + h - marginSide]
-					];
-				} else if (this.dir === 'up') {
-					points = [
-						[x + w / 2, y + marginTip],
-						[x + marginSide, y + h - marginTail],
-						[x + w - marginSide, y + h - marginTail]
-					];
-				} else if (this.dir === 'down') {
-					points = [
-						[x + w / 2, y + h - marginTip],
-						[x + marginSide, y + marginTail],
-						[x + w - marginSide, y + marginTail]
-					];
-				}
-
-				if (points.length > 0) {
-					core.fillPolygon(ctx, points, arrowStyle);
-				}
-				core.setAlpha(ctx, originAlpha);
+			if (this.dir === 'left') {
+				points = [
+					[x + marginTip, y + h / 2],
+					[x + w - marginTail, y + marginSide],
+					[x + w - marginTail, y + h - marginSide]
+				];
+			} else if (this.dir === 'right') {
+				points = [
+					[x + w - marginTip, y + h / 2],
+					[x + marginTail, y + marginSide],
+					[x + marginTail, y + h - marginSide]
+				];
+			} else if (this.dir === 'up') {
+				points = [
+					[x + w / 2, y + marginTip],
+					[x + marginSide, y + h - marginTail],
+					[x + w - marginSide, y + h - marginTail]
+				];
+			} else if (this.dir === 'down') {
+				points = [
+					[x + w / 2, y + h - marginTip],
+					[x + marginSide, y + marginTail],
+					[x + w - marginSide, y + marginTail]
+				];
 			}
+
+			if (points.length > 0) {
+				core.fillPolygon(ctx, points, arrowStyle);
+			}
+			core.setAlpha(ctx, originAlpha);
 		}
-		const registerResize = (menu) => {
-			core.control.registerDymCanvasResizeEvent(menu.name, function () {
-				if (menu && menu.onDraw) menu.drawContent();
-			});
-		}
-		const unregisterResize = (menu) => core.control.unregisterDymCanvasResizeEvent(menu.name);
-		core.plugin.uiBase = {
-			ButtonBase,
-			RoundBtn,
-			IconBtn,
-			ExitBtn,
-			ArrowBtn,
-			MenuBase,
-			PagedMenu,
-			MultiTypePagedMenu,
-			Pagination,
-			KeyCodeEnum,
-			registerResize,
-			unregisterResize,
-		};
-	},
-	"newBackpackLook": function () {
+	}
+	const registerResize = (menu) => {
+		core.control.registerDymCanvasResizeEvent(menu.name, function () {
+			if (menu && menu.onDraw) menu.drawContent();
+		});
+	}
+	const unregisterResize = (menu) => core.control.unregisterDymCanvasResizeEvent(menu.name);
+	core.plugin.uiBase = {
+		ButtonBase,
+		RoundBtn,
+		IconBtn,
+		ExitBtn,
+		ArrowBtn,
+		MenuBase,
+		PagedMenu,
+		MultiTypePagedMenu,
+		Pagination,
+		KeyCodeEnum,
+		registerResize,
+		unregisterResize,
+	};
+},
+    "newBackpackLook": function () {
 		// 本插件定义了一些用于绘制的基类
 
 		let __enable = true;
@@ -8043,7 +8043,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		// #endregion
 	},
-	"autoChangeEquip": function () {
+    "autoChangeEquip": function () {
 		// 调用方法：在合适的位置调用函数figureEquip即可，例如在脚本编辑-按键处理加入case 89: core.plugin.figureEquip(); break;
 		// 即按Y键进入切装模式
 
@@ -8288,7 +8288,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			})
 		}
 	},
-	"customizableToolBar": function () {
+    "customizableToolBar": function () {
 		// 自定义工具栏显示项
 		// 本插件需要配合main.js, control.js等的修改
 		// 新的逻辑如下：
@@ -8418,7 +8418,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		this.setToolbarButton = setToolbarButton;
 	},
-	"setting": function () {
+    "setting": function () {
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方
 
@@ -10013,7 +10013,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		// @todo 新版存档界面
 	},
-	"statistics": function () {
+    "statistics": function () {
 		// 是否开启本插件，默认禁用；将此改成 true 将启用本插件。
 		let __enable = true;
 		if (!__enable) return;
@@ -10525,7 +10525,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 				this.mode = mode;
 				/** @type {StatisticsHeaderConfig} */
 				this.userConfig = getUserConfig();
-				this.totalItemList.push("customizeDamageRange");
+				if (this.mode === "damage") this.totalItemList.push("customizeDamageRange");
 				this.updateCurrItemList();
 			}
 
