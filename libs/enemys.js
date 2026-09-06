@@ -197,15 +197,19 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
         enemy = core.material.enemys[enemy];
         if (enemy == null) return null;
     }
-    enemy = clone(enemy);
 
     if (!core.isset(name)) { // 仅name不填时返回该enemy的完整数据，有x,y将用该点信息覆盖core.material.enemys相应属性
+        enemy = clone(enemy);
         for (let status in pointInfo) {
             if (pointInfo.hasOwnProperty(status)) enemy[status] = pointInfo[status];
         }
         return enemy;
     }
-    else return enemy[name];
+    const value = enemy[name];
+    if (typeof value === "number" || typeof value === "string" ||
+        typeof value === "boolean"
+    ) return value;
+    return clone(value);
 }
 
 ////// 能否获胜 //////
