@@ -8330,6 +8330,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		this.getToolBarConfig = getToolBarConfig;
 
+		const toolBarTypes = ['normal', 'num', 'replay'];
+		const toolBarIcons = ['book', 'fly', 'toolbox', 'keyboard', 'shop', 'save', 'load', 'settings', 'rollback', 'undoRollback',
+			'btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btn9', 'btnAlt',
+			'equipbox', 'floor', 'play', 'rewind', 'speedDown', 'speedUp', 'stop', 'single', 'view'];
+		// 录像模式下的按键处理有一套专门的逻辑，在_sys_onkeyUp_replay，实际上并不能读取自动档
+		const replayBlockedIcons = ['fly', 'shop', 'load', 'settings', 'btnAlt', 'rollback', 'undoRollback'];
+		const playOnlyIcons = ['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'single'];
+
+		function toolBarBlockReason(type, value) {
+			if (value !== 'delete' && !toolBarIcons.includes(value)) return '请选中一个图标作为替换目标!';
+			if (type === 'replay' && replayBlockedIcons.includes(value)) return '该按钮不允许放在录像模式下！';
+			if (type !== 'replay' && playOnlyIcons.includes(value)) return '该按钮不允许放在非录像模式下！';
+			return '';
+		}
+		this.toolBarBlockReason = toolBarBlockReason;
+
 		/**
 		 * 
 		 * @param {string} type 
@@ -8338,29 +8354,17 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * @example core.setToolBarConfig('normal', 3, null)
 		 */
 		function setToolBarConfig(type, index, value) {
-			const allToolType = ['normal', 'num', 'replay'];
-			const allTools = ['book', 'fly', 'toolbox', 'keyboard', 'shop', 'save', 'load', 'settings', 'rollback', 'undoRollback',
-				'btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'btn6', 'btn7', 'btn8', 'btn9', 'btnAlt',
-				'equipbox', 'floor', 'play', 'rewind', 'speedDown', 'speedUp', 'stop', 'single', 'view'];
-			if (!allToolType.includes(type) || index < 0 || index > 8) {
+			if (!toolBarTypes.includes(type) || index < 0 || index > 8) {
 				core.drawFailTip('请选中工具栏的一个合法位置作为目标点!');
 				return;
 			}
-			if (value !== 'delete' && !allTools.includes(value)) {
-				core.drawFailTip('请选中一个图标作为替换目标!');
+			const reason = toolBarBlockReason(type, value);
+			if (reason) {
+				core.drawFailTip(reason);
 				return;
 			}
 			const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
 			const key = isVertical() ? 'vertical' : 'horizontal';
-			if (type === 'replay' &&
-				(['fly', 'shop', 'load', 'settings', 'btnAlt', 'rollback', 'undoRollback', 'btnAlt'].includes(value))) {
-				core.drawFailTip('该按钮不允许放在录像模式下！');
-				return;
-			} // 录像模式下的按键处理有一套专门的逻辑，在_sys_onkeyUp_replay，实际上并不能读取自动档
-			if (type !== 'replay' && ['play', 'stop', 'rewind', 'speedDown', 'speedUp', 'single'].includes(value)) {
-				core.drawFailTip('该按钮不允许放在非录像模式下！');
-				return;
-			}
 
 			if (value === 'delete') toorBarConfig[key].splice(index, 1);
 			else {
@@ -8382,12 +8386,50 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		this.setToolBarConfig = setToolBarConfig;
 
-		function resetToolBarConfig() {
-			for (let type in defaultConfig) {
-				if (!defaultConfig.hasOwnProperty(type)) return;
-				const toorBarConfig = core.getLocalStorage('toorBarConfig' + type, defaultConfig[type]);
-				core.setLocalStorage('toorBarConfig' + type, toorBarConfig);
+		// 拖动松手后一次写入当前方向的整行。已在行内的图标不再做模式检查，便于调整已有顺序。
+		function commitToolBarList(type, nextList) {
+			if (!toolBarTypes.includes(type) || !Array.isArray(nextList) || nextList.length > 9) {
+				core.drawFailTip('请选中工具栏的一个合法位置作为目标点!');
+				return false;
 			}
+			const prev = getToolBarConfig(type) || [];
+			const seen = Object.create(null);
+			for (let i = 0; i < nextList.length; i++) {
+				const value = nextList[i];
+				if (seen[value]) {
+					core.drawFailTip('请选中一个图标作为替换目标!');
+					return false;
+				}
+				seen[value] = true;
+				if (prev.indexOf(value) !== -1) continue;
+				const reason = toolBarBlockReason(type, value);
+				if (reason) {
+					core.drawFailTip(reason);
+					return false;
+				}
+			}
+			const stored = core.getLocalStorage('toorBarConfig' + type, null);
+			const base = stored || defaultConfig[type];
+			const store = {
+				vertical: Array.isArray(base.vertical) ? base.vertical.slice() : [],
+				horizontal: Array.isArray(base.horizontal) ? base.horizontal.slice() : [],
+			};
+			store[isVertical() ? 'vertical' : 'horizontal'] = nextList.slice();
+			core.setLocalStorage('toorBarConfig' + type, store);
+			setToolbarButton(core.domStyle.toolbarBtn);
+			return true;
+		}
+		this.commitToolBarList = commitToolBarList;
+
+		function resetToolBarConfig() {
+			toolBarTypes.forEach((type) => {
+				const src = defaultConfig[type];
+				core.setLocalStorage('toorBarConfig' + type, {
+					vertical: src.vertical.slice(),
+					horizontal: src.horizontal.slice(),
+				});
+			});
+			setToolbarButton(core.domStyle.toolbarBtn);
 		}
 		this.resetToolBarConfig = resetToolBarConfig;
 
@@ -9063,6 +9105,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		// #endregion
 		// #region 快捷键菜单
+		// 快捷键只绑定能主动使用的道具。装备、宝石等不在此列。
+		// 怪物手册、楼层传送器和设置是打开界面，不作为快捷键物品。
+		const HOTKEY_UI_ITEMS = ['book', 'fly', 'setting'];
+		function hotkeyBindable(item) {
+			if (!item || (item.cls !== 'tools' && item.cls !== 'constants')) return false;
+			if (HOTKEY_UI_ITEMS.includes(item.id)) return false;
+			const effect = item.useItemEffect;
+			const event = item.useItemEvent;
+			const hasEffect = typeof effect === 'string' && effect.trim().length > 0;
+			const hasEvent = Array.isArray(event) && event.length > 0;
+			return hasEffect || hasEvent;
+		}
+
 		/** @type {{[x:string]:Setting}} */
 		const keySetting = {
 			leftHand: {
@@ -9080,21 +9135,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const apply = function (value) {
 						const itemInfo = core.material.items;
 						const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
-						if (aimItem) {
-							if (['constants', 'tools'].includes(aimItem.cls)) {
-								for (let i = 1; i <= 9; i++) {
-									if (i !== num && core.getLocalStorage('hotkey' + i) === aimItem.id) {
-										core.setLocalStorage('hotkey' + i, null);
-									}
-								}
-								core.setLocalStorage('hotkey' + num, aimItem.id);
-								if (this.drawContent) this.drawContent();
-							} else {
-								core.drawFailTip('错误：该类型的物品不支持快捷使用!');
-							}
-						} else {
+						if (!aimItem) {
 							core.drawFailTip('错误：找不到该名称的物品!');
+							return;
 						}
+						if (!hotkeyBindable(aimItem)) {
+							core.drawFailTip('错误：该类型的物品不支持快捷使用!');
+							return;
+						}
+						for (let i = 1; i <= 9; i++) {
+							if (i !== num && core.getLocalStorage('hotkey' + i) === aimItem.id) {
+								core.setLocalStorage('hotkey' + i, null);
+							}
+						}
+						core.setLocalStorage('hotkey' + num, aimItem.id);
+						if (this.drawContent) this.drawContent();
 					};
 					if (value !== undefined) apply.call(this, value);
 					else core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (v) => apply.call(this, v), () => { });
@@ -10023,7 +10078,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			'#dom-setting .set-icon-x::before,#dom-setting .set-icon-x::after{content:"";position:absolute;left:12%;right:12%;top:50%;height:2px;background:red;}',
 			'#dom-setting .set-icon-x::before{transform:rotate(45deg);}#dom-setting .set-icon-x::after{transform:rotate(-45deg);}',
 			'#dom-setting .set-slot{width:calc(28px * var(--set-scale));height:calc(28px * var(--set-scale));padding:1px;',
-			'display:inline-flex;align-items:center;justify-content:center;}',
+			'display:inline-flex;align-items:center;justify-content:center;touch-action:none;}',
+			'#dom-setting .set-palette{cursor:grab;}',
+			'#dom-setting .set-palette[data-tool-icon="delete"]{cursor:pointer;}',
+			'#dom-setting .set-tool-board{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin-bottom:6px;}',
+			'#dom-setting .set-tool-rows{flex:1 1 auto;min-width:0;}',
+			'#dom-setting .set-remove{flex:1 0 4em;display:flex;align-items:center;justify-content:center;min-width:3.2em;min-height:2.6em;padding:4px 8px;',
+			'border:1px dashed #e7a0a0;border-radius:3px;color:#ffd2d2;user-select:none;}',
+			'#dom-setting .set-slot.set-drop-ok{outline:2px solid #7d7;background:#2f5a32;}',
+			'#dom-setting .set-remove.set-drop-ok{outline:2px solid #e88;background:#5c3030;}',
+			'#dom-setting .set-slot.set-drop-over,#dom-setting .set-remove.set-drop-over{outline:2px solid #fff;}',
+			'#dom-setting .set-slot.set-drop-no{opacity:.35;}',
+			'#dom-setting .set-slot.set-dragging{opacity:.4;}',
+			'#dom-setting.set-grabbing,#dom-setting.set-grabbing *{cursor:grabbing !important;}',
+			'#dom-setting .set-ghost{position:absolute;z-index:30;pointer-events:none;transform:translate(-50%,-50%);',
+			'width:calc(28px * var(--set-scale));height:calc(28px * var(--set-scale));display:flex;align-items:center;justify-content:center;',
+			'background:rgba(70,70,70,.92);border:1px solid #fff;border-radius:3px;}',
 			'#dom-setting .set-warn{color:#ffc0cb;}',
 			'#dom-setting .set-note{color:#ff3;font-size:12px;}',
 			'#dom-setting .set-flag-preview{margin:0 0 8px;word-break:break-all;white-space:pre-wrap;}',
@@ -10144,7 +10214,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			const root = document.createElement('div');
 			root.id = 'dom-setting';
-			const state = { page: 0, slot: null, specialPage: 0, toolType: null, toolIndex: -1, toolIcon: null, pick: null };
+			const state = { page: 0, slot: null, specialPage: 0, toolType: null, toolIndex: -1, toolIcon: null, pick: null, hot: null };
+			let toolDrag = null;
 			const pages = [];
 
 			const head = document.createElement('div');
@@ -10280,7 +10351,79 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					paintIcon(icon, iconId);
 					icon.style.display = iconId ? '' : 'none';
 					line.querySelector('.set-hot-name').textContent = name;
+					const pick = line.querySelector('.set-hot-pick');
+					if (pick) pick.classList.toggle('on', !!(state.hot && String(state.hot.num) === String(num)));
 				});
+			}
+
+			function hotkeyChoices() {
+				const items = core.material.items || {};
+				return Object.keys(items).filter((id) => hotkeyBindable(items[id])).map((id) => {
+					const item = items[id] || {};
+					return { id: item.id || id, name: item.name || item.id || id };
+				}).sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+			}
+
+			let hotUi = null;
+			function hotPickOpen() {
+				return !!(state.hot && hotUi && hotUi.box && hotUi.box.offsetParent);
+			}
+			function refreshHotPick() {
+				if (!hotUi) return;
+				if (!state.hot) {
+					hotUi.box.classList.add('off');
+					return;
+				}
+				const list = hotkeyChoices();
+				const pages = Math.max(1, Math.ceil(list.length / PICK_PAGE_SIZE));
+				if (state.hot.page > pages - 1) state.hot.page = pages - 1;
+				if (state.hot.page < 0) state.hot.page = 0;
+				const page = state.hot.page;
+				hotUi.title.textContent = '为数字键' + state.hot.num + '选择物品';
+				hotUi.box.classList.remove('off');
+				hotUi.grid.textContent = '';
+				const slice = list.slice(page * PICK_PAGE_SIZE, page * PICK_PAGE_SIZE + PICK_PAGE_SIZE);
+				if (!slice.length) {
+					const note = document.createElement('p');
+					note.className = 'set-note';
+					note.textContent = '没有可绑定为快捷键的物品。';
+					hotUi.grid.appendChild(note);
+				}
+				slice.forEach((entry) => {
+					const btn = ctrl('button', entry.name + ' ' + entry.id);
+					const icon = document.createElement('span');
+					paintIcon(icon, entry.id);
+					if (icon.style.backgroundImage) btn.appendChild(icon);
+					const text = document.createElement('span');
+					text.className = 'set-pick-text';
+					text.textContent = entry.name;
+					btn.appendChild(text);
+					btn.addEventListener('click', () => chooseHot(entry.id));
+					hotUi.grid.appendChild(btn);
+				});
+				hotUi.page.textContent = (page + 1) + '/' + pages;
+				hotUi.prev.disabled = page <= 0;
+				hotUi.next.disabled = page >= pages - 1;
+			}
+			function openHotPick(num) {
+				if (state.hot && state.hot.num === num) {
+					state.hot = null;
+					refreshHotPick();
+					refreshHotkeys();
+					return;
+				}
+				state.hot = { num: num, page: 0 };
+				refreshHotPick();
+				refreshHotkeys();
+				const first = hotUi.grid.querySelector('.set-ctrl') || hotUi.prev;
+				if (first) first.focus();
+				hotUi.box.scrollIntoView({ block: 'nearest' });
+			}
+			function chooseHot(id) {
+				const num = state.hot && state.hot.num;
+				state.hot = null;
+				if (num != null) run('setHotKey', [num, id]);
+				else refreshHotPick();
 			}
 
 			function refreshTools() {
@@ -10290,11 +10433,247 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						const index = parseInt(btn.dataset.toolIndex, 10);
 						paintIcon(btn.querySelector('span'), list[index]);
 						btn.classList.toggle('on', state.toolType === type && state.toolIndex === index);
+						btn.style.cursor = list[index] ? 'grab' : '';
 					});
 				});
 				root.querySelectorAll('.set-palette').forEach((btn) => {
 					btn.classList.toggle('on', state.toolIcon === btn.dataset.toolIcon);
 				});
+			}
+
+			function placeToolIcon(list, icon, index) {
+				const old = list.indexOf(icon);
+				if (old !== -1) {
+					if (old === index) return false;
+					list.splice(old, 1);
+					list.splice(Math.min(index, list.length), 0, icon);
+					return true;
+				}
+				if (index === list.length) list.push(icon);
+				else list[index] = icon;
+				return true;
+			}
+
+			function clearToolMarks() {
+				root.classList.remove('set-grabbing');
+				root.querySelectorAll('.set-drop-ok, .set-drop-no, .set-drop-over, .set-dragging').forEach((el) => {
+					el.classList.remove('set-drop-ok', 'set-drop-no', 'set-drop-over', 'set-dragging');
+				});
+			}
+
+			function haltToolDrag() {
+				if (!toolDrag) return;
+				toolDrag.cancelled = true;
+				clearToolMarks();
+				if (toolDrag.ghost) {
+					toolDrag.ghost.remove();
+					toolDrag.ghost = null;
+				}
+			}
+
+			function swallowNextToolClick() {
+				const swallow = (ev) => {
+					ev.preventDefault();
+					ev.stopPropagation();
+				};
+				root.addEventListener('click', swallow, true);
+				setTimeout(() => root.removeEventListener('click', swallow, true), 0);
+			}
+
+			function toolSlotAccepts(type, index, icon, sameRow) {
+				const list = core.plugin.getToolBarConfig(type) || [];
+				if (!Number.isInteger(index) || index < 0 || index > 8 || index > list.length) return false;
+				if (!sameRow && core.toolBarBlockReason(type, icon)) return false;
+				return true;
+			}
+
+			function markToolTargets(drag) {
+				const fromRow = drag.source.kind === 'slot';
+				['normal', 'num', 'replay'].forEach((type) => {
+					const list = core.plugin.getToolBarConfig(type) || [];
+					root.querySelectorAll('.set-slot[data-tool-type="' + type + '"]').forEach((btn) => {
+						const index = parseInt(btn.dataset.toolIndex, 10);
+						const same = fromRow && type === drag.source.type;
+						if (fromRow && !same) {
+							if (index >= list.length) btn.classList.add('set-drop-no');
+							return;
+						}
+						if (toolSlotAccepts(type, index, drag.source.icon, same)) btn.classList.add('set-drop-ok');
+						else if (index >= list.length) btn.classList.add('set-drop-no');
+					});
+				});
+				if (fromRow) {
+					const zone = root.querySelector('.set-remove');
+					if (zone) zone.classList.add('set-drop-ok');
+				}
+				drag.source.el.classList.add('set-dragging');
+			}
+
+			function markToolHover(x, y) {
+				root.querySelectorAll('.set-drop-over').forEach((el) => el.classList.remove('set-drop-over'));
+				const hit = document.elementFromPoint(x, y);
+				if (!hit) return;
+				const zone = hit.closest('.set-remove');
+				if (zone && zone.classList.contains('set-drop-ok')) {
+					zone.classList.add('set-drop-over');
+					return;
+				}
+				const slot = hit.closest('.set-slot[data-tool-type]');
+				if (slot && slot.classList.contains('set-drop-ok')) slot.classList.add('set-drop-over');
+			}
+
+			function toolDragSource(target) {
+				if (!target || !target.closest) return null;
+				const palette = target.closest('.set-palette');
+				if (palette) {
+					const icon = palette.dataset.toolIcon;
+					if (!icon || icon === 'delete') return null;
+					return { kind: 'palette', icon: icon, el: palette };
+				}
+				const slot = target.closest('.set-slot[data-tool-type]');
+				if (!slot) return null;
+				const type = slot.dataset.toolType;
+				const index = parseInt(slot.dataset.toolIndex, 10);
+				const list = core.plugin.getToolBarConfig(type) || [];
+				if (!list[index]) return null;
+				return { kind: 'slot', type: type, index: index, icon: list[index], el: slot, row: slot.closest('.set-row') };
+			}
+
+			function applyToolDrop(drag, x, y) {
+				const src = drag.source;
+				const hit = document.elementFromPoint(x, y);
+				const inRoot = !!(hit && root.contains(hit));
+				if (inRoot && (hit.closest('.set-palette') || hit.closest('.set-palette-row'))) return;
+				if (src.kind === 'palette') {
+					const slot = inRoot && hit.closest('.set-slot[data-tool-type]');
+					if (!slot) return;
+					const type = slot.dataset.toolType;
+					const index = parseInt(slot.dataset.toolIndex, 10);
+					const list = (core.plugin.getToolBarConfig(type) || []).slice();
+					const reason = core.toolBarBlockReason(type, src.icon);
+					if (reason) {
+						core.drawFailTip(reason);
+						return;
+					}
+					if (!Number.isInteger(index) || index < 0 || index > 8 || index > list.length) {
+						core.drawFailTip('按钮中间不能有空白!');
+						return;
+					}
+					const before = list.slice();
+					if (!placeToolIcon(list, src.icon, index)) return;
+					if (before.length === list.length && before.every((icon, i) => icon === list[i])) return;
+					if (core.commitToolBarList(type, list)) refresh();
+					return;
+				}
+				const row = inRoot ? hit.closest('.set-tool-rows .set-row') : null;
+				if (row && row !== src.row) {
+					setDesc('请在同一行内调整顺序。');
+					return;
+				}
+				if (row === src.row) {
+					const slot = hit.closest('.set-slot[data-tool-type]');
+					if (!slot) return;
+					const index = parseInt(slot.dataset.toolIndex, 10);
+					const list = (core.plugin.getToolBarConfig(src.type) || []).slice();
+					if (!Number.isInteger(index) || index < 0 || index > 8 || index > list.length) {
+						core.drawFailTip('按钮中间不能有空白!');
+						return;
+					}
+					if (index === src.index) return;
+					const icon = list[src.index];
+					if (icon !== src.icon) return;
+					const before = list.slice();
+					list.splice(src.index, 1);
+					list.splice(Math.min(index, list.length), 0, icon);
+					if (before.length === list.length && before.every((item, i) => item === list[i])) return;
+					if (core.commitToolBarList(src.type, list)) refresh();
+					return;
+				}
+				if (inRoot && hit.closest('.set-tool-rows')) return;
+				const list = (core.plugin.getToolBarConfig(src.type) || []).slice();
+				if (src.index < 0 || src.index >= list.length) return;
+				list.splice(src.index, 1);
+				if (core.commitToolBarList(src.type, list)) refresh();
+			}
+
+			function onToolPointerDown(e) {
+				if (e.button !== 0) return;
+				if (toolDrag) onToolBlur();
+				const source = toolDragSource(e.target);
+				if (!source) return;
+				toolDrag = {
+					pointerId: e.pointerId,
+					x: e.clientX,
+					y: e.clientY,
+					started: false,
+					cancelled: false,
+					ghost: null,
+					source: source,
+				};
+			}
+
+			function onToolPointerMove(e) {
+				if (!toolDrag || e.pointerId !== toolDrag.pointerId || toolDrag.cancelled) return;
+				if (!toolDrag.started) {
+					const dx = e.clientX - toolDrag.x;
+					const dy = e.clientY - toolDrag.y;
+					if (dx * dx + dy * dy < 36) return;
+					toolDrag.started = true;
+					root.classList.add('set-grabbing');
+					const ghost = document.createElement('div');
+					ghost.className = 'set-ghost';
+					const icon = document.createElement('span');
+					paintIcon(icon, toolDrag.source.icon);
+					ghost.appendChild(icon);
+					root.appendChild(ghost);
+					toolDrag.ghost = ghost;
+					markToolTargets(toolDrag);
+				}
+				const rect = root.getBoundingClientRect();
+				toolDrag.ghost.style.left = (e.clientX - rect.left) + 'px';
+				toolDrag.ghost.style.top = (e.clientY - rect.top) + 'px';
+				markToolHover(e.clientX, e.clientY);
+				e.preventDefault();
+			}
+
+			function onToolPointerUp(e) {
+				if (!toolDrag || e.pointerId !== toolDrag.pointerId) return;
+				if (e.type === 'pointercancel') toolDrag.cancelled = true;
+				const drag = toolDrag;
+				toolDrag = null;
+				const apply = drag.started && !drag.cancelled;
+				clearToolMarks();
+				if (drag.ghost) drag.ghost.remove();
+				if (apply) {
+					swallowNextToolClick();
+					applyToolDrop(drag, e.clientX, e.clientY);
+				} else if (drag.started || drag.cancelled) swallowNextToolClick();
+			}
+
+			function onToolBlur() {
+				if (!toolDrag) return;
+				const drag = toolDrag;
+				toolDrag = null;
+				clearToolMarks();
+				if (drag.ghost) drag.ghost.remove();
+			}
+
+			let toolPointerBound = false;
+			function bindToolPointer() {
+				if (toolPointerBound) return;
+				toolPointerBound = true;
+				window.addEventListener('pointermove', onToolPointerMove, { capture: true, passive: false });
+				window.addEventListener('pointerup', onToolPointerUp, true);
+				window.addEventListener('pointercancel', onToolPointerUp, true);
+				window.addEventListener('blur', onToolBlur);
+			}
+			function unbindToolPointer() {
+				if (!toolPointerBound) return;
+				toolPointerBound = false;
+				window.removeEventListener('pointermove', onToolPointerMove, { capture: true });
+				window.removeEventListener('pointerup', onToolPointerUp, true);
+				window.removeEventListener('pointercancel', onToolPointerUp, true);
+				window.removeEventListener('blur', onToolBlur);
 			}
 
 			function refreshDamage() {
@@ -10514,6 +10893,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			function refresh() {
 				refreshLabels();
 				refreshHotkeys();
+				refreshHotPick();
 				refreshTools();
 				refreshDamage();
 				refreshSpecials();
@@ -10523,6 +10903,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			function showPage(index) {
+				haltToolDrag();
 				if (index < 0) index = 0;
 				if (index > pages.length - 1) index = pages.length - 1;
 				state.page = index;
@@ -10533,6 +10914,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (state.pick && pages[index].tab.textContent !== '控制台') {
 					state.pick = null;
 					refreshPicker();
+				}
+				if (state.hot && pages[index].tab.textContent !== '按键') {
+					state.hot = null;
+					refreshHotPick();
 				}
 			}
 
@@ -10708,10 +11093,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			addPage('按键', (panel) => {
 				let line = row(panel);
 				toggle(line, 'leftHand');
-				const note = document.createElement('p');
-				note.className = 'set-note';
-				note.textContent = '更推荐在背包右上角设置单个物品的快捷键。';
-				panel.appendChild(note);
 				heading(panel, '快捷键');
 				for (let num = 1; num <= 9; num++) {
 					line = row(panel);
@@ -10723,32 +11104,77 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					itemIcon.className = 'set-hot-item';
 					const name = document.createElement('span');
 					name.className = 'set-hot-name';
-					const input = document.createElement('input');
-					input.className = 'set-ctrl';
-					input.autocomplete = 'off';
-					input.placeholder = '物品名或ID';
-					input.dataset.desc = allSettings.setHotKey.text;
-					input._setSubmit = () => {
-						run('setHotKey', [num, input.value]);
-						input.value = '';
-					};
+					const pickBtn = ctrl('button', '从可快捷使用的物品中选择，绑定到这个数字键。');
+					pickBtn.classList.add('set-hot-pick');
+					pickBtn.textContent = '选择';
+					pickBtn.addEventListener('click', () => openHotPick(num));
 					line.appendChild(keyIcon);
 					line.appendChild(itemIcon);
 					line.appendChild(name);
-					line.appendChild(input);
+					line.appendChild(pickBtn);
 				}
 				const reset = ctrl('button', allSettings.clearHotKeys.text);
 				reset.textContent = '重置';
 				reset.addEventListener('click', () => run('clearHotKeys'));
 				panel.appendChild(reset);
+
+				const box = document.createElement('div');
+				box.className = 'set-picker off';
+				const title = document.createElement('h3');
+				const grid = document.createElement('div');
+				grid.className = 'set-pick-grid';
+				const nav = row(box);
+				const prev = ctrl('button', '选择列表的上一页');
+				prev.textContent = '上一页';
+				prev.addEventListener('click', () => {
+					if (!state.hot) return;
+					state.hot.page--;
+					refreshHotPick();
+				});
+				const page = document.createElement('span');
+				page.className = 'set-pick-page';
+				const next = ctrl('button', '选择列表的下一页');
+				next.textContent = '下一页';
+				next.addEventListener('click', () => {
+					if (!state.hot) return;
+					state.hot.page++;
+					refreshHotPick();
+				});
+				const back = ctrl('button', '关闭选择列表');
+				back.textContent = '返回';
+				back.addEventListener('click', () => {
+					state.hot = null;
+					refreshHotPick();
+					refreshHotkeys();
+				});
+				nav.appendChild(prev);
+				nav.appendChild(page);
+				nav.appendChild(next);
+				nav.appendChild(back);
+				box.appendChild(title);
+				box.appendChild(nav);
+				box.appendChild(grid);
+				panel.appendChild(box);
+				hotUi = { box, title, grid, page, prev, next, back };
 			});
 
 			addPage('工具栏', (panel) => {
-				heading(panel, '当前工具栏');
+				heading(panel, '工具栏布局');
+				const board = document.createElement('div');
+				board.className = 'set-tool-board';
+				const rows = document.createElement('div');
+				rows.className = 'set-tool-rows';
+				const removeZone = document.createElement('div');
+				removeZone.className = 'set-remove';
+				removeZone.dataset.desc = '把上方某一行的图标拖到这里，即可从该行移出。';
+				removeZone.textContent = '移出';
+				board.appendChild(rows);
+				board.appendChild(removeZone);
+				panel.appendChild(board);
 				[['normal', '常规', '常规模式下显示在工具栏中的图标。'],
 					['num', '数字', '数字模式下显示在工具栏中的图标。'],
 					['replay', '录像', '录像模式下显示在工具栏中的图标。']].forEach((item) => {
-					const line = row(panel);
+					const line = row(rows);
 					const label = document.createElement('span');
 					label.textContent = item[1];
 					line.appendChild(label);
@@ -10768,8 +11194,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						line.appendChild(btn);
 					}
 				});
+				const resetBar = ctrl('button', '恢复常规、数字、录像在横屏和竖屏下的初始布局。');
+				resetBar.textContent = '重置';
+				resetBar.addEventListener('click', () => {
+					core.resetToolBarConfig();
+					refresh();
+				});
+				panel.appendChild(resetBar);
 				heading(panel, '可选按钮');
 				const palette = row(panel);
+				palette.classList.add('set-palette-row');
 				TOOL_CHOICES.forEach((choice) => {
 					const btn = ctrl('button', choice[1]);
 					btn.classList.add('set-slot', 'set-palette');
@@ -10899,6 +11333,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			head.appendChild(quit);
 
 			function close() {
+				unbindToolPointer();
+				if (toolDrag && toolDrag.ghost) toolDrag.ghost.remove();
+				toolDrag = null;
+				clearToolMarks();
 				unhookTip();
 				if (root.contains(document.activeElement)) document.activeElement.blur();
 				root.remove();
@@ -10910,6 +11348,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 
 			root.addEventListener('keydown', (e) => {
+				if (toolDrag && e.key === 'Escape') {
+					e.preventDefault();
+					e.stopPropagation();
+					haltToolDrag();
+					return;
+				}
 				const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
 				if (typing) {
 					if (e.key === 'Enter') {
@@ -10929,6 +11373,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (pickerOpen()) {
 						state.pick = null;
 						refreshPicker();
+					} else if (hotPickOpen()) {
+						state.hot = null;
+						refreshHotPick();
+						refreshHotkeys();
 					} else close();
 				} else if (e.key === 'PageDown' || e.key === 'PageUp') {
 					e.preventDefault();
@@ -10937,6 +11385,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						state.pick.page += e.key === 'PageDown' ? 1 : -1;
 						refreshPicker();
 						const first = pickUi.grid.querySelector('.set-ctrl') || pickUi.prev;
+						if (first) first.focus();
+					} else if (hotPickOpen()) {
+						state.hot.page += e.key === 'PageDown' ? 1 : -1;
+						refreshHotPick();
+						const first = hotUi.grid.querySelector('.set-ctrl') || hotUi.prev;
 						if (first) first.focus();
 					} else showPage(state.page + (e.key === 'PageDown' ? 1 : -1));
 				} else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
@@ -10952,22 +11405,25 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			});
 			root.addEventListener('focusin', (e) => {
-				const node = e.target.closest && e.target.closest('.set-ctrl');
+				const node = e.target.closest && e.target.closest('[data-desc]');
 				if (node && node.dataset.desc) setDesc(node.dataset.desc);
 			});
 			root.addEventListener('mouseover', (e) => {
-				const node = e.target.closest && e.target.closest('.set-ctrl');
+				const node = e.target.closest && e.target.closest('[data-desc]');
 				if (node && node.dataset.desc) setDesc(node.dataset.desc);
 			});
 			root.addEventListener('selectstart', (e) => e.stopPropagation());
 			['pointerdown', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'wheel'].forEach((type) => {
 				root.addEventListener(type, (e) => e.stopPropagation());
 			});
+			root.addEventListener('pointerdown', onToolPointerDown);
+			bindToolPointer();
 
 			const api = {
 				opened: true,
 				layout: function () {
 					if (!api.opened) return;
+					haltToolDrag();
 					applyScale();
 					refreshLabels();
 				},
