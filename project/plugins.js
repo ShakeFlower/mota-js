@@ -8422,17 +8422,24 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 自绘设置界面
 		// 请保持本插件在所有插件的最下方
 
+		// 画布版设置界面保留在下面，由这个开关停用。DOM 样例不认可时改回 true。
+		const ENABLE_CANVAS_SETTING = false;
+
 		// #region 复写
-		// 复写resize，保证屏幕变化时此画布表现正常 
+		// 复写resize。画布版停用时只改 DOM 的尺寸。
 		const originResize = core.control.resize;
 		core.control.resize = function () {
 			originResize.apply(core.control, arguments);
-			/** @type {SettingBack} */
-			const settingMenu = core.plugin.settingMenu;
-			if (settingMenu && settingMenu.onDraw) {
-				settingMenu.drawContent();
-				settingMenu.pageList[settingMenu.currPage].drawContent();
+			if (ENABLE_CANVAS_SETTING) {
+				/** @type {SettingBack} */
+				const settingMenu = core.plugin.settingMenu;
+				if (settingMenu && settingMenu.onDraw) {
+					settingMenu.drawContent();
+					settingMenu.pageList[settingMenu.currPage].drawContent();
+				}
 			}
+			const domSetting = core.plugin.domSetting;
+			if (domSetting && domSetting.opened) domSetting.layout();
 		}
 		// #endregion
 
@@ -8654,7 +8661,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return true;
 			}.bind(core.events) : events.prototype.__action_checkReplaying;
 
-			const skipPeform = core.getLocalStorage('skipPeform');
+			const skipPerform = core.getLocalStorage('skipPerform');
 
 			const instantMove = function (fromX, fromY, aimX, aimY, keep, callback) {
 				const [_block, blockInfo] = core.maps._getAndRemoveBlock(fromX, fromY);
@@ -8665,25 +8672,25 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (callback) callback();
 			}
 
-			core.maps.jumpBlock = skipPeform ? function (sx, sy, ex, ey, time, keep, callback) {
+			core.maps.jumpBlock = skipPerform ? function (sx, sy, ex, ey, time, keep, callback) {
 				return instantMove(sx, sy, ex, ey, keep, callback);
 			}.bind(core.maps) : maps.prototype.jumpBlock;
 
-			core.maps.moveBlock = skipPeform ? function (x, y, steps, time, keep, callback) {
+			core.maps.moveBlock = skipPerform ? function (x, y, steps, time, keep, callback) {
 				maps.prototype.moveBlock(x, y, steps, 1, keep, callback);
 			}.bind(core.maps) : maps.prototype.moveBlock;
 
-			core.maps.drawAnimate = skipPeform ? function (name, x, y, alignWindow, callback) {
+			core.maps.drawAnimate = skipPerform ? function (name, x, y, alignWindow, callback) {
 				if (callback) callback();
 				return -1;
 			}.bind(core.maps) : maps.prototype.drawAnimate;
 
-			core.maps.drawHeroAnimate = skipPeform ? function (name, callback) {
+			core.maps.drawHeroAnimate = skipPerform ? function (name, callback) {
 				if (callback) callback();
 				return -1;
 			}.bind(core.maps) : maps.prototype.drawHeroAnimate;
 
-			core.events.jumpHero = skipPeform ? function (ex, ey, time, callback) {
+			core.events.jumpHero = skipPerform ? function (ex, ey, time, callback) {
 				const { x: sx, y: sy } = core.status.hero.loc;
 				if (ex == null) ex = sx;
 				if (ey == null) ey = sy;
@@ -8694,12 +8701,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				if (callback) callback();
 			}.bind(core.events) : events.prototype.jumpHero;
 
-			core.events.vibrate = skipPeform ? function (direction, time, speed, power, callback) {
+			core.events.vibrate = skipPerform ? function (direction, time, speed, power, callback) {
 				if (callback) callback();
 				return;
 			}.bind(core.events) : events.prototype.vibrate;
 
-			core.events._action_sleep = skipPeform ? function (data, x, y, prefix) {
+			core.events._action_sleep = skipPerform ? function (data, x, y, prefix) {
 				core.doAction();
 			}.bind(core.events) : events.prototype._action_sleep;
 		}
@@ -8805,7 +8812,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				text: '跳过全部文字对话。初见请勿开启此选项。',
 				replay: false,
 			},
-			skipPeform: {
+			skipPerform: {
 				getName: () => '跳过演出:' + (core.getLocalStorage('skipPerform', false) ? '开' : '关'),
 				effect: () => {
 					invertLocalStorage('skipPerform');
@@ -8884,7 +8891,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				['3,3', 'floorChangeTimeDown', new SettingButton(220, 280, 25, 25)],
 				['4,3', 'floorChangeTimeUp', new SettingButton(340, 280, 25, 25)],
 				['1,4', 'skipText', new SettingButton(40, 305, 150, 25)],
-				['2,4', 'skipPeform', new SettingButton(220, 305, 150, 25)],
+				['2,4', 'skipPerform', new SettingButton(220, 305, 150, 25)],
 				['1,5', 'comment', new SettingButton(40, 330, 150, 25)],
 				['2,5', 'autoHideFloor', new SettingButton(220, 330, 150, 25)],
 				['1,6', 'autoSaveBeforeUseItem', new SettingButton(40, 355, 150, 25)],
@@ -9069,8 +9076,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			},
 			setHotKey: {
 				getName: () => '',
-				effect: /** @this {GameView} */ function (num) {
-					core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (value) => {
+				effect: /** @this {GameView} */ function (num, value) {
+					const apply = function (value) {
 						const itemInfo = core.material.items;
 						const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
 						if (aimItem) {
@@ -9081,14 +9088,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 									}
 								}
 								core.setLocalStorage('hotkey' + num, aimItem.id);
-								this.drawContent();
+								if (this.drawContent) this.drawContent();
 							} else {
 								core.drawFailTip('错误：该类型的物品不支持快捷使用!');
 							}
 						} else {
 							core.drawFailTip('错误：找不到该名称的物品!');
 						}
-					}, () => { });
+					};
+					if (value !== undefined) apply.call(this, value);
+					else core.utils.myprompt('输入物品名。名称（例如：破墙镐）或英文ID（例如：pickaxe）均可。', '', (v) => apply.call(this, v), () => { });
 				},
 				text: '给选定的数字键绑定一个可快捷使用的物品。',
 				replay: false,
@@ -9334,7 +9343,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			debug_statusName: {
 				getName: () => core.getFlag('debug_statusName', '??'),
 				/** @this {ConsoleMenu} */
-				effect: function () {
+				effect: function (value) {
 					const dictionary = {
 						'体力': 'hp',
 						'血量': 'hp',
@@ -9359,18 +9368,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						'魔': 'mana',
 						'蓝': 'mana',
 					};
-					core.utils.myprompt('输入要修改的属性名称', '', (value) => {
+					const apply = function (value) {
 						const heroStatus = core.status.hero;
 						if (dictionary.hasOwnProperty(value)) {
 							value = dictionary[value];
 						}
 						if (heroStatus && heroStatus.hasOwnProperty(value) && ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'].includes(value)) {
 							core.setFlag('debug_statusName', value);
-							this.menu.drawContent();
+							if (this.menu) this.menu.drawContent();
 						} else {
 							core.drawFailTip('错误：不合法的名称!');
 						}
-					}, () => { });
+					};
+					if (value !== undefined) apply.call(this, value);
+					else core.utils.myprompt('输入要修改的属性名称', '', (v) => apply.call(this, v), () => { });
 				},
 				text: '',
 				replay: false,
@@ -9386,16 +9397,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					else return value;
 				},
 				/** @this {ConsoleMenu} */
-				effect: function () {
-					core.utils.myprompt('输入要修改到的值', null, (input) => {
+				effect: function (input) {
+					const apply = function (input) {
 						const value = parseInt(input);
 						if (!Number.isNaN(value)) {
 							core.setFlag('debug_statusValue', value);
-							this.menu.drawContent();
+							if (this.menu) this.menu.drawContent();
 						} else {
 							core.drawFailTip('错误：不合法的值!');
 						}
-					}, () => { });
+					};
+					if (input !== undefined) apply.call(this, input);
+					else core.utils.myprompt('输入要修改到的值', null, (v) => apply.call(this, v), () => { });
 				},
 				text: '',
 				replay: false,
@@ -9435,19 +9448,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			debug_itemName: {
 				getName: () => core.getFlag('debug_itemName', '??'),
 				/** @this {ConsoleMenu} */
-				effect: function () {
-					core.utils.myprompt('输入要修改的物品名称', null, (value) => {
+				effect: function (value) {
+					const apply = function (value) {
 						const itemInfo = core.material.items;
 						if (itemInfo) {
 							const aimItem = Object.values(itemInfo).find((item) => item.name === value || item.id === value);
 							if (aimItem) {
 								core.setFlag('debug_itemName', aimItem.id);
-								this.menu.drawContent();
+								if (this.menu) this.menu.drawContent();
 								return;
 							}
 						}
 						core.drawFailTip('错误：不合法的名称!');
-					}, () => { });
+					};
+					if (value !== undefined) apply.call(this, value);
+					else core.utils.myprompt('输入要修改的物品名称', null, (v) => apply.call(this, v), () => { });
 				},
 				text: '',
 				replay: false,
@@ -9459,17 +9474,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			debug_itemValue: {
 				getName: () => core.getFlag('debug_itemValue', '??'),
 				/** @this {ConsoleMenu} */
-				effect: function () {
+				effect: function (input) {
 					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改到的值', null, (input) => {
+					const apply = function (input) {
 						const value = parseInt(input);
 						if (!Number.isNaN(value)) {
 							core.setFlag('debug_itemValue', value);
-							this.menu.drawContent();
+							if (this.menu) this.menu.drawContent();
 						} else {
 							core.drawFailTip('错误：不合法的值!');
 						}
-					}, () => { });
+					};
+					if (input !== undefined) apply.call(this, input);
+					else core.utils.myprompt('输入要修改到的值', null, (v) => apply.call(this, v), () => { });
 				},
 				text: '',
 				replay: false,
@@ -9519,16 +9536,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			debug_flagName: {
 				getName: () => core.getFlag('debug_flagName', '??'),
 				/** @this {ConsoleMenu} */
-				effect: function () {
+				effect: function (value) {
 					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
-						if (!value.startsWith('debug')) {
+					const apply = function (value) {
+						if (typeof value === 'string' && value && !value.startsWith('debug') && !value.startsWith('__')) {
 							core.setFlag('debug_flagName', value);
-							this.menu.drawContent();
+							if (this.menu) this.menu.drawContent();
 						} else {
 							core.drawFailTip('错误：不合法的名称!');
 						}
-					}, () => { });
+					};
+					if (value !== undefined) apply.call(this, value);
+					else core.utils.myprompt('输入要修改的变量名。注意：如果您不了解修改变量的后果，请勿尝试。', null, (v) => apply.call(this, v), () => { });
 				},
 				text: '',
 				replay: false,
@@ -9540,19 +9559,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			debug_flagValue: {
 				getName: () => core.getFlag('debug_flagValue', '??'),
 				/** @this {ConsoleMenu} */
-				effect: function () {
+				effect: function (value) {
 					core.setFlag('debug', true);
-					core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (value) => {
+					const apply = function (value) {
 						let newValue;
 						try {
-							newValue = JSON.parse(value.trim());
+							newValue = JSON.parse(String(value).trim());
 						} catch {
 							core.drawFailTip('错误：不合法的值，无法解析!');
 							return;
 						}
 						core.setFlag('debug_flagValue', newValue);
-						this.menu.drawContent();
-					}, () => { });
+						if (this.menu) this.menu.drawContent();
+					};
+					if (value !== undefined) apply.call(this, value);
+					else core.utils.myprompt('输入要修改到的值。注意：如果您不了解修改变量的后果，请勿尝试。', null, (v) => apply.call(this, v), () => { });
 				},
 				text: '',
 				replay: false,
@@ -9567,7 +9588,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				effect: function () {
 					const name = core.getFlag('debug_flagName'),
 						value = core.getFlag('debug_flagValue');
-					if (!name) {
+					if (typeof name !== 'string' || !name || name.startsWith('debug') || name.startsWith('__')) {
 						core.drawFailTip('错误：不合法的变量名称!');
 						return;
 					}
@@ -9769,17 +9790,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 			}
 
-			setSpecialIconData(index) {
+			setSpecialIconData(index, value) {
 				const specialIconList = this.getCurrSpecialIconList();
 				const specialNum = specialIconList[index];
 				if (!specialNum) return;
-				core.utils.myprompt('输入该特殊属性的代表字符', null, (value) => {
+				const apply = (value) => {
 					if (value.length > 1) value = value[0]; // 最多保留一位字符
 					this.specialIconData[specialNum] = value;
 					core.setLocalStorage('specialIconData', this.specialIconData);
 					this.setSpecialIconBtnText();
 					this.drawContent();
-				});
+				};
+				if (value !== undefined) apply(value);
+				else core.utils.myprompt('输入该特殊属性的代表字符', null, apply);
 			}
 
 			pageUp() {
@@ -9972,8 +9995,999 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return true;
 		});
 
+		// #region DOM 设置样例
+		const DOM_SETTING_CSS = [
+			'#dom-setting{position:absolute;left:0;top:0;width:100%;height:100%;z-index:200;box-sizing:border-box;',
+			'display:flex;flex-direction:column;background:rgba(40,40,40,.94);color:#fff;',
+			'font:14px Verdana,sans-serif;--set-scale:1;}',
+			'#dom-setting *{box-sizing:border-box;}',
+			'#dom-setting .set-head{display:flex;align-items:flex-start;gap:12px;padding:6px 8px 4px;flex:0 0 auto;}',
+			'#dom-setting .set-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1 1 auto;}',
+			'#dom-setting .set-tab.on{outline:2px solid gold;}',
+			'#dom-setting .set-quit{flex:0 0 auto;margin-left:auto;background:transparent;border-color:#e7a0a0;color:#ffd2d2;padding:3px 12px;}',
+			'#dom-setting .set-desc{min-height:3.2em;margin:0 8px;padding:6px;background:#555;border:1px solid #fff;overflow:auto;}',
+			'#dom-setting .set-body{flex:1;min-height:0;overflow:auto;padding:8px 10px 12px;}',
+			'#dom-setting h3{margin:10px 0 6px;color:#ffe4b5;font-size:15px;font-weight:normal;}',
+			'#dom-setting .set-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;}',
+			'#dom-setting button,#dom-setting input{font:inherit;color:inherit;background:#666;border:1px solid #ccc;border-radius:3px;padding:4px 8px;}',
+			'#dom-setting button{cursor:pointer;}',
+			'#dom-setting button:focus,#dom-setting input:focus{outline:2px solid #9cf;}',
+			'#dom-setting button.on{outline:2px solid gold;}',
+			'#dom-setting input{background:#333;min-width:6em;user-select:text;}',
+			'#dom-setting button:disabled{opacity:.4;}',
+			'#dom-setting .set-page.off{display:none;}',
+			'#dom-setting .set-icon{width:calc(22px * var(--set-scale));height:calc(22px * var(--set-scale));',
+			'display:inline-block;vertical-align:middle;image-rendering:pixelated;background-repeat:no-repeat;flex:0 0 auto;}',
+			'#dom-setting .set-icon.dim{opacity:.3;}',
+			'#dom-setting .set-icon-x{position:relative;}',
+			'#dom-setting .set-icon-x::before,#dom-setting .set-icon-x::after{content:"";position:absolute;left:12%;right:12%;top:50%;height:2px;background:red;}',
+			'#dom-setting .set-icon-x::before{transform:rotate(45deg);}#dom-setting .set-icon-x::after{transform:rotate(-45deg);}',
+			'#dom-setting .set-slot{width:calc(28px * var(--set-scale));height:calc(28px * var(--set-scale));padding:1px;',
+			'display:inline-flex;align-items:center;justify-content:center;}',
+			'#dom-setting .set-warn{color:#ffc0cb;}',
+			'#dom-setting .set-note{color:#ff3;font-size:12px;}',
+			'#dom-setting .set-flag-preview{margin:0 0 8px;word-break:break-all;white-space:pre-wrap;}',
+			'#dom-setting .set-picker.off{display:none;}',
+			'#dom-setting .set-picker{margin-top:8px;padding:8px;border:1px solid #888;background:#2a2a2a;}',
+			'#dom-setting .set-pick-grid{display:flex;flex-wrap:wrap;gap:6px;}',
+			'#dom-setting .set-pick-grid button{display:inline-flex;align-items:center;gap:4px;max-width:100%;}',
+			'#dom-setting .set-pick-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:14em;}',
+		].join('');
+
+		const HOTKEY_DEFAULT = {
+			1: { icon: 'pickaxe', name: '破墙镐' },
+			2: { icon: 'bomb', name: '炸弹' },
+			3: { icon: 'centerFly', name: '中心飞' },
+			4: { name: '杂物' },
+			5: { name: '回退一步' },
+			6: { name: '撤销回退' },
+			7: { name: '轻按' },
+		};
+		const TOOL_CHOICES = [
+			['book', '打开怪物手册'], ['fly', '进行楼层传送'], ['toolbox', '打开物品背包'],
+			['equipbox', '打开装备背包'], ['keyboard', '打开虚拟键盘'], ['shop', '打开快捷商店'],
+			['save', '存档'], ['load', '读档'], ['settings', '打开系统设置'],
+			['rollback', '读取自动存档'], ['undoRollback', '取消读取自动存档'],
+			['btn1', '数字键1'], ['btn2', '数字键2'], ['btn3', '数字键3'],
+			['btn4', '数字键4'], ['btn5', '数字键5'], ['btn6', '数字键6'],
+			['btn7', '数字键7'], ['btn8', '数字键8'], ['btn9', '数字键9'],
+			['btnAlt', '开关Alt模式(需要配合数字键使用)'],
+			['play', '播放/暂停录像'], ['stop', '停止播放录像'], ['rewind', '录像模式下回退'],
+			['speedDown', '减速录像(最低0.2倍)'], ['speedUp', '加速录像(最高24倍)'],
+			['single', '单步播放录像'], ['view', '浏览地图'], ['delete', '删除已有图标'],
+		];
+		const DAMAGE_SLOTS = [
+			['leftdown', 1, '设定敌人左下角显示的数据'],
+			['leftdown', 2, '设定敌人左下角显示的数据'],
+			['leftdown', 3, '设定敌人左下角显示的数据'],
+			['rightup', 1, '设定敌人右上角显示的数据'],
+			['rightup', 2, '设定敌人右上角显示的数据'],
+			['rightup', 3, '设定敌人右上角显示的数据'],
+		];
+
+		const croppedIconURLCache = {};
+
+		// 与 drawIcon 同一块源图、同一矩形。材料图按格子裁；状态栏图标在加载时已经裁成单张。
+		// 先裁成一张小图再显示。用 CSS 挪整张雪碧图时，偏移没有生效，方框只露出物品图左上角的黄钥匙。
+		function croppedIconURL(id) {
+			if (croppedIconURLCache[id]) return croppedIconURLCache[id];
+			let image = null;
+			let sx = 0, sy = 0, sw = 32, sh = 32;
+			const info = core.getBlockInfo(id);
+			if (info && info.image) {
+				image = info.image;
+				sw = 32;
+				sh = info.height || 32;
+				sx = sw * (info.posX || 0);
+				sy = sh * (info.posY || 0);
+			} else {
+				const bar = core.statusBar.icons && core.statusBar.icons[id];
+				if (bar instanceof Image) {
+					image = bar;
+					sw = bar.naturalWidth || bar.width || 32;
+					sh = bar.naturalHeight || bar.height || 32;
+				}
+			}
+			if (!image || !(image.naturalWidth || image.width)) return '';
+			const canvas = document.createElement('canvas');
+			canvas.width = sw;
+			canvas.height = sh;
+			const ctx = canvas.getContext('2d');
+			ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+			try {
+				croppedIconURLCache[id] = canvas.toDataURL('image/png');
+			} catch (e) {
+				croppedIconURLCache[id] = '';
+			}
+			return croppedIconURLCache[id];
+		}
+
+		function paintIcon(el, id) {
+			if (!el) return;
+			el.classList.add('set-icon');
+			el.classList.remove('set-icon-x');
+			el.style.backgroundImage = '';
+			el.style.backgroundSize = '';
+			el.style.backgroundPosition = '';
+			if (!id) return;
+			if (id === 'delete') {
+				el.classList.add('set-icon-x');
+				return;
+			}
+			const url = croppedIconURL(id);
+			if (!url) return;
+			el.style.backgroundImage = 'url("' + url + '")';
+			el.style.backgroundSize = '100% 100%';
+			el.style.backgroundPosition = 'center';
+			el.style.backgroundRepeat = 'no-repeat';
+		}
+
+		function loadDisplayData() {
+			const data = core.getLocalStorage('displayData', { leftdown: { 1: 'damage', 2: 'critical' }, rightup: {} });
+			if (!data.leftdown) data.leftdown = {};
+			if (!data.rightup) data.rightup = {};
+			return data;
+		}
+
+		function openDomSetting() {
+			if (core.isReplaying() || main.replayChecking) return;
+			if (core.plugin.domSetting && core.plugin.domSetting.opened) core.plugin.domSetting.close();
+			core.lockControl();
+
+			let style = document.getElementById('dom-setting-style');
+			if (!style) {
+				style = document.createElement('style');
+				style.id = 'dom-setting-style';
+				style.textContent = DOM_SETTING_CSS;
+				document.head.appendChild(style);
+			}
+
+			const root = document.createElement('div');
+			root.id = 'dom-setting';
+			const state = { page: 0, slot: null, specialPage: 0, toolType: null, toolIndex: -1, toolIcon: null, pick: null };
+			const pages = [];
+
+			const head = document.createElement('div');
+			head.className = 'set-head';
+			const bar = document.createElement('div');
+			bar.className = 'set-bar';
+			const desc = document.createElement('div');
+			desc.className = 'set-desc';
+			desc.textContent = '方向键或 Tab 移动，Enter 或空格执行，Esc 关闭。';
+			const body = document.createElement('div');
+			body.className = 'set-body';
+			head.appendChild(bar);
+			root.appendChild(head);
+			root.appendChild(desc);
+			root.appendChild(body);
+
+			function setDesc(text) {
+				desc.textContent = text || '';
+			}
+
+			let originDrawTip = null;
+			function hookTip() {
+				if (originDrawTip) return;
+				originDrawTip = core.ui.drawTip;
+				core.ui.drawTip = function (text) {
+					setDesc(core.replaceText(text) || '');
+				};
+			}
+			function unhookTip() {
+				if (!originDrawTip) return;
+				core.ui.drawTip = originDrawTip;
+				originDrawTip = null;
+			}
+			hookTip();
+
+			function row(parent) {
+				const node = document.createElement('div');
+				node.className = 'set-row';
+				parent.appendChild(node);
+				return node;
+			}
+
+			function heading(parent, text) {
+				const node = document.createElement('h3');
+				node.textContent = text;
+				parent.appendChild(node);
+			}
+
+			function ctrl(tag, text) {
+				const node = document.createElement(tag);
+				node.className = 'set-ctrl';
+				if (tag === 'button') node.type = 'button';
+				if (text) node.dataset.desc = text;
+				return node;
+			}
+
+			function refreshLabels() {
+				root.querySelectorAll('[data-key]').forEach((node) => {
+					const setting = allSettings[node.dataset.key];
+					if (!setting || !setting.getName) return;
+					const label = node.classList.contains('set-label') ? node : node.querySelector('.set-label');
+					if (label) label.textContent = setting.getName();
+				});
+				root.querySelectorAll('[data-dimflag]').forEach((el) => {
+					el.classList.toggle('dim', !core.hasFlag(el.dataset.dimflag));
+				});
+			}
+
+			function run(key, args) {
+				const setting = allSettings[key];
+				if (!setting) return;
+				const host = { drawContent: refresh, menu: { drawContent: refresh } };
+				setting.effect.apply(host, args || []);
+				if (setting.replay) {
+					let action = 'cSet:' + key;
+					if (args && args.length > 0) {
+						action += ':' + args.map((arg) => encodeURIComponent(arg)).join(':');
+					}
+					core.status.route.push(action);
+				}
+				refresh();
+			}
+
+			function toggle(parent, key) {
+				const setting = allSettings[key];
+				const btn = ctrl('button', setting.text);
+				btn.dataset.key = key;
+				const label = document.createElement('span');
+				label.className = 'set-label';
+				btn.appendChild(label);
+				btn.addEventListener('click', () => run(key));
+				parent.appendChild(btn);
+				return btn;
+			}
+
+			function iconToggle(parent, key, iconId) {
+				const setting = allSettings[key];
+				const btn = ctrl('button', setting.text);
+				const icon = document.createElement('span');
+				icon.dataset.dimflag = key;
+				paintIcon(icon, iconId);
+				btn.appendChild(icon);
+				btn.addEventListener('click', () => run(key));
+				parent.appendChild(btn);
+			}
+
+			function textInput(parent, key, placeholder) {
+				const setting = allSettings[key];
+				const input = document.createElement('input');
+				input.className = 'set-ctrl';
+				input.autocomplete = 'off';
+				input.placeholder = placeholder;
+				input.dataset.desc = (setting && setting.text) || placeholder;
+				input._setSubmit = () => run(key, [input.value]);
+				parent.appendChild(input);
+				return input;
+			}
+
+			function refreshHotkeys() {
+				root.querySelectorAll('.set-hotkey').forEach((line) => {
+					const num = line.dataset.num;
+					const stored = core.getLocalStorage('hotkey' + num, null);
+					let iconId = null;
+					let name = '无';
+					if (stored && core.material.items && core.material.items[stored]) {
+						iconId = stored;
+						name = core.material.items[stored].name;
+					} else if (HOTKEY_DEFAULT[num]) {
+						iconId = HOTKEY_DEFAULT[num].icon || null;
+						name = HOTKEY_DEFAULT[num].name || '无';
+					}
+					const icon = line.querySelector('.set-hot-item');
+					paintIcon(icon, iconId);
+					icon.style.display = iconId ? '' : 'none';
+					line.querySelector('.set-hot-name').textContent = name;
+				});
+			}
+
+			function refreshTools() {
+				['normal', 'num', 'replay'].forEach((type) => {
+					const list = core.plugin.getToolBarConfig(type) || [];
+					root.querySelectorAll('.set-slot[data-tool-type="' + type + '"]').forEach((btn) => {
+						const index = parseInt(btn.dataset.toolIndex, 10);
+						paintIcon(btn.querySelector('span'), list[index]);
+						btn.classList.toggle('on', state.toolType === type && state.toolIndex === index);
+					});
+				});
+				root.querySelectorAll('.set-palette').forEach((btn) => {
+					btn.classList.toggle('on', state.toolIcon === btn.dataset.toolIcon);
+				});
+			}
+
+			function refreshDamage() {
+				const data = loadDisplayData();
+				root.querySelectorAll('.set-dslot').forEach((btn) => {
+					const pos = btn.dataset.pos;
+					const index = btn.dataset.index;
+					const infoName = data[pos] && data[pos][index];
+					const label = infoNameMap[infoName] || (infoName ? infoName : '空');
+					btn.textContent = label;
+					const selected = state.slot && state.slot.pos === pos && String(state.slot.index) === String(index);
+					btn.classList.toggle('on', !!selected);
+				});
+				root.querySelectorAll('.set-info').forEach((btn) => {
+					btn.disabled = !state.slot;
+				});
+			}
+
+			function allSpecialNumbers() {
+				let found = new Set();
+				Object.values(core.material.enemys).forEach((enemy) => {
+					const special = core.utils.parseSpecial(enemy.special);
+					found = new Set([...found, ...special]);
+				});
+				return [...found].sort((a, b) => a - b);
+			}
+
+			function refreshSpecials() {
+				const list = allSpecialNumbers();
+				const pages = Math.max(1, Math.ceil(list.length / 6));
+				if (state.specialPage > pages - 1) state.specialPage = pages - 1;
+				if (state.specialPage < 0) state.specialPage = 0;
+				const slice = list.slice(state.specialPage * 6, state.specialPage * 6 + 6);
+				const map = core.enemys.getSpecialIndexMap();
+				const saved = core.getLocalStorage('specialIconData', {});
+				root.querySelectorAll('.set-special').forEach((line, i) => {
+					const num = slice[i];
+					const name = line.querySelector('.set-sp-name');
+					const input = line.querySelector('input');
+					if (num == null) {
+						line.style.display = 'none';
+						delete input.dataset.special;
+						return;
+					}
+					line.style.display = '';
+					const pair = map[num];
+					const shown = saved[num] || '无';
+					name.textContent = pair ? (pair[0] + ':' + pair[1] + ' ' + shown) : (num + ' ' + shown);
+					input.dataset.special = num;
+					input._setSubmit = () => {
+						let value = input.value;
+						if (value.length > 1) value = value[0];
+						const data = core.getLocalStorage('specialIconData', {});
+						data[num] = value;
+						core.setLocalStorage('specialIconData', data);
+						input.value = '';
+						refresh();
+					};
+				});
+				const indicator = root.querySelector('.set-sp-page');
+				if (indicator) indicator.textContent = (state.specialPage + 1) + '/' + pages;
+			}
+
+			function applyScale() {
+				const scale = core.domStyle.scale || 1;
+				root.style.setProperty('--set-scale', scale);
+			}
+
+			// 与 debug_statusName 里接受的字段一致。物品不在这里列举，打开时读 core.material.items。
+			const STATUS_IDS = ['hp', 'hpmax', 'atk', 'def', 'mdef', 'money', 'exp', 'mana', 'manamax'];
+			const PICK_PAGE_SIZE = 12;
+			const FLAG_PREVIEW_LIMIT = 72;
+			let pickUi = null;
+			let flagPreviewEl = null;
+
+			function flagPreviewText() {
+				const name = core.getFlag('debug_flagName', '');
+				if (typeof name !== 'string' || !name || name === '??' || name.startsWith('debug') || name.startsWith('__')) return '';
+				const flags = core.status.hero && core.status.hero.flags;
+				if (!flags || !Object.prototype.hasOwnProperty.call(flags, name)) return '';
+				let text;
+				try {
+					text = JSON.stringify(flags[name]);
+				} catch (e) {
+					return '无法显示';
+				}
+				if (typeof text !== 'string') return '无法显示';
+				if (text.length <= FLAG_PREVIEW_LIMIT) return text;
+				return text.slice(0, FLAG_PREVIEW_LIMIT) + ' ...';
+			}
+
+			function refreshFlagPreview() {
+				if (!flagPreviewEl) return;
+				const text = flagPreviewText();
+				flagPreviewEl.textContent = text;
+				flagPreviewEl.style.display = text ? '' : 'none';
+			}
+
+			function statusChoices() {
+				const hero = core.status.hero || {};
+				return STATUS_IDS.filter((id) => Object.prototype.hasOwnProperty.call(hero, id));
+			}
+
+			function itemChoices() {
+				const items = core.material.items || {};
+				return Object.keys(items).map((id) => {
+					const item = items[id] || {};
+					return { id: item.id || id, name: item.name || item.id || id };
+				});
+			}
+
+			function flagChoices() {
+				const flags = (core.status.hero && core.status.hero.flags) || {};
+				return Object.keys(flags).filter((name) => name && !name.startsWith('debug') && !name.startsWith('__')).sort();
+			}
+
+			function pickList(kind) {
+				if (kind === 'status') return statusChoices();
+				if (kind === 'item') return itemChoices();
+				if (kind === 'flag') return flagChoices();
+				return [];
+			}
+
+			function chosenText(kind) {
+				if (kind === 'status') {
+					const id = core.getFlag('debug_statusName', '');
+					if (!id || !STATUS_IDS.includes(id)) return '选择属性';
+					return core.control.getStatusLabel(id);
+				}
+				if (kind === 'item') {
+					const id = core.getFlag('debug_itemName', '');
+					const item = id && core.material.items && core.material.items[id];
+					if (!item) return '选择物品';
+					return item.name || id;
+				}
+				const name = core.getFlag('debug_flagName', '');
+				if (typeof name !== 'string' || !name || name === '??' || name.startsWith('debug') || name.startsWith('__')) return '选择变量';
+				return name;
+			}
+
+			function pickerOpen() {
+				return !!(state.pick && pickUi && pickUi.box && pickUi.box.offsetParent);
+			}
+
+			function refreshPicker() {
+				if (!pickUi) return;
+				['status', 'item', 'flag'].forEach((kind) => {
+					const btn = pickUi.opens[kind];
+					if (btn) btn.textContent = chosenText(kind);
+				});
+				if (!state.pick) {
+					pickUi.box.classList.add('off');
+					return;
+				}
+				const kind = state.pick.kind;
+				const list = pickList(kind);
+				const pages = Math.max(1, Math.ceil(list.length / PICK_PAGE_SIZE));
+				if (state.pick.page > pages - 1) state.pick.page = pages - 1;
+				if (state.pick.page < 0) state.pick.page = 0;
+				const page = state.pick.page;
+				const titles = { status: '选择属性', item: '选择物品', flag: '选择变量' };
+				const empty = { status: '没有可修改的属性。', item: '没有物品。', flag: '当前存档里没有可修改的变量。' };
+				pickUi.title.textContent = titles[kind] || '选择';
+				pickUi.box.classList.remove('off');
+				pickUi.grid.textContent = '';
+				const slice = list.slice(page * PICK_PAGE_SIZE, page * PICK_PAGE_SIZE + PICK_PAGE_SIZE);
+				if (!slice.length) {
+					const note = document.createElement('p');
+					note.className = 'set-note';
+					note.textContent = empty[kind] || '';
+					pickUi.grid.appendChild(note);
+				}
+				slice.forEach((entry) => {
+					const id = kind === 'item' ? entry.id : entry;
+					const label = kind === 'status' ? core.control.getStatusLabel(id) : (kind === 'item' ? entry.name : id);
+					const btn = ctrl('button', kind === 'item' ? (label + ' ' + id) : label);
+					btn.classList.add('set-pick-choice');
+					if (kind === 'item') {
+						const icon = document.createElement('span');
+						paintIcon(icon, id);
+						if (icon.style.backgroundImage) btn.appendChild(icon);
+					}
+					const text = document.createElement('span');
+					text.className = 'set-pick-text';
+					text.textContent = label;
+					btn.appendChild(text);
+					btn.addEventListener('click', () => choosePick(id));
+					pickUi.grid.appendChild(btn);
+				});
+				pickUi.page.textContent = (page + 1) + '/' + pages;
+				pickUi.prev.disabled = page <= 0;
+				pickUi.next.disabled = page >= pages - 1;
+			}
+
+			function openPicker(kind) {
+				if (state.pick && state.pick.kind === kind) {
+					state.pick = null;
+					refreshPicker();
+					return;
+				}
+				state.pick = { kind: kind, page: 0 };
+				refreshPicker();
+				const first = pickUi.grid.querySelector('.set-ctrl');
+				if (first) first.focus();
+				else pickUi.back.focus();
+				pickUi.box.scrollIntoView({ block: 'nearest' });
+			}
+
+			function choosePick(value) {
+				const kind = state.pick && state.pick.kind;
+				const key = { status: 'debug_statusName', item: 'debug_itemName', flag: 'debug_flagName' }[kind];
+				state.pick = null;
+				if (key) run(key, [value]);
+				else refreshPicker();
+			}
+
+			function refresh() {
+				refreshLabels();
+				refreshHotkeys();
+				refreshTools();
+				refreshDamage();
+				refreshSpecials();
+				refreshPicker();
+				refreshFlagPreview();
+				applyScale();
+			}
+
+			function showPage(index) {
+				if (index < 0) index = 0;
+				if (index > pages.length - 1) index = pages.length - 1;
+				state.page = index;
+				pages.forEach((page, i) => {
+					page.panel.classList.toggle('off', i !== index);
+					page.tab.classList.toggle('on', i === index);
+				});
+				if (state.pick && pages[index].tab.textContent !== '控制台') {
+					state.pick = null;
+					refreshPicker();
+				}
+			}
+
+			function focusables() {
+				return [...root.querySelectorAll('.set-ctrl')].filter((el) => !el.disabled && el.offsetParent !== null);
+			}
+
+			function moveFocus(step) {
+				const list = focusables();
+				if (!list.length) return;
+				const curr = list.indexOf(document.activeElement);
+				const next = list[(curr + step + list.length) % list.length];
+				next.focus();
+				if (next.dataset.desc) setDesc(next.dataset.desc);
+			}
+
+			function addPage(name, build) {
+				const tab = ctrl('button', name);
+				tab.textContent = name;
+				tab.classList.add('set-tab');
+				const index = pages.length;
+				tab.addEventListener('click', () => showPage(index));
+				bar.appendChild(tab);
+				const panel = document.createElement('div');
+				panel.className = 'set-page off';
+				body.appendChild(panel);
+				pages.push({ tab, panel });
+				build(panel);
+			}
+
+			addPage('功能', (panel) => {
+				heading(panel, '自动');
+				let line = row(panel);
+				toggle(line, 'autoGet');
+				toggle(line, 'autoBattle');
+				heading(panel, '瞬移');
+				line = row(panel);
+				toggle(line, 'clickMove');
+				const bypass = document.createElement('span');
+				bypass.textContent = '绕开';
+				line.appendChild(bypass);
+				iconToggle(line, 'noRouting_HP', 'redPotion');
+				iconToggle(line, 'noRouting_MDEF', 'greenGem');
+				iconToggle(line, 'noRouting_ATK', 'redGem');
+				iconToggle(line, 'noRouting_DEF', 'blueGem');
+				heading(panel, '杂项');
+				line = row(panel);
+				toggle(line, 'moveSpeedDown');
+				toggle(line, 'moveSpeedUp');
+				toggle(line, 'floorChangeTimeDown');
+				toggle(line, 'floorChangeTimeUp');
+				line = row(panel);
+				toggle(line, 'skipText');
+				toggle(line, 'skipPerform');
+				line = row(panel);
+				toggle(line, 'comment');
+				toggle(line, 'autoHideFloor');
+				line = row(panel);
+				toggle(line, 'autoSaveBeforeUseItem');
+				toggle(line, 'autoSaveBeforePickItem');
+			});
+
+			addPage('音画', (panel) => {
+				heading(panel, '显示');
+				let line = row(panel);
+				toggle(line, 'itemDetail');
+				toggle(line, 'displayEnemyDamage');
+				line = row(panel);
+				toggle(line, 'displayCritical');
+				toggle(line, 'displayExtraDamage');
+				toggle(line, 'extraDamageType');
+				line = row(panel);
+				toggle(line, 'autoScale');
+				toggle(line, 'HDCanvas');
+				toggle(line, 'zoomIn');
+				toggle(line, 'zoomOut');
+				heading(panel, '音效');
+				line = row(panel);
+				toggle(line, 'bgm');
+				toggle(line, 'se');
+				line = row(panel);
+				toggle(line, 'decreaseVolume');
+				toggle(line, 'increaseVolume');
+
+				heading(panel, '显伤');
+				const hint = document.createElement('p');
+				hint.className = 'set-note';
+				hint.textContent = '空位先选中，再点要显示的数据。已有内容再点一次会清掉。';
+				panel.appendChild(hint);
+				line = row(panel);
+				const leftLabel = document.createElement('span');
+				leftLabel.textContent = '左下';
+				line.appendChild(leftLabel);
+				DAMAGE_SLOTS.filter((slot) => slot[0] === 'leftdown').forEach((slot) => line.appendChild(damageSlot(slot)));
+				line = row(panel);
+				const rightLabel = document.createElement('span');
+				rightLabel.textContent = '右上';
+				line.appendChild(rightLabel);
+				DAMAGE_SLOTS.filter((slot) => slot[0] === 'rightup').forEach((slot) => line.appendChild(damageSlot(slot)));
+				line = row(panel);
+				Object.keys(infoNameMap).forEach((infoName) => {
+					const btn = ctrl('button', infoNameMap[infoName]);
+					btn.classList.add('set-info');
+					btn.textContent = infoNameMap[infoName];
+					btn.disabled = true;
+					btn.addEventListener('click', () => {
+						if (!state.slot) return;
+						const data = loadDisplayData();
+						data[state.slot.pos][state.slot.index] = infoName;
+						core.setLocalStorage('displayData', data);
+						state.slot = null;
+						core.control.updateStatusBar();
+						refresh();
+					});
+					line.appendChild(btn);
+				});
+
+				heading(panel, '特殊属性字符');
+				const box = document.createElement('div');
+				box.className = 'set-specials';
+				panel.appendChild(box);
+				for (let i = 0; i < 6; i++) {
+					const line = row(box);
+					line.classList.add('set-special');
+					const name = document.createElement('span');
+					name.className = 'set-sp-name';
+					const input = document.createElement('input');
+					input.className = 'set-ctrl';
+					input.autocomplete = 'off';
+					input.placeholder = '一个字符';
+					input.dataset.desc = '输入该特殊属性的代表字符，最多保留一个字符。';
+					line.appendChild(name);
+					line.appendChild(input);
+				}
+				const nav = row(panel);
+				const prev = ctrl('button', '特殊属性的上一页');
+				prev.textContent = '上一页';
+				prev.addEventListener('click', () => { state.specialPage--; refreshSpecials(); });
+				const indicator = document.createElement('span');
+				indicator.className = 'set-sp-page';
+				const next = ctrl('button', '特殊属性的下一页');
+				next.textContent = '下一页';
+				next.addEventListener('click', () => { state.specialPage++; refreshSpecials(); });
+				nav.appendChild(prev);
+				nav.appendChild(indicator);
+				nav.appendChild(next);
+
+				function damageSlot(slot) {
+					const btn = ctrl('button', slot[2]);
+					btn.classList.add('set-dslot');
+					btn.dataset.pos = slot[0];
+					btn.dataset.index = slot[1];
+					btn.addEventListener('click', () => {
+						const data = loadDisplayData();
+						const current = data[slot[0]] && data[slot[0]][slot[1]];
+						if (current) {
+							data[slot[0]][slot[1]] = null;
+							core.setLocalStorage('displayData', data);
+							state.slot = null;
+							core.control.updateStatusBar();
+						} else if (state.slot && state.slot.pos === slot[0] && String(state.slot.index) === String(slot[1])) {
+							state.slot = null;
+						} else {
+							state.slot = { pos: slot[0], index: slot[1] };
+							setDesc(slot[2]);
+						}
+						refresh();
+					});
+					return btn;
+				}
+			});
+
+			addPage('按键', (panel) => {
+				let line = row(panel);
+				toggle(line, 'leftHand');
+				const note = document.createElement('p');
+				note.className = 'set-note';
+				note.textContent = '更推荐在背包右上角设置单个物品的快捷键。';
+				panel.appendChild(note);
+				heading(panel, '快捷键');
+				for (let num = 1; num <= 9; num++) {
+					line = row(panel);
+					line.classList.add('set-hotkey');
+					line.dataset.num = String(num);
+					const keyIcon = document.createElement('span');
+					paintIcon(keyIcon, 'btn' + num);
+					const itemIcon = document.createElement('span');
+					itemIcon.className = 'set-hot-item';
+					const name = document.createElement('span');
+					name.className = 'set-hot-name';
+					const input = document.createElement('input');
+					input.className = 'set-ctrl';
+					input.autocomplete = 'off';
+					input.placeholder = '物品名或ID';
+					input.dataset.desc = allSettings.setHotKey.text;
+					input._setSubmit = () => {
+						run('setHotKey', [num, input.value]);
+						input.value = '';
+					};
+					line.appendChild(keyIcon);
+					line.appendChild(itemIcon);
+					line.appendChild(name);
+					line.appendChild(input);
+				}
+				const reset = ctrl('button', allSettings.clearHotKeys.text);
+				reset.textContent = '重置';
+				reset.addEventListener('click', () => run('clearHotKeys'));
+				panel.appendChild(reset);
+			});
+
+			addPage('工具栏', (panel) => {
+				heading(panel, '当前工具栏');
+				[['normal', '常规', '常规模式下显示在工具栏中的图标。'],
+					['num', '数字', '数字模式下显示在工具栏中的图标。'],
+					['replay', '录像', '录像模式下显示在工具栏中的图标。']].forEach((item) => {
+					const line = row(panel);
+					const label = document.createElement('span');
+					label.textContent = item[1];
+					line.appendChild(label);
+					for (let i = 0; i < 9; i++) {
+						const btn = ctrl('button', item[2]);
+						btn.classList.add('set-slot');
+						btn.dataset.toolType = item[0];
+						btn.dataset.toolIndex = String(i);
+						const icon = document.createElement('span');
+						btn.appendChild(icon);
+						btn.addEventListener('click', () => {
+							state.toolType = item[0];
+							state.toolIndex = i;
+							setDesc(item[2]);
+							refreshTools();
+						});
+						line.appendChild(btn);
+					}
+				});
+				heading(panel, '可选按钮');
+				const palette = row(panel);
+				TOOL_CHOICES.forEach((choice) => {
+					const btn = ctrl('button', choice[1]);
+					btn.classList.add('set-slot', 'set-palette');
+					btn.dataset.toolIcon = choice[0];
+					const icon = document.createElement('span');
+					paintIcon(icon, choice[0]);
+					btn.appendChild(icon);
+					btn.addEventListener('click', () => {
+						state.toolIcon = choice[0];
+						setDesc(choice[1]);
+						refreshTools();
+					});
+					palette.appendChild(btn);
+				});
+				const go = ctrl('button', '把选中的图标写到选中的位置。');
+				go.textContent = '执行';
+				go.addEventListener('click', () => {
+					core.setToolBarConfig(state.toolType, state.toolIndex, state.toolIcon);
+					refresh();
+				});
+				panel.appendChild(go);
+			});
+
+			addPage('控制台', (panel) => {
+				const warn = document.createElement('p');
+				warn.className = 'set-warn';
+				warn.textContent = '本页提供的功能仅供调试使用。使用后相应存档将变红，录像不能通过，且无法提交。请读档到普通存档后正常游玩方可提交。';
+				panel.appendChild(warn);
+				let line = row(panel);
+				toggle(line, 'debug_wallHacking');
+				function commitNumber(input, valueKey, setKey) {
+					const parsed = parseInt(input.value, 10);
+					run(valueKey, [input.value]);
+					if (Number.isInteger(parsed) && core.getFlag(valueKey) === parsed) run(setKey);
+				}
+				function commitJson(input) {
+					const raw = input.value;
+					try {
+						JSON.parse(String(raw).trim());
+					} catch (e) {
+						run('debug_flagValue', [raw]);
+						return;
+					}
+					run('debug_flagValue', [raw]);
+					run('debug_setFlag');
+				}
+
+				heading(panel, '属性');
+				line = row(panel);
+				const statusPick = ctrl('button', '选择要修改的属性');
+				statusPick.addEventListener('click', () => openPicker('status'));
+				line.appendChild(statusPick);
+				const statusInput = textInput(line, 'debug_statusValue', '数值');
+				const setStatus = ctrl('button', allSettings.debug_setStatus.text);
+				setStatus.textContent = '执行';
+				setStatus.addEventListener('click', () => commitNumber(statusInput, 'debug_statusValue', 'debug_setStatus'));
+				line.appendChild(setStatus);
+				heading(panel, '物品');
+				line = row(panel);
+				const itemPick = ctrl('button', '从全部物品中选择，带图标，可翻页');
+				itemPick.addEventListener('click', () => openPicker('item'));
+				line.appendChild(itemPick);
+				const itemInput = textInput(line, 'debug_itemValue', '数量');
+				const setItem = ctrl('button', allSettings.debug_setItem.text);
+				setItem.textContent = '执行';
+				setItem.addEventListener('click', () => commitNumber(itemInput, 'debug_itemValue', 'debug_setItem'));
+				line.appendChild(setItem);
+				heading(panel, '变量(危险操作⚠️)');
+				line = row(panel);
+				const flagPick = ctrl('button', '从当前存档已有的变量中选择。debug 与引擎内部记录不在列表中。');
+				flagPick.addEventListener('click', () => openPicker('flag'));
+				line.appendChild(flagPick);
+				const flagInput = textInput(line, 'debug_flagValue', 'JSON');
+				const setFlag = ctrl('button', allSettings.debug_setFlag.text);
+				setFlag.textContent = '执行';
+				setFlag.addEventListener('click', () => commitJson(flagInput));
+				line.appendChild(setFlag);
+				const flagPreview = document.createElement('p');
+				flagPreview.className = 'set-note set-flag-preview';
+				flagPreview.style.display = 'none';
+				panel.appendChild(flagPreview);
+				flagPreviewEl = flagPreview;
+
+				const box = document.createElement('div');
+				box.className = 'set-picker off';
+				const title = document.createElement('h3');
+				const grid = document.createElement('div');
+				grid.className = 'set-pick-grid';
+				const nav = row(box);
+				const prev = ctrl('button', '选择列表的上一页');
+				prev.textContent = '上一页';
+				prev.addEventListener('click', () => {
+					if (!state.pick) return;
+					state.pick.page--;
+					refreshPicker();
+				});
+				const page = document.createElement('span');
+				page.className = 'set-pick-page';
+				const next = ctrl('button', '选择列表的下一页');
+				next.textContent = '下一页';
+				next.addEventListener('click', () => {
+					if (!state.pick) return;
+					state.pick.page++;
+					refreshPicker();
+				});
+				const back = ctrl('button', '关闭选择列表');
+				back.textContent = '返回';
+				back.addEventListener('click', () => {
+					state.pick = null;
+					refreshPicker();
+				});
+				nav.appendChild(prev);
+				nav.appendChild(page);
+				nav.appendChild(next);
+				nav.appendChild(back);
+				box.appendChild(title);
+				box.appendChild(nav);
+				box.appendChild(grid);
+				panel.appendChild(box);
+				pickUi = { box, title, grid, page, prev, next, back, opens: { status: statusPick, item: itemPick, flag: flagPick } };
+			});
+
+			const quit = ctrl('button', '关闭设置');
+			quit.textContent = '退出';
+			quit.classList.add('set-quit');
+			quit.addEventListener('click', () => close());
+			head.appendChild(quit);
+
+			function close() {
+				unhookTip();
+				if (root.contains(document.activeElement)) document.activeElement.blur();
+				root.remove();
+				const node = document.getElementById('dom-setting-style');
+				if (node) node.remove();
+				api.opened = false;
+				if (core.plugin.domSetting === api) core.plugin.domSetting = null;
+				setTimeout(core.unlockControl, 0);
+			}
+
+			root.addEventListener('keydown', (e) => {
+				const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+				if (typing) {
+					if (e.key === 'Enter') {
+						e.preventDefault();
+						e.stopPropagation();
+						if (e.target._setSubmit) e.target._setSubmit();
+					} else if (e.key === 'Escape') {
+						e.preventDefault();
+						e.stopPropagation();
+						e.target.blur();
+					} else e.stopPropagation();
+					return;
+				}
+				if (e.key === 'Escape') {
+					e.preventDefault();
+					e.stopPropagation();
+					if (pickerOpen()) {
+						state.pick = null;
+						refreshPicker();
+					} else close();
+				} else if (e.key === 'PageDown' || e.key === 'PageUp') {
+					e.preventDefault();
+					e.stopPropagation();
+					if (pickerOpen()) {
+						state.pick.page += e.key === 'PageDown' ? 1 : -1;
+						refreshPicker();
+						const first = pickUi.grid.querySelector('.set-ctrl') || pickUi.prev;
+						if (first) first.focus();
+					} else showPage(state.page + (e.key === 'PageDown' ? 1 : -1));
+				} else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+					e.preventDefault();
+					e.stopPropagation();
+					moveFocus(1);
+				} else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+					e.preventDefault();
+					e.stopPropagation();
+					moveFocus(-1);
+				} else if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
+					e.stopPropagation();
+				}
+			});
+			root.addEventListener('focusin', (e) => {
+				const node = e.target.closest && e.target.closest('.set-ctrl');
+				if (node && node.dataset.desc) setDesc(node.dataset.desc);
+			});
+			root.addEventListener('mouseover', (e) => {
+				const node = e.target.closest && e.target.closest('.set-ctrl');
+				if (node && node.dataset.desc) setDesc(node.dataset.desc);
+			});
+			root.addEventListener('selectstart', (e) => e.stopPropagation());
+			['pointerdown', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'wheel'].forEach((type) => {
+				root.addEventListener(type, (e) => e.stopPropagation());
+			});
+
+			const api = {
+				opened: true,
+				layout: function () {
+					if (!api.opened) return;
+					applyScale();
+					refreshLabels();
+				},
+				close: close,
+			};
+			core.plugin.domSetting = api;
+			core.dom.gameDraw.appendChild(root);
+			showPage(0);
+			refresh();
+			const first = focusables()[0];
+			if (first) first.focus();
+		}
+		// #endregion
+
 		this.openSetting = function () {
 			if (core.isReplaying()) return;
+			if (!ENABLE_CANVAS_SETTING) {
+				openDomSetting();
+				return;
+			}
 			core.lockControl();
 			const ctx = 'setting';
 
