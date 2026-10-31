@@ -791,7 +791,10 @@ control.prototype._moveHero_moving = function () {
                 // 检测是否穿出去
                 var nx = core.nextX(), ny = core.nextY();
                 if (nx < 0 || nx >= core.bigmap.width || ny < 0 || ny >= core.bigmap.height) return;
-                core.eventMoveHero([core.getHeroLoc('direction')], core.values.moveSpeed); // 取消递归，方便调试时单击走一步的情形
+				// 只走一格，不沿按住 Ctrl 那样一直前进。走完后停掉寻路，否则下一次点击只用来清掉这条路线。
+				core.eventMoveHero([core.getHeroLoc('direction')], core.values.moveSpeed, function () {
+					core.stopAutomaticRoute();
+				});
             }
             else {
                 core.moveAction();
