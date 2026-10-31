@@ -2329,8 +2329,14 @@ actions.prototype._clickSwitchs_sounds = function (x, y) {
             case 1:
                 return this._clickSwitchs_sounds_se();
             case 2:
-                if (x == leftGrid || x == leftGrid + 1) return this._clickSwitchs_sounds_userVolume(-1);
-                if (x == rightGrid || x == rightGrid + 1) return this._clickSwitchs_sounds_userVolume(1);
+                if (x == leftGrid || x == leftGrid + 1) {
+                    this._clickSwitchs_sounds_userVolume(-1);
+                    return core.ui._drawSwitchs_sounds();
+                }
+                if (x == rightGrid || x == rightGrid + 1) {
+                    this._clickSwitchs_sounds_userVolume(1);
+                    return core.ui._drawSwitchs_sounds();
+                }
                 return;
             case 3:
                 core.status.event.selection = 0;
@@ -2375,11 +2381,15 @@ actions.prototype._keyUpSwitchs_sounds = function (keycode) {
     }
     if (keycode == 37) {
         switch (core.status.event.selection) {
-            case 2: core.playSound('确定'); return this._clickSwitchs_sounds_userVolume(-1);
+            case 2:
+                this._clickSwitchs_sounds_userVolume(-1);
+                return core.ui._drawSwitchs_sounds();
         }
     } else if (keycode == 39) {
         switch (core.status.event.selection) {
-            case 2: core.playSound('确定'); return this._clickSwitchs_sounds_userVolume(1);
+            case 2:
+                this._clickSwitchs_sounds_userVolume(1);
+                return core.ui._drawSwitchs_sounds();
         }
     }
     this._selectChoices(core.status.event.ui.choices.length, keycode, this._clickSwitchs_sounds);

@@ -5366,7 +5366,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			);
 			core.setLocalStorage("userVolume", core.musicStatus.userVolume);
 			core.playSound("确定");
-			core.ui._drawSwitchs_sounds();
 		};
 	},
     "drawItemDetail": function () {
@@ -10070,6 +10069,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			'#dom-setting button.on{outline:2px solid gold;}',
 			'#dom-setting input{background:#333;min-width:6em;user-select:text;}',
 			'#dom-setting button:disabled{opacity:.4;}',
+			'#dom-setting .set-step{display:inline-flex;align-items:center;gap:4px;padding:2px 6px 2px 8px;',
+			'background:#555;border:1px solid #ccc;border-radius:3px;}',
+			'#dom-setting .set-step-name{min-width:2.5em;color:#ffe4b5;}',
+			'#dom-setting .set-step-val{min-width:4.2em;text-align:center;font-variant-numeric:tabular-nums;}',
+			'#dom-setting .set-step-btn{min-width:1.8em;padding:2px 6px;line-height:1.2;}',
+			'#dom-setting .set-step-lock{display:none;color:#bbb;font-size:12px;}',
+			'#dom-setting .set-step-locked .set-step-lock{display:inline;}',
+			'#dom-setting .set-step-locked .set-step-btn{cursor:default;}',
 			'#dom-setting .set-page.off{display:none;}',
 			'#dom-setting .set-icon{width:calc(22px * var(--set-scale));height:calc(22px * var(--set-scale));',
 			'display:inline-block;vertical-align:middle;image-rendering:pixelated;background-repeat:no-repeat;flex:0 0 auto;}',
@@ -10096,6 +10103,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			'background:rgba(70,70,70,.92);border:1px solid #fff;border-radius:3px;}',
 			'#dom-setting .set-warn{color:#ffc0cb;}',
 			'#dom-setting .set-note{color:#ff3;font-size:12px;}',
+			'#dom-setting .set-damage-wrap{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;margin-bottom:6px;}',
+			'#dom-setting .set-damage{display:grid;grid-template-columns:max-content max-content;grid-template-rows:repeat(3,auto);',
+			'gap:6px 28px;padding:8px 10px;border:1px solid #888;background:#333;}',
+			'#dom-setting .set-dslot{min-width:5.5em;white-space:nowrap;text-align:center;}',
+			'#dom-setting .set-damage-options{display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;max-width:28em;}',
+			'#dom-setting .set-damage-options.off{display:none;}',
+			'#dom-setting .set-specials{margin-top:6px;}',
+			'#dom-setting .set-specials.off{display:none;}',
 			'#dom-setting .set-flag-preview{margin:0 0 8px;word-break:break-all;white-space:pre-wrap;}',
 			'#dom-setting .set-picker.off{display:none;}',
 			'#dom-setting .set-picker{margin-top:8px;padding:8px;border:1px solid #888;background:#2a2a2a;}',
@@ -10126,13 +10141,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			['speedDown', '减速录像(最低0.2倍)'], ['speedUp', '加速录像(最高24倍)'],
 			['single', '单步播放录像'], ['view', '浏览地图'], ['delete', '删除已有图标'],
 		];
+		// 与地图显伤同一套坐标。左下 3、2、1 自上而下，右上 1、2、3 自上而下，同一行左右对齐。
 		const DAMAGE_SLOTS = [
-			['leftdown', 1, '设定敌人左下角显示的数据'],
-			['leftdown', 2, '设定敌人左下角显示的数据'],
-			['leftdown', 3, '设定敌人左下角显示的数据'],
-			['rightup', 1, '设定敌人右上角显示的数据'],
-			['rightup', 2, '设定敌人右上角显示的数据'],
-			['rightup', 3, '设定敌人右上角显示的数据'],
+			['leftdown', 3, '怪物左下角最上面一行', 1, 1],
+			['rightup', 1, '怪物右上角最上面一行', 1, 2],
+			['leftdown', 2, '怪物左下角中间一行', 2, 1],
+			['rightup', 2, '怪物右上角中间一行', 2, 2],
+			['leftdown', 1, '怪物左下角最下面一行', 3, 1],
+			['rightup', 3, '怪物右上角最下面一行', 3, 2],
 		];
 
 		const croppedIconURLCache = {};
@@ -10214,7 +10230,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			const root = document.createElement('div');
 			root.id = 'dom-setting';
-			const state = { page: 0, slot: null, specialPage: 0, toolType: null, toolIndex: -1, toolIcon: null, pick: null, hot: null };
+			const state = { page: 0, slot: null, specialOpen: false, specialPage: 0, toolType: null, toolIndex: -1, toolIcon: null, pick: null, hot: null };
 			let toolDrag = null;
 			const pages = [];
 
@@ -10309,6 +10325,74 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				btn.addEventListener('click', () => run(key));
 				parent.appendChild(btn);
 				return btn;
+			}
+
+			// 中间的数字不走 getName。画布版的 getName 把「<」和说明画在减号按钮上。
+			const stepValue = {
+				moveSpeedDown: () => String(core.values.moveSpeed),
+				floorChangeTimeDown: () => String(core.values.floorChangeTime),
+				zoomIn: () => {
+					const n = Math.round(Number(core.domStyle.scale) * 100) / 100;
+					return n + 'x';
+				},
+				decreaseVolume: () => String(Math.round(Math.sqrt(100 * core.musicStatus.userVolume))),
+			};
+
+			function stepper(parent, label, downKey, upKey) {
+				const box = document.createElement('span');
+				box.className = 'set-step';
+				if (downKey === 'zoomIn') box.classList.add('set-step-zoom');
+				const name = document.createElement('span');
+				name.className = 'set-step-name';
+				name.textContent = label;
+				const minus = ctrl('button', allSettings[downKey].text);
+				minus.classList.add('set-step-btn');
+				minus.dataset.stepKey = downKey;
+				minus.textContent = '−';
+				minus.addEventListener('click', () => run(downKey));
+				const val = document.createElement('span');
+				val.className = 'set-step-val';
+				val.dataset.step = downKey;
+				const plus = ctrl('button', allSettings[upKey].text);
+				plus.classList.add('set-step-btn');
+				plus.dataset.stepKey = upKey;
+				plus.textContent = '+';
+				plus.addEventListener('click', () => run(upKey));
+				box.appendChild(name);
+				box.appendChild(minus);
+				box.appendChild(val);
+				box.appendChild(plus);
+				if (downKey === 'zoomIn') {
+					const lock = document.createElement('span');
+					lock.className = 'set-step-lock';
+					lock.textContent = '不可调';
+					box.appendChild(lock);
+				}
+				parent.appendChild(box);
+				return box;
+			}
+
+			function refreshSteppers() {
+				root.querySelectorAll('[data-step]').forEach((el) => {
+					const format = stepValue[el.dataset.step];
+					if (format) el.textContent = format();
+				});
+				const vertical = !!core.domStyle.isVertical;
+				root.querySelectorAll('.set-step-zoom').forEach((box) => {
+					box.classList.toggle('set-step-locked', vertical);
+					if (vertical) box.dataset.desc = '竖屏时放缩由屏幕宽度决定，这里不能调整。';
+					else delete box.dataset.desc;
+					box.querySelectorAll('.set-step-btn').forEach((btn) => {
+						btn.disabled = vertical;
+						const setting = allSettings[btn.dataset.stepKey];
+						btn.dataset.desc = vertical
+							? '竖屏时放缩由屏幕宽度决定，这里不能调整。'
+							: ((setting && setting.text) || '');
+					});
+				});
+				if (vertical && document.activeElement && document.activeElement.disabled && root.contains(document.activeElement)) {
+					document.activeElement.blur();
+				}
 			}
 
 			function iconToggle(parent, key, iconId) {
@@ -10687,9 +10771,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const selected = state.slot && state.slot.pos === pos && String(state.slot.index) === String(index);
 					btn.classList.toggle('on', !!selected);
 				});
-				root.querySelectorAll('.set-info').forEach((btn) => {
-					btn.disabled = !state.slot;
-				});
+				const options = root.querySelector('.set-damage-options');
+				if (options) options.classList.toggle('off', !state.slot);
 			}
 
 			function allSpecialNumbers() {
@@ -10701,7 +10784,32 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				return [...found].sort((a, b) => a - b);
 			}
 
+			function oneSpecialChar(prev, next) {
+				const chars = Array.from(next || '');
+				if (chars.length <= 1) return next || '';
+				if (prev && next.startsWith(prev)) return chars[chars.length - 1];
+				return chars[0];
+			}
+
+			function commitSpecial(input) {
+				const num = input.dataset.special;
+				if (num == null || num === '') return;
+				const value = oneSpecialChar(input._last, input.value);
+				input._last = value;
+				if (input.value !== value) input.value = value;
+				const data = core.getLocalStorage('specialIconData', {});
+				if ((data[num] || '') === value) return;
+				data[num] = value;
+				core.setLocalStorage('specialIconData', data);
+				core.control.updateStatusBar();
+				refresh();
+			}
+
 			function refreshSpecials() {
+				const box = root.querySelector('.set-specials');
+				if (box) box.classList.toggle('off', !state.specialOpen);
+				const opener = root.querySelector('.set-special-open');
+				if (opener) opener.classList.toggle('on', !!state.specialOpen);
 				const list = allSpecialNumbers();
 				const pages = Math.max(1, Math.ceil(list.length / 6));
 				if (state.specialPage > pages - 1) state.specialPage = pages - 1;
@@ -10723,15 +10831,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const shown = saved[num] || '无';
 					name.textContent = pair ? (pair[0] + ':' + pair[1] + ' ' + shown) : (num + ' ' + shown);
 					input.dataset.special = num;
-					input._setSubmit = () => {
-						let value = input.value;
-						if (value.length > 1) value = value[0];
-						const data = core.getLocalStorage('specialIconData', {});
-						data[num] = value;
-						core.setLocalStorage('specialIconData', data);
-						input.value = '';
-						refresh();
-					};
+					if (document.activeElement !== input) {
+						input.value = saved[num] || '';
+						input._last = input.value;
+					}
 				});
 				const indicator = root.querySelector('.set-sp-page');
 				if (indicator) indicator.textContent = (state.specialPage + 1) + '/' + pages;
@@ -10892,6 +10995,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			function refresh() {
 				refreshLabels();
+				refreshSteppers();
 				refreshHotkeys();
 				refreshHotPick();
 				refreshTools();
@@ -10965,10 +11069,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				iconToggle(line, 'noRouting_DEF', 'blueGem');
 				heading(panel, '杂项');
 				line = row(panel);
-				toggle(line, 'moveSpeedDown');
-				toggle(line, 'moveSpeedUp');
-				toggle(line, 'floorChangeTimeDown');
-				toggle(line, 'floorChangeTimeUp');
+				stepper(line, '步时', 'moveSpeedDown', 'moveSpeedUp');
+				stepper(line, '转场', 'floorChangeTimeDown', 'floorChangeTimeUp');
 				line = row(panel);
 				toggle(line, 'skipText');
 				toggle(line, 'skipPerform');
@@ -10992,52 +11094,64 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				line = row(panel);
 				toggle(line, 'autoScale');
 				toggle(line, 'HDCanvas');
-				toggle(line, 'zoomIn');
-				toggle(line, 'zoomOut');
+				line = row(panel);
+				stepper(line, '放缩', 'zoomIn', 'zoomOut');
 				heading(panel, '音效');
 				line = row(panel);
 				toggle(line, 'bgm');
 				toggle(line, 'se');
 				line = row(panel);
-				toggle(line, 'decreaseVolume');
-				toggle(line, 'increaseVolume');
+				stepper(line, '音量', 'decreaseVolume', 'increaseVolume');
 
 				heading(panel, '显伤');
 				const hint = document.createElement('p');
 				hint.className = 'set-note';
-				hint.textContent = '空位先选中，再点要显示的数据。已有内容再点一次会清掉。';
+				hint.textContent = '调整地图上怪物的数据显示项';
 				panel.appendChild(hint);
-				line = row(panel);
-				const leftLabel = document.createElement('span');
-				leftLabel.textContent = '左下';
-				line.appendChild(leftLabel);
-				DAMAGE_SLOTS.filter((slot) => slot[0] === 'leftdown').forEach((slot) => line.appendChild(damageSlot(slot)));
-				line = row(panel);
-				const rightLabel = document.createElement('span');
-				rightLabel.textContent = '右上';
-				line.appendChild(rightLabel);
-				DAMAGE_SLOTS.filter((slot) => slot[0] === 'rightup').forEach((slot) => line.appendChild(damageSlot(slot)));
-				line = row(panel);
+				const damageWrap = document.createElement('div');
+				damageWrap.className = 'set-damage-wrap';
+				const damageGrid = document.createElement('div');
+				damageGrid.className = 'set-damage';
+				DAMAGE_SLOTS.forEach((slot) => damageGrid.appendChild(damageSlot(slot)));
+				const damageOptions = document.createElement('div');
+				damageOptions.className = 'set-damage-options off';
 				Object.keys(infoNameMap).forEach((infoName) => {
 					const btn = ctrl('button', infoNameMap[infoName]);
 					btn.classList.add('set-info');
 					btn.textContent = infoNameMap[infoName];
-					btn.disabled = true;
 					btn.addEventListener('click', () => {
 						if (!state.slot) return;
+						const pos = state.slot.pos;
+						const index = state.slot.index;
 						const data = loadDisplayData();
-						data[state.slot.pos][state.slot.index] = infoName;
+						data[pos][index] = infoName;
 						core.setLocalStorage('displayData', data);
 						state.slot = null;
 						core.control.updateStatusBar();
 						refresh();
+						const slotBtn = root.querySelector('.set-dslot[data-pos="' + pos + '"][data-index="' + index + '"]');
+						if (slotBtn) slotBtn.focus();
 					});
-					line.appendChild(btn);
+					damageOptions.appendChild(btn);
 				});
+				damageWrap.appendChild(damageGrid);
+				damageWrap.appendChild(damageOptions);
+				panel.appendChild(damageWrap);
 
-				heading(panel, '特殊属性字符');
+				const openSpecial = ctrl('button', '设置某种怪物特殊属性的代表字符，将展示在地图上。');
+				openSpecial.classList.add('set-special-open');
+				openSpecial.textContent = '设置特殊属性代表字符';
+				openSpecial.addEventListener('click', () => {
+					state.specialOpen = !state.specialOpen;
+					refreshSpecials();
+				});
+				panel.appendChild(openSpecial);
 				const box = document.createElement('div');
-				box.className = 'set-specials';
+				box.className = 'set-specials off';
+				const limit = document.createElement('p');
+				limit.className = 'set-note';
+				limit.textContent = '限输入一个字符';
+				box.appendChild(limit);
 				panel.appendChild(box);
 				for (let i = 0; i < 6; i++) {
 					const line = row(box);
@@ -11047,12 +11161,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const input = document.createElement('input');
 					input.className = 'set-ctrl';
 					input.autocomplete = 'off';
-					input.placeholder = '一个字符';
-					input.dataset.desc = '输入该特殊属性的代表字符，最多保留一个字符。';
+					input.dataset.desc = '填写该特殊属性的代表字符。输入后即保存，只保留一个字符。';
+					input._setSubmit = () => commitSpecial(input);
+					input.addEventListener('compositionstart', () => { input._composing = true; });
+					input.addEventListener('compositionend', () => {
+						input._composing = false;
+						commitSpecial(input);
+					});
+					input.addEventListener('input', () => {
+						if (input._composing) return;
+						commitSpecial(input);
+					});
+					input.addEventListener('change', () => commitSpecial(input));
 					line.appendChild(name);
 					line.appendChild(input);
 				}
-				const nav = row(panel);
+				const nav = row(box);
 				const prev = ctrl('button', '特殊属性的上一页');
 				prev.textContent = '上一页';
 				prev.addEventListener('click', () => { state.specialPage--; refreshSpecials(); });
@@ -11070,6 +11194,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					btn.classList.add('set-dslot');
 					btn.dataset.pos = slot[0];
 					btn.dataset.index = slot[1];
+					btn.style.gridRow = String(slot[3]);
+					btn.style.gridColumn = String(slot[4]);
 					btn.addEventListener('click', () => {
 						const data = loadDisplayData();
 						const current = data[slot[0]] && data[slot[0]][slot[1]];
@@ -11426,6 +11552,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					haltToolDrag();
 					applyScale();
 					refreshLabels();
+					refreshSteppers();
 				},
 				close: close,
 			};
