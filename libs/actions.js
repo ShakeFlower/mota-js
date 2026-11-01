@@ -3047,6 +3047,20 @@ actions.prototype._clickReplay = function (x, y) {
     if (y >= topIndex && y < topIndex + choices.length) {
         var selection = y - topIndex;
         core.status.event.selection = selection;
+        // 2026-11-1：这个判断最后一项是“拖动回放”还是“返回游戏”的方式不是很优雅
+        var item = choices[selection];
+        var text = item && item.text ? item.text : item;
+        if (text === '拖动回放') {
+            core.playSound('确定');
+            core.ui.closePanel();
+            var start = core.plugin && core.plugin._freeReplayStart;
+            if (typeof start === 'function') start();
+            return;
+        }
+        if (text === '返回游戏') {
+            core.playSound('取消');
+            return core.ui.closePanel();
+        }
         switch (selection) {
             case 0: core.playSound('确定'); return this._clickReplay_fromBeginning();
             case 1: core.playSound('确定'); return this._clickReplay_fromLoad();
@@ -3054,7 +3068,6 @@ actions.prototype._clickReplay = function (x, y) {
             case 3: core.playSound('确定'); return this._clickReplay_replaySince();
             case 4: core.playSound('确定'); return core.chooseReplayFile();
             case 5: core.playSound('确定'); return this._clickReplay_download();
-            case 6: core.playSound('取消'); return core.ui.closePanel();
         }
     }
 }

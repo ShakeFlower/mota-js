@@ -8459,6 +8459,568 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		this.setToolbarButton = setToolbarButton;
 	},
+    "freeReplay": function () {
+		// 默认关闭。测试文档里还开着的口子这次不修：朝向、滑条右端、记录点粒度、每步全量补丁、接续录像、null/undefined、24倍速。
+		if (main.replayChecking) return;
+
+		let hooksOn = false;
+		const saved = {};
+		let scrubber = null;
+
+		function deepClone(value) {
+			if (value == null) return value;
+			if (typeof structuredClone === 'function') return structuredClone(value);
+			return JSON.parse(JSON.stringify(value));
+		}
+
+		function esc(key) {
+			return String(key).replace(/~/g, '~0').replace(/\./g, '~1');
+		}
+
+		function unesc(key) {
+			return String(key).replace(/~1/g, '.').replace(/~0/g, '~');
+		}
+
+		function joinPath(base, key) {
+			return base ? (base + '.' + esc(key)) : esc(key);
+		}
+
+		function parsePath(path) {
+			return path ? path.split('.').map(unesc) : [];
+		}
+
+		function diff(from, to) {
+			const ops = [];
+			diffWalk(from, to, '', ops);
+			return ops;
+		}
+
+		function diffWalk(from, to, path, ops) {
+			if (from === to) return;
+			const fromIsObj = from && typeof from === 'object';
+			const toIsObj = to && typeof to === 'object';
+			if (!fromIsObj || !toIsObj || Array.isArray(from) !== Array.isArray(to)) {
+				ops.push({ p: path || '', v: deepClone(to) });
+				return;
+			}
+			if (Array.isArray(from) && Array.isArray(to)) {
+				const max = Math.max(from.length, to.length);
+				for (let i = 0; i < max; i++) {
+					const p = joinPath(path || '', i);
+					if (i >= to.length) ops.push({ p: p, d: 1 });
+					else if (i >= from.length) ops.push({ p: p, v: deepClone(to[i]) });
+					else diffWalk(from[i], to[i], p, ops);
+				}
+				return;
+			}
+			const keys = {};
+			let k;
+			for (k in from) keys[k] = 1;
+			for (k in to) keys[k] = 1;
+			for (k in keys) {
+				const p2 = joinPath(path || '', k);
+				if (!(k in to)) ops.push({ p: p2, d: 1 });
+				else if (!(k in from)) ops.push({ p: p2, v: deepClone(to[k]) });
+				else diffWalk(from[k], to[k], p2, ops);
+			}
+		}
+
+		function trimForPatch(data) {
+			const copied = deepClone(data);
+			if (!copied || typeof copied !== 'object') return copied;
+			[
+				'route',
+				'time',
+				'hero.statistics.totalTime',
+				'hero.statistics.currTime',
+				'hero.statistics.start',
+				'hero.statistics.moveDirectly',
+				'hero.statistics.ignoreSteps'
+			].forEach(function (path) {
+				const parts = parsePath(path);
+				let cur = copied;
+				for (let i = 0; i < parts.length - 1; i++) {
+					if (cur == null || typeof cur !== 'object') return;
+					cur = cur[parts[i]];
+				}
+				if (cur && typeof cur === 'object') delete cur[parts[parts.length - 1]];
+			});
+			return copied;
+		}
+
+		function trimArrayTailHoles(value) {
+			if (Array.isArray(value)) {
+				while (value.length > 0 && !(value.length - 1 in value)) value.length--;
+				for (let i = 0; i < value.length; i++) trimArrayTailHoles(value[i]);
+				return;
+			}
+			if (value && typeof value === 'object') {
+				for (const key in value) trimArrayTailHoles(value[key]);
+			}
+		}
+
+		function getRouteLength(data) {
+			if (!data || data.route == null) return 0;
+			let route = data.route;
+			if (typeof route === 'string') route = core.decodeRoute(route);
+			return Array.isArray(route) ? route.length : 0;
+		}
+
+		const replay = {
+			isReplaying: false,
+			patches: [],
+			routeLengths: [],
+			totalSteps: 0,
+			finalData: null,
+			reset: function (finalData, patches, routeLengths) {
+				if (patches == null) patches = [];
+				if (routeLengths == null) routeLengths = [];
+				this.isReplaying = false;
+				this.patches = deepClone(patches);
+				this.routeLengths = deepClone(routeLengths);
+				this.totalSteps = this.patches.length;
+				this.finalData = finalData == null ? null : deepClone(finalData);
+				delete this.currentStep;
+				return this;
+			},
+			pushStep: function (data) {
+				const newData = deepClone(data);
+				const oldFinalData = this.finalData;
+				const newPatchData = trimForPatch(newData);
+				const oldPatchData = trimForPatch(oldFinalData);
+				const oldStep = this.totalSteps;
+				const patch = diff(newPatchData, oldPatchData);
+				if (patch.length === 0) return this;
+				this.patches[oldStep] = patch;
+				this.routeLengths[oldStep] = getRouteLength(oldFinalData);
+				this.finalData = newData;
+				this.totalSteps = oldStep + 1;
+				return this;
+			},
+			getStep: function (step) {
+				if (step <= 0) step = 0;
+				else if (step >= this.totalSteps) return deepClone(this.finalData);
+				let data = deepClone(this.finalData);
+				for (let i = this.totalSteps - 1; i >= step; --i) {
+					const ops = this.patches[i] || [];
+					for (let j = 0; j < ops.length; j++) {
+						const op = ops[j];
+						const path = parsePath(op.p);
+						if (path.length === 0) {
+							if (!op.d) data = deepClone(op.v);
+							continue;
+						}
+						let cur = data;
+						for (let k = 0; k < path.length - 1; k++) {
+							let key = path[k];
+							if (Array.isArray(cur) && /^\d+$/.test(key)) key = key | 0;
+							if (cur[key] == null) cur[key] = {};
+							cur = cur[key];
+						}
+						let lastKey = path[path.length - 1];
+						if (Array.isArray(cur) && /^\d+$/.test(lastKey)) lastKey = lastKey | 0;
+						if (op.d) delete cur[lastKey];
+						else cur[lastKey] = deepClone(op.v);
+					}
+				}
+				trimArrayTailHoles(data);
+				return data;
+			},
+			gotoStep: function (step) {
+				if (!this.isReplaying) return this;
+				if (step < 0) step = 0;
+				else if (step >= this.totalSteps) step = this.totalSteps;
+				const data = this.getStep(step);
+				if (data == null) return this;
+				core.loadData(data, function () {
+					core.lockControl();
+				});
+				this.currentStep = step;
+				return this;
+			},
+			startReplay: function () {
+				if (this.isReplaying) return this;
+				this.isReplaying = true;
+				this.currentStep = this.totalSteps + 1;
+				core.lockControl();
+				return this;
+			},
+			stopReplay: function () {
+				if (!this.isReplaying) return this;
+				if (this.currentStep < this.totalSteps) {
+					core.status.route = core.status.route.slice(0, this.routeLengths[this.currentStep]);
+					this.finalData = this.getStep(this.currentStep);
+					this.totalSteps = this.currentStep;
+					this.routeLengths = this.routeLengths.slice(0, this.currentStep);
+					this.patches = this.patches.slice(0, this.currentStep);
+				}
+				this.isReplaying = false;
+				delete this.currentStep;
+				core.unlockControl();
+				return this;
+			}
+		};
+
+		function recordNow() {
+			if (!hooksOn || replay.isReplaying) return;
+			const save = core.saveData();
+			if (replay.finalData == null) replay.reset(save);
+			else replay.pushStep(save);
+		}
+
+		function warnMissing() {
+			setTimeout(function () {
+				if (!hooksOn) return;
+				core.drawText(
+					"\t[拖动回放提示]当前存档没有拖动回放数据。\n" +
+					"请点击 设置->同步存档->回放和下载录像->从头开始回放，\n" +
+					"以生成完整的拖动回放记录。"
+				);
+			}, 0);
+		}
+
+		function acceptExtra(data, extra) {
+			if (!hooksOn || !data) return;
+			if (extra && extra.time != null && data.time !== extra.time) {
+				replay.reset(data);
+				warnMissing();
+				return;
+			}
+			if (extra && Array.isArray(extra.patches) && Array.isArray(extra.routeLengths)) {
+				replay.reset(data, extra.patches, extra.routeLengths);
+			} else {
+				replay.reset(data);
+				warnMissing();
+			}
+		}
+
+		function acceptField(data) {
+			if (!data || typeof data !== 'object') return;
+			const extra = data.__freeReplay || null;
+			if (data.__freeReplay) delete data.__freeReplay;
+			acceptExtra(data, extra);
+		}
+
+		function stripAutosave() {
+			const autosave = core.saves && core.saves.autosave;
+			if (!autosave || !Array.isArray(autosave.data)) return;
+			let changed = false;
+			for (let i = 0; i < autosave.data.length; i++) {
+				if (autosave.data[i] && autosave.data[i].__freeReplay) {
+					delete autosave.data[i].__freeReplay;
+					changed = true;
+				}
+			}
+			if (changed) autosave.updated = true;
+		}
+
+		function install() {
+			if (hooksOn) return;
+			if (!window.events || !events.prototype || !window.control || !control.prototype) return;
+			saved.battle = events.prototype.battle;
+			saved.openDoor = events.prototype._openDoor_check;
+			saved.moveAction = control.prototype.moveAction;
+			saved.save = control.prototype._doSL_save;
+			saved.autosave = control.prototype.autosave;
+			saved.start = events.prototype._startGame_afterStart;
+			saved.loadAfter = control.prototype._doSL_load_afterGet;
+			saved.load = control.prototype._doSL_load;
+			saved.reload = control.prototype._doSL_reload;
+			saved.removeSave = control.prototype.removeSave;
+			hooksOn = true;
+
+			events.prototype.battle = function () {
+				if (!core.status.event.id) recordNow();
+				return saved.battle.apply(this, arguments);
+			};
+			events.prototype._openDoor_check = function () {
+				if (!core.status.event.id) recordNow();
+				return saved.openDoor.apply(this, arguments);
+			};
+			control.prototype.moveAction = function () {
+				recordNow();
+				return saved.moveAction.apply(this, arguments);
+			};
+			control.prototype._doSL_save = function (id) {
+				if (id == 'autoSave') return saved.save.apply(this, arguments);
+				let stamp = null;
+				const prev = core.control.saveData;
+				core.control.saveData = function () {
+					const data = prev.apply(this, arguments);
+					if (data && data.time != null) stamp = data.time;
+					return data;
+				};
+				let res;
+				try {
+					res = saved.save.apply(this, arguments);
+				} finally {
+					core.control.saveData = prev;
+				}
+				core.setLocalForage('save' + id + '_patches', {
+					time: stamp,
+					patches: replay.patches,
+					routeLengths: replay.routeLengths
+				}, function () { }, function (err) {
+					console.error(err);
+				});
+				return res;
+			};
+			control.prototype.autosave = function () {
+				const count = core.saves.actionCount;
+				const result = saved.autosave.apply(this, arguments);
+				if (!core.saves.autosave || core.saves.actionCount === count) return result;
+				const list = core.saves.autosave.data;
+				const now = core.saves.autosave.now;
+				if (!list || now < 1) return result;
+				const entry = list[now - 1];
+				if (entry && typeof entry === 'object') {
+					try {
+						entry.__freeReplay = {
+							patches: JSON.parse(JSON.stringify(replay.patches || [])),
+							routeLengths: JSON.parse(JSON.stringify(replay.routeLengths || []))
+						};
+					} catch (e) {
+						console.error(e);
+					}
+				}
+				return result;
+			};
+			events.prototype._startGame_afterStart = function (callback) {
+				return saved.start.call(this, function () {
+					if (hooksOn) replay.reset(core.saveData());
+					if (callback) callback();
+				});
+			};
+			control.prototype._doSL_load_afterGet = function (id, data) {
+				const res = saved.loadAfter.apply(this, arguments);
+				if (id === 'autoSave' || !data) return res;
+				core.getLocalForage('save' + id + '_patches', null, function (extra) {
+					acceptExtra(data, extra);
+				}, function (err) {
+					console.error(err);
+					acceptExtra(data, null);
+				});
+				return res;
+			};
+			control.prototype._doSL_load = function (id, callback) {
+				const autosave = core.saves.autosave;
+				if (!(id == 'autoSave' && autosave && autosave.data != null)) {
+					return saved.load.apply(this, arguments);
+				}
+				return saved.load.call(this, id, function (loadId, data) {
+					acceptField(data);
+					if (callback) callback(loadId, data);
+				});
+			};
+			control.prototype._doSL_reload = function (id, callback) {
+				return saved.reload.call(this, id, function (loadId, data) {
+					acceptField(data);
+					if (callback) callback(loadId, data);
+				});
+			};
+			control.prototype.removeSave = function (index, callback) {
+				const res = saved.removeSave.apply(this, arguments);
+				if (index != 0 && index != 'autoSave') core.removeLocalForage('save' + index + '_patches');
+				return res;
+			};
+		}
+
+		function uninstall() {
+			if (!hooksOn) return;
+			events.prototype.battle = saved.battle;
+			events.prototype._openDoor_check = saved.openDoor;
+			control.prototype.moveAction = saved.moveAction;
+			control.prototype._doSL_save = saved.save;
+			control.prototype.autosave = saved.autosave;
+			events.prototype._startGame_afterStart = saved.start;
+			control.prototype._doSL_load_afterGet = saved.loadAfter;
+			control.prototype._doSL_load = saved.load;
+			control.prototype._doSL_reload = saved.reload;
+			control.prototype.removeSave = saved.removeSave;
+			hooksOn = false;
+		}
+
+		function rangeWidth(wrap, total) {
+			const minW = 165;
+			const parentEl = (wrap && wrap.parentElement) ? wrap.parentElement : document.getElementById('gameDraw');
+			const pw = (parentEl && parentEl.clientWidth) ? parentEl.clientWidth : 800;
+			let cap = pw - 16 - 24;
+			if (!(cap > minW)) cap = minW;
+			let w = minW;
+			if (total > 0) {
+				const growth = Math.min(cap - minW, Math.floor(Math.pow(Math.min(total, 10000), 0.45) * 2.4));
+				w = minW + Math.max(0, growth);
+			}
+			return Math.min(cap, Math.max(minW, w));
+		}
+
+		function paintLabel() {
+			if (!scrubber) return;
+			const v = parseInt(scrubber.range.value || '0', 10) || 0;
+			const total = parseInt(scrubber.range.max || '0', 10) || 0;
+			const pct = total > 0 ? (v / total * 100) : 0;
+			scrubber.label.textContent = '拖动回放：' + v + ' / ' + total + '（' + pct.toFixed(2) + '%）';
+		}
+
+		function layoutScrubber() {
+			if (!scrubber) return;
+			const scale = (core.domStyle && core.domStyle.scale) || 1;
+			scrubber.wrap.style.setProperty('--fr-scale', String(scale));
+			scrubber.range.style.width = rangeWidth(scrubber.wrap, replay.totalSteps) + 'px';
+		}
+
+		function closeScrubber() {
+			if (scrubber) {
+				if (scrubber.wrap.parentNode) scrubber.wrap.parentNode.removeChild(scrubber.wrap);
+				window.removeEventListener('keydown', scrubber.onKey, true);
+				scrubber = null;
+			}
+			const style = document.getElementById('free-replay-style');
+			if (style) style.remove();
+			if (replay.isReplaying) replay.stopReplay();
+		}
+
+		function ensureScrubber() {
+			if (scrubber) return scrubber;
+			const parent = (core.dom && core.dom.gameDraw) || document.getElementById('gameDraw');
+			if (!parent) return null;
+			let style = document.getElementById('free-replay-style');
+			if (!style) {
+				style = document.createElement('style');
+				style.id = 'free-replay-style';
+				style.textContent = [
+					'#free-replay{position:absolute;left:calc(8px * var(--fr-scale));bottom:calc(8px * var(--fr-scale));z-index:220;',
+					'box-sizing:border-box;max-width:calc(100% - 16px * var(--fr-scale));',
+					'padding:calc(6px * var(--fr-scale)) calc(8px * var(--fr-scale));background:rgba(0,0,0,.75);',
+					'border-radius:calc(6px * var(--fr-scale));user-select:none;color:#fff;',
+					'font:calc(14px * var(--fr-scale))/1.4 Verdana,sans-serif;--fr-scale:1;}',
+					'#free-replay *{box-sizing:border-box;}',
+					'#free-replay .fr-head,#free-replay .fr-step{display:flex;align-items:center;gap:calc(6px * var(--fr-scale));}',
+					'#free-replay .fr-head{justify-content:space-between;margin-bottom:calc(4px * var(--fr-scale));}',
+					'#free-replay .fr-step{margin-bottom:calc(6px * var(--fr-scale));}',
+					'#free-replay .fr-label{flex:1;min-width:0;}',
+					'#free-replay button{cursor:pointer;font:calc(12px * var(--fr-scale)) Verdana,sans-serif;',
+					'padding:calc(2px * var(--fr-scale)) calc(8px * var(--fr-scale));}',
+					'#free-replay .fr-step button{padding:calc(1px * var(--fr-scale)) calc(5px * var(--fr-scale));',
+					'min-width:calc(18px * var(--fr-scale));}',
+					'#free-replay input[type=range]{display:block;width:165px;margin:0;padding:0;}'
+				].join('');
+				document.head.appendChild(style);
+			}
+			const wrap = document.createElement('div');
+			wrap.id = 'free-replay';
+			const head = document.createElement('div');
+			head.className = 'fr-head';
+			const label = document.createElement('div');
+			label.className = 'fr-label';
+			label.textContent = '拖动回放：0 / 0（0.00%）';
+			const exit = document.createElement('button');
+			exit.type = 'button';
+			exit.textContent = '退出';
+			head.appendChild(label);
+			head.appendChild(exit);
+			const stepRow = document.createElement('div');
+			stepRow.className = 'fr-step';
+			const prev = document.createElement('button');
+			prev.type = 'button';
+			prev.textContent = '◀';
+			const next = document.createElement('button');
+			next.type = 'button';
+			next.textContent = '▶';
+			stepRow.appendChild(prev);
+			stepRow.appendChild(next);
+			const range = document.createElement('input');
+			range.type = 'range';
+			range.min = '0';
+			range.max = '0';
+			range.value = '0';
+			range.step = '1';
+			wrap.appendChild(head);
+			wrap.appendChild(stepRow);
+			wrap.appendChild(range);
+			parent.appendChild(wrap);
+
+			function commit() {
+				if (!hooksOn) return;
+				const total = replay.totalSteps;
+				let v = parseInt(range.value || '0', 10) || 0;
+				if (v < 0) v = 0;
+				if (v > total) v = total;
+				range.value = String(v);
+				paintLabel();
+				replay.gotoStep(v);
+			}
+			function stepBy(delta) {
+				const total = replay.totalSteps;
+				let v = (parseInt(range.value || '0', 10) || 0) + delta;
+				if (v < 0) v = 0;
+				if (v > total) v = total;
+				range.value = String(v);
+				commit();
+			}
+			range.addEventListener('input', paintLabel);
+			range.addEventListener('mouseup', commit);
+			range.addEventListener('touchend', commit);
+			prev.addEventListener('click', function () { stepBy(-1); });
+			next.addEventListener('click', function () { stepBy(1); });
+			exit.addEventListener('click', closeScrubber);
+			['pointerdown', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'wheel'].forEach(function (type) {
+				wrap.addEventListener(type, function (e) { e.stopPropagation(); });
+			});
+			const onKey = function (e) {
+				if (!scrubber || e.key !== 'Escape') return;
+				e.preventDefault();
+				e.stopPropagation();
+				closeScrubber();
+			};
+			window.addEventListener('keydown', onKey, true);
+			scrubber = { wrap: wrap, label: label, range: range, onKey: onKey };
+			layoutScrubber();
+			return scrubber;
+		}
+
+		function openScrubber() {
+			if (main.mode === 'editor' || !hooksOn) return;
+			if (!core.isPlaying || !core.isPlaying()) {
+				core.drawTip('开始游戏后才能拖动回放');
+				return;
+			}
+			if (replay.finalData == null) replay.reset(core.saveData());
+			replay.startReplay();
+			const ui = ensureScrubber();
+			if (!ui) {
+				replay.stopReplay();
+				return;
+			}
+			const total = replay.totalSteps;
+			ui.range.max = String(total);
+			ui.range.value = String(total);
+			paintLabel();
+			layoutScrubber();
+		}
+
+		function setEnabled(on) {
+			if (on) {
+				const was = hooksOn;
+				if (!was) install();
+				if (!was && hooksOn && core.isPlaying && core.isPlaying() && replay.finalData == null) {
+					replay.reset(core.saveData());
+				}
+			} else {
+				closeScrubber();
+				if (hooksOn) uninstall();
+				stripAutosave();
+				replay.reset(null);
+			}
+			if (hooksOn) core.plugin._freeReplayStart = openScrubber;
+			else delete core.plugin._freeReplayStart;
+		}
+
+		this._setFreeReplay = setEnabled;
+		this._freeReplayLayout = layoutScrubber;
+
+		if (core.getLocalStorage('freeReplay', false)) setEnabled(true);
+	},
     "setting": function () {
 		// DOM 设置界面
 		// 请保持本插件在所有插件的最下方
@@ -8469,6 +9031,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			originResize.apply(core.control, arguments);
 			const domSetting = core.plugin.domSetting;
 			if (domSetting && domSetting.opened) domSetting.layout();
+			if (core.plugin._freeReplayLayout) core.plugin._freeReplayLayout();
 		}
 		// #endregion
 
@@ -8670,6 +9233,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					invertLocalStorage('autoSaveBeforePickItem');
 				},
 				text: '拾取地上物品前自动存档。',
+				replay: false,
+			},
+			freeReplay: {
+				getName: () => '拖动回放:' + (core.getLocalStorage('freeReplay', false) ? '开' : '关'),
+				effect: () => {
+					invertLocalStorage('freeReplay');
+					if (core.plugin._setFreeReplay) core.plugin._setFreeReplay(!!core.getLocalStorage('freeReplay', false));
+				},
+				text: '开启时会记录额外的数据，允许你拖回先前的局面，并从那里继续。',
 				replay: false,
 			},
 		}
@@ -10194,6 +10766,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				line = row(panel);
 				toggle(line, 'autoSaveBeforeUseItem');
 				toggle(line, 'autoSaveBeforePickItem');
+				heading(panel, '拖动回放');
+				line = row(panel);
+				toggle(line, 'freeReplay');
+				const startFreeReplay = ctrl('button', '进入拖动回放模式。');
+				startFreeReplay.textContent = '开始拖动回放';
+				startFreeReplay.addEventListener('click', () => {
+					if (!core.getLocalStorage('freeReplay', false)) return;
+					close();
+					setTimeout(function () {
+						if (core.plugin._freeReplayStart) core.plugin._freeReplayStart();
+					}, 0);
+				});
+				line.appendChild(startFreeReplay);
 			});
 
 			addPage('音画', (panel) => {

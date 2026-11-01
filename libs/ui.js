@@ -2085,9 +2085,10 @@ ui.prototype._drawReplay = function () {
     core.lockControl();
     core.status.event.id = 'replay';
     core.playSound('打开界面');
-    this.drawChoices(null, [
-        "从头回放录像", "从存档开始回放", "接续播放剩余录像", "播放存档剩余录像", "选择录像文件", "下载当前录像", "返回游戏"
-    ]);
+    var choices = ["从头回放录像", "从存档开始回放", "接续播放剩余录像", "播放存档剩余录像", "选择录像文件", "下载当前录像"];
+    if (core.plugin && typeof core.plugin._freeReplayStart === 'function') choices.push("拖动回放");
+    choices.push("返回游戏");
+    this.drawChoices(null, choices);
 }
 
 ui.prototype._drawGameInfo = function () {
