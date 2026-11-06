@@ -6798,1249 +6798,1592 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	};
 },
     "newBackpackLook": function () {
-		// 本插件定义了一些用于绘制的基类
+		// DOM 背包。画布菜单已删。条目见 docs/293开发计划/背包界面.md
 
 		let __enable = true;
 		if (!__enable) return;
 
-		/** @todo 尝试干掉redraw */
-		// #region 复写
+		const state = {
+			type: 'all',
+			sub: 'all',
+			equipSub: 'all',
+			picked: { all: '', tools: '', constants: '', equips: '' },
+			slot: 0,
+			focus: 'list',
+			rows: 8,
+			layer: '',
+			flash: false,
+		};
+		let root = null;
+		let ui = null;
+		let opened = false;
+		let flashClose = false;
+		let unlockTimer = 0;
+		let tipTimer = 0;
+		const iconURLCache = {};
 
-		core.ui._drawToolbox = function () { drawItemBox('all'); }.bind(core.ui);
-		core.ui._drawEquipbox = function () { drawItemBox('equips'); }.bind(core.ui);
-		core.actions._keyDownToolbox = core.actions._keyDownEquipbox = function (keyCode) { return true; }.bind(core.actions);
-		core.actions._clickToolbox = core.actions._clickEquipbox = function (x, y, px, py) { return true; }.bind(core.actions);
-		core.actions._keyUpToolbox = core.actions._keyUpEquipbox = function (keyCode) { return true; }.bind(core.actions);
-		// 暂不考虑修改core.status.event.id，该变量牵涉太多，作用不完全清楚
-		// 录像模式下下列函数会进行检测，不处于特定模式时，阻止自定义监听事件 
-		core.actions._checkReplaying = function () {
-			if (core.isReplaying() && !UI._back?.onDraw &&
-				['save', 'book', 'book-detail', 'viewMaps', 'toolbox', 'equipbox', 'text'].indexOf(core.status.event.id) < 0) {
-				return true;
+		function listMode() {
+			return core.getLocalStorage('backpackList', 'page') === 'scroll' ? 'scroll' : 'page';
+		}
+
+		function alphaPercent() {
+			let n = Number(core.getLocalStorage('backpackAlpha', 100));
+			if (!isFinite(n)) n = 100;
+			n = Math.round(n / 10) * 10;
+			if (n < 50) n = 50;
+			if (n > 100) n = 100;
+			return n;
+		}
+
+		function showHidden() {
+			return !!core.getFlag('showHideItem', false);
+		}
+
+		function pickKey() {
+			if (state.type === 'equips') return 'eq:' + (state.equipSub || 'all');
+			return state.sub;
+		}
+
+		function equipKindNames() {
+			const out = [];
+			slotNames().forEach((name) => {
+				if (name && out.indexOf(name) < 0) out.push(name);
+			});
+			return out;
+		}
+
+		function equipTypeName(id) {
+			const item = id && core.material.items[id];
+			if (!item || !item.equip) return '';
+			const kind = item.equip.type;
+			if (typeof kind === 'string') return kind;
+			if (typeof kind === 'number') return slotNames()[kind] || '';
+			return '';
+		}
+
+		function currentItems() {
+			if (!core.status || !core.status.hero) return [];
+			if (state.type !== 'equips') return core.getToolboxItems(state.sub, showHidden());
+			let list = core.getToolboxItems('equips', showHidden());
+			if (state.equipSub && state.equipSub !== 'all') {
+				list = list.filter((id) => equipTypeName(id) === state.equipSub);
 			}
-			return false;
-		}.bind(core.actions);
+			return list;
+		}
+
+		function slotNames() {
+			const names = core.status && core.status.globalAttribute && core.status.globalAttribute.equipName;
+			return names || [];
+		}
+
+		function selectedId() {
+			if (state.type === 'equips' && state.focus === 'slot') return core.getEquip(state.slot) || '';
+			return state.picked[pickKey()] || '';
+		}
+
+		function isHiddenItem(id) {
+			const item = core.material.items[id];
+			if (!item) return false;
+			const hideInfo = core.getFlag('hideInfo', {});
+			if (Object.prototype.hasOwnProperty.call(hideInfo, id)) return !!hideInfo[id];
+			return !!item.hideInToolbox;
+		}
+
+		function isMarked(id) {
+			return (core.getFlag('markedItems', []) || []).indexOf(id) >= 0;
+		}
+
+		function hideLabel(id) {
+			const item = id && core.material.items[id];
+			if (!item) return '隐藏';
+			const hideInfo = core.getFlag('hideInfo', {});
+			if (Object.prototype.hasOwnProperty.call(hideInfo, id)) return hideInfo[id] ? '显示' : '隐藏';
+			return item.hideInToolbox ? '显示' : '隐藏';
+		}
+
+		function getItemClsName(item) {
+			const itemClsName = { constants: '永久道具', tools: '消耗道具' };
+			if (item == null) return '未知';
+			if (item.cls === 'equips') {
+				if (!item.equip) return '装备';
+				if (typeof item.equip.type === 'string') return item.equip.type;
+				const type = core.getEquipTypeById(item.id);
+				const names = slotNames();
+				return names[type] || '装备';
+			}
+			return itemClsName[item.cls] || item.cls;
+		}
+
+		function hotkeyNum(itemId) {
+			for (let i = 1; i <= 9; i++) {
+				if (core.getLocalStorage('hotkey' + i, null) === itemId) return i;
+			}
+			return null;
+		}
+
+		function clearHotkey(itemId) {
+			for (let i = 1; i <= 9; i++) {
+				if (core.getLocalStorage('hotkey' + i, null) === itemId) core.setLocalStorage('hotkey' + i, null);
+			}
+		}
+
+		function setHotkey(itemId, num) {
+			clearHotkey(itemId);
+			core.setLocalStorage('hotkey' + num, itemId);
+		}
+
+		function croppedIconURL(id) {
+			if (!id) return '';
+			if (iconURLCache[id]) return iconURLCache[id];
+			let image = null;
+			let sx = 0, sy = 0, sw = 32, sh = 32;
+			const info = core.getBlockInfo(id);
+			if (info && info.image) {
+				image = info.image;
+				sw = 32;
+				sh = info.height || 32;
+				sx = sw * (info.posX || 0);
+				sy = sh * (info.posY || 0);
+			} else {
+				const bar = core.statusBar.icons && core.statusBar.icons[id];
+				if (bar instanceof Image) {
+					image = bar;
+					sw = bar.naturalWidth || bar.width || 32;
+					sh = bar.naturalHeight || bar.height || 32;
+				}
+			}
+			if (!image || !(image.naturalWidth || image.width)) return '';
+			const canvas = document.createElement('canvas');
+			canvas.width = sw;
+			canvas.height = sh;
+			canvas.getContext('2d').drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+			try { iconURLCache[id] = canvas.toDataURL('image/png'); }
+			catch (e) { iconURLCache[id] = ''; }
+			return iconURLCache[id];
+		}
+
+		function paintIcon(el, id) {
+			if (!el) return;
+			el.style.backgroundImage = '';
+			if (!id) return;
+			const url = croppedIconURL(id);
+			if (!url) return;
+			el.style.backgroundImage = 'url("' + url + '")';
+		}
+
+		function colorOk(value) {
+			return /^[#a-zA-Z][\w#(),.%\s-]*$/.test(value);
+		}
+
+		function appendRich(parent, text) {
+			parent.textContent = '';
+			const src = String(text || '');
+			let span = null;
+			let buf = '';
+			const target = () => span || parent;
+			function flush() {
+				if (!buf) return;
+				target().appendChild(document.createTextNode(buf));
+				buf = '';
+			}
+			for (let i = 0; i < src.length; i++) {
+				const ch = src.charAt(i);
+				if (ch === '\n' || (ch === '\\' && src.charAt(i + 1) === 'n')) {
+					flush();
+					parent.appendChild(document.createElement('br'));
+					span = null;
+					if (ch === '\\') i++;
+					continue;
+				}
+				const mark = ch === '\r' || (ch === '\\' && src.charAt(i + 1) === 'r');
+				if (mark) {
+					flush();
+					let j = i + (ch === '\\' ? 2 : 1);
+					if (src.charAt(j) === '[') {
+						const end = src.indexOf(']', j);
+						if (end >= 0) {
+							span = document.createElement('span');
+							const color = src.substring(j + 1, end);
+							if (color && colorOk(color)) span.style.color = color;
+							parent.appendChild(span);
+							i = end;
+							continue;
+						}
+					}
+					span = null;
+					i = j - 1;
+					continue;
+				}
+				if (ch === '\\' && src.charAt(i + 1) === 'i') {
+					const m = src.slice(i).match(/^\\i\[([^\]]*)\]/);
+					if (m) {
+						flush();
+						const icon = document.createElement('span');
+						icon.className = 'bp-i';
+						paintIcon(icon, m[1]);
+						target().appendChild(icon);
+						i += m[0].length - 1;
+						continue;
+					}
+				}
+				if (ch === '\\') {
+					const skip = src.slice(i).match(/^\\[a-zA-Z]\[[^\]]*\]/) || src.slice(i).match(/^\\[a-zA-Z]/);
+					if (skip) {
+						i += skip[0].length - 1;
+						continue;
+					}
+				}
+				buf += ch;
+			}
+			flush();
+		}
+
+		function equipCompareText(item) {
+			if (state.type !== 'equips' || !item || !item.equip) return '';
+			let equipType = item.equip.type;
+			if (!equipType && equipType !== 0) return '';
+			if (typeof equipType === 'string') equipType = core.getEquipTypeByName(equipType);
+			const compare = state.focus === 'slot'
+				? core.compareEquipment(null, item.id)
+				: core.compareEquipment(item.id, core.getEquip(equipType));
+			let str = '';
+			for (const name in core.status.hero) {
+				if (typeof core.status.hero[name] !== 'number') continue;
+				const nowValue = core.getRealStatus(name);
+				const newValue = Math.floor((core.getStatus(name) + (compare.value[name] || 0)) *
+					(core.getBuff(name) * 100 + (compare.percentage[name] || 0)) / 100);
+				if (nowValue === newValue) continue;
+				const color = newValue > nowValue ? '#00FF00' : '#FF0000';
+				str += '\n' + core.getStatusLabel(name) + ' ' + core.formatBigNumber(nowValue) +
+					'->\r[' + color + ']' + core.formatBigNumber(newValue) + '\r';
+			}
+			return str;
+		}
+
+		function revealIn(container, el) {
+			const c = container.getBoundingClientRect();
+			const r = el.getBoundingClientRect();
+			if (r.top < c.top) container.scrollTop -= c.top - r.top;
+			else if (r.bottom > c.bottom) container.scrollTop += r.bottom - c.bottom;
+		}
+
+		function showTip(text) {
+			if (!ui) return;
+			ui.tip.textContent = text || '';
+			ui.tip.classList.toggle('on', !!text);
+			clearTimeout(tipTimer);
+			if (!text) return;
+			tipTimer = setTimeout(() => {
+				if (!ui) return;
+				ui.tip.classList.remove('on');
+				ui.tip.textContent = '';
+			}, 1600);
+		}
+
+		function pushNo() {
+			if (!core.status || !core.status.route) return;
+			const last = core.status.route[core.status.route.length - 1];
+			if (typeof last === 'string' && (last.indexOf('equip:') === 0 || last.indexOf('unEquip:') === 0)) {
+				core.status.route.push('no');
+			}
+		}
+
+		function removeDom() {
+			window.removeEventListener('keydown', onKey, true);
+			window.removeEventListener('keyup', onKey, true);
+			clearTimeout(tipTimer);
+			if (root && root.parentNode) root.remove();
+			root = null;
+			ui = null;
+			const style = document.getElementById('dom-backpack-style');
+			if (style) style.remove();
+		}
+
+		function playerClose() {
+			if (!opened || state.flash) return;
+			pushNo();
+			opened = false;
+			state.layer = '';
+			removeDom();
+			if (core.plugin.domBackpack) core.plugin.domBackpack.opened = false;
+			core.status.event.id = null;
+			core.status.event.data = null;
+			core.status.event.selection = null;
+			clearTimeout(unlockTimer);
+			unlockTimer = setTimeout(() => {
+				core.unlockControl();
+				core.checkAutoEvents();
+			}, 0);
+		}
+
+		function silentClose() {
+			if (!opened) return;
+			opened = false;
+			state.layer = '';
+			state.flash = false;
+			removeDom();
+			if (core.plugin.domBackpack) core.plugin.domBackpack.opened = false;
+		}
+
+		function measureRows() {
+			if (!ui) return state.rows;
+			const scale = Number(core.domStyle.scale) || 1;
+			const h = ui.list.clientHeight;
+			const sample = ui.list.querySelector('.bp-row');
+			const gap = parseFloat(getComputedStyle(ui.list).rowGap) || (4 * scale);
+			let rowH = sample ? sample.getBoundingClientRect().height : 0;
+			if (!(rowH > 0)) rowH = Math.max(28 * scale, 13 * scale * 1.35 + 8 * scale + 4);
+			if (!(h > 0)) return 1;
+			return Math.max(1, Math.floor((h + gap - 1) / (rowH + gap)));
+		}
+
+		function pageOverflowPx() {
+			const last = ui.list.querySelector('.bp-row:last-child');
+			if (!last || !root) return 0;
+			const lastBottom = last.getBoundingClientRect().bottom;
+			const listBottom = ui.list.getBoundingClientRect().bottom;
+			const rootBottom = root.getBoundingClientRect().bottom;
+			let over = lastBottom - listBottom;
+			const scrollOver = ui.list.scrollHeight - ui.list.clientHeight;
+			if (scrollOver > over) over = scrollOver;
+			if (!ui.pager.hidden) {
+				const pagerOver = ui.pager.getBoundingClientRect().bottom - rootBottom;
+				if (pagerOver > over) over = pagerOver;
+			}
+			const rootOver = lastBottom - (rootBottom - 2);
+			if (rootOver > over) over = rootOver;
+			return over;
+		}
+
+		function pageCount(len, size) {
+			return Math.max(1, Math.ceil(len / Math.max(1, size)));
+		}
+
+		function render() {
+			if (!opened || !ui) return;
+			const mode = listMode();
+			if (!render.adjusting) state.rows = measureRows();
+			const items = currentItems();
+			const key = pickKey();
+			if (items.indexOf(state.picked[key]) < 0) state.picked[key] = items[0] || '';
+			const id = selectedId();
+			const item = id && core.material.items[id];
+
+			paintIcon(ui.switchIcon, state.type === 'all' ? 'toolbox' : 'equipbox');
+			ui.switchBtn.title = state.type === 'all' ? '切换到装备' : '切换到道具';
+			ui.filters.hidden = state.type !== 'all';
+			ui.head.hidden = state.type === 'equips';
+			ui.equipBar.hidden = state.type !== 'equips';
+			if (state.type === 'equips') ui.equipBar.appendChild(ui.gear);
+			else ui.head.appendChild(ui.gear);
+			['all', 'tools', 'constants'].forEach((name) => {
+				ui.subs[name].classList.toggle('on', state.sub === name);
+			});
+			revealStrip(ui.filters, ui.filters.querySelector('.bp-filter.on'));
+			const kinds = equipKindNames();
+			if (state.equipSub !== 'all' && kinds.indexOf(state.equipSub) < 0) state.equipSub = 'all';
+			const kept = ui.equipKinds.scrollLeft;
+			ui.equipKinds.textContent = '';
+			[['all', '全部']].concat(kinds.map((name) => [name, name])).forEach((pair) => {
+				const btn = button(pair[1]);
+				btn.className = 'bp-filter bp-ekind';
+				btn.classList.toggle('on', state.equipSub === pair[0]);
+				btn.addEventListener('click', () => {
+					state.equipSub = pair[0];
+					state.type = 'equips';
+					state.focus = 'list';
+					render();
+				});
+				ui.equipKinds.appendChild(btn);
+			});
+			ui.equipKinds.scrollLeft = kept;
+			revealStrip(ui.equipKinds, ui.equipKinds.querySelector('.bp-ekind.on'));
+			ui.showHide.classList.toggle('checked', showHidden());
+			ui.slots.hidden = state.type !== 'equips';
+			ui.slots.classList.toggle('scroll', mode === 'scroll');
+			ui.list.classList.toggle('scroll', mode === 'scroll');
+
+			const names = slotNames();
+			ui.slots.textContent = '';
+			const slotPageSize = 8;
+			const slotPages = pageCount(names.length, slotPageSize);
+			if (state.slot >= names.length) state.slot = Math.max(0, names.length - 1);
+			const slotPage = Math.floor(state.slot / slotPageSize);
+			const slotStart = mode === 'page' ? slotPage * slotPageSize : 0;
+			const slotEnd = mode === 'page' ? Math.min(names.length, slotStart + slotPageSize) : names.length;
+			for (let i = slotStart; i < slotEnd; i++) {
+				const btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'bp-slot';
+				btn.dataset.slot = String(i);
+				if (state.type === 'equips' && state.focus === 'slot' && state.slot === i) btn.classList.add('on');
+				const icon = document.createElement('span');
+				icon.className = 'bp-icon bp-slot-icon';
+				const equipId = core.getEquip(i);
+				paintIcon(icon, equipId || '');
+				const label = document.createElement('span');
+				label.className = 'bp-slot-name';
+				label.textContent = names[i] || '';
+				btn.appendChild(icon);
+				btn.appendChild(label);
+				ui.slots.appendChild(btn);
+			}
+			const showSlotPager = mode === 'page' && names.length > slotPageSize;
+			ui.slotPager.hidden = !showSlotPager || state.type !== 'equips';
+			ui.slotPrev.disabled = slotPage <= 0;
+			ui.slotNext.disabled = slotPage >= slotPages - 1;
+			ui.slotPage.textContent = (slotPage + 1) + '/' + slotPages;
+
+			ui.list.textContent = '';
+			const size = Math.max(1, state.rows);
+			let idx = items.indexOf(state.picked[key]);
+			if (idx < 0) idx = 0;
+			const pages = pageCount(items.length, size);
+			let page = items.length ? Math.floor(idx / size) : 0;
+			if (page >= pages) page = pages - 1;
+			const start = mode === 'page' ? page * size : 0;
+			const end = mode === 'page' ? Math.min(items.length, start + size) : items.length;
+			if (!items.length) {
+				const empty = document.createElement('p');
+				empty.className = 'bp-empty';
+				empty.textContent = state.type === 'equips' ? '无装备' : '无道具';
+				ui.list.appendChild(empty);
+			}
+			for (let i = start; i < end; i++) {
+				const itemId = items[i];
+				const one = core.material.items[itemId] || {};
+				const row = document.createElement('button');
+				row.type = 'button';
+				row.className = 'bp-row';
+				row.dataset.id = itemId;
+				if (!(state.type === 'equips' && state.focus === 'slot') && state.picked[key] === itemId) row.classList.add('on');
+				if (isHiddenItem(itemId)) row.classList.add('dim');
+				const icon = document.createElement('span');
+				icon.className = 'bp-icon';
+				paintIcon(icon, itemId);
+				const name = document.createElement('span');
+				name.className = 'bp-name';
+				if (isMarked(itemId)) name.classList.add('mark');
+				name.textContent = one.name || '???';
+				const num = document.createElement('span');
+				num.className = 'bp-num';
+				num.textContent = '×' + (core.formatBigNumber(core.itemCount(itemId), 5) || 0);
+				row.appendChild(icon);
+				row.appendChild(name);
+				row.appendChild(num);
+				ui.list.appendChild(row);
+			}
+			const showPager = mode === 'page';
+			ui.pager.hidden = !showPager;
+			ui.prev.disabled = page <= 0 || !items.length;
+			ui.next.disabled = page >= pages - 1 || !items.length;
+			ui.page.textContent = items.length ? ((page + 1) + '/' + pages) : '1/1';
+			if (mode === 'scroll') {
+				const chosen = ui.list.querySelector('.bp-row.on');
+				if (chosen) revealIn(ui.list, chosen);
+				const slotOn = ui.slots.querySelector('.bp-slot.on');
+				if (slotOn) revealIn(ui.slots, slotOn);
+			}
+			if (!state.flash && core.status && core.status.event) {
+				core.status.event.id = state.type === 'equips' ? 'equipbox' : 'toolbox';
+			}
+
+			const fallback = state.type === 'equips'
+				? { name: '无装备', text: '一无所有，又何尝不是一种装备' }
+				: { name: '无道具', text: '没有道具最永久' };
+			const shown = item || fallback;
+			paintIcon(ui.infoIcon, item ? item.id : '');
+			ui.infoName.textContent = shown.name || fallback.name;
+			ui.infoType.textContent = item ? ('【' + getItemClsName(item) + '】') : '【—】';
+			ui.usedLine.hidden = state.type !== 'all';
+			if (state.type === 'all') {
+				const used = core.getFlag('itemsUsedCount', {});
+				ui.used.textContent = String((item && used[item.id]) || 0);
+			}
+			const raw = core.replaceText((shown && shown.text) || '') || '';
+			appendRich(ui.desc, raw + (item ? equipCompareText(item) : ''));
+
+			ui.hide.textContent = hideLabel(id);
+			ui.hide.disabled = !item;
+			ui.mark.textContent = isMarked(id) ? '取消' : '置顶';
+			ui.mark.disabled = !item;
+			ui.hot.hidden = state.type !== 'all';
+			ui.hot.disabled = !item;
+			const num = item ? hotkeyNum(item.id) : null;
+			paintIcon(ui.hotIcon, num == null ? 'keyboard' : ('btn' + num));
+
+			root.style.opacity = String(alphaPercent() / 100);
+			ui.alphaVal.textContent = alphaPercent() + '%';
+			ui.alphaDown.disabled = alphaPercent() <= 50;
+			ui.alphaUp.disabled = alphaPercent() >= 100;
+			ui.setBtn.textContent = '列表:' + (mode === 'scroll' ? '滚动' : '翻页');
+			ui.layer.hidden = !state.layer;
+			ui.hotLayer.hidden = state.layer !== 'hot';
+			ui.setLayer.hidden = state.layer !== 'set';
+			if (state.layer === 'hot' && item) {
+				for (let n = 1; n <= 9; n++) {
+					ui.hotBtns[n].classList.toggle('on', hotkeyNum(item.id) === n);
+				}
+			}
+			if (mode === 'page' && !render.adjusting) {
+				let guard = 0;
+				while (guard++ < 8 && state.rows > 1) {
+					const over = pageOverflowPx();
+					if (over <= 0.5) break;
+					const sample = ui.list.querySelector('.bp-row');
+					const scale = Number(core.domStyle.scale) || 1;
+					const rowH = sample ? sample.getBoundingClientRect().height : (28 * scale);
+					const gap = parseFloat(getComputedStyle(ui.list).rowGap) || (4 * scale);
+					const drop = Math.max(1, Math.ceil(over / Math.max(1, rowH + gap)));
+					state.rows = Math.max(1, state.rows - drop);
+					render.adjusting = true;
+					try { render(); }
+					finally { render.adjusting = false; }
+				}
+			}
+		}
+
+		function turnList(delta) {
+			const items = currentItems();
+			if (!items.length) return;
+			const key = pickKey();
+			const size = Math.max(1, state.rows);
+			let idx = items.indexOf(state.picked[key]);
+			if (idx < 0) idx = 0;
+			const row = idx % size;
+			const pages = pageCount(items.length, size);
+			const page = Math.floor(idx / size) + delta;
+			if (page < 0 || page >= pages) return;
+			const next = Math.min(page * size + row, items.length - 1);
+			state.picked[key] = items[next];
+			state.focus = 'list';
+			render();
+		}
+
+		function moveList(dir) {
+			const items = currentItems();
+			const key = pickKey();
+			if (!items.length) {
+				if (dir < 0 && state.type === 'equips') focusLastSlot();
+				return;
+			}
+			let idx = items.indexOf(state.picked[key]);
+			if (idx < 0) idx = 0;
+			const size = Math.max(1, state.rows);
+			if (listMode() === 'scroll') {
+				if (dir < 0 && idx === 0 && state.type === 'equips') {
+					focusLastSlot();
+					return;
+				}
+				const next = Math.max(0, Math.min(items.length - 1, idx + dir));
+				state.picked[key] = items[next];
+				state.focus = 'list';
+				render();
+				return;
+			}
+			const row = idx % size;
+			if (dir < 0 && row === 0) {
+				if (idx === 0) {
+					if (state.type === 'equips') focusLastSlot();
+					return;
+				}
+				state.picked[key] = items[idx - 1];
+				state.focus = 'list';
+				render();
+				return;
+			}
+			if (dir > 0 && (row === size - 1 || idx === items.length - 1)) {
+				if (idx >= items.length - 1) return;
+				state.picked[key] = items[idx + 1];
+				state.focus = 'list';
+				render();
+				return;
+			}
+			state.picked[key] = items[idx + dir];
+			state.focus = 'list';
+			render();
+		}
+
+		function pageList(dir) {
+			if (listMode() === 'scroll') {
+				const items = currentItems();
+				if (!items.length) return;
+				const key = pickKey();
+				let idx = items.indexOf(state.picked[key]);
+				if (idx < 0) idx = 0;
+				const next = Math.max(0, Math.min(items.length - 1, idx + dir * Math.max(1, state.rows)));
+				state.picked[key] = items[next];
+				state.focus = 'list';
+				render();
+				return;
+			}
+			turnList(dir);
+		}
+
+		function focusLastSlot() {
+			const n = slotNames().length;
+			if (!n) return;
+			state.focus = 'slot';
+			state.slot = n - 1;
+			render();
+		}
+
+		function moveSlot(dx, dy) {
+			const names = slotNames();
+			const n = names.length;
+			if (!n) {
+				if (dy > 0) {
+					state.focus = 'list';
+					render();
+				}
+				return;
+			}
+			const cols = 4;
+			const mode = listMode();
+			let i = state.slot;
+			if (i < 0 || i >= n) i = 0;
+			if (mode === 'page') {
+				const size = 8;
+				const page = Math.floor(i / size);
+				const local = i - page * size;
+				const pageCount = Math.min(size, n - page * size);
+				if (dx) {
+					const nextLocal = local + dx;
+					if (nextLocal < 0) {
+						if (page > 0) {
+							const prevCount = Math.min(size, n - (page - 1) * size);
+							state.slot = (page - 1) * size + prevCount - 1;
+						}
+					} else if (nextLocal >= pageCount) {
+						if ((page + 1) * size < n) state.slot = (page + 1) * size;
+					} else state.slot = page * size + nextLocal;
+				}
+				if (dy) {
+					const row = Math.floor(local / cols);
+					const col = local % cols;
+					const rowsOnPage = Math.ceil(pageCount / cols);
+					const nextRow = row + dy;
+					if (nextRow < 0) return;
+					if (nextRow >= rowsOnPage) {
+						state.focus = 'list';
+						render();
+						return;
+					}
+					let nextLocal = nextRow * cols + col;
+					if (nextLocal >= pageCount) nextLocal = pageCount - 1;
+					state.slot = page * size + nextLocal;
+				}
+			} else {
+				if (dx) {
+					const next = i + dx;
+					if (next >= 0 && next < n) state.slot = next;
+				}
+				if (dy) {
+					const col = i % cols;
+					const row = Math.floor(i / cols);
+					const nextRow = row + dy;
+					if (nextRow < 0) return;
+					const next = nextRow * cols + col;
+					if (next >= n) {
+						if (dy > 0) {
+							state.focus = 'list';
+							render();
+							return;
+						}
+						return;
+					}
+					state.slot = next;
+				}
+			}
+			state.focus = 'slot';
+			render();
+		}
+
+		function turnSlot(delta) {
+			const n = slotNames().length;
+			if (n <= 8) return;
+			const page = Math.floor(state.slot / 8) + delta;
+			const pages = pageCount(n, 8);
+			if (page < 0 || page >= pages) return;
+			const local = state.slot % 8;
+			const count = Math.min(8, n - page * 8);
+			state.slot = page * 8 + Math.min(local, count - 1);
+			state.focus = 'slot';
+			render();
+		}
+
+		function trigger() {
+			const id = selectedId();
+			if (state.type === 'all') {
+				if (!id) return;
+				const name = (core.material.items[id] && core.material.items[id].name) || '';
+				if (!core.canUseItem(id) && id !== 'centerFly') {
+					core.playSound('操作失败');
+					showTip('当前无法使用' + name);
+					return;
+				}
+				silentClose();
+				core.tryUseItem(id);
+				return;
+			}
+			if (state.focus === 'slot') {
+				const equipId = core.getEquip(state.slot);
+				if (!equipId) return;
+				const name = (core.material.items[equipId] && core.material.items[equipId].name) || '';
+				core.unloadEquip(state.slot);
+				core.status.route.push('unEquip:' + state.slot);
+				showTip('已卸下' + name);
+				render();
+				return;
+			}
+			if (!id) return;
+			const name = (core.material.items[id] && core.material.items[id].name) || '';
+			if (!core.canEquip(id, true)) {
+				showTip('当前不可换上' + name);
+				return;
+			}
+			core.loadEquip(id);
+			if (!core.hasEquip(id)) {
+				showTip('没有可穿的位置');
+				return;
+			}
+			core.status.route.push('equip:' + id);
+			showTip('已装备上' + name);
+			render();
+		}
+
+		function hideItem(itemId) {
+			if (!itemId || !core.material.items[itemId]) return;
+			const hideInfo = core.getFlag('hideInfo', {});
+			if (Object.prototype.hasOwnProperty.call(hideInfo, itemId)) hideInfo[itemId] = !hideInfo[itemId];
+			else hideInfo[itemId] = !core.material.items[itemId].hideInToolbox;
+			core.setFlag('hideInfo', hideInfo);
+		}
+
+		function markItem(itemId) {
+			if (!itemId) return;
+			let markedItems = core.getFlag('markedItems', []);
+			if (markedItems.indexOf(itemId) >= 0) markedItems = markedItems.filter((currId) => currId !== itemId);
+			else markedItems.push(itemId);
+			core.setFlag('markedItems', markedItems);
+		}
+
+		function chooseList(id) {
+			const key = pickKey();
+			if (state.focus === 'list' && state.picked[key] === id) trigger();
+			else {
+				state.focus = 'list';
+				state.picked[key] = id;
+				render();
+			}
+		}
+
+		function chooseSlot(index) {
+			if (state.focus === 'slot' && state.slot === index) trigger();
+			else {
+				state.focus = 'slot';
+				state.slot = index;
+				render();
+			}
+		}
+
+		function onKey(e) {
+			if (!opened) return;
+			e.preventDefault();
+			e.stopPropagation();
+			e.stopImmediatePropagation();
+			if (e.type !== 'keydown') return;
+			if (state.flash) return;
+			if (e.altKey && e.keyCode >= 48 && e.keyCode <= 57) {
+				core.items.quickSaveEquip(e.keyCode - 48);
+				showTip('已保存' + (e.keyCode - 48) + '号套装');
+				return;
+			}
+			if (e.repeat && e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+			if (state.layer) {
+				if (e.key === 'Escape' || e.key === 'Backspace') {
+					state.layer = '';
+					render();
+				} else if (state.layer === 'hot' && e.key >= '1' && e.key <= '9') {
+					const id = selectedId();
+					if (id) {
+						setHotkey(id, Number(e.key));
+						state.layer = '';
+						render();
+					}
+				}
+				return;
+			}
+			if (e.key === 'Escape' || e.key === 'Backspace') {
+				playerClose();
+				return;
+			}
+			if (e.key === 't' || e.key === 'T') {
+				if (state.type === 'all') playerClose();
+				else {
+					state.type = 'all';
+					state.focus = 'list';
+					render();
+				}
+				return;
+			}
+			if (e.key === 'q' || e.key === 'Q') {
+				if (state.type === 'equips') playerClose();
+				else {
+					state.type = 'equips';
+					render();
+				}
+				return;
+			}
+			if (e.key === 'Enter' || e.key === ' ' || e.key === 'c' || e.key === 'C') {
+				trigger();
+				return;
+			}
+			const onSlot = state.type === 'equips' && state.focus === 'slot';
+			if (e.key === 'ArrowUp') {
+				if (onSlot) moveSlot(0, -1);
+				else moveList(-1);
+			} else if (e.key === 'ArrowDown') {
+				if (onSlot) moveSlot(0, 1);
+				else moveList(1);
+			} else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+				const dir = e.key === 'ArrowLeft' ? -1 : 1;
+				if (onSlot) moveSlot(dir, 0);
+				else if (state.type === 'all' && listMode() === 'scroll') {
+					const order = ['all', 'tools', 'constants'];
+					state.sub = order[(order.indexOf(state.sub) + dir + 3) % 3];
+					render();
+				} else if (state.type === 'equips' && listMode() === 'scroll') {
+					const order = ['all'].concat(equipKindNames());
+					const at = order.indexOf(state.equipSub);
+					state.equipSub = order[(at + dir + order.length) % order.length];
+					state.focus = 'list';
+					render();
+				} else if (listMode() === 'page') pageList(dir);
+			} else if (e.key === 'PageUp' || e.key === 'PageDown') {
+				const dir = e.key === 'PageUp' ? -1 : 1;
+				if (onSlot) {
+					if (listMode() === 'page') turnSlot(dir);
+				} else pageList(dir);
+			}
+		}
+
+		function layout() {
+			if (!opened || !root) return;
+			const parent = root.parentElement;
+			if (parent) {
+				root.style.width = parent.clientWidth + 'px';
+				root.style.height = parent.clientHeight + 'px';
+			}
+			root.style.setProperty('--bag-scale', String(Number(core.domStyle.scale) || 1));
+			render();
+			if (!layout.pending) {
+				layout.pending = true;
+				requestAnimationFrame(() => {
+					layout.pending = false;
+					if (opened) render();
+				});
+			}
+		}
+
+		function revealStrip(strip, el) {
+			if (!strip || !el) return;
+			const box = strip.getBoundingClientRect();
+			const rect = el.getBoundingClientRect();
+			if (rect.left < box.left - 1) strip.scrollLeft -= box.left - rect.left;
+			else if (rect.right > box.right + 1) strip.scrollLeft += rect.right - box.right;
+		}
+
+		function bindStrip(strip) {
+			let drag = null;
+			strip.addEventListener('pointerdown', (e) => {
+				if (e.button !== 0) return;
+				drag = { id: e.pointerId, x: e.clientX, left: strip.scrollLeft, moved: false };
+			});
+			strip.addEventListener('pointermove', (e) => {
+				if (!drag || e.pointerId !== drag.id) return;
+				const dx = e.clientX - drag.x;
+				if (Math.abs(dx) > 4) drag.moved = true;
+				if (!drag.moved) return;
+				strip.classList.add('dragging');
+				strip.scrollLeft = drag.left - dx;
+				if (!strip.hasPointerCapture(e.pointerId)) strip.setPointerCapture(e.pointerId);
+			});
+			function endDrag(e) {
+				if (!drag || e.pointerId !== drag.id) return;
+				const moved = drag.moved;
+				drag = null;
+				strip.classList.remove('dragging');
+				if (moved) {
+					const swallow = (ev) => {
+						ev.preventDefault();
+						ev.stopPropagation();
+						strip.removeEventListener('click', swallow, true);
+					};
+					strip.addEventListener('click', swallow, true);
+				}
+			}
+			strip.addEventListener('pointerup', endDrag);
+			strip.addEventListener('pointercancel', endDrag);
+			strip.addEventListener('wheel', (e) => {
+				if (strip.scrollWidth <= strip.clientWidth + 1) return;
+				strip.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+				e.preventDefault();
+			}, { passive: false });
+		}
+
+		function button(text) {
+			const node = document.createElement('button');
+			node.type = 'button';
+			node.textContent = text || '';
+			return node;
+		}
+
+		function mount(type, opt) {
+			opt = opt || {};
+			const parent = core.dom && core.dom.gameDraw;
+			if (!parent || main.replayChecking) {
+				if (!core.isReplaying()) {
+					core.unlockControl();
+					core.status.event.id = null;
+				}
+				return;
+			}
+			if (opened) removeDom();
+			opened = true;
+			state.type = type === 'equips' ? 'equips' : 'all';
+			state.layer = '';
+			state.flash = !!opt.flash;
+			if (opt.selectSlot != null) {
+				state.focus = 'slot';
+				state.slot = opt.selectSlot;
+				state.type = 'equips';
+			} else if (opt.selectId) {
+				state.focus = 'list';
+				const cls = core.material.items[opt.selectId] && core.material.items[opt.selectId].cls;
+				if (state.type !== 'equips' && cls !== 'tools' && cls !== 'constants') state.sub = 'all';
+				const list = state.type === 'equips'
+					? core.getToolboxItems('equips', showHidden())
+					: core.getToolboxItems(state.sub, showHidden());
+				if (list.indexOf(opt.selectId) < 0 && state.type !== 'equips') state.sub = 'all';
+				state.picked[state.type === 'equips' ? 'equips' : state.sub] = opt.selectId;
+			}
+
+			let style = document.getElementById('dom-backpack-style');
+			if (!style) {
+				style = document.createElement('style');
+				style.id = 'dom-backpack-style';
+				document.head.appendChild(style);
+			}
+			style.textContent = DOM_BACKPACK_CSS;
+
+			root = document.createElement('div');
+			root.id = 'dom-backpack';
+			root.tabIndex = -1;
+			const switchBtn = document.createElement('button');
+			switchBtn.type = 'button';
+			switchBtn.className = 'bp-switch';
+			const switchIcon = document.createElement('span');
+			switchIcon.className = 'bp-icon';
+			switchBtn.appendChild(switchIcon);
+			const quit = document.createElement('button');
+			quit.type = 'button';
+			quit.className = 'bp-quit';
+			quit.title = '退出';
+			const head = document.createElement('div');
+			head.className = 'bp-head';
+			const filters = document.createElement('div');
+			filters.className = 'bp-filters bp-strip';
+			const subs = {};
+			[['all', '全部'], ['tools', '消耗'], ['constants', '永久']].forEach((pair) => {
+				const btn = button(pair[1]);
+				btn.className = 'bp-filter';
+				btn.addEventListener('click', () => {
+					state.sub = pair[0];
+					state.type = 'all';
+					state.focus = 'list';
+					render();
+				});
+				subs[pair[0]] = btn;
+				filters.appendChild(btn);
+			});
+			const gear = button('⚙');
+			gear.className = 'bp-set';
+			gear.title = '设置';
+			gear.setAttribute('aria-label', '设置');
+			head.appendChild(filters);
+			head.appendChild(gear);
+
+			const mainEl = document.createElement('div');
+			mainEl.className = 'bp-main';
+			const left = document.createElement('div');
+			left.className = 'bp-left';
+			const slots = document.createElement('div');
+			slots.className = 'bp-slots';
+			const slotPager = document.createElement('div');
+			slotPager.className = 'bp-pager';
+			const slotPrev = button('上一页');
+			const slotPage = document.createElement('span');
+			const slotNext = button('下一页');
+			slotPager.appendChild(slotPrev);
+			slotPager.appendChild(slotPage);
+			slotPager.appendChild(slotNext);
+			const list = document.createElement('div');
+			list.className = 'bp-list';
+			const pager = document.createElement('div');
+			pager.className = 'bp-pager';
+			const prev = button('上一页');
+			const page = document.createElement('span');
+			const next = button('下一页');
+			pager.appendChild(prev);
+			pager.appendChild(page);
+			pager.appendChild(next);
+			const equipBar = document.createElement('div');
+			equipBar.className = 'bp-equipbar';
+			const equipKinds = document.createElement('div');
+			equipKinds.className = 'bp-ekinds bp-strip';
+			equipBar.appendChild(equipKinds);
+			bindStrip(filters);
+			bindStrip(equipKinds);
+			left.appendChild(head);
+			left.appendChild(slots);
+			left.appendChild(slotPager);
+			left.appendChild(equipBar);
+			left.appendChild(list);
+			left.appendChild(pager);
+
+			const info = document.createElement('div');
+			info.className = 'bp-info';
+			const infoHead = document.createElement('div');
+			infoHead.className = 'bp-info-head';
+			const infoIcon = document.createElement('span');
+			infoIcon.className = 'bp-icon big';
+			const infoText = document.createElement('div');
+			infoText.className = 'bp-info-text';
+			const nameLine = document.createElement('div');
+			nameLine.className = 'bp-name-line';
+			const infoName = document.createElement('div');
+			infoName.className = 'bp-info-name';
+			const hot = button('');
+			hot.className = 'bp-hot';
+			hot.title = '设置快捷键';
+			const hotIcon = document.createElement('span');
+			hotIcon.className = 'bp-icon';
+			hot.appendChild(hotIcon);
+			nameLine.appendChild(infoName);
+			const infoType = document.createElement('div');
+			infoType.className = 'bp-info-type';
+			infoText.appendChild(nameLine);
+			infoText.appendChild(infoType);
+			infoHead.appendChild(infoIcon);
+			infoHead.appendChild(infoText);
+			const usedLine = document.createElement('div');
+			usedLine.className = 'bp-used';
+			usedLine.appendChild(document.createTextNode('累计使用 '));
+			const used = document.createElement('span');
+			usedLine.appendChild(used);
+			const desc = document.createElement('div');
+			desc.className = 'bp-desc';
+			const foot = document.createElement('div');
+			foot.className = 'bp-foot';
+			const showHide = button('');
+			showHide.className = 'bp-showhide';
+			const showMark = document.createElement('span');
+			showMark.className = 'bp-check';
+			const showText = document.createElement('span');
+			showText.textContent = '查看隐藏';
+			showHide.appendChild(showMark);
+			showHide.appendChild(showText);
+			const actions = document.createElement('div');
+			actions.className = 'bp-actions';
+			const hide = button('隐藏');
+			hide.className = 'bp-round';
+			const mark = button('置顶');
+			mark.className = 'bp-round';
+			actions.appendChild(hide);
+			actions.appendChild(mark);
+			foot.appendChild(showHide);
+			foot.appendChild(actions);
+			const infoTop = document.createElement('div');
+			infoTop.className = 'bp-info-top';
+			infoTop.appendChild(infoHead);
+			infoTop.appendChild(usedLine);
+			info.appendChild(infoTop);
+			info.appendChild(switchBtn);
+			info.appendChild(hot);
+			info.appendChild(desc);
+			info.appendChild(foot);
+			mainEl.appendChild(left);
+			mainEl.appendChild(info);
+
+			const tip = document.createElement('div');
+			tip.className = 'bp-tip';
+			const layer = document.createElement('div');
+			layer.className = 'bp-layer';
+			const hotLayer = document.createElement('div');
+			hotLayer.className = 'bp-box';
+			const hotTitle = document.createElement('p');
+			hotTitle.textContent = '为当前道具选择一个快捷键';
+			const hotNote = document.createElement('p');
+			hotNote.className = 'bp-note';
+			hotNote.textContent = '没有自定义时，样板默认的 1、2、3（破、炸、飞）不在这里改。';
+			const hotGrid = document.createElement('div');
+			hotGrid.className = 'bp-hotgrid';
+			const hotBtns = {};
+			for (let n = 1; n <= 9; n++) {
+				const btn = button(String(n));
+				const icon = document.createElement('span');
+				icon.className = 'bp-icon';
+				paintIcon(icon, 'btn' + n);
+				btn.appendChild(icon);
+				btn.addEventListener('click', () => {
+					const curr = selectedId();
+					if (!curr) return;
+					setHotkey(curr, n);
+					state.layer = '';
+					render();
+				});
+				hotBtns[n] = btn;
+				hotGrid.appendChild(btn);
+			}
+			const hotClear = button('清除');
+			hotClear.addEventListener('click', () => {
+				const curr = selectedId();
+				if (curr) clearHotkey(curr);
+				state.layer = '';
+				render();
+			});
+			const hotBack = button('返回');
+			hotBack.addEventListener('click', () => {
+				state.layer = '';
+				render();
+			});
+			hotLayer.appendChild(hotTitle);
+			hotLayer.appendChild(hotNote);
+			hotLayer.appendChild(hotGrid);
+			const hotNav = document.createElement('div');
+			hotNav.className = 'bp-actions';
+			hotNav.appendChild(hotClear);
+			hotNav.appendChild(hotBack);
+			hotLayer.appendChild(hotNav);
+
+			const setLayer = document.createElement('div');
+			setLayer.className = 'bp-box';
+			const setTitle = document.createElement('p');
+			setTitle.textContent = '背包';
+			const setBtn = button('列表:翻页');
+			const setNote = document.createElement('p');
+			setNote.className = 'bp-note';
+			setNote.textContent = '道具、持有装备和装备孔用翻页还是整列滚动。默认翻页。';
+			const alphaRow = document.createElement('div');
+			alphaRow.className = 'bp-alpha';
+			const alphaName = document.createElement('span');
+			alphaName.textContent = '透明度';
+			const alphaDown = button('−');
+			const alphaVal = document.createElement('span');
+			alphaVal.className = 'bp-alpha-val';
+			const alphaUp = button('+');
+			const alphaNote = document.createElement('p');
+			alphaNote.className = 'bp-note';
+			alphaNote.textContent = '背包整块菜单的不透明度，50% 到 100%，默认 100%。';
+			alphaDown.addEventListener('click', () => {
+				core.setLocalStorage('backpackAlpha', Math.max(50, alphaPercent() - 10));
+				render();
+			});
+			alphaUp.addEventListener('click', () => {
+				core.setLocalStorage('backpackAlpha', Math.min(100, alphaPercent() + 10));
+				render();
+			});
+			alphaRow.appendChild(alphaName);
+			alphaRow.appendChild(alphaDown);
+			alphaRow.appendChild(alphaVal);
+			alphaRow.appendChild(alphaUp);
+			const setBack = button('返回');
+			setBtn.addEventListener('click', () => {
+				core.setLocalStorage('backpackList', listMode() === 'scroll' ? 'page' : 'scroll');
+				render();
+			});
+			setBack.addEventListener('click', () => {
+				state.layer = '';
+				render();
+			});
+			setLayer.appendChild(setTitle);
+			setLayer.appendChild(setBtn);
+			setLayer.appendChild(setNote);
+			setLayer.appendChild(alphaRow);
+			setLayer.appendChild(alphaNote);
+			setLayer.appendChild(setBack);
+			layer.appendChild(hotLayer);
+			layer.appendChild(setLayer);
+
+			root.appendChild(mainEl);
+			root.appendChild(tip);
+			root.appendChild(layer);
+			root.appendChild(quit);
+			ui = {
+				switchBtn, switchIcon, head, filters, subs, showHide, gear, quit,
+				alphaDown, alphaVal, alphaUp,
+				slots, slotPager, slotPrev, slotPage, slotNext,
+				equipBar, equipKinds,
+				list, pager, prev, page, next,
+				infoIcon, infoName, infoType, usedLine, used, desc,
+				hide, mark, hot, hotIcon, tip, layer, hotLayer, setLayer, setBtn, hotBtns,
+			};
+
+			switchBtn.addEventListener('click', () => {
+				state.type = state.type === 'equips' ? 'all' : 'equips';
+				if (state.type === 'all') state.focus = 'list';
+				render();
+			});
+			showHide.addEventListener('click', () => {
+				core.setFlag('showHideItem', !showHidden());
+				render();
+			});
+			gear.addEventListener('click', () => { state.layer = 'set'; render(); });
+			quit.addEventListener('click', () => playerClose());
+			prev.addEventListener('click', () => pageList(-1));
+			next.addEventListener('click', () => pageList(1));
+			slotPrev.addEventListener('click', () => turnSlot(-1));
+			slotNext.addEventListener('click', () => turnSlot(1));
+			hide.addEventListener('click', () => {
+				const curr = selectedId();
+				hideItem(curr);
+				render();
+			});
+			mark.addEventListener('click', () => {
+				const curr = selectedId();
+				markItem(curr);
+				render();
+			});
+			hot.addEventListener('click', () => {
+				if (state.type !== 'all' || !selectedId()) return;
+				state.layer = 'hot';
+				render();
+			});
+			list.addEventListener('click', (e) => {
+				const row = e.target.closest && e.target.closest('.bp-row');
+				if (!row) return;
+				chooseList(row.dataset.id);
+			});
+			slots.addEventListener('click', (e) => {
+				const slot = e.target.closest && e.target.closest('.bp-slot');
+				if (!slot) return;
+				chooseSlot(Number(slot.dataset.slot));
+			});
+			['pointerdown', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'wheel', 'contextmenu'].forEach((type) => {
+				root.addEventListener(type, (ev) => ev.stopPropagation());
+			});
+
+			parent.appendChild(root);
+			window.addEventListener('keydown', onKey, true);
+			window.addEventListener('keyup', onKey, true);
+			core.plugin.domBackpack = { opened: true, layout: layout, close: playerClose };
+			layout();
+			root.focus();
+		}
+
+		function openBackpack(type, opt) {
+			opt = opt || {};
+			if (main.replayChecking) return;
+			if (opened) {
+				state.flash = !!opt.flash;
+				state.type = type === 'equips' ? 'equips' : 'all';
+				if (opt.selectSlot != null) {
+					state.type = 'equips';
+					state.focus = 'slot';
+					state.slot = opt.selectSlot;
+				} else if (opt.selectId) {
+					state.focus = 'list';
+					const cls = core.material.items[opt.selectId] && core.material.items[opt.selectId].cls;
+					if (state.type !== 'equips' && (cls === 'tools' || cls === 'constants')) {
+						const list = core.getToolboxItems(state.sub, showHidden());
+						if (list.indexOf(opt.selectId) < 0) state.sub = 'all';
+					}
+					state.picked[state.type === 'equips' ? 'equips' : state.sub] = opt.selectId;
+				}
+				if (core.status && core.status.event) {
+					core.status.event.id = state.type === 'equips' ? 'equipbox' : 'toolbox';
+				}
+				render();
+				return;
+			}
+			mount(type, opt);
+		}
+
+		const DOM_BACKPACK_CSS = [
+			'#dom-backpack{position:absolute;left:0;top:0;width:100%;height:100%;z-index:205;box-sizing:border-box;',
+			'display:flex;flex-direction:column;overflow:hidden;background:rgba(28,28,28,.94);color:#f2f2f2;',
+			'font:calc(13px * var(--bag-scale))/1.35 Verdana,sans-serif;--bag-scale:1;outline:none;',
+			'--bag-gold:#e6c35c;--bag-line:#5c5c5c;--bag-note:#c4b496;--bag-btn:#3e3e3e;}',
+			'#dom-backpack *{box-sizing:border-box;}',
+			'#dom-backpack [hidden]{display:none !important;}',
+			'#dom-backpack button{font:inherit;color:inherit;background:var(--bag-btn);border:1px solid var(--bag-line);',
+			'border-radius:3px;padding:calc(4px * var(--bag-scale)) calc(10px * var(--bag-scale));',
+			'min-height:calc(26px * var(--bag-scale));cursor:pointer;}',
+			'#dom-backpack button:focus{outline:1px solid var(--bag-gold);outline-offset:1px;}',
+			'#dom-backpack button:disabled{opacity:.4;cursor:default;}',
+			'#dom-backpack button.on{outline:none;background:#3a3424;border-color:var(--bag-gold);color:var(--bag-gold);}',
+			'#dom-backpack .bp-switch{position:absolute;top:calc(8px * var(--bag-scale));right:calc(8px * var(--bag-scale));z-index:5;',
+			'width:calc(24px * var(--bag-scale));height:calc(24px * var(--bag-scale));min-height:0;padding:0;',
+			'display:flex;align-items:center;justify-content:center;border-radius:3px;background:#D2691E;border:1px solid #8B4513;}',
+			'#dom-backpack .bp-switch .bp-icon{width:100%;height:100%;}',
+			'#dom-backpack .bp-quit{position:absolute;right:calc(6px * var(--bag-scale));bottom:calc(6px * var(--bag-scale));z-index:5;',
+			'width:calc(24px * var(--bag-scale));height:calc(24px * var(--bag-scale));min-height:0;padding:0;',
+			'border-radius:3px;background:#EF5350;border:1px solid #D32F2F;}',
+			'#dom-backpack .bp-quit::before,#dom-backpack .bp-quit::after{content:"";position:absolute;left:22%;right:22%;top:50%;',
+			'height:calc(3px * var(--bag-scale));background:#fff;border-radius:1px;}',
+			'#dom-backpack .bp-quit::before{transform:translateY(-50%) rotate(45deg);}',
+			'#dom-backpack .bp-quit::after{transform:translateY(-50%) rotate(-45deg);}',
+			'#dom-backpack .bp-head{display:flex;flex-wrap:nowrap;align-items:center;gap:calc(6px * var(--bag-scale));flex:0 0 auto;}',
+			'#dom-backpack .bp-strip{display:flex;flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;',
+			'cursor:grab;scrollbar-width:thin;}',
+			'#dom-backpack .bp-strip.dragging{cursor:grabbing;user-select:none;}',
+			'#dom-backpack .bp-strip>button{flex:0 0 auto;}',
+			'#dom-backpack .bp-filters{gap:calc(6px * var(--bag-scale));}',
+			'#dom-backpack .bp-filter{white-space:nowrap;background:#d9d3c5;color:#1c1c1c;border:1px solid #8a8172;',
+			'padding:calc(1px * var(--bag-scale)) calc(7px * var(--bag-scale));min-height:calc(20px * var(--bag-scale));',
+			'font-size:calc(12px * var(--bag-scale));}',
+			'#dom-backpack .bp-filter.on{background:#3a3424;border-color:var(--bag-gold);color:var(--bag-gold);}',
+			'#dom-backpack .bp-set{flex:0 0 auto;margin-left:auto;width:calc(22px * var(--bag-scale));height:calc(22px * var(--bag-scale));',
+			'min-height:0;padding:0;border-radius:50%;border:2px solid #8B4513;',
+			'background:linear-gradient(#f3dc9a,#c9a24a);color:#2a2112;font-size:calc(13px * var(--bag-scale));',
+			'line-height:1;box-shadow:inset 0 0 0 1px #fff6d8;}',
+			'#dom-backpack .bp-main{flex:1;min-height:0;display:flex;gap:calc(8px * var(--bag-scale));',
+			'padding:calc(6px * var(--bag-scale));}',
+			'#dom-backpack .bp-left{flex:1.2;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:calc(6px * var(--bag-scale));}',
+			'#dom-backpack .bp-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:calc(4px * var(--bag-scale));',
+			'flex:0 0 auto;}',
+			'#dom-backpack .bp-slots.scroll{max-height:42%;overflow:auto;}',
+			'#dom-backpack .bp-slot{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;',
+			'gap:calc(1px * var(--bag-scale));background:#1a1a1a;color:#f2f2f2;min-width:0;min-height:0;',
+			'padding:calc(2px * var(--bag-scale)) calc(2px * var(--bag-scale));}',
+			'#dom-backpack .bp-slot-name{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
+			'font-size:calc(11px * var(--bag-scale));line-height:1.1;}',
+			'#dom-backpack .bp-equipbar{display:flex;flex-wrap:nowrap;align-items:center;gap:calc(4px * var(--bag-scale));flex:0 0 auto;}',
+			'#dom-backpack .bp-ekinds{gap:calc(4px * var(--bag-scale));}',
+			'#dom-backpack .bp-ekind{padding:0 calc(5px * var(--bag-scale));min-height:calc(18px * var(--bag-scale));',
+			'font-size:calc(11px * var(--bag-scale));}',
+			'#dom-backpack .bp-list{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:calc(4px * var(--bag-scale));}',
+			'#dom-backpack .bp-list.scroll{overflow:auto;}',
+			'#dom-backpack .bp-row{display:flex;align-items:center;flex:0 0 auto;gap:calc(6px * var(--bag-scale));width:100%;text-align:left;',
+			'background:#242424;color:#f2f2f2;}',
+			'#dom-backpack .bp-row.dim{opacity:.5;}',
+			'#dom-backpack .bp-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+			'#dom-backpack .bp-name.mark{color:var(--bag-gold);}',
+			'#dom-backpack .bp-num{flex:0 0 auto;color:var(--bag-note);font-variant-numeric:tabular-nums;}',
+			'#dom-backpack .bp-icon{width:calc(18px * var(--bag-scale));height:calc(18px * var(--bag-scale));flex:0 0 auto;',
+			'background:center/100% 100% no-repeat;image-rendering:pixelated;}',
+			'#dom-backpack .bp-slot .bp-icon{width:calc(32px * var(--bag-scale));height:calc(32px * var(--bag-scale));}',
+			'#dom-backpack .bp-icon.big{width:calc(32px * var(--bag-scale));height:calc(32px * var(--bag-scale));}',
+			'#dom-backpack .bp-i{display:inline-block;width:calc(16px * var(--bag-scale));height:calc(16px * var(--bag-scale));',
+			'vertical-align:text-bottom;background:center/100% 100% no-repeat;image-rendering:pixelated;}',
+			'#dom-backpack .bp-pager{display:flex;align-items:center;justify-content:center;gap:calc(10px * var(--bag-scale));flex:0 0 auto;}',
+			'#dom-backpack .bp-info{position:relative;flex:0.9;min-width:0;min-height:0;display:flex;flex-direction:column;gap:calc(6px * var(--bag-scale));',
+			'background:#242424;border:1px solid var(--bag-line);border-radius:3px;padding:calc(8px * var(--bag-scale));}',
+			'#dom-backpack .bp-info-top{position:relative;flex:0 0 auto;display:flex;flex-direction:column;gap:calc(4px * var(--bag-scale));',
+			'min-height:calc(72px * var(--bag-scale));padding-right:calc(36px * var(--bag-scale));}',
+			'#dom-backpack .bp-info-head{display:flex;gap:calc(8px * var(--bag-scale));align-items:center;}',
+			'#dom-backpack .bp-info-text{flex:1;min-width:0;}',
+			'#dom-backpack .bp-name-line{display:flex;align-items:center;min-width:0;}',
+			'#dom-backpack .bp-info-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ffe4b5;font-weight:bold;}',
+			'#dom-backpack .bp-info-type{color:var(--bag-note);}',
+			'#dom-backpack .bp-used{color:#e7a0a0;}',
+			'#dom-backpack .bp-hot{position:absolute;top:calc(40px * var(--bag-scale));right:calc(8px * var(--bag-scale));z-index:5;',
+			'display:flex;align-items:center;justify-content:center;',
+			'width:calc(24px * var(--bag-scale));height:calc(24px * var(--bag-scale));min-height:0;padding:0;',
+			'background:#fff;border:1px solid #000;border-radius:3px;}',
+			'#dom-backpack .bp-hot .bp-icon{width:100%;height:100%;}',
+			'#dom-backpack .bp-desc{flex:1;min-height:0;overflow:auto;white-space:pre-wrap;}',
+			'#dom-backpack .bp-foot{display:flex;flex-direction:column;align-items:flex-start;gap:calc(8px * var(--bag-scale));',
+			'padding-right:calc(36px * var(--bag-scale));}',
+			'#dom-backpack .bp-showhide{display:inline-flex;align-items:center;gap:calc(6px * var(--bag-scale));',
+			'background:transparent;border:none;color:#fff;padding:0;min-height:0;}',
+			'#dom-backpack .bp-check{width:calc(18px * var(--bag-scale));height:calc(18px * var(--bag-scale));',
+			'display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #000;color:#f00;',
+			'font-weight:bold;line-height:1;}',
+			'#dom-backpack .bp-showhide.checked .bp-check::before{content:"√";}',
+			'#dom-backpack .bp-round{background:#ccc;color:#000;border:1px solid #000;border-radius:3px;}',
+			'#dom-backpack .bp-actions{display:flex;flex-wrap:wrap;gap:calc(8px * var(--bag-scale));}',
+			'#dom-backpack .bp-empty{margin:calc(8px * var(--bag-scale));color:var(--bag-note);}',
+			'#dom-backpack .bp-tip{display:none;position:absolute;left:calc(8px * var(--bag-scale));right:calc(8px * var(--bag-scale));',
+			'top:calc(36px * var(--bag-scale));z-index:6;text-align:center;pointer-events:none;',
+			'padding:calc(4px * var(--bag-scale)) calc(8px * var(--bag-scale));background:rgba(0,0,0,.82);}',
+			'#dom-backpack .bp-tip.on{display:block;}',
+			'#dom-backpack .bp-layer{position:absolute;inset:0;z-index:7;background:rgba(0,0,0,.55);',
+			'display:flex;align-items:center;justify-content:center;padding:calc(12px * var(--bag-scale));}',
+			'#dom-backpack .bp-box{width:min(100%,calc(360px * var(--bag-scale)));background:#242424;border:1px solid var(--bag-line);',
+			'border-radius:3px;padding:calc(12px * var(--bag-scale));display:flex;flex-direction:column;gap:calc(10px * var(--bag-scale));}',
+			'#dom-backpack .bp-note{margin:0;color:var(--bag-note);}',
+			'#dom-backpack .bp-alpha{display:flex;align-items:center;gap:calc(8px * var(--bag-scale));}',
+			'#dom-backpack .bp-alpha button{min-width:calc(32px * var(--bag-scale));}',
+			'#dom-backpack .bp-alpha-val{min-width:calc(42px * var(--bag-scale));text-align:center;font-variant-numeric:tabular-nums;}',
+			'#dom-backpack .bp-hotgrid{display:flex;flex-wrap:wrap;gap:calc(10px * var(--bag-scale));}',
+			'#dom-backpack .bp-hotgrid button{display:inline-flex;align-items:center;gap:calc(4px * var(--bag-scale));}',
+		].join('');
+
+		core.ui._drawToolbox = function () { openBackpack('all'); };
+		core.ui._drawEquipbox = function () { openBackpack('equips'); };
+		core.actions._keyDownToolbox = core.actions._keyDownEquipbox = function () { return true; };
+		core.actions._clickToolbox = core.actions._clickEquipbox = function () { return true; };
+		core.actions._keyUpToolbox = core.actions._keyUpEquipbox = function () { return true; };
 
 		const oriClosePanel = core.ui.closePanel;
 		core.ui.closePanel = function () {
-			oriClosePanel.apply(core.ui, [arguments]);
-			UI.clearAll();
-		}
+			const flash = flashClose;
+			flashClose = false;
+			if (opened) {
+				if (!flash) pushNo();
+				opened = false;
+				state.layer = '';
+				state.flash = false;
+				removeDom();
+				if (core.plugin.domBackpack) core.plugin.domBackpack.opened = false;
+				oriClosePanel.apply(core.ui, arguments);
+				if (!flash) core.checkAutoEvents();
+				return;
+			}
+			oriClosePanel.apply(core.ui, arguments);
+		};
 
 		core.control._replayAction_item = function (action) {
-			if (action.indexOf("item:") != 0) return false;
+			if (action.indexOf('item:') !== 0) return false;
 			const itemId = action.substring(5);
 			if (!core.canUseItem(itemId)) return false;
-			if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
+			const skip = !!(core.material.items[itemId].hideInReplay || core.status.replay.speed == 24 || main.replayChecking);
+			if (skip) {
 				core.useItem(itemId, false, core.replay);
 				return true;
 			}
-			core.ui._drawToolbox(0);
-			const itemInv = UI.itemInv;
-			const totalIndex = itemInv.allItemList.indexOf(itemId);
-			const page = Math.max(Math.ceil(totalIndex / itemInv.pageCap) - 1, 0);
-			const currIndex = totalIndex - page * itemInv.pageCap;
-			itemInv.page = page;
-			itemInv.setIndex(currIndex);
-			itemInv.drawContent();
+			openBackpack('all', { flash: true, selectId: itemId });
 			setTimeout(function () {
+				flashClose = true;
 				core.ui.closePanel();
 				core.useItem(itemId, false, core.replay);
 			}, core.control.__replay_getTimeout());
 			return true;
-		}
+		};
 
 		core.control._replayAction_equip = function (action) {
-			if (action.indexOf("equip:") != 0) return false;
+			if (action.indexOf('equip:') !== 0) return false;
 			const equipId = action.substring(6);
 			if (!core.hasItem(equipId)) {
 				core.removeFlag('__doNotCheckAutoEvents__');
 				return false;
 			}
-
 			const callbackFunc = function () {
-				const next = core.status.replay.toReplay[0] || "";
+				const next = core.status.replay.toReplay[0] || '';
 				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
 					core.removeFlag('__doNotCheckAutoEvents__');
 					core.checkAutoEvents();
 				}
 				core.replay();
-			}
+			};
 			core.setFlag('__doNotCheckAutoEvents__', true);
-
 			core.status.route.push(action);
-			if (core.material.items[equipId].hideInReplay || core.status.replay.speed == 24) {
+			const skip = !!(core.material.items[equipId].hideInReplay || core.status.replay.speed == 24 || main.replayChecking);
+			if (skip) {
 				core.loadEquip(equipId, callbackFunc);
 				return true;
 			}
-			core.ui._drawEquipbox(0);
-			const { itemId, itemInv, equipSlots } = UI;
-			const totalIndex = itemInv.allItemList.indexOf(itemId);
-			const page = Math.max(Math.ceil(totalIndex / itemInv.pageCap) - 1, 0);
-			const currIndex = totalIndex - page * itemInv.pageCap;
-			itemInv.page = page;
-			itemInv.setIndex(currIndex);
-			itemInv.drawContent();
-			equipSlots.drawContent();
+			openBackpack('equips', { flash: true, selectId: equipId });
 			setTimeout(function () {
+				flashClose = true;
 				core.ui.closePanel();
 				core.loadEquip(equipId, callbackFunc);
 			}, core.control.__replay_getTimeout());
 			return true;
-		}
+		};
 
 		core.control._replayAction_unEquip = function (action) {
-			if (action.indexOf("unEquip:") != 0) return false;
+			if (action.indexOf('unEquip:') !== 0) return false;
 			const equipType = parseInt(action.substring(8));
 			if (!core.isset(equipType)) {
 				core.removeFlag('__doNotCheckAutoEvents__');
 				return false;
 			}
-
-			const callback = function () {
-				[UI._equipSlots, UI._equipInv, UI._itemInfo].forEach((menu) => {
-					if (menu && menu.onDraw) menu.drawContent();
-				});
-				core.ui.closePanel();
-				const next = core.status.replay.toReplay[0] || "";
-				if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
-					core.removeFlag('__doNotCheckAutoEvents__');
-					core.checkAutoEvents();
-				}
-				core.replay();
-			}
+			const finish = function (alsoClose) {
+				return function () {
+					if (alsoClose) core.ui.closePanel();
+					const next = core.status.replay.toReplay[0] || '';
+					if (!next.startsWith('equip:') && !next.startsWith('unEquip:')) {
+						core.removeFlag('__doNotCheckAutoEvents__');
+						core.checkAutoEvents();
+					}
+					core.replay();
+				};
+			};
 			core.setFlag('__doNotCheckAutoEvents__', true);
-
 			core.status.route.push(action);
-			if (core.status.replay.speed == 24) {
-				core.unloadEquip(equipType, callback);
+			if (core.status.replay.speed == 24 || main.replayChecking) {
+				core.unloadEquip(equipType, finish(true));
 				return true;
 			}
-			const { itemInv, equipSlots } = UI;
-			const page = Math.max(Math.ceil(equipType / itemInv.pageCap) - 1, 0);
-			const currIndex = equipType - page * itemInv.pageCap;
-			itemInv.page = page;
-			itemInv.setIndex(currIndex);
-			itemInv.drawContent();
-			equipSlots.drawContent();
-			core.ui._drawEquipbox(0);
+			openBackpack('equips', { flash: true, selectSlot: equipType });
 			setTimeout(function () {
-				core.unloadEquip(equipType, callback);
+				flashClose = true;
+				core.ui.closePanel();
+				core.unloadEquip(equipType, finish(false));
 			}, core.control.__replay_getTimeout());
 			return true;
-		}
-		core.registerReplayAction("item", core.control._replayAction_item);
-		core.registerReplayAction("equip", core.control._replayAction_equip);
-		core.registerReplayAction("unEquip", core.control._replayAction_unEquip);
+		};
+		core.registerReplayAction('item', core.control._replayAction_item);
+		core.registerReplayAction('equip', core.control._replayAction_equip);
+		core.registerReplayAction('unEquip', core.control._replayAction_unEquip);
 
-		// 复写control.startReplay
-		const oriStartReplay = core.control.startReplay; // 进入播放录像模式时清空道具栏选中目标的缓存
-		core.control.startReplay = function (list) {
+		const oriStartReplay = core.control.startReplay;
+		core.control.startReplay = function () {
 			clearItemBoxCache();
-			oriStartReplay.apply(core.control, [list, ...arguments]);
-		}
+			oriStartReplay.apply(core.control, arguments);
+		};
 
-		// 复写items._afterUseItem
-		// flag:itemsUsedCount {[itemId:string]:boolean} 成功使用了的道具的计数
-		const origin__afterUseItem = items.prototype._afterUseItem;
+		const originAfterUseItem = items.prototype._afterUseItem;
 		items.prototype._afterUseItem = function (itemId) {
 			const itemsUsedCount = core.getFlag('itemsUsedCount', {});
-			if (!itemsUsedCount.hasOwnProperty(itemId)) itemsUsedCount[itemId] = 0;
+			if (!Object.prototype.hasOwnProperty.call(itemsUsedCount, itemId)) itemsUsedCount[itemId] = 0;
 			itemsUsedCount[itemId]++;
 			core.setFlag('itemsUsedCount', itemsUsedCount);
-			origin__afterUseItem(itemId);
-		}
+			originAfterUseItem.call(this, itemId);
+		};
 
-		// 复写ui.getToolboxItems
-		// flag:markedItems string[] 在道具栏中置顶的道具的列表
-		// flag:hideInfo {[itemId:string]:boolean} 手动选择了显示/隐藏的道具的列表
 		core.ui.getToolboxItems = function (cls, showHide, sortFunc) {
+			if (!core.status || !core.status.hero || !core.status.hero.items) return [];
 			const markedItems = core.getFlag('markedItems', []);
-
-			// 暂时不采用按使用次数排序这个函数 因为导致物品排序频繁变动，反而体验不好
-			// const itemsUsedCount = core.getFlag('itemsUsedCount', {});
-			// if (!sortFunc) sortFunc = (itemId1, itemId2) => {
-			// 	const item1Count = itemsUsedCount[itemId1] || 0,
-			// 		item2Count = itemsUsedCount[itemId2] || 0;
-			// 	return item2Count - item1Count;
-			// }
-
 			let list = [];
 			if (cls === 'all') {
-				for (let name in core.status.hero.items) {
-					if (name === "equips") continue;
-					list = list.concat(Object.keys(core.status.hero.items[name])); // 获取'constants'和'tools'整体的列表
+				for (const name in core.status.hero.items) {
+					if (name === 'equips') continue;
+					list = list.concat(Object.keys(core.status.hero.items[name]));
 				}
 			} else if (core.status.hero.items[cls]) {
 				list = Object.keys(core.status.hero.items[cls] || {});
 			}
-			const markedList = list.filter((itemId) => markedItems.includes(itemId)).sort(sortFunc),
-				unmarkedList = list.filter((itemId) => !markedItems.includes(itemId)).sort(sortFunc);
-			list = [...markedList, ...unmarkedList];
+			const markedList = list.filter((itemId) => markedItems.indexOf(itemId) >= 0).sort(sortFunc);
+			const unmarkedList = list.filter((itemId) => markedItems.indexOf(itemId) < 0).sort(sortFunc);
+			list = markedList.concat(unmarkedList);
 			const hideInfo = core.getFlag('hideInfo', {});
-			if (!showHide) list = list.filter(function (id) {
-				if (hideInfo[id]) return false;
-				return !core.material.items[id].hideInToolbox;
-			})
+			if (!showHide) {
+				list = list.filter(function (id) {
+					if (hideInfo[id]) return false;
+					const one = core.material.items[id];
+					return !!one && !one.hideInToolbox;
+				});
+			}
 			return list;
-		}
-
-		// 复写resize，保证屏幕变化时此画布表现正常
-		const originResize = core.control.resize;
-		core.control.resize = function () {
-			originResize.apply(core.control, arguments);
-			const { _back, itemInv, _equipSlots: _equipChangeBoard, _itemInfo: _itemInfoBoard } = UI;
-			[_back, itemInv, _equipChangeBoard, _itemInfoBoard].forEach((menu) => { if (menu && menu.onDraw) menu.drawContent(); });
-		}
-
-		// #endregion
-		const { ButtonBase, RoundBtn, IconBtn, ExitBtn, MenuBase, ArrowBtn, KeyCodeEnum } = core.plugin.uiBase;
-		// #region 绘制用到的按钮类
-
-		/** 隐藏物品的按钮 */
-		class HideBtn extends RoundBtn {
-			constructor(x, y, w, h, config) {
-				super(x, y, w, h, '隐藏', config);
-			}
-
-			draw() {
-				const itemId = UI.itemId;
-				if (core.material.items[itemId]) {
-					const hideInfo = core.getFlag('hideInfo', {});
-					if (hideInfo.hasOwnProperty(itemId)) this.text = hideInfo[itemId] ? "显示" : "隐藏";
-					else this.text = core.material.items[itemId].hideInToolbox ? "显示" : "隐藏";
-				}
-				super.draw();
-			}
-		}
-
-		/** 置顶物品的按钮 */
-		class MarkBtn extends RoundBtn {
-			constructor(x, y, w, h, config) {
-				super(x, y, w, h, '置顶', config);
-			}
-
-			draw() {
-				const itemId = UI.itemId;
-				const markedItems = core.getFlag('markedItems', []);
-				this.text = markedItems.includes(itemId) ? "取消" : "置顶";
-				super.draw();
-			}
-		}
-
-		/** 切换到显示指定分类的物品(如：永久,消耗)的模式的按钮 */
-		class ClassifyBtn extends RoundBtn {
-			constructor(x, y, w, h, text, subType, config) {
-				super(x, y, w, h, text, config);
-				this.subType = subType;
-			}
-
-			draw() {
-				const { type, toolInv } = UI;
-				if (toolInv.subType === this.subType) this.status = 'selected';
-				else this.status = "none";
-				super.draw();
-			}
-		}
-
-		/** 控制是否显示隐藏物品的按钮 */
-		class ShowHideBtn extends ButtonBase {
-			draw() {
-				const ctx = this.ctx;
-				const squareSize = this.h;
-				core.strokeRect(ctx, this.x, this.y, squareSize, squareSize, 'black');
-				core.fillRect(ctx, this.x + 1, this.y + 1, squareSize - 2, squareSize - 2, 'white');
-				const font = core.ui._buildFont(this.h - 4);
-				core.setTextAlign(ctx, 'left');
-				core.setTextBaseline(ctx, 'middle');
-				if (core.hasFlag('showHideItem')) core.fillText(ctx, '√', this.x + 3, this.y + 10, 'red', font);
-				core.fillText(ctx, '查看隐藏', this.x + squareSize + 6, this.y + 10, 'white', font);
-			}
-		}
-
-		/** 切换道具栏和装备栏的按钮 */
-		class SwitchBtn extends IconBtn {
-			constructor(x, y, w, h, config) {
-				super(x, y, w, h, 'toolbox', config);
-			}
-
-			draw() {
-				this.icon = (UI.type === 'all') ? 'toolbox' : 'equipbox';
-				super.draw();
-			}
-		}
-
-		class NoHoverBtn extends IconBtn {
-			draw() {
-				super.draw();
-				const ctx = this.ctx;
-				const { x, y, w, h } = this;
-				core.drawImage(ctx, "mousewheel.png", x, y, w, h);
-			}
-		}
-
-		/** 切换装备面板的单个装备选框 */
-		class EquipBox extends ButtonBase {
-			constructor(x, y, w, h) {
-				super(x, y, w, h);
-				/** @type {EquipSlots} */ // @ts-ignore
-				this.menu;
-				this.key = -1;
-			}
-
-			draw() {
-				const ctx = this.ctx;
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-				const space = 2,
-					lineWidth = 2,
-					squareSize = w;
-				const equipId = core.getEquip(this.menu.getTotalIndex(this.key));
-				if (equipId) core.drawIcon(ctx, equipId, x + 4, y + 4, squareSize - 8, squareSize - 8);
-				const color = (UI.selectType === 'equipBox' && this.menu.index === this.key) ? 'gold' : 'white';
-				core.strokeRect(ctx, x, y, squareSize, squareSize, color, lineWidth);
-				core.setTextAlign(ctx, "center");
-				core.setTextBaseline(ctx, "top");
-				const tx = x + w / 2,
-					ty = y + squareSize + space;
-				core.fillText(ctx, this.menu.currItemList[this.key], tx, ty, color, '14px Verdana');
-			}
-		}
-
-		// #endregion
-		// #region 绘制用到的菜单类
-
-		// 道具栏/装备栏的背景
-		class ItemBoxBack extends MenuBase {
-			constructor() {
-				// 装备栏和道具栏共用同一个光标，故所有按键事件全部写在这里处理
-				super('itemBoxBack', ['ondown', 'keyDown', 'keyUp'], null, null, null, null, 136);
-			}
-
-			keyDownEvent(keyCode) {
-				const { type, selectType, itemInv, equipSlots } = UI;
-				if (keyCode === KeyCodeEnum.Left) { // left	
-					if (selectType === 'toolBox') itemInv.pageDown();
-					else if (selectType === 'equipBox') {
-						if (equipSlots.index === 0) {
-							equipSlots.pageDown();
-						} else {
-							equipSlots.setIndex(equipSlots.index - 1);
-						}
-					}
-				} else if (keyCode === KeyCodeEnum.Right) { // right		
-					if (selectType === 'toolBox') itemInv.pageUp();
-					else if (selectType === 'equipBox') {
-						if (equipSlots.index === equipSlots.currItemList.length - 1) {
-							equipSlots.pageUp();
-						} else {
-							equipSlots.setIndex(equipSlots.index + 1);
-						}
-					}
-				} else if (keyCode === KeyCodeEnum.Up) { // up
-					if (selectType === 'toolBox') {
-						if (itemInv.index === 0) {
-							if (type === 'equips') { // 在仅物品栏模式下点上键到顶，切换到上一页，否则会切换到装备栏
-								equipSlots.setIndex(equipSlots.currItemList.length - 1);
-							} else {
-								itemInv.pageDown(); // 向上到顶将翻到上一页
-							}
-						} else {
-							itemInv.setIndex(itemInv.index - 1);
-						}
-					} else if (selectType === 'equipBox') {
-						if (equipSlots.index >= equipSlots.rowMax) {
-							equipSlots.index -= equipSlots.rowMax;
-						}
-					}
-				} else if (keyCode === KeyCodeEnum.Down) { // down
-					if (selectType === 'toolBox') {
-						if (itemInv.index < itemInv.currItemList.length - 1) {
-							itemInv.setIndex(itemInv.index + 1);
-						} else {
-							itemInv.pageUp(); // 向下到底将翻到下一页
-						}
-					} else if (selectType === 'equipBox') {
-						let newIndex = equipSlots.index + equipSlots.rowMax;
-						if (newIndex < equipSlots.currItemList.length - 1) {
-							equipSlots.setIndex(newIndex);
-						} else {
-							equipSlots.setIndex(0);
-						}
-					}
-				}
-			}
-
-			keyUpEvent(keyCode, altKey) {
-				const { itemId, selectType, itemInv, equipSlots: equipChangeBoard } = UI;
-				if (keyCode === KeyCodeEnum.Q) { // Q
-					if (UI.type === "equips") UI.exit();
-					else UI.switchType();
-				} else if (keyCode === KeyCodeEnum.T) { // T
-					if (UI.type === "all") UI.exit();
-					else UI.switchType();
-				} else if (keyCode === KeyCodeEnum.BackSpace || keyCode === KeyCodeEnum.Esc) { // BackSpace/Esc
-					UI.exit();
-				} else if (keyCode === KeyCodeEnum.Enter || keyCode === KeyCodeEnum.SpaceBar || keyCode === KeyCodeEnum.C) { // Enter/SpaceBar/C
-					if (selectType === "toolBox") {
-						if (core.material.items[itemId]) itemInv.triggerItem();
-					} else if (selectType === "equipBox") {
-						equipChangeBoard.triggerItem();
-						[UI._equipSlots, UI._equipInv, UI._itemInfo].forEach((menu) => {
-							if (menu && menu.onDraw) menu.drawContent();
-						});
-					} else {
-						itemInv.setIndex(0);
-					}
-				} else if (altKey && keyCode >= 48 && keyCode <= 57) { // 都有自动切装了还有神人想要这个Alt换装 服了
-					core.items.quickSaveEquip(keyCode - 48);
-					return;
-				}
-			}
-
-			drawContent() {
-				const ctx = this.createCanvas();
-				this.drawBackGround(ctx);
-				super.drawContent();
-			}
-
-			drawBackGround(ctx) {
-				core.strokeRoundRect(ctx, 2, 2, 412, 412, 5, 'white', 2);
-				core.fillRoundRect(ctx, 3, 3, 410, 410, 5, 'rgb(108, 187, 219)');
-				core.drawLine(ctx, 248, 3, 248, 413, 'white', 2); // 左栏和右栏的分界线
-				if (UI.type === 'equips') core.drawLine(ctx, 3, 140, 248, 140, 'white', 2); // 装备栏和道具栏的分界线
-			}
-		}
-
-		// 物品列表和换装界面的共用基类 
-		class ItemListBase extends MenuBase {
-			constructor(name, x, y, w, h, zIndex) {
-				super(name, ['ondown', 'onmove'], x, y, w, h, zIndex);
-				/** 当前页 */
-				this.page = 0;
-				/** 一页最多可容纳的道具数量 */
-				this.pageCap = 0;
-				/** 当前最大页数，page应小于此值*/
-				this.pageMax = 1;
-				/** @type {string[]} 此界面总的物品列表 */
-				this.allItemList = [];
-				/** @type {string[]} 此界面当前页展示的物品列表 */
-				this.currItemList = [];
-				/** 当前选中了第几个道具 */
-				this.index = 0;
-			}
-
-			/** 
-			 * @abstract 获取最新的物品列表
-			 * @returns {string[]}
-			 */
-			getItemList() { return []; }
-
-			/** 
-			 * @virtual 
-			 * @description 选中指定位置 
-			 * @param {number} index 
-			 **/
-			setIndex(index) { }
-
-			/** 
-			 * @abstract 尝试使用当前选中的物品 
-			 */
-			triggerItem() { }
-
-			/** 更新物品列表 */
-			updateItemList() {
-				this.allItemList = this.getItemList();
-				this.pageMax = Math.ceil(this.allItemList.length / this.pageCap);
-				if (this.pageMax < 1) this.pageMax = 1;
-				if (this.page >= this.pageMax) this.page = this.pageMax - 1;
-				this.currItemList = this.allItemList.slice(this.page * this.pageCap, (this.page + 1) * this.pageCap);
-				if (this.index >= this.currItemList.length && this.currItemList.length > 0) this.setIndex(this.currItemList.length - 1);
-			}
-
-			canPageUp() {
-				return this.page < this.pageMax - 1;
-			}
-
-			canPageDown() {
-				return this.page > 0;
-			}
-
-			/** 翻页，更新物品列表，并重绘该菜单自身 */
-			pageUp() {
-				if (!this.canPageUp()) return;
-				this.page++;
-				this.updateItemList();
-				this.setIndex(Math.min(this.index, this.currItemList.length - 1));
-				this.drawContent();
-			}
-
-			/** 翻页，更新物品列表，并重绘该菜单自身 */
-			pageDown() {
-				if (!this.canPageDown()) return;
-				this.page--;
-				this.updateItemList();
-				this.setIndex(this.index);
-				this.drawContent();
-			}
-		}
-
-		/** 展示角色当前已穿戴的装备的面板 */
-		class EquipSlots extends ItemListBase {
-			constructor(x, y, w, h, zIndex) {
-				super('equipChangeBoard', x, y, w, h, zIndex);
-				this.columnMax = 4;
-				this.rowMax = 2;
-				this.pageCap = this.columnMax * this.rowMax;
-				this.updateItemList();
-				const currNameList = this.currItemList;
-
-				const columnCount = Math.min(currNameList.length, this.columnMax), // 判断装备孔数量是否小于最大列数
-					rowCount = Math.min(Math.ceil(currNameList.length / this.columnMax), this.rowMax);
-				const [boxWidth, boxHeight] = [36, 52];
-				const spaceX = (this.w - columnCount * boxWidth) / (1 + columnCount),
-					spaceY = (this.h - rowCount * boxHeight) / (1 + rowCount);
-				let [xi, yi] = [spaceX, spaceY];
-
-				// 装备孔的按钮在这里注册
-				for (let i = 0; i < this.pageCap; i++) {
-					if (!this.btnMap.has(i)) {
-						const btn = new EquipBox(xi, yi, boxWidth, boxHeight);
-						this.registerBtn(i, btn, {
-							ondown: function () {
-								if (this.index !== i) {
-									this.setIndex(i);
-								} else this.triggerItem(i);
-							}.bind(this),
-							onmove: function () {
-								if (UI.isNoHover) return;
-								if (this.index !== i) {
-									this.setIndex(i);
-								}
-							}.bind(this),
-						});
-						if ((i >= this.currItemList.length)) btn.disable = true;
-					} else {
-						const btn = this.btnMap.get(i);
-						if (btn) btn.disable = (i >= this.currItemList.length);
-					}
-					if ((i + 1) % this.columnMax === 0) {
-						xi = spaceX;
-						yi += spaceY + boxHeight;
-					} else { xi += spaceX + boxWidth; }
-				}
-			}
-
-			drawContent() {
-				const ctx = this.createCanvas();
-				if (this.pageMax > 1) {
-					core.setTextAlign(ctx, "center");
-					core.setTextBaseline(ctx, "alphabetic");
-					core.fillText(ctx, this.page + 1 + '/' + this.pageMax, this.w / 2, this.h - 2, 'white', '12px Verdana');
-				}
-				// 切装面板只有1页时不激活翻页按钮
-				if (this.allItemList.length < this.pageCap) {
-					const pgDown = this.btnMap.get('pgDownBtn');
-					const pgUp = this.btnMap.get('pgUpBtn');
-					if (pgDown) pgDown.disable = true;
-					if (pgUp) pgUp.disable = true;
-				}
-
-				super.drawContent();
-			}
-
-			/**  注意，对于装备切换面板来说，它的装备列表不是装备本身，而是角色的装备孔 */
-			getItemList() {
-				return core.status.globalAttribute.equipName;
-			}
-
-			/** @param {number} index 根据当前页选中的序号换算对应装备在角色装备中的总序号 */
-			getTotalIndex(index) {
-				if (index == null) index = this.index;
-				return this.page * this.pageCap + index;
-			}
-
-			/** @param {number} index */
-			changePageByTotalIndex(index) {
-				const newPage = Math.floor(index / this.pageCap);
-				this.page = newPage;
-				this.updateItemList();
-			}
-
-			/** 脱下指定位置的装备 */
-			triggerItem(index) {
-				const totalIndex = this.getTotalIndex(index);
-				if (core.status.hero.equipment[totalIndex]) {
-					core.unloadEquip(totalIndex);
-					core.status.route.push("unEquip:" + totalIndex);
-					this.updateItemList();
-					this.drawContent();
-					UI.itemInv.updateItemList(); //穿脱装备是双向的过程，装备栏和道具栏的物品列表组成都会变
-					UI.itemInv.drawContent();
-					UI.itemId = '';
-				}
-			}
-
-			setIndex(index) {
-				this.index = index;
-				UI.equipInv.index = -1;
-				core.ui.clearUIEventSelector(1);
-				// 被选中的装备框变色
-				this.btnMap.forEach((ele, key) => {
-					if (ele instanceof EquipBox) {
-						if (key === index) ele.status = 'selected';
-						else ele.status = 'none';
-					}
-				})
-				UI.selectType = 'equipBox';
-				const totalIndex = this.getTotalIndex(index);
-				UI.itemId = core.status.hero.equipment[totalIndex];
-				this.drawButtonContent();
-			}
-
-			pageUp() {
-				if (!this.canPageUp()) return;
-				this.page++;
-				this.updateItemList();
-				this.btnMap.forEach((btn, key) => {
-					if (btn instanceof EquipBox) {
-						if (Number(key) >= this.currItemList.length) btn.disable = true;
-					}
-				});
-				this.setIndex(Math.min(this.index, this.currItemList.length - 1));
-				this.drawContent();
-			}
-
-			pageDown() {
-				if (!this.canPageDown()) return;
-				this.page--;
-				this.updateItemList();
-				this.btnMap.forEach((btn, key) => {
-					if (btn instanceof EquipBox) {
-						if (Number(key) <= this.currItemList.length - 1) btn.disable = false;
-					}
-				});
-				this.setIndex(this.index);
-				this.drawContent();
-			}
-		}
-
-		/** 展示角色当前背包物品的面板，有道具/装备两种模式 */
-		class InventoryBase extends ItemListBase {
-			/**
-			 * @param {*} name 
-			 * @param {string} x 
-			 * @param {number} y 
-			 * @param {number} w 
-			 * @param {number} h 
-			 * @param {number} zIndex 
-			 * @param {number} pageCap 单个页面显示的物品数
-			 */
-			constructor(name, x, y, w, h, zIndex, pageCap) {
-				super(name, x, y, w, h, zIndex);
-
-				/** @type {number} 单个物品占据的列宽 */
-				this.oneItemHeight = 30;
-				/** @type {number} 单个页面显示的物品数, -1是因为最后一行要留给换行按钮*/
-				this.pageCap = pageCap;
-				this.marginLeft = 15; // 物品栏左边距
-				this.marginTop = 40; // 物品栏上边距
-				this.x0 = this.x + this.marginLeft; // 物品栏左边距
-				this.y0 = this.y + this.marginTop;
-				this.w0 = this.w - this.marginLeft - 5; // 物品栏真实宽度
-				this.h0 = this.oneItemHeight * (this.pageCap + 1); // +1是因为最后一行要留给翻页按钮 
-			}
-
-			drawContent() {
-				const ctx = this.createCanvas();
-				const { x0, y0, w0, h0, marginTop, marginLeft } = this;
-				const { w, h } = this;
-				core.fillRect(ctx, marginLeft, marginTop, w0, h0, 'rgb(0, 105, 148)');
-
-				core.setTextBaseline(ctx, "middle");
-				for (let i = 0; i < this.currItemList.length; i++) {
-					this.drawOneItem(i);
-				}
-				core.setTextAlign(ctx, "center");
-				core.setTextBaseline(ctx, "alphabetic");
-				core.fillText(ctx, (this.page + 1) + '/' + this.pageMax, w / 2, y0 + h0 - 4, 'white', '12px Verdana');
-				super.drawContent();
-			}
-
-			/** @param {number} currIndex  */
-			drawOneItem(currIndex) {
-				const itemId = this.currItemList[currIndex];
-				const ctx = core.dymCanvas[this.name];
-				const { x0, y0, marginTop } = this;
-				const dy = this.oneItemHeight * currIndex + marginTop;
-				/** @type {Item|{}} */
-				const item = core.material.items[itemId] || {};
-				const num = core.formatBigNumber(core.itemCount(itemId), 5) || 0; // 道具数量过大时需要format
-
-				// 被隐藏的道具在显示时需要半透明
-				const hideInfo = core.getFlag('hideInfo', {});
-				if (item && (hideInfo.hasOwnProperty(itemId) ? hideInfo[itemId] : item.hideInToolbox)) core.setAlpha(ctx, 0.5);
-
-				// 绘制物品图标
-				if (core.material.items[itemId]) core.drawIcon(ctx, itemId, x0 + 4, dy + 6, 18, 18);
-
-				core.setTextAlign(ctx, "right");
-				core.setTextBaseline(ctx, "middle");
-				// 绘制物品数量 ×几
-				const numText = "×" + num;
-				core.fillText(ctx, numText, x0 + 218, dy + this.oneItemHeight / 2, 'white', '18px Verdana');
-
-				// 绘制物品名称
-				const markedItems = core.getFlag('markedItems', []);
-				const name = item.name || "???";
-				core.setTextAlign(ctx, "left");
-				core.fillText(ctx, name, x0 + 24, dy + this.oneItemHeight / 2, markedItems.includes(itemId) ? 'gold' : 'white', '18px Verdana', 180);
-				core.setAlpha(ctx, 1);
-			}
-
-			clear() {
-				core.clearUIEventSelector(1);
-				super.clear();
-			}
-
-			/** 绘制选中物品的光标，在selectType或index改变时自动执行绘制/擦除
-			 * @param {number} index 选中物品在当前页的序号
-			 */
-			drawSelector(index) {
-				const [x0, y0, w0] = [this.x0, this.y0, this.w0]; // 光标绘制是绝对坐标
-				core.drawUIEventSelector(1, 'winskin.png', x0, y0 + index * this.oneItemHeight, w0, this.oneItemHeight, 140);
-			}
-
-			/** 选中指定序号的位置，改变选中道具的ID，重绘光标 
-			 * @param {number} index 选中物品在当前页的序号
-			 */
-			setIndex(index) {
-				this.index = index;
-				if (UI.type === 'equips') {
-					UI.equipSlots.index = -1;
-					UI.equipSlots.drawButtonContent(); // 清除装备栏的选中状态
-					UI.selectType = 'toolBox';
-				}
-				this.drawSelector(index);
-				UI.itemId = this.currItemList[index];
-			}
-
-			ondownEvent(_x, _y, px, py) {
-				py -= this.marginTop; // 转换为相对于物品栏内部的坐标
-				const index = Math.floor(py / this.oneItemHeight);
-				if (index < 0 || index >= this.currItemList.length) return;
-				if (UI.selectType !== 'toolBox' || this.index !== index) {
-					this.setIndex(index);
-				} else {
-					this.triggerItem();
-				}
-			}
-
-			onmoveEvent(_x, _y, px, py) {
-				if (UI.isNoHover) return;
-				py -= this.marginTop; // 转换为相对于物品栏内部的坐标
-				const index = Math.floor(py / this.oneItemHeight);
-				if (index < 0 || index >= this.currItemList.length) return;
-				if (UI.selectType !== 'toolBox' || this.index !== index) {
-					this.setIndex(index);
-				}
-			}
-		}
-
-		class ToolInventory extends InventoryBase {
-			constructor(x, y, w, h, zIndex, pageCap) {
-				super('toolInventory', x, y, w, h, zIndex, pageCap);
-				/** @type {'all'|'tools'|'constants'} 当前显示哪个子菜单 */
-				this.subType = 'all';
-
-				/** 各个子页面当前选中的位置，用于在切换后显示原位置 */
-				this.cache = {
-					all: { page: 0, index: 0 },
-					tools: { page: 0, index: 0 },
-					constants: { page: 0, index: 0 }
-				}
-			}
-
-			getItemList() {
-				return core.getToolboxItems(this.subType, core.hasFlag('showHideItem'));
-			}
-
-			triggerItem() {
-				const itemId = UI.itemId;
-				if (!core.canUseItem(itemId) && itemId !== 'centerFly') {
-					core.drawFailTip("当前无法使用" + core.material.items[itemId].name, itemId);
-					return;
-				}
-				UI.clearAll();
-				setTimeout(() => {
-					core.unlockControl();
-					core.tryUseItem(itemId);
-				}, 0);
-			}
-
-			/** 物品栏仅显示指定类型物品 */
-			classify(subType) {
-				if (UI.type !== 'all') {
-					// 非物品栏类型的菜单不支持分类
-					return;
-				}
-				if (this.subType !== subType) {
-					const oldConfig = this.cache[this.subType],
-						newConfig = this.cache[subType];
-					oldConfig.page = this.page;
-					oldConfig.index = this.index;
-					this.page = newConfig.page;
-					this.index = newConfig.index;
-					this.subType = subType;
-					this.updateItemList();
-					this.setIndex(this.index);
-					this.drawContent();
-					UI.back.drawContent(); // 切换物品栏类型时需要重绘背景
-				}
-			}
-		}
-
-		class EquipInventory extends InventoryBase {
-			getItemList() {
-				return core.getToolboxItems('equips', core.hasFlag('showHideItem'));
-			}
-
-			triggerItem() {
-				const equip = UI.itemId;
-				if (!core.canEquip(equip, true)) return;
-				const equipPos = core.getEquipTypeById(equip);
-				UI.equipSlots.changePageByTotalIndex(equipPos);
-				core.loadEquip(equip);
-				core.status.route.push("equip:" + equip);
-				this.updateItemList(); // 穿上装备会导致道具数量变化，需要重新生成装备列表
-				this.setIndex(this.index);
-				this.drawContent();
-				UI.equipSlots.drawContent();
-			}
-		}
-
-		class ItemInfoBoard extends MenuBase {
-			constructor(x, y, w, h) {
-				super('itemInfoBox', ['ondown'], x, y, w, h, 137);
-			}
-
-			drawContent() {
-				const ctx = this.createCanvas();
-				core.strokeRoundRect(ctx, 23, 27, 32, 32, 2, 'white', 2);
-				const itemId = UI.itemId;
-				if (itemId) core.drawIcon(ctx, itemId, 24, 28, 30, 30);
-
-				// 修改这里可以编辑未选中道具时的默认值
-				const defaultItem = { cls: "constants", name: "无道具", id: "-", text: "没有道具最永久" };
-				const defaultEquip = { cls: "equips", name: "无装备", id: "-", text: "一无所有，又何尝不是一种装备", equip: { type: "装备" } };
-				let item = core.material.items[itemId];
-				if (!item) item = (UI.type === 'all' ? defaultItem : defaultEquip);
-				core.setTextAlign(ctx, "left");
-				core.setTextBaseline(ctx, "middle");
-				core.fillText(ctx, item.name, 66, 46, 'black', 'bold 18px Verdana', 98); // 物品名字 e.g.护符
-				core.fillText(ctx, "类型", 20, 75, 'crimson', '14px Verdana');
-				core.fillText(ctx, "【" + getItemClsName(item) + "】", 50, 75, 'rgb(47, 49, 54)', '14px Verdana'); // 物品类型 e.g.【永久道具】
-
-				if (UI.type === 'all') { // 显示物品累计使用的次数
-					core.fillText(ctx, "累计使用", 20, 95, 'crimson', '14px Verdana');
-					const itemsUsedCount = core.getFlag('itemsUsedCount', {});
-					core.fillText(ctx, itemsUsedCount[itemId] || 0, 80, 95, 'rgb(47, 49, 54)', '14px Verdana');
-				}
-				const rawItemText = core.replaceText(item.text) ?? "";
-				const itemText = rawItemText + ((UI.type === "equips") ? this.getEquipCompareInfo(item) : ""); // 物品描述信息
-				core.drawTextContent(ctx, itemText, {
-					left: 20,
-					top: 110,
-					bold: false,
-					color: "black",
-					align: "left",
-					fontSize: 15,
-					maxWidth: 150
-				});
-				const currItemHotKey = HotkeySelect.getHotkeyNum(itemId);
-				// 获取快捷键设置按钮当前的图标
-
-				const setHotkeyBtn = /** @type {IconBtn} */ (this.btnMap.get('setHotkeyBtn'));
-				if (setHotkeyBtn) {
-					setHotkeyBtn.disable = (UI.type === 'equips');
-					setHotkeyBtn.icon = (currItemHotKey == null) ? 'keyboard' : ('btn' + currItemHotKey);
-				}
-				super.drawContent();
-			}
-
-			/*** @param {Item} item */
-			getEquipCompareInfo(item) {
-				let str = '';
-				if (UI.type !== "equips") return str;
-
-				let equipType = item.equip?.type;
-				if (!equipType) return str;
-				if (typeof equipType == "string") equipType = core.getEquipTypeByName(equipType);
-				let compare;
-				/** @todo 准备卸下装备时显示卸下的比较信息 */
-				if (UI.selectType == "equipBox") compare = core.compareEquipment(null, item.id);
-				else compare = core.compareEquipment(item.id, core.getEquip(equipType));
-				// --- 变化值...
-				for (const name in core.status.hero) {
-					if (typeof core.status.hero[name] != 'number') continue;
-					let nowValue = core.getRealStatus(name);
-					let newValue = Math.floor((core.getStatus(name) + (compare.value[name] || 0)) *
-						(core.getBuff(name) * 100 + (compare.percentage[name] || 0)) / 100);
-					if (nowValue === newValue) continue;
-					const color = newValue > nowValue ? '#00FF00' : '#FF0000';
-					const [nowValueStr, newValueStr] = [nowValue, newValue].map(value => core.formatBigNumber(value));
-					str += "\n" + core.getStatusLabel(name) + " " + nowValueStr + "->\r[" + color + "]" + newValueStr + "\r";
-				}
-				return str;
-			}
-		}
-
-		/** 取消设置快捷键的按钮 */
-		class SetNullBtn extends ButtonBase {
-			draw() {
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-				core.strokeRect(this.ctx, x, y, w, h, 'red', 2);
-				core.drawLine(this.ctx, x, y, x + w, y + h, 'red', 2);
-			}
-		}
-
-		// 为当前道具设定一个快捷键
-		class HotkeySelect extends MenuBase {
-			constructor(itemId, x, y, w, h, zIndex) {
-				super('hotkeySelect', ['ondown', 'keyDown'], x, y, w, h, zIndex);
-				this.itemId = itemId;
-				/** @type {number | null} null代表当前道具没有快捷键 */
-				this.hotkeyNum = HotkeySelect.getHotkeyNum(this.itemId);
-			}
-
-			drawContent() {
-				const ctx = this.createCanvas();
-				const [x, y, w, h] = [this.x, this.y, this.w, this.h];
-				core.fillRect(ctx, 3, 3, w - 6, h - 6, ' #A8CABA');
-				core.strokeRect(ctx, 0, 0, w, h, ' #004B23', 3);
-				core.setTextAlign(ctx, 'center');
-				core.setTextBaseline(ctx, 'alphabetic');
-				core.fillText(ctx, '为当前道具选择一个快捷键', this.w / 2, 40, 'black', '20px Verdana');
-				core.fillText(ctx, '无自定义设置时样板的默认快捷键', this.w / 2, 60, 'gray', '16px Verdana');
-				core.fillText(ctx, '(如123分别对应破炸飞)不可在此设置', this.w / 2, 80, 'gray', '16px Verdana');
-				// 无自定义设置时样板的默认快捷键（如123分别对应破炸飞），不可在此设置
-				// 绘制指向当前快捷键的监听
-				if (this.hotkeyNum != null) {
-					const btn = this.btnMap.get('btn' + this.hotkeyNum);
-					if (btn) {
-						core.fillPolygon(ctx, [
-							[btn.x + 12, btn.y + btn.h + 10],
-							[btn.x + btn.w - 12, btn.y + btn.h + 10],
-							[btn.x + btn.w / 2, btn.y + btn.h + 2]
-						], 'black');
-					}
-				}
-				super.drawContent();
-			}
-			/* @__PURE__ */
-			static getHotkeyNum(itemId) {
-				for (let i = 1; i <= 9; i++) {
-					const currHotkey = core.getLocalStorage('hotkey' + i, null);
-					if (currHotkey === itemId) {
-						return i;
-					}
-				}
-				return null;
-			}
-
-			deleteHotkey() {
-				if (this.hotkeyNum != null) core.setLocalStorage('hotkey' + this.hotkeyNum, null);
-			}
-
-			setHotkey(num) {
-				this.deleteHotkey();
-				core.setLocalStorage('hotkey' + num, this.itemId);
-				this.hotkeyNum = Number(num);
-			}
-
-			clear() {
-				super.clear();
-				const { back, itemInv, equipSlots, itemInfo } = UI;
-				[back, itemInv, equipSlots, itemInfo].forEach(menu => {
-					if (menu.onDraw) menu.beginListen(); // 注意本来就没在绘制的则不监听
-				});
-				UI.itemInfo.drawContent(); // 快捷键图标会发生变化
-			}
-		}
-
-		/** @param {string} itemId */
-		function hotkeySelectFactory(itemId) {
-			const hotkeySelect = new HotkeySelect(itemId, 60, 100, 296, 206, 141); // 应当比物品背包的选择光标大，遮盖住前者
-			const setHotkeyNum = function (i) {
-				const num = this.key.replace('btn', '');
-				hotkeySelect.setHotkey(num);
-				hotkeySelect.clear();
-				UI.itemInfo.drawContent();
-			}
-
-			const [btnSize, btnInterval] = [32, 20];
-			const leftMargin = hotkeySelect.w / 2 - 2.5 * btnSize - 2 * btnInterval;
-			const style = { strokeStyle: 'none', fillStyle: 'none' };
-
-			for (let i = 0; i < 9; i++) {
-				const num = i + 1;
-				const row = (i <= 4) ? 1 : 2;
-				let btn;
-				if (row === 1) btn = new IconBtn(leftMargin + i * (btnSize + btnInterval), 100, btnSize, btnSize, 'btn' + num, style);
-				else btn = new IconBtn(leftMargin + (i - 5) * (btnSize + btnInterval), 150, btnSize, btnSize, 'btn' + num, style);
-				hotkeySelect.registerBtn('btn' + num, btn, () => setHotkeyNum.call(btn, i));
-			}
-			const setNullBtn = new SetNullBtn(leftMargin + 4 * (btnSize + btnInterval), 150, btnSize, btnSize);
-			hotkeySelect.registerBtn('setNullBtn', setNullBtn, () => {
-				hotkeySelect.deleteHotkey();
-				hotkeySelect.clear();
-				UI.itemInfo.drawContent();
-			});
-			const exitBtn = new ExitBtn(274, 5, 16, 16, { radius: 1, lineOffsetX: 2, lineWidthX: 2 });
-			hotkeySelect.registerBtn('exitBtn', exitBtn, () => hotkeySelect.clear());
-			return hotkeySelect;
-		}
-
-		// #endregion
-		// #region 核心功能函数和全局变量
-		function getItemClsName(item) {
-			const itemClsName = {
-				"constants": "永久道具",
-				"tools": "消耗道具",
-			}
-			if (item == null) return "未知";
-			if (item.cls == "equips") {
-				if (typeof item.equip.type == "string") return item.equip.type;
-				const type = core.getEquipTypeById(item.id);
-				return core.status.globalAttribute.equipName[type];
-			} else return itemClsName[item.cls] || item.cls;
-		}
+		};
 
 		function clearItemBoxCache() {
-			UI._itemId = '';
-			UI.selectType = 'toolBox';
-			[UI._toolInv, UI._equipInv, UI._equipSlots].forEach(menu => {
-				if (menu) {
-					menu.index = 0;
-					menu.page = 0;
-				}
-			});
-		} // 每次存读档，及进行录像回放时调用，清空之前选中的道具信息
+			state.picked = { all: '', tools: '', constants: '', equips: '' };
+			state.sub = 'all';
+			state.equipSub = 'all';
+			state.slot = 0;
+			state.focus = 'list';
+			if (opened) render();
+		}
 		this.clearItemBoxCache = clearItemBoxCache;
 
-		// 以下是本插件范围内的全局变量
-
-		const UI = {
-			/** 当前打开的是道具页还是装备页 
-			 * @type {'all'|'equips'} 
-			 **/
-			type: 'all',
-			/** @type {'toolBox'|'equipBox'} 当前选中了哪一个子界面（切装面板/物品栏） */
-			selectType: 'toolBox',
-			_itemId: '',
-			/** @type {string} 当前选中的物品ID，变化时自动触发右侧栏的信息变化 */
-			get itemId() {
-				return this._itemId;
-			},
-			set itemId(value) {
-				if (this._itemId !== value) {
-					this._itemId = value;
-					this.itemInfo.drawContent();
-				}
-			},
-			/** @type {undefined|ItemBoxBack} 物品页面的背景 */
-			_back: undefined,
-			/** @type {undefined|ToolInventory} 道具背包 */
-			_toolInv: undefined,
-			/** @type {undefined|EquipInventory} 装备背包 */
-			_equipInv: undefined,
-			/** @type {undefined|ItemInfoBoard} 右侧显示选中物品详细信息的页面 */
-			_itemInfo: undefined,
-			/** @type {undefined|EquipSlots} 显示已穿戴装备的面板 */
-			_equipSlots: undefined,
-			/** 是否监听onMove事件 */
-			isNoHover: core.getLocalStorage('itemBoxNoHover'),
-			/** 物品页面的背景 */
-			get back() {
-				if (!this._back) {
-					this._back = new ItemBoxBack();
-					const switchModeBtn = new SwitchBtn(385, 5, 24, 24, { strokeStyle: ' #8B4513', fillStyle: ' #D2691E' });
-					const exitBtn = new ExitBtn(385, 385, 24, 24);
-					this._back.registerBtns([['exitBtn', exitBtn, UI.exit.bind(UI)],
-					['switchModeBtn', switchModeBtn, UI.switchType.bind(UI)]]);
-				}
-				return this._back;
-			},
-			/** 道具背包 */
-			get toolInv() {
-				if (!this._toolInv) {
-					this._toolInv = new ToolInventory(0, 0, 240, 416, 137, 11);
-					const pgDown = new ArrowBtn(20, 375, 20, 20, 'left');
-					const pgUp = new ArrowBtn(215, 375, 20, 20, 'right');
-					this.toolInv.registerBtns([
-						['pgDownBtn', pgDown, () => UI.toolInv.pageDown()],
-						['pgUpBtn', pgUp, () => UI.toolInv.pageUp()]
-					]);
-					const allBtn = new ClassifyBtn(20, 10, 44, 24, "全部", "all"),
-						toolsBtn = new ClassifyBtn(80, 10, 44, 24, "消耗", "tools"),
-						constantsBtn = new ClassifyBtn(140, 10, 44, 24, "永久", "constants");
-					const noHoverBtn = new NoHoverBtn(210, 10, 24, 24, null, { crossline1: this.isNoHover });
-					const noHover = () => {
-						UI.isNoHover = !UI.isNoHover;
-						core.setLocalStorage('itemBoxNoHover', UI.isNoHover);
-						noHoverBtn.config.crossline1 = UI.isNoHover;
-						UI._toolInv?.drawButtonContent();
-					}
-					this._toolInv.registerBtns([
-						['allBtn', allBtn, () => this.toolInv.classify('all')],
-						['toolsBtn', toolsBtn, () => this.toolInv.classify('tools')],
-						['constantsBtn', constantsBtn, () => this.toolInv.classify('constants')],
-						['noHoverBtn', noHoverBtn, noHover]
-					]);
-					if (!core.platform.isPC) noHoverBtn.disable = true; // 非PC端本来就触发不了onmove事件，故隐藏此按钮
-				}
-				return this._toolInv;
-			},
-			/** 装备背包 */
-			get equipInv() {
-				if (!this._equipInv) {
-					this._equipInv = new EquipInventory('equipInventory', 0, 120, 240, 416, 137, 7);
-					const pgDown = new ArrowBtn(20, 255, 20, 20, 'left');
-					const pgUp = new ArrowBtn(215, 255, 20, 20, 'right');;
-					this._equipInv.registerBtn('pgDownBtn', pgDown, () => UI.equipInv.pageDown());
-					this._equipInv.registerBtn('pgUpBtn', pgUp, () => UI.equipInv.pageUp());
-				}
-				return this._equipInv;
-			},
-			/** 物品背包 */
-			get itemInv() {
-				return (this.type === 'all') ? this.toolInv : this.equipInv;
-			},
-			/** 右侧显示选中物品详细信息的页面 */
-			get itemInfo() {
-				if (!this._itemInfo) {
-					this._itemInfo = new ItemInfoBoard(240, 0, core.__PIXELS__ - 240, core.__PIXELS__);
-					const hideBtn = new HideBtn(20, 380, 46, 24);
-					this._itemInfo.registerBtn('hideBtn', hideBtn, () => {
-						this.hideItem(UI.itemId);
-						this.itemInv.updateItemList();
-						this.itemInv.setIndex(this.itemInv.index);
-						this.itemInv.drawContent();
-					});
-					const markBtn = new MarkBtn(80, 380, 46, 24);
-					this._itemInfo.registerBtn('markBtn', markBtn, () => {
-						this.markItem(UI.itemId);
-						this.itemInv.updateItemList();
-						this.itemInv.setIndex(this.itemInv.index);
-						this.itemInv.drawContent();
-					});
-					const showHideBtn = new ShowHideBtn(20, 350, 95, 18);
-					this._itemInfo.registerBtn('showHideBtn', showHideBtn, () => {
-						this.switchShowHide();
-						this.itemInv.updateItemList();
-						this.itemInv.setIndex(this.itemInv.index);
-						this.itemInv.drawContent();
-						this.itemInfo.drawContent(); // 这里不论选中物品是否变化，itemInfo必定要重绘，因为按钮图案会变
-					});
-					const setHotkeyBtn = new IconBtn(145, 60, 24, 24, 'keyboard');
-					this.itemInfo.registerBtn('setHotkeyBtn', setHotkeyBtn, () => {
-						if (!UI.itemId) return;
-						[UI._back, UI.itemInv, UI._equipSlots, UI._itemInfo].forEach((menu) => {
-							if (menu) menu.endListen();
-						});
-						const hotkeySelect = hotkeySelectFactory(UI.itemId);
-						hotkeySelect.init();
-					});
-				}
-				return this._itemInfo;
-			},
-			get equipSlots() {
-				if (!this._equipSlots) {
-					this._equipSlots = new EquipSlots(7, 10, 240, 125, 137);
-					const config = { marginTail: 4, marginSide: 3, marginTip: 2 };
-					const pgDown = new ArrowBtn(0, 56, 14, 14, 'left', config);
-					const pgUp = new ArrowBtn(224, 56, 14, 14, 'right', config);
-					this._equipSlots.registerBtn('pgDownBtn', pgDown, () => UI.equipSlots.pageDown());
-					this._equipSlots.registerBtn('pgUpBtn', pgUp, () => UI.equipSlots.pageUp());
-				}
-				return this._equipSlots;
-			},
-			/** 清空各个菜单的绘制和监听(不包括解除锁定) */
-			clearAll() {
-				[this._back, this._toolInv, this._equipInv, this._itemInfo, this._equipSlots].forEach((menu) => {
-					if (menu) menu.clear();
-				});
-				core.status.event.id = null;
-			},
-			initAll() {
-				[UI.back, UI.itemInv, UI.itemInfo].forEach((menu) => menu.init());
-				if (UI.type === 'equips') UI.equipSlots.init();
-			},
-			/** 解除锁定，退出道具栏/装备栏 */
-			exit() {
-				this.clearAll();
-				setTimeout(core.unlockControl, 0);
-			},
-			/** 在道具栏/装备栏模式中切换 */
-			switchType() {
-				this.type = (this.type === 'all') ? 'equips' : 'all';
-				if (this.type === 'all') {
-					this.equipSlots.clear();
-					this.equipInv.clear();
-				} else if (this.type === 'equips') {
-					this.toolInv.clear();
-					this.equipSlots.init();
-				}
-				this.itemInv.updateItemList();
-				this.back.drawContent();
-				this.itemInv.init();
-				if (this.type === 'all') {
-					this.itemInv.setIndex(this.itemInv.index);
-				}
-				else if (this.type === 'equips') {
-					if (UI.selectType === 'toolBox') {
-						this.itemInv.setIndex(this.itemInv.index);
-					}
-					else {
-						this.equipSlots.setIndex(this.equipSlots.index);
-					}
-				}
-			},
-			/** 隐藏 | 取消隐藏当前选中的物品 */
-			hideItem(itemId) {
-				if (!itemId) return;
-				let hideInfo = core.getFlag('hideInfo', {});
-				if (hideInfo.hasOwnProperty(itemId)) {
-					hideInfo[itemId] = !hideInfo[itemId];
-				} else {
-					hideInfo[itemId] = !core.material.items[itemId].hideInToolbox;
-				}
-				core.setFlag('hideInfo', hideInfo);
-			},
-			/** 置顶 | 取消置顶当前选中的物品 */
-			markItem(itemId) {
-				let markedItems = core.getFlag('markedItems', []);
-				if (markedItems.includes(itemId)) markedItems = markedItems.filter((currId) => currId !== itemId);
-				else markedItems.push(itemId);
-				core.setFlag('markedItems', markedItems);
-			},
-			/** 切入/切出显示已隐藏物品的模式 */
-			switchShowHide() {
-				core.setFlag('showHideItem', !core.getFlag('showHideItem', false));
-			}
-		}
-
-		// 程序入口，在_drawToolbox 与 _drawEquipbox处调用
-		/** @param {'all'|'equips'} currType  */
-		function drawItemBox(currType) {
-			UI.clearAll();
-			if (UI._toolInv && UI._toolInv?.onDraw && currType === UI.type) return;
-			core.lockControl();
-			UI.type = currType;
-			UI.itemInv.updateItemList();
-			UI.itemInv.setIndex(UI.itemInv.index);
-			UI.initAll();
-		}
-		// #endregion
+		core.plugin._backpackLayout = function () {
+			if (opened) layout();
+		};
 	},
     "autoChangeEquip": function () {
 		// 调用方法：在合适的位置调用函数figureEquip即可，例如在脚本编辑-按键处理加入case 89: core.plugin.figureEquip(); break;
@@ -9033,6 +9376,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (domSetting && domSetting.opened) domSetting.layout();
 			if (core.plugin._freeReplayLayout) core.plugin._freeReplayLayout();
 			if (core.plugin._statisticsLayout) core.plugin._statisticsLayout();
+			if (core.plugin._backpackLayout) core.plugin._backpackLayout();
 		}
 		// #endregion
 
@@ -9112,6 +9456,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}.bind(core.events) : events.prototype._action_sleep;
 		}
 		this.checkSkipFuncs = checkSkipFuncs;
+
+		function backpackAlphaPercent() {
+			let n = Number(core.getLocalStorage('backpackAlpha', 100));
+			if (!isFinite(n)) n = 100;
+			n = Math.round(n / 10) * 10;
+			if (n < 50) n = 50;
+			if (n > 100) n = 100;
+			return n;
+		}
+
 		/** @type {{[x:string]:Setting}} */
 		const gamePlaySetting = {
 			autoGet: {
@@ -9234,6 +9588,34 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					invertLocalStorage('autoSaveBeforePickItem');
 				},
 				text: '拾取地上物品前自动存档。',
+				replay: false,
+			},
+			backpackList: {
+				getName: () => '列表:' + (core.getLocalStorage('backpackList', 'page') === 'scroll' ? '滚动' : '翻页'),
+				effect: () => {
+					const next = core.getLocalStorage('backpackList', 'page') === 'scroll' ? 'page' : 'scroll';
+					core.setLocalStorage('backpackList', next);
+					if (core.plugin._backpackLayout) core.plugin._backpackLayout();
+				},
+				text: '道具、持有装备和装备孔用翻页还是整列滚动。默认翻页。',
+				replay: false,
+			},
+			backpackAlphaDown: {
+				getName: () => '透明度',
+				effect: () => {
+					core.setLocalStorage('backpackAlpha', Math.max(50, backpackAlphaPercent() - 10));
+					if (core.plugin._backpackLayout) core.plugin._backpackLayout();
+				},
+				text: '降低背包菜单的不透明度。最低 50%。',
+				replay: false,
+			},
+			backpackAlphaUp: {
+				getName: () => '透明度',
+				effect: () => {
+					core.setLocalStorage('backpackAlpha', Math.min(100, backpackAlphaPercent() + 10));
+					if (core.plugin._backpackLayout) core.plugin._backpackLayout();
+				},
+				text: '提高背包菜单的不透明度。最高 100%，默认完全不透明。',
 				replay: false,
 			},
 			freeReplay: {
@@ -10022,6 +10404,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					return n + 'x';
 				},
 				decreaseVolume: () => String(Math.round(Math.sqrt(100 * core.musicStatus.userVolume))),
+				backpackAlphaDown: () => backpackAlphaPercent() + '%',
 			};
 
 			function stepper(parent, label, downKey, upKey) {
@@ -10767,6 +11150,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				line = row(panel);
 				toggle(line, 'autoSaveBeforeUseItem');
 				toggle(line, 'autoSaveBeforePickItem');
+				heading(panel, '背包');
+				line = row(panel);
+				toggle(line, 'backpackList');
+				line = row(panel);
+				stepper(line, '透明度', 'backpackAlphaDown', 'backpackAlphaUp');
 				heading(panel, '拖动回放');
 				line = row(panel);
 				toggle(line, 'freeReplay');
