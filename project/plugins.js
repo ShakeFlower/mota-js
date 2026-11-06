@@ -9032,6 +9032,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const domSetting = core.plugin.domSetting;
 			if (domSetting && domSetting.opened) domSetting.layout();
 			if (core.plugin._freeReplayLayout) core.plugin._freeReplayLayout();
+			if (core.plugin._statisticsLayout) core.plugin._statisticsLayout();
 		}
 		// #endregion
 
@@ -11283,24 +11284,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		let __enable = true;
 		if (!__enable) return;
 
-		const PX = core.__PIXELS__,
-			SIZE = core.__SIZE__;
-		const {
-			ButtonBase,
-			RoundBtn,
-			IconBtn,
-			ExitBtn,
-			ArrowBtn,
-			MenuBase,
-			PagedMenu,
-			MultiTypePagedMenu,
-			Pagination,
-			KeyCodeEnum,
-			registerResize,
-			unregisterResize,
-		} = core.plugin.uiBase;
-
-		// 每次退出数据统计时清空,并且清空statistics变量
+		// 每次退出数据统计时清空 __statistics__。各层结果在 hero.statistics 上。
 		/**
 		 * @typedef {{[itemName:string]:{count:number, [floorId:string]:number}}} objCount
 		 * @typedef {{count:number,money:number,exp:number,point:number,}} enemys
@@ -11310,8 +11294,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		 * enemys:enemys,items:items,}} floorStatistic
 		 * @typedef {{[floorId:string]:floorStatistic}} statistics
 		 */
-		/** @type {statistics} */
-		let statistics = {};
 
 		// 因为core.status.hero是进存档的，必定可序列化
 		const clone = (typeof structuredClone === 'function') ? structuredClone : (ele) => JSON.parse(JSON.stringify(ele));
@@ -11465,39 +11447,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			return stat;
 		}
 
-		class FloorBtn extends ButtonBase {
-			constructor(x, y, w, h) {
-				super(x, y, w, h);
-				this.floorId = "";
-				/** @type {number} */
-				this.key;
-				/** @type {FloorStatisticsMenu} */
-				this.menu;
-			}
-
-			draw() {
-				const { x, y, w, h, floorId, ctx } = this;
-				let strokeStyle = "black";
-				if (core.markedFloorIds[floorId]) strokeStyle = "yellow";
-				if (this.menu.areaBorder === floorId) strokeStyle = "orange";
-				core.ui.strokeRect(ctx, x - 1, y - 1, w + 2, h + 2, strokeStyle, 2);
-				core.maps.drawThumbnail(floorId, null, {
-					x,
-					y,
-					ctx,
-					damage: false,
-					noHD: true,
-					size: w
-				});
-				core.setTextAlign(ctx, "center");
-				if (floorId === core.status.floorId) {
-					core.ui.fillBoldText(ctx, "当前层", x + w / 2, y + h / 2, "red", "white", "12px Verdana");
-				}
-				core.ui.fillText(ctx, floorId, x + w / 2, y + h + 12, "black", "12px Verdana");
-				core.ui.fillText(ctx, core.status.maps[floorId].name, x + w / 2, y + h + 24, "black", "12px Verdana");
-			}
-		}
-
 		function getTotalFloorList() {
 			return core.floorIds.filter(floorId => {
 				const floorData = core.status.maps[floorId];
@@ -11507,39 +11456,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			})
 		}
 
-		class FloorStatisticsMenu extends PagedMenu {
-			constructor(name, toListen, x, y, w, h, zIndex, capacity) {
-				const data = getTotalFloorList();
-				super(name, toListen, x, y, w, h, zIndex, capacity, data);
-				this.page = Math.floor(this.totalItemList.indexOf(core.status.floorId) / capacity);
-				/** 区域选择时的起始楼层*/
-				this.areaBorder = "";
-				/** 是否处于区域选择模式下 */
-				this.areaSelectOn = false;
-				this.updateCurrItemList();
-			}
-
-			updateBtnInfo() {
-				this.btnMap.forEach((btn, key) => {
-					if (btn instanceof FloorBtn) {
-						btn.disable = (key >= this.currItemList.length);
-						btn.floorId = this.currItemList[key];
-					}
-				});
-			}
-
-			drawContent() {
-				const { x, y, w, h, zIndex, name } = this;
-				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				this.updateBtnInfo();
-				super.drawContent();
-			}
-		}
-
 		function getNameById(id, mode) {
 			if (mode !== "damage") {
-				return core.material.items[id]?.name || core.material.enemys[id]?.name ||
-					core.getBlockById(id).event.name || "";
+				const itemName = core.material.items[id] && core.material.items[id].name;
+				if (itemName) return itemName;
+				const enemyName = core.material.enemys[id] && core.material.enemys[id].name;
+				if (enemyName) return enemyName;
+				try {
+					const block = core.getBlockById(id);
+					return (block && block.event && block.event.name) || "";
+				} catch (e) {
+					return "";
+				}
 			}
 			else {
 				if (id === "battleDamage") return "战斗伤害";
@@ -11568,154 +11496,41 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		}
 		this.getUserConfig = getUserConfig;
 
-		class OpenPickHeaderBtn extends ButtonBase {
-			draw() {
-				super.draw();
-				const ctx = this.ctx;
-				const { x, y, w } = this;
-				const [r, offset] = [w / 2, 2];
-				core.fillCircle(ctx, x + r, y + r, r, 'lime');
-				core.drawLine(ctx, x + offset, y + r, x + 2 * r - offset, y + r, 'white', 2);
-				core.drawLine(ctx, x + r, y + offset, x + r, y + 2 * r - offset, 'white', 2);
-			}
+		/**
+		 *  @typedef {'tools'|'items'|'equips'|'enemys'|'damage'} StatisticsMode
+		 *  @typedef {{tools:{ignore:string[]},items:{ignore:string[]},
+		 * equips:{ignore:string[]},enemys:{ignore:string[]},
+		 * damage:{ignore:string[],record:string[]},
+		 * floors:{ignore:string[]},
+		 * }} StatisticsHeaderConfig
+		 **/
+		function loadConfig() {
+			const cfg = getUserConfig();
+			["tools", "items", "equips", "enemys", "damage", "floors"].forEach((key) => {
+				if (!cfg[key]) cfg[key] = { ignore: [] };
+				if (!cfg[key].ignore) cfg[key].ignore = [];
+			});
+			if (!cfg.damage.record) cfg.damage.record = [];
+			return cfg;
 		}
 
-		class FloorStatisticsTextMenu extends MultiTypePagedMenu {
-			constructor(name, toListen, x, y, w, h, zIndex, pagesConfig) {
-				super(name, toListen, x, y, w, h, zIndex, pagesConfig);
-				/** @type {STAT|null} */
-				this.stat = null;
-				/** @type {"tools"|"items"|"equips"|"enemys"|"damage"} */
-				this.mode = "tools";
-				/** 未被用户过滤的显示项总表 */
-				this.allItemList = null;
-			}
-
-			updateFloorList() {
-				const floorList = [];
-				for (let floorId in core.markedFloorIds) {
-					if (core.markedFloorIds[floorId]) floorList.push(floorId);
-				}
-				this.totalItemList["floors"] = floorList;
-				this.updateCurrItemList("floors");
-			}
-
-			updateItemList(count) {
-				let itemList = null;
-				const headerConfig = getUserConfig();
-				const sortFunc = (a, b) => count[b].total - count[a].total;
-				if (this.mode === "tools") {
-					const doorNameList = [];
-					const itemNameList = [];
-					for (let i in count) {
-						if (i === "total") continue;
-						if (core.material.items[i]) itemNameList.push(i);
-						else doorNameList.push(i);
-					}
-					itemList = [...doorNameList.sort(sortFunc), ...itemNameList.sort(sortFunc)];
-				} else if (this.mode === "damage") {
-					itemList = ["battleDamage", "extraDamage"];
-					if (core.status.hero.statistics.poisonDamage > 0) itemList.push("poisonDamage");
-					if (core.status.hero.statistics?.vampireExtraLoss > 0) itemList.push("vampireExtraLoss");
-					itemList = [...itemList, ...headerConfig["damage"]["record"]];
-				} else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
-				this.allItemList = itemList;
-				const ignoreList = headerConfig[this.mode]["ignore"];
-				itemList = [...core.utils.getSetDifference(new Set(itemList), new Set(ignoreList))];
-				this.totalItemList["items"] = itemList;
-				this.updateCurrItemList("items");
-			}
-
-			updateStat() {
-				this.stat = getFloorListStat(this.totalItemList["floors"]);
-			}
-
-			/** @param {ObjSTAT} count  */
-			drawTable(ctx, count) {
-				const currItemList = this.currItemList["items"];
-				const currFloorList = this.currItemList["floors"];
-
-				core.ui.setTextBaseline(ctx, "top");
-				core.ui.setTextAlign(ctx, "right");
-				for (let i = -1, l = currItemList.length; i < l; i++) {
-					let id, name, total;
-					if (i !== -1) {
-						id = currItemList[i];
-						name = getNameById(id, this.mode);
-						// 当id为自定义的伤害区间时，count[id]可能为空
-						total = count[id]?.total || 0;
-					}
-					core.ui.strokeRect(ctx, 20, 155 + 25 * i, 80, 25, "black");
-					for (let j = -1, l1 = currFloorList.length; j < l1; j++) {
-						core.ui.strokeRect(ctx, 150 + 50 * j, 155 + 25 * i, 50, 25, "black");
-						const floorId = currFloorList[j];
-						const floorCountStr = count[id]?.[currFloorList[j]] || "-";
-						const text = (i === -1) ? ((j === -1) ? "总数" : floorId) :
-							((j === -1) ? total : floorCountStr);
-						core.ui.fillText(ctx, text, 194 + 50 * j, 163 + 25 * i,
-							(text === "-") ? "gray" : "black", "12px Verdana");
-					}
-					if (i === -1) continue; // i=-1是表头
-					core.ui.drawIcon(ctx, id, 25, 160 + 25 * i, 16, 16);
-					core.ui.fillText(ctx, name, 94, 163 + 25 * i, "black", (name.length < 5) ? "12px Verdana" : "8px Verdana");
-				}
-			}
-
-			drawContent() {
-				if (!this.stat) return;
-				const { x, y, w, h, zIndex, name, stat } = this;
-				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				const {
-					enemys,
-					items,
-					toolsCount,
-					gemsCount,
-					equipsCount,
-					enemysCount,
-					battleDamage,
-					extraDamage,
-					poisonDamage,
-					vampireExtraLoss,
-				} = stat;
-				const enemyText = `给定地图中共有怪物${enemys.count}个` +
-					(enemys.money > 0 ? `，总金币${enemys.money}.` : '') +
-					(enemys.exp > 0 ? `，总经验${enemys.exp}` : '') +
-					(enemys.point > 0 ? `，总加点${enemys.point}` : '') + "。";
-				let gemText = '';
-				const itemEffectText = `所有即捡即用物品共计加生命值${items.hp}点` +
-					`，\n攻击${items.atk}点` +
-					`，防御${items.def}点` +
-					`，护盾${items.mdef}点` + "。";
-				const text = enemyText + '\n' + itemEffectText;
-				core.ui.drawTextContent(ctx, text, {
-					maxWidth: 360,
-					color: "black",
-					left: 20,
-					top: 10,
-					fontSize: 14
-				});
-				let count = toolsCount;
-				if (this.mode === "items") count = gemsCount;
-				else if (this.mode === "equips") count = equipsCount;
-				else if (this.mode === "enemys") count = enemysCount;
-				else if (this.mode === "damage") {
-					count = { battleDamage, extraDamage, poisonDamage, vampireExtraLoss };
-					for (let key in stat) {
-						if (key.includes(",")) count[key] = stat[key];
-					}
-				};
-				this.updateItemList(count); // 更新物品总表
-				this.drawTable(ctx, count);
-				super.drawContent();
-			}
+		function summaryText(stat) {
+			const enemys = stat.enemys;
+			const items = stat.items;
+			const enemyText = `给定地图中共有怪物${enemys.count}个` +
+				(enemys.money > 0 ? `，总金币${enemys.money}.` : '') +
+				(enemys.exp > 0 ? `，总经验${enemys.exp}` : '') +
+				(enemys.point > 0 ? `，总加点${enemys.point}` : '') + "。";
+			const itemEffectText = `所有即捡即用物品共计加生命值${items.hp}点` +
+				`，\n攻击${items.atk}点` +
+				`，防御${items.def}点` +
+				`，护盾${items.mdef}点` + "。";
+			return enemyText + "\n" + itemEffectText;
 		}
 
-		class PlayerStatisticsMenu extends MenuBase {
-			drawContent() {
-				const { name, x, y, w, h, zIndex } = this;
-				const ctx = this.createCanvas(name, x, y, w, h, zIndex);
-				const statistics = core.status.hero.statistics;
-				const str = `当前总步数：${core.status.hero.steps}，当前游戏时长：${core.formatTime(statistics.currTime)}，总游戏时长${core.formatTime(statistics.totalTime)}。瞬间移动次数：${statistics.moveDirectly}，共计少走${statistics.ignoreSteps}步。
+		function playerText() {
+			const statistics = core.status.hero.statistics;
+			return `当前总步数：${core.status.hero.steps}，当前游戏时长：${core.formatTime(statistics.currTime)}，总游戏时长${core.formatTime(statistics.totalTime)}。瞬间移动次数：${statistics.moveDirectly}，共计少走${statistics.ignoreSteps}步。
 
 总计通过血瓶恢复生命值为${core.formatBigNumber(statistics.hp)}点。
 
@@ -11725,418 +11540,780 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 ${statistics["vampireExtraLoss"] > 0 ? `吸血怪物累计对你造成超出最低伤害的额外伤害${core.formatBigNumber(statistics["vampireExtraLoss"])}点。` : ``}
 ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.formatBigNumber(statistics.oneDefEffect || 0)}` : ""}${statistics.hasOwnProperty("oneMdefEffect") ? `，1护盾累计减伤为${core.formatBigNumber(statistics.oneMdefEffect || 0)}` : ""}。
 `;
-				core.drawTextContent(ctx, str, {
-					left: 30,
-					top: 20,
-					color: "black",
-					maxWidth: 360,
-					fontSize: 14
+		}
+
+		function countForMode(stat, mode) {
+			if (mode === "items") return stat.gemsCount;
+			if (mode === "equips") return stat.equipsCount;
+			if (mode === "enemys") return stat.enemysCount;
+			if (mode === "damage") {
+				const count = {
+					battleDamage: stat.battleDamage,
+					extraDamage: stat.extraDamage,
+					poisonDamage: stat.poisonDamage,
+					vampireExtraLoss: stat.vampireExtraLoss,
+				};
+				for (const key in stat) {
+					if (key.includes(",")) count[key] = stat[key];
+				}
+				return count;
+			}
+			return stat.toolsCount;
+		}
+
+		function buildItemList(count, mode) {
+			const headerConfig = loadConfig();
+			const sortFunc = (a, b) => count[b].total - count[a].total;
+			let itemList = null;
+			if (mode === "tools") {
+				const doorNameList = [];
+				const itemNameList = [];
+				for (const i in count) {
+					if (i === "total") continue;
+					if (core.material.items[i]) itemNameList.push(i);
+					else doorNameList.push(i);
+				}
+				itemList = [...doorNameList.sort(sortFunc), ...itemNameList.sort(sortFunc)];
+			} else if (mode === "damage") {
+				itemList = ["battleDamage", "extraDamage"];
+				if (core.status.hero.statistics.poisonDamage > 0) itemList.push("poisonDamage");
+				if (core.status.hero.statistics?.vampireExtraLoss > 0) itemList.push("vampireExtraLoss");
+				itemList = [...itemList, ...headerConfig.damage.record];
+			} else itemList = Object.keys(count).filter(item => item !== "total").sort(sortFunc);
+			const ignoreList = headerConfig[mode].ignore;
+			const shown = [...core.utils.getSetDifference(new Set(itemList), new Set(ignoreList))];
+			return { allItemList: itemList, shown: shown };
+		}
+
+		function parseRange(value) {
+			if (value == null) return null;
+			value = String(value).trim();
+			if (!value) return null;
+			if (!value.includes(",")) {
+				if (Number.isNaN(Number(value))) return null;
+				value += ",";
+			} else if (value.endsWith(",")) {
+				const minStr = value.slice(0, -1);
+				if (!minStr || Number.isNaN(Number(minStr))) return null;
+			} else {
+				const parts = value.split(",");
+				const min = Number(parts[0]);
+				const max = Number(parts[1]);
+				if (Number.isNaN(min) || Number.isNaN(max) || max < min) return null;
+			}
+			return value;
+		}
+
+		const iconURLCache = {};
+		function iconURL(id) {
+			if (Object.prototype.hasOwnProperty.call(iconURLCache, id)) return iconURLCache[id];
+			iconURLCache[id] = "";
+			try {
+				const info = core.getBlockInfo(id);
+				if (!info || !info.image || !(info.image.naturalWidth || info.image.width)) return "";
+				const sw = 32;
+				const sh = info.height || 32;
+				const canvas = document.createElement("canvas");
+				canvas.width = sw;
+				canvas.height = sh;
+				canvas.getContext("2d").drawImage(info.image, sw * (info.posX || 0), sh * (info.posY || 0), sw, sh, 0, 0, sw, sh);
+				iconURLCache[id] = canvas.toDataURL("image/png");
+			} catch (e) { }
+			return iconURLCache[id];
+		}
+
+		const DOM_STATISTICS_CSS = [
+			"#dom-statistics{position:absolute;left:0;top:0;width:100%;height:100%;z-index:210;box-sizing:border-box;",
+			"display:flex;flex-direction:column;background:rgba(28,28,28,.94);color:#f2f2f2;",
+			"font:calc(13px * var(--st-scale))/1.35 Verdana,sans-serif;--st-scale:1;",
+			"--st-text:#f2f2f2;--st-gold:#e6c35c;--st-line:#5c5c5c;--st-note:#c4b496;--st-btn:#3e3e3e;}",
+			"#dom-statistics *{box-sizing:border-box;}",
+			"#dom-statistics [hidden]{display:none !important;}",
+			"#dom-statistics .st-head{display:flex;align-items:flex-end;gap:calc(8px * var(--st-scale));",
+			"padding:calc(4px * var(--st-scale)) calc(6px * var(--st-scale)) 0;flex:0 0 auto;}",
+			"#dom-statistics .st-bar{display:flex;flex-wrap:wrap;gap:calc(4px * var(--st-scale));align-items:flex-end;flex:1 1 auto;}",
+			"#dom-statistics button,#dom-statistics input{font:inherit;color:inherit;background:var(--st-btn);border:1px solid var(--st-line);",
+			"border-radius:3px;padding:calc(3px * var(--st-scale)) calc(6px * var(--st-scale));min-height:calc(24px * var(--st-scale));}",
+			"#dom-statistics button{cursor:pointer;}",
+			"#dom-statistics button:focus,#dom-statistics input:focus{outline:1px solid var(--st-gold);outline-offset:1px;}",
+			"#dom-statistics button:disabled{opacity:.4;cursor:default;}",
+			"#dom-statistics button.on{outline:none;background:#3a3424;border-color:var(--st-gold);color:var(--st-gold);}",
+			"#dom-statistics .st-tab{background:transparent;border-color:transparent;border-bottom:2px solid transparent;border-radius:3px 3px 0 0;}",
+			"#dom-statistics .st-tab.on{color:var(--st-gold);background:transparent;border-color:transparent;border-bottom-color:var(--st-gold);}",
+			"#dom-statistics .st-quit{flex:0 0 auto;margin-left:auto;align-self:center;background:transparent;",
+			"border-color:#e7a0a0;color:#ffd2d2;padding:calc(3px * var(--st-scale)) calc(12px * var(--st-scale));}",
+			"#dom-statistics .st-tip{display:none;position:absolute;left:calc(8px * var(--st-scale));right:calc(8px * var(--st-scale));",
+			"top:calc(34px * var(--st-scale));z-index:6;pointer-events:none;text-align:center;",
+			"padding:calc(4px * var(--st-scale)) calc(8px * var(--st-scale));background:rgba(0,0,0,.82);color:#fff;}",
+			"#dom-statistics .st-tip.on{display:block;}",
+			"#dom-statistics .st-body{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;}",
+			"#dom-statistics .st-page{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;",
+			"padding:calc(4px * var(--st-scale));}",
+			"#dom-statistics .st-page.off{display:none;}",
+			"#dom-statistics .st-grid{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));",
+			"grid-auto-rows:max-content;align-content:start;align-items:start;gap:calc(4px * var(--st-scale));}",
+			"#dom-statistics .st-floors .st-grid{flex:0 1 auto;margin-top:auto;margin-bottom:auto;}",
+			"#dom-statistics .st-floor{position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(1px * var(--st-scale));",
+			"height:auto;padding:calc(2px * var(--st-scale));background:#1a1a1a;border:2px solid #666;color:#f2f2f2;}",
+			"#dom-statistics .st-floor.on{border-color:#e6c35c;}",
+			"#dom-statistics .st-floor.area{border-color:orange;}",
+			"#dom-statistics .st-floor canvas{display:block;flex:0 0 auto;max-width:100%;height:auto;aspect-ratio:1/1;image-rendering:pixelated;background:#000;}",
+			"#dom-statistics .st-cur{position:absolute;left:0;right:0;top:calc(2px * var(--st-scale));z-index:1;pointer-events:none;",
+			"text-align:center;color:#f66;font-size:calc(11px * var(--st-scale));line-height:1.15;background:rgba(0,0,0,.55);}",
+			"#dom-statistics .st-floor-id,#dom-statistics .st-floor-name{flex:0 0 auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
+			"font-size:calc(11px * var(--st-scale));line-height:1.15;}",
+			"#dom-statistics .st-row{display:flex;flex-wrap:wrap;gap:calc(4px * var(--st-scale));align-items:center;",
+			"margin-top:calc(4px * var(--st-scale));flex:0 0 auto;}",
+			"#dom-statistics .st-count{color:var(--st-note);}",
+			"#dom-statistics .st-summary,#dom-statistics .st-player{margin:0;white-space:pre-wrap;}",
+			"#dom-statistics .st-player{overflow:auto;}",
+			"#dom-statistics .st-table-wrap{flex:1;min-height:0;overflow:auto;margin-top:calc(8px * var(--st-scale));}",
+			"#dom-statistics table{border-collapse:collapse;font-variant-numeric:tabular-nums;}",
+			"#dom-statistics th,#dom-statistics td{border:1px solid var(--st-line);padding:calc(2px * var(--st-scale)) calc(6px * var(--st-scale));",
+			"text-align:right;white-space:nowrap;background:#1e1e1e;}",
+			"#dom-statistics th{background:#2a2a2a;font-weight:normal;color:var(--st-note);}",
+			"#dom-statistics td.st-name,#dom-statistics th.st-name{text-align:left;position:sticky;left:0;z-index:1;}",
+			"#dom-statistics .st-name-in{display:inline-flex;align-items:center;gap:calc(4px * var(--st-scale));max-width:14em;}",
+			"#dom-statistics .st-name-text{overflow:hidden;text-overflow:ellipsis;}",
+			"#dom-statistics .st-icon{width:calc(16px * var(--st-scale));height:calc(16px * var(--st-scale));flex:0 0 auto;",
+			"image-rendering:pixelated;background-repeat:no-repeat;background-size:100% 100%;background-position:center;}",
+			"#dom-statistics td.st-empty{color:#888;}",
+			"#dom-statistics .st-picker{position:absolute;left:calc(8px * var(--st-scale));right:calc(8px * var(--st-scale));",
+			"top:calc(8px * var(--st-scale));bottom:calc(8px * var(--st-scale));z-index:3;display:flex;flex-direction:column;",
+			"background:#1a1a1a;border:1px solid var(--st-line);padding:calc(8px * var(--st-scale));overflow:auto;}",
+			"#dom-statistics .st-picker.off{display:none;}",
+			"#dom-statistics .st-pick-grid{display:flex;flex-wrap:wrap;gap:calc(6px * var(--st-scale));align-content:flex-start;}",
+			"#dom-statistics .st-pick-grid button{display:inline-flex;align-items:center;gap:calc(4px * var(--st-scale));max-width:100%;}",
+			"#dom-statistics .st-pick-grid button.st-off{text-decoration:line-through;color:#e7a0a0;}",
+			"#dom-statistics .st-hint{margin:calc(6px * var(--st-scale)) 0 0;color:var(--st-note);font-size:calc(12px * var(--st-scale));}",
+			"#dom-statistics input{background:#141414;min-width:8em;user-select:text;}",
+			"#dom-statistics .st-empty{margin:0;color:var(--st-note);}",
+		].join("");
+
+		const FLOOR_PAGE = 12;
+		const COL_PAGE = 8;
+		const THUMB = 64;
+		let api = null;
+		let unlockTimer = 0;
+		let session = 0;
+		let statJob = 0;
+
+		function paintThumb(canvas, floorId) {
+			const scale = core.domStyle.scale || 1;
+			const dpr = window.devicePixelRatio || 1;
+			const display = Math.max(1, Math.round(THUMB * scale));
+			canvas.style.width = display + "px";
+			canvas.style.removeProperty("height");
+			const bitmap = Math.max(1, Math.round(display * dpr));
+			if (canvas.width !== bitmap || canvas.height !== bitmap) {
+				canvas.width = bitmap;
+				canvas.height = bitmap;
+			}
+			const ctx = canvas.getContext("2d");
+			ctx.setTransform(1, 0, 0, 1, 0, 0);
+			ctx.imageSmoothingEnabled = false;
+			ctx.clearRect(0, 0, bitmap, bitmap);
+			try {
+				core.maps.drawThumbnail(floorId, null, {
+					ctx: canvas,
+					x: 0,
+					y: 0,
+					damage: false,
+					noHD: true,
+					size: bitmap,
 				});
+			} catch (e) {
+				console.error(e);
 			}
 		}
 
-		class StatisticsMenu extends Pagination {
-			drawContent() {
-				const { x, y, w, h, zIndex, name } = this;
-				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				core.ui.fillRect(ctx, x, y, w, h, "#E2E2E2");
-				super.drawContent();
-			}
-		}
-
-		class HeaderBtn extends ButtonBase {
-			constructor(x, y, w, h) {
-				super(x, y, w, h);
-				/** @type {string} */
-				this.text;
-				/** @type {boolean} */
-				this.isIgnored;
+		function openDomStatistics() {
+			session++;
+			if (api && api.opened) api.close(true);
+			clearTimeout(unlockTimer);
+			core.ui.closePanel();
+			core.lockControl();
+			const parent = core.dom && core.dom.gameDraw;
+			if (!parent) {
+				core.unlockControl();
+				return;
 			}
 
-			draw() {
-				const { x, y, w, h, ctx, text, isIgnored } = this;
-				const mode = this.menu.mode;
-				core.strokeRect(ctx, x, y, w, h, "black", 2);
-				core.setTextAlign(ctx, "left");
-				core.setTextBaseline(ctx, "middle");
-				const name = getNameById(text, mode);
-				const font = (name.length < 5) ? "12px Verdana" : "8px Verdana";
-				if (mode !== "damage") {
-					core.ui.drawIcon(ctx, text, x + 2, y + 10, 12, 12);
-					core.fillText(ctx, name, x + 15, y + h / 2, "black", font);
-				}
-				else {
-					core.fillText(ctx, name, x + 5, y + h / 2, "black", font);
-				}
-				if (isIgnored) {
-					core.drawLine(ctx, x + 5, y + h / 2, x + w - 2, y + h / 2, "red", 2);
-				}
+			let styleNode = document.getElementById("dom-statistics-style");
+			if (!styleNode) {
+				styleNode = document.createElement("style");
+				styleNode.id = "dom-statistics-style";
+				document.head.appendChild(styleNode);
 			}
-		}
+			styleNode.textContent = DOM_STATISTICS_CSS;
 
-		/**
-		 *  调整统计数据显示项目的菜单
-		 *  @typedef {'tools'|'items'|'equips'|'enemys'|'damage'} StatisticsMode
-		 *  @typedef {{tools:{ignore:string[]},items:{ignore:string[]},
-		 * equips:{ignore:string[]},enemys:{ignore:string[]},
-		 * damage:{ignore:string[],record:string[]},
-		 * }} StatisticsHeaderConfig
-		 **/
-		class PickHeaderMenu extends PagedMenu {
-			/** @param {StatisticsMode} mode  */
-			constructor(name, toListen, x, y, w, h, zIndex, capacity, data, mode) {
-				super(name, toListen, x, y, w, h, zIndex, capacity, data);
-				/** @type {StatisticsMode} */
-				this.mode = mode;
-				/** @type {StatisticsHeaderConfig} */
-				this.userConfig = getUserConfig();
-				if (this.mode === "damage") this.totalItemList.push("customizeDamageRange");
-				this.updateCurrItemList();
+			const root = document.createElement("div");
+			root.id = "dom-statistics";
+			const floorList = getTotalFloorList();
+			const state = {
+				page: "floors",
+				floorPage: 0,
+				areaSelectOn: false,
+				areaBorder: "",
+				mode: "tools",
+				colPage: 0,
+				tableFloors: null,
+				tableStat: null,
+				allItemList: [],
+				pickerOn: false,
+			};
+			const here = floorList.indexOf(core.status.floorId);
+			if (here >= 0) state.floorPage = Math.floor(here / FLOOR_PAGE);
+
+			function node(tag, className, text) {
+				const el = document.createElement(tag);
+				if (className) el.className = className;
+				if (text != null) el.textContent = text;
+				return el;
 			}
 
-			addIgnore(ele) {
-				this.userConfig[this.mode].ignore.push(ele);
-			}
+			const head = node("div", "st-head");
+			const bar = node("div", "st-bar");
+			const tabs = {
+				floors: node("button", "st-tab", "选层"),
+				table: node("button", "st-tab", "分类统计"),
+				player: node("button", "st-tab", "玩家数据"),
+			};
+			tabs.floors.type = tabs.table.type = tabs.player.type = "button";
+			bar.appendChild(tabs.floors);
+			bar.appendChild(tabs.table);
+			bar.appendChild(tabs.player);
+			const quit = node("button", "st-quit", "关闭");
+			quit.type = "button";
+			head.appendChild(bar);
+			head.appendChild(quit);
 
-			removeIgnore(ele) {
-				const mode = this.mode;
-				this.userConfig[mode].ignore = this.userConfig[mode].ignore
-					.filter(e => e !== ele);
-			}
-
-			addRecord(ele) {
-				if (this.mode !== "damage") return;
-				core.utils.myprompt('输入要记录的伤害范围。格式：0,100 记录伤害0(含)-100(不含)的怪物。第二个数字不填代表无限大', '', (value) => {
-					if (value == null) {
-						core.drawFailTip('错误：不合法的输入!');
-						return;
-					}
-					let min, max;
-					if (!value.includes(",")) {
-						min = Number(value);
-						if (Number.isNaN(min)) {
-							core.drawFailTip('错误：不合法的输入!');
-							return;
-						}
-						value += ",";
-					}
-					else if (value.endsWith(",")) {
-						min = Number(value.replace(",", ""));
-						if (Number.isNaN(min)) {
-							core.drawFailTip('错误：不合法的输入!');
-							return;
-						}
-					}
-					else {
-						const [minStr, maxStr] = value.split(",");
-						min = Number(minStr);
-						max = Number(maxStr);
-						if (Number.isNaN(min) || Number.isNaN(max) || max < min) {
-							core.drawFailTip('错误：不合法的输入!');
-							return;
-						}
-					}
-					this.userConfig["damage"].record.push(value);
-					core.setLocalStorage("statisticsHeaderConfig", this.userConfig);
-					this.totalItemList.push(value);
-					this.updateCurrItemList();
-					this.drawContent();
-				});
-			}
-
-			removeRecord(ele) {
-				if (this.mode !== "damage") return;
-				this.userConfig["damage"].record = this.userConfig["damage"].record
-					.filter(e => e !== ele);
-				this.totalItemList = this.totalItemList.filter(e => e !== ele);
-				this.updateCurrItemList();
-			}
-
-			drawContent() {
-				const { x, y, w, h, zIndex, name } = this;
-				const ctx = core.createCanvas(name, x, y, w, h, zIndex);
-				core.ui.fillRect(ctx, 0, 0, w, h, '#A8CABA');
-				core.ui.strokeRect(ctx, 0, 0, w, h, 'black', 2);
-				core.ui.fillText(ctx, '以下是本菜单的表头，你可以隐藏或重新显', 20, 20, "black", "16px Vedana");
-				core.ui.fillText(ctx, '示某些项目', 20, 40, "black", "16px Vedana");
-
-				core.ui.fillText(ctx, "显示项", 20, 60, "black", "Bold 16px Vedana");
-
-				this.btnMap.forEach((btn, index) => {
-					if (!(btn instanceof HeaderBtn)) return;
-					index = Number(index);
-					if (index < this.capacity) {
-						btn.disable = index >= this.currItemList.length;
-						if (index < this.currItemList.length) {
-							const text = this.currItemList[index];
-							btn.text = text;
-							btn.isIgnored = this.userConfig[this.mode]["ignore"].includes(text);
-						}
-					}
-				});
-				super.drawContent();
-			}
-		}
-
-		function pickHeaderMenuFactory(data, mode, exitEvent) {
-			const ROW = 9,
-				COLUMN = 4;
-			const pickHeaderMenu = new PickHeaderMenu("pickHeader", ["ondown"],
-				30, 30, PX - 60, PX - 60, 133, ROW * COLUMN, data, mode);
-			const headerPageDownBtn = new ArrowBtn(75, 48, 16, 16, "left"),
-				headerPageUpBtn = new ArrowBtn(95, 48, 16, 16, "right");
-			const exitBtn = new ExitBtn(328, 5, 20, 20);
-			const exit = () => {
-				pickHeaderMenu.clear();
-				unregisterResize(pickHeaderMenu);
-				if (exitEvent) exitEvent();
-			}
-			const btnList = [
-				["pageDown", headerPageDownBtn, () => pickHeaderMenu.pageDown()],
-				["pageUp", headerPageUpBtn, () => pickHeaderMenu.pageUp()],
-				["exit", exitBtn, exit],
-			];
-
-			function btnClickEvent(btn) {
-				return function () {
-					const eleName = this.text;
-					if (mode === "damage") {
-						if (eleName === "customizeDamageRange") {
-							this.menu.addRecord(eleName);
-						}
-						else if (eleName.includes(",")) {
-							this.menu.removeRecord(eleName);
-						}
-						else {
-							if (this.isIgnored) this.menu.removeIgnore(eleName);
-							else this.menu.addIgnore(eleName);
-						}
-					}
-					else {
-						if (this.isIgnored) this.menu.removeIgnore(eleName);
-						else this.menu.addIgnore(eleName);
-					}
-					core.setLocalStorage("statisticsHeaderConfig", this.menu.userConfig);
-					this.menu.drawContent();
-				}.bind(btn);
-			}
-
-			for (let i = 0; i < ROW; i++) {
-				for (let j = 0; j < COLUMN; j++) {
-					const btn = new HeaderBtn(20 + 80 * j, 70 + i * 30, 80, 30);
-					btnList.push([i * COLUMN + j, btn, btnClickEvent(btn)]);
-				}
-			}
-			pickHeaderMenu.registerBtns(btnList);
-			return pickHeaderMenu;
-		}
-
-		function statisticsMenuFactory() {
-			const ROW = 3,
-				COLUMN = 4;
-			const floorStatisticsMenu = new FloorStatisticsMenu("floorStatistics", ["ondown"],
-				0, 50, PX, PX - 50, 132, ROW * COLUMN);
-			const floorStatisticsTextMenu = new FloorStatisticsTextMenu("floorStatisticsText", ["ondown"],
-				0, 50, PX, PX - 50, 132, {
-				'items': {
-					capacity: 7,
-					totalItemList: [],
-					pageDownBtnKey: "itemsPageDown",
-					pageUpBtnKey: "itemsPageUp"
-				},
-				'floors': {
-					capacity: 5,
-					totalItemList: [],
-					pageDownBtnKey: "floorsPageDown",
-					pageUpBtnKey: "floorsPageUp",
-				}
+			const tip = node("div", "st-tip");
+			const body = node("div", "st-body");
+			const pageFloors = node("div", "st-page st-floors");
+			const pageTable = node("div", "st-page off");
+			const pagePlayer = node("div", "st-page off");
+			const grid = node("div", "st-grid");
+			const floorActions = node("div", "st-row");
+			const pageInd = node("span", "st-count", "");
+			const markedInd = node("span", "st-count", "");
+			const prevFloor = node("button", "", "上一页");
+			const nextFloor = node("button", "", "下一页");
+			const checkAll = node("button", "", "全选");
+			const inverse = node("button", "", "反选");
+			const clearSelect = node("button", "", "全不选");
+			const areaBtn = node("button", "", "区域选择");
+			const outcome = node("button", "", "统计所选");
+			[prevFloor, nextFloor, checkAll, inverse, clearSelect, areaBtn, outcome].forEach((b) => {
+				b.type = "button";
 			});
-			const playerStatisticsMenu = new PlayerStatisticsMenu("playerStatistics", ["ondown"],
-				0, 50, PX, PX - 50, 132);
-			const statisticsMenu = new StatisticsMenu(
-				[floorStatisticsMenu, floorStatisticsTextMenu, playerStatisticsMenu],
-				0, "statistics", ["ondown"], 0, 0, PX, PX, 131);
+			floorActions.appendChild(prevFloor);
+			floorActions.appendChild(pageInd);
+			floorActions.appendChild(nextFloor);
+			floorActions.appendChild(checkAll);
+			floorActions.appendChild(inverse);
+			floorActions.appendChild(clearSelect);
+			floorActions.appendChild(areaBtn);
+			floorActions.appendChild(outcome);
+			floorActions.appendChild(markedInd);
+			pageFloors.appendChild(grid);
+			pageFloors.appendChild(floorActions);
 
-			/** @this {FloorBtn} */
-			const mark = function () {
-				/** @type {FloorStatisticsMenu} */
-				const menu = this.menu;
-				if (menu.areaSelectOn) {
-					if (!menu.areaBorder) menu.areaBorder = this.floorId;
-					else {
-						let index1 = menu.totalItemList.indexOf(menu.areaBorder),
-							index2 = menu.totalItemList.indexOf(this.floorId);
-						if (index2 < index1) [index1, index2] = [index2, index1];
-						menu.totalItemList.slice(index1, index2 + 1).forEach(floorId => {
-							core.markedFloorIds[floorId] = true;
-						});
-						menu.areaSelectOn = false;
-						menu.areaBorder = "";
+			const summary = node("p", "st-summary", "请先在选层里选择楼层，再点「统计所选」。");
+			const modes = node("div", "st-row");
+			const modeBtns = {};
+			[
+				["tools", "消耗品和门"],
+				["items", "血瓶宝石"],
+				["equips", "装备"],
+				["enemys", "敌人"],
+				["damage", "伤害"],
+			].forEach(([id, label]) => {
+				const b = node("button", id === "tools" ? "on" : "", label);
+				b.type = "button";
+				modeBtns[id] = b;
+				modes.appendChild(b);
+			});
+			const headerBtn = node("button", "", "表头");
+			headerBtn.type = "button";
+			headerBtn.disabled = true;
+			modes.appendChild(headerBtn);
+			const tableWrap = node("div", "st-table-wrap");
+			const table = document.createElement("table");
+			const thead = document.createElement("thead");
+			const tbody = document.createElement("tbody");
+			table.appendChild(thead);
+			table.appendChild(tbody);
+			tableWrap.appendChild(table);
+			tableWrap.hidden = true;
+			const colPager = node("div", "st-row");
+			const prevCol = node("button", "", "上一组");
+			const nextCol = node("button", "", "下一组");
+			const colInd = node("span", "st-count", "");
+			prevCol.type = nextCol.type = "button";
+			colPager.appendChild(prevCol);
+			colPager.appendChild(colInd);
+			colPager.appendChild(nextCol);
+			colPager.hidden = true;
+
+			const picker = node("div", "st-picker off");
+			const pickerTitle = node("p", "st-hint", "以下是本菜单的表头，点一下隐藏或重新显示。伤害区间点一下删除。");
+			const pickGrid = node("div", "st-pick-grid");
+			const rangeRow = node("div", "st-row");
+			const rangeInput = document.createElement("input");
+			rangeInput.type = "text";
+			rangeInput.placeholder = "0,100";
+			const rangeAdd = node("button", "", "添加");
+			rangeAdd.type = "button";
+			rangeRow.appendChild(rangeInput);
+			rangeRow.appendChild(rangeAdd);
+			const rangeHint = node("p", "st-hint", "格式：0,100 表示含 0、不含 100。第二个数空着表示无限大。");
+			const pickerBack = node("button", "", "返回");
+			pickerBack.type = "button";
+			picker.appendChild(pickerTitle);
+			picker.appendChild(pickGrid);
+			picker.appendChild(rangeRow);
+			picker.appendChild(rangeHint);
+			picker.appendChild(pickerBack);
+
+			pageTable.appendChild(summary);
+			pageTable.appendChild(modes);
+			pageTable.appendChild(tableWrap);
+			pageTable.appendChild(colPager);
+			pageTable.appendChild(picker);
+			const player = node("p", "st-player", "");
+			pagePlayer.appendChild(player);
+			body.appendChild(pageFloors);
+			body.appendChild(pageTable);
+			body.appendChild(pagePlayer);
+			root.appendChild(head);
+			root.appendChild(tip);
+			root.appendChild(body);
+
+			let tipTimer = 0;
+			function showTip(text, hold) {
+				clearTimeout(tipTimer);
+				if (!text) {
+					tip.classList.remove("on");
+					tip.textContent = "";
+					return;
+				}
+				tip.textContent = text;
+				tip.classList.add("on");
+				if (hold) return;
+				tipTimer = setTimeout(() => {
+					tip.classList.remove("on");
+					tip.textContent = "";
+				}, 1800);
+			}
+
+			function paintThumbs() {
+				grid.querySelectorAll("canvas[data-floor]").forEach((canvas) => {
+					paintThumb(canvas, canvas.dataset.floor);
+				});
+			}
+
+			function markedCount() {
+				let n = 0;
+				floorList.forEach((id) => { if (core.markedFloorIds[id]) n++; });
+				return n;
+			}
+
+			function updateFloorMarks() {
+				grid.querySelectorAll(".st-floor").forEach((btn) => {
+					const canvas = btn.querySelector("canvas");
+					const floorId = canvas && canvas.dataset.floor;
+					btn.classList.toggle("on", !!(floorId && core.markedFloorIds[floorId]));
+					btn.classList.toggle("area", floorId === state.areaBorder && !!state.areaBorder);
+				});
+				areaBtn.classList.toggle("on", state.areaSelectOn);
+				markedInd.textContent = "已标 " + markedCount() + " 层";
+			}
+
+			function paintFloorPage() {
+				grid.textContent = "";
+				const pages = Math.max(1, Math.ceil(floorList.length / FLOOR_PAGE));
+				if (state.floorPage >= pages) state.floorPage = pages - 1;
+				if (state.floorPage < 0) state.floorPage = 0;
+				const slice = floorList.slice(state.floorPage * FLOOR_PAGE, state.floorPage * FLOOR_PAGE + FLOOR_PAGE);
+				pageInd.textContent = (state.floorPage + 1) + " / " + pages;
+				prevFloor.disabled = state.floorPage <= 0;
+				nextFloor.disabled = state.floorPage >= pages - 1;
+				slice.forEach((floorId) => {
+					const btn = node("button", "st-floor");
+					btn.type = "button";
+					const canvas = document.createElement("canvas");
+					canvas.dataset.floor = floorId;
+					const mapName = (core.status.maps[floorId] && core.status.maps[floorId].name) || "";
+					btn.appendChild(canvas);
+					if (floorId === core.status.floorId) btn.appendChild(node("span", "st-cur", "当前层"));
+					btn.appendChild(node("span", "st-floor-id", floorId));
+					btn.appendChild(node("span", "st-floor-name", mapName));
+					btn.addEventListener("click", () => onFloor(floorId));
+					grid.appendChild(btn);
+				});
+				if (!slice.length) grid.appendChild(node("p", "st-empty", "没有可统计的楼层"));
+				updateFloorMarks();
+				paintThumbs();
+			}
+
+			function onFloor(floorId) {
+				if (state.areaSelectOn) {
+					if (!state.areaBorder) {
+						state.areaBorder = floorId;
+						showTip("请再选择终点楼层");
+					} else {
+						let i1 = floorList.indexOf(state.areaBorder);
+						let i2 = floorList.indexOf(floorId);
+						if (i1 < 0 || i2 < 0) return;
+						if (i2 < i1) { const t = i1; i1 = i2; i2 = t; }
+						floorList.slice(i1, i2 + 1).forEach((id) => { core.markedFloorIds[id] = true; });
+						state.areaSelectOn = false;
+						state.areaBorder = "";
+						showTip("已标上 " + (i2 - i1 + 1) + " 层");
 					}
 				} else {
-					core.markedFloorIds[this.floorId] = !core.markedFloorIds[this.floorId];
+					core.markedFloorIds[floorId] = !core.markedFloorIds[floorId];
 				}
-				menu.drawContent();
-			};
+				updateFloorMarks();
+			}
 
-			const pageDownBtn = new ArrowBtn(10, 145, 16, 16, "left"),
-				pageUpBtn = new ArrowBtn(390, 145, 16, 16, "right");
-			const floorStatisticsList = [
-				["pageDown", pageDownBtn, () => floorStatisticsMenu.pageDown()],
-				["pageUp", pageUpBtn, () => floorStatisticsMenu.pageUp()],
-			];
+			function toggleArea() {
+				if (!state.areaSelectOn) {
+					state.areaSelectOn = true;
+					state.areaBorder = "";
+					showTip("请依次选择目标区域的起始楼层和终点楼层");
+					core.drawSuccessTip("请依次选择目标区域的起始楼层和终点楼层");
+				} else {
+					state.areaSelectOn = false;
+					state.areaBorder = "";
+					showTip("选择已取消");
+					core.drawFailTip("选择已取消");
+				}
+				updateFloorMarks();
+			}
 
-			for (let i = 0; i < ROW; i++) {
-				for (let j = 0; j < COLUMN; j++) {
-					const floorBtn = new FloorBtn(43 + j * 90, 20 + i * 100, 60, 60);
-					floorStatisticsList.push([i * COLUMN + j, floorBtn, mark.bind(floorBtn)]);
+			function renderPlayer() {
+				try {
+					player.textContent = playerText();
+				} catch (e) {
+					player.textContent = "当前没有玩家统计。";
 				}
 			}
-			const checkAllBtn = new RoundBtn(30, 320, 50, 20, "全选");
-			const inverseBtn = new RoundBtn(90, 320, 50, 20, "反选");
-			const clearSelectBtn = new RoundBtn(150, 320, 60, 20, "全不选");
-			const areaSelectBtn = new RoundBtn(220, 320, 76, 20, "区域选择");
-			const getOutcomeBtn = new RoundBtn(306, 320, 76, 20, "统计所选");
-			floorStatisticsList.push(
-				["checkAll", checkAllBtn, () => {
-					floorStatisticsMenu.totalItemList.forEach(floorId => {
-						core.markedFloorIds[floorId] = true;
-					});
-					floorStatisticsMenu.drawContent();
-				}],
-				["inverse", inverseBtn, () => {
-					floorStatisticsMenu.totalItemList.forEach(floorId => {
-						core.markedFloorIds[floorId] = !core.markedFloorIds[floorId];
-					});
-					floorStatisticsMenu.drawContent();
-				}],
-				["clearSelect", clearSelectBtn, () => {
-					floorStatisticsMenu.totalItemList.forEach(floorId => {
-						core.markedFloorIds[floorId] = false;
-					});
-					floorStatisticsMenu.drawContent();
-				}],
-				["areaSelect", areaSelectBtn, () => {
-					if (!floorStatisticsMenu.areaSelectOn) {
-						floorStatisticsMenu.areaSelectOn = true;
-						core.drawSuccessTip("请依次选择目标区域的起始楼层和终点楼层");
-					} else {
-						floorStatisticsMenu.areaSelectOn = true;
-						floorStatisticsMenu.areaBorder = "";
-						core.drawFailTip("选择已取消");
-					}
-				}],
-				["getOutcome", getOutcomeBtn, () => {
-					floorStatisticsTextMenu.updateFloorList();
-					floorStatisticsTextMenu.updateStat();
-					statisticsMenu.changePage(1);
-				}]);
-			floorStatisticsMenu.registerBtns(floorStatisticsList);
 
-			const config = { font: "14px Verdana", selectedFillStyle: "#5B8DEF" };
-			const pickHeaderBtn = new OpenPickHeaderBtn(25, 132, 20, 20);
-			const toolStatBtn = new RoundBtn(20, 90, 90, 20, "消耗品和门", config);
-			const itemStatBtn = new RoundBtn(125, 90, 70, 20, "血瓶宝石", config);
-			const equipStatBtn = new RoundBtn(215, 90, 40, 20, "装备", config);
-			const enemyStatBtn = new RoundBtn(275, 90, 40, 20, "敌人", config);
-			const damageStatBtn = new RoundBtn(335, 90, 40, 20, "伤害", config);
-			const itemUpBtn = new ArrowBtn(20, 335, 16, 16, "down");
-			const itemDownBtn = new ArrowBtn(40, 335, 16, 16, "up");
-			const floorDownBtn = new ArrowBtn(360, 335, 16, 16, "left");
-			const floorUpBtn = new ArrowBtn(380, 335, 16, 16, "right");
-
-			/** @this {FloorStatisticsTextMenu} */
-			const openPickHeader = function () {
-				statisticsMenu.endListen();
-				this.endListen();
-				const pickHeaderMenu = pickHeaderMenuFactory(this.allItemList, this.mode, function () {
-					statisticsMenu.beginListen();
-					floorStatisticsTextMenu.beginListen();
-					floorStatisticsTextMenu.drawContent();
+			function renderTable() {
+				Object.keys(modeBtns).forEach((id) => {
+					modeBtns[id].classList.toggle("on", id === state.mode);
 				});
-				registerResize(pickHeaderMenu);
-				pickHeaderMenu.init();
-			}.bind(floorStatisticsTextMenu);
-			const changeMode = (btn, mode) => () => {
-				floorStatisticsTextMenu.btnMap.forEach(ele => {
-					ele.status = (btn === ele) ? "selected" : "none";
-				});
-				floorStatisticsTextMenu.mode = mode;
-				floorStatisticsTextMenu.page["items"] = 0;
-				floorStatisticsTextMenu.drawContent();
-			};
-
-			floorStatisticsTextMenu.registerBtns([
-				["pickHeader", pickHeaderBtn, openPickHeader],
-				["toolStat", toolStatBtn, changeMode(toolStatBtn, "tools")],
-				["itemStat", itemStatBtn, changeMode(itemStatBtn, "items")],
-				["equipStat", equipStatBtn, changeMode(equipStatBtn, "equips")],
-				["enemyStat", enemyStatBtn, changeMode(enemyStatBtn, "enemys")],
-				["damageStat", damageStatBtn, changeMode(damageStatBtn, "damage")],
-				["itemsPageDown", itemDownBtn, () => floorStatisticsTextMenu.pageDown("items")],
-				["itemsPageUp", itemUpBtn, () => floorStatisticsTextMenu.pageUp("items")],
-				["floorsPageDown", floorDownBtn, () => floorStatisticsTextMenu.pageDown("floors")],
-				["floorsPageUp", floorUpBtn, () => floorStatisticsTextMenu.pageUp("floors")],
-			]);
-			toolStatBtn.status = "selected";
-
-			const exitBtn = new ExitBtn(380, 10, 24, 24);
-			const mainConfig = { fillStyle: "LightSteelBlue", selectedFillStyle: "blue" } // 120+80+8=208
-			const floorBtn = new RoundBtn(120, 20, 80, 20, "楼层数据", mainConfig);
-			const playerBtn = new RoundBtn(216, 20, 80, 20, "玩家数据", mainConfig);
-			floorBtn.status = "selected";
-			const exit = () => {
-				core.setFlag("__statistics__", null);
-				if (core.control.unregisterDymCanvasResizeEvent) {
-					const unregisterRedraw = (menu) => {
-						core.control.unregisterDymCanvasResizeEvent(menu.name);
-					}
-					unregisterRedraw(statisticsMenu);
-					unregisterRedraw(floorStatisticsMenu);
-					unregisterRedraw(floorStatisticsTextMenu);
-					unregisterRedraw(playerStatisticsMenu);
+				if (!state.tableStat) {
+					summary.textContent = "请先在选层里选择楼层，再点「统计所选」。";
+					tableWrap.hidden = true;
+					colPager.hidden = true;
+					headerBtn.disabled = true;
+					return;
 				}
+				headerBtn.disabled = false;
+				summary.textContent = summaryText(state.tableStat);
+				const count = countForMode(state.tableStat, state.mode);
+				const built = buildItemList(count, state.mode);
+				state.allItemList = built.allItemList;
+				const floors = state.tableFloors || [];
+				const pages = Math.max(1, Math.ceil(floors.length / COL_PAGE) || 1);
+				if (state.colPage >= pages) state.colPage = pages - 1;
+				if (state.colPage < 0) state.colPage = 0;
+				const cols = floors.slice(state.colPage * COL_PAGE, state.colPage * COL_PAGE + COL_PAGE);
+				colInd.textContent = floors.length ? ((state.colPage + 1) + " / " + pages) : "0 / 0";
+				prevCol.disabled = state.colPage <= 0 || !floors.length;
+				nextCol.disabled = state.colPage >= pages - 1 || !floors.length;
+				tableWrap.hidden = false;
+				colPager.hidden = false;
+				thead.textContent = "";
+				tbody.textContent = "";
+				const hr = document.createElement("tr");
+				hr.appendChild(node("th", "st-name", "项目"));
+				hr.appendChild(node("th", "", "总数"));
+				cols.forEach((floorId) => {
+					const th = node("th", "", floorId);
+					const mapName = core.status.maps[floorId] && core.status.maps[floorId].name;
+					if (mapName) th.title = mapName;
+					hr.appendChild(th);
+				});
+				thead.appendChild(hr);
+				if (!built.shown.length) {
+					const tr = document.createElement("tr");
+					const td = node("td", "st-name", "这一类没有要显示的项目");
+					td.colSpan = 2 + cols.length;
+					tr.appendChild(td);
+					tbody.appendChild(tr);
+				}
+				built.shown.forEach((id) => {
+					const tr = document.createElement("tr");
+					const nameTd = node("td", "st-name");
+					const wrap = node("span", "st-name-in");
+					if (state.mode !== "damage") {
+						const icon = node("span", "st-icon");
+						const url = iconURL(id);
+						if (url) icon.style.backgroundImage = 'url("' + url + '")';
+						wrap.appendChild(icon);
+					}
+					const label = getNameById(id, state.mode) || id;
+					const text = node("span", "st-name-text", label);
+					wrap.title = label;
+					wrap.appendChild(text);
+					nameTd.appendChild(wrap);
+					tr.appendChild(nameTd);
+					const total = (count[id] && count[id].total) || 0;
+					tr.appendChild(node("td", "", String(total)));
+					cols.forEach((floorId) => {
+						const n = count[id] && count[id][floorId];
+						if (!n) tr.appendChild(node("td", "st-empty", "—"));
+						else tr.appendChild(node("td", "", String(n)));
+					});
+					tbody.appendChild(tr);
+				});
+			}
+
+			function renderPicker() {
+				state.pickerOn = true;
+				picker.classList.remove("off");
+				pickGrid.textContent = "";
+				const list = state.allItemList.slice();
+				if (state.mode === "damage" && list.indexOf("customizeDamageRange") < 0) list.push("customizeDamageRange");
+				const cfg = loadConfig();
+				rangeRow.hidden = state.mode !== "damage";
+				rangeHint.hidden = state.mode !== "damage";
+				if (!list.length) pickGrid.appendChild(node("p", "st-empty", "没有可选项"));
+				list.forEach((id) => {
+					const b = document.createElement("button");
+					b.type = "button";
+					if (state.mode !== "damage" || id === "customizeDamageRange") {
+						const url = id === "customizeDamageRange" ? "" : iconURL(id);
+						if (url) {
+							const icon = node("span", "st-icon");
+							icon.style.backgroundImage = 'url("' + url + '")';
+							b.appendChild(icon);
+						}
+					}
+					const label = getNameById(id, state.mode) || id;
+					b.appendChild(document.createTextNode(label));
+					const ignored = cfg[state.mode].ignore.indexOf(id) >= 0;
+					if (ignored) b.classList.add("st-off");
+					b.addEventListener("click", () => onPick(id));
+					pickGrid.appendChild(b);
+				});
+			}
+
+			function onPick(id) {
+				const cfg = loadConfig();
+				if (state.mode === "damage" && id === "customizeDamageRange") {
+					rangeInput.focus();
+					return;
+				}
+				if (state.mode === "damage" && String(id).includes(",")) {
+					cfg.damage.record = cfg.damage.record.filter((e) => e !== id);
+					core.setLocalStorage("statisticsHeaderConfig", cfg);
+					renderTable();
+					renderPicker();
+					return;
+				}
+				const list = cfg[state.mode].ignore;
+				const at = list.indexOf(id);
+				if (at >= 0) list.splice(at, 1);
+				else list.push(id);
+				core.setLocalStorage("statisticsHeaderConfig", cfg);
+				renderTable();
+				renderPicker();
+			}
+
+			function submitRange() {
+				const parsed = parseRange(rangeInput.value);
+				if (parsed == null) {
+					showTip("错误：不合法的输入");
+					core.drawFailTip("错误：不合法的输入!");
+					return;
+				}
+				const cfg = loadConfig();
+				if (cfg.damage.record.indexOf(parsed) >= 0) {
+					showTip("该区间已在列表中");
+					core.drawFailTip("该区间已在列表中");
+					return;
+				}
+				cfg.damage.record.push(parsed);
+				core.setLocalStorage("statisticsHeaderConfig", cfg);
+				rangeInput.value = "";
+				showTip("已记录 " + (getNameById(parsed, "damage") || parsed));
+				renderTable();
+				renderPicker();
+			}
+
+			function closePicker() {
+				if (!state.pickerOn) return;
+				state.pickerOn = false;
+				picker.classList.add("off");
+				if (document.activeElement === rangeInput) rangeInput.blur();
+				renderTable();
+			}
+
+			function showPage(name) {
+				if (state.pickerOn && name !== state.page) closePicker();
+				state.page = name;
+				pageFloors.classList.toggle("off", name !== "floors");
+				pageTable.classList.toggle("off", name !== "table");
+				pagePlayer.classList.toggle("off", name !== "player");
+				tabs.floors.classList.toggle("on", name === "floors");
+				tabs.table.classList.toggle("on", name === "table");
+				tabs.player.classList.toggle("on", name === "player");
+				if (name === "table") renderTable();
+				if (name === "player") renderPlayer();
+				if (name === "floors") paintThumbs();
+			}
+
+			function computeSelected() {
+				const seen = session;
+				const job = ++statJob;
+				const picked = [];
+				for (const floorId in core.markedFloorIds) {
+					if (core.markedFloorIds[floorId]) picked.push(floorId);
+				}
+				if (!picked.length) showTip("没有选中的楼层");
+				else showTip("正在统计…", true);
 				setTimeout(() => {
-					statisticsMenu.clear();
-					core.unlockControl();
-				}, 1);
+					if (seen !== session || job !== statJob || !api || !api.opened) return;
+					if (!core.status.hero || !core.status.hero.statistics) {
+						showTip("当前没有可统计的存档");
+						return;
+					}
+					let stat;
+					try {
+						stat = getFloorListStat(picked);
+					} catch (e) {
+						console.error(e);
+						core.setFlag("__statistics__", false);
+						showTip("统计失败");
+						core.drawFailTip("统计失败");
+						return;
+					}
+					if (seen !== session || job !== statJob || !api || !api.opened) return;
+					state.tableFloors = picked;
+					state.tableStat = stat;
+					state.colPage = 0;
+					showPage("table");
+					if (!picked.length) showTip("没有选中的楼层");
+					else showTip("");
+				}, 0);
 			}
-			statisticsMenu.registerBtns([
-				["exit", exitBtn, exit],
-				["floor", floorBtn, () => {
-					floorBtn.status = "selected";
-					playerBtn.status = "none";
-					statisticsMenu.changePage(0);
-					statisticsMenu.drawButtonContent();
-				}],
-				["player", playerBtn, () => {
-					floorBtn.status = "none";
-					playerBtn.status = "selected";
-					statisticsMenu.changePage(2);
-					statisticsMenu.drawButtonContent();
-				}],
-			]);
-			if (core.control.registerDymCanvasResizeEvent) {
-				const registerRedraw = (menu) => {
-					core.control.registerDymCanvasResizeEvent(menu.name, function () {
-						if (menu.onDraw) menu.drawContent();
-					})
+
+			let escHold = "";
+			function onEsc(e) {
+				if (e.key !== "Escape" || !api || !api.opened) return;
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+				if (e.type === "keydown") {
+					if (document.activeElement === rangeInput) {
+						escHold = "input";
+						rangeInput.blur();
+					} else if (state.pickerOn) escHold = "picker";
+					else escHold = "close";
+					return;
 				}
-				registerRedraw(statisticsMenu);
-				registerRedraw(floorStatisticsMenu);
-				registerRedraw(floorStatisticsTextMenu);
-				registerRedraw(playerStatisticsMenu);
+				const act = escHold;
+				escHold = "";
+				if (act === "picker") closePicker();
+				else if (act === "close") close(false);
 			}
-			return statisticsMenu;
+
+			function stopPanelKeys(e) {
+				if (e.key === "Enter" || e.key === " ") e.stopPropagation();
+			}
+
+			function close(reopen) {
+				if (!api || !api.opened) return;
+				clearTimeout(tipTimer);
+				api.opened = false;
+				window.removeEventListener("keydown", onEsc, true);
+				window.removeEventListener("keyup", onEsc, true);
+				if (root.parentNode) root.remove();
+				const nodeStyle = document.getElementById("dom-statistics-style");
+				if (nodeStyle) nodeStyle.remove();
+				if (core.plugin.domStatistics === api) core.plugin.domStatistics = null;
+				core.setFlag("__statistics__", null);
+				if (!reopen) {
+					clearTimeout(unlockTimer);
+					unlockTimer = setTimeout(() => core.unlockControl(), 0);
+				}
+			}
+
+			prevFloor.addEventListener("click", () => { state.floorPage--; paintFloorPage(); });
+			nextFloor.addEventListener("click", () => { state.floorPage++; paintFloorPage(); });
+			checkAll.addEventListener("click", () => {
+				floorList.forEach((id) => { core.markedFloorIds[id] = true; });
+				updateFloorMarks();
+			});
+			inverse.addEventListener("click", () => {
+				floorList.forEach((id) => { core.markedFloorIds[id] = !core.markedFloorIds[id]; });
+				updateFloorMarks();
+			});
+			clearSelect.addEventListener("click", () => {
+				floorList.forEach((id) => { core.markedFloorIds[id] = false; });
+				updateFloorMarks();
+			});
+			areaBtn.addEventListener("click", toggleArea);
+			outcome.addEventListener("click", computeSelected);
+			Object.keys(modeBtns).forEach((id) => {
+				modeBtns[id].addEventListener("click", () => {
+					state.mode = id;
+					renderTable();
+					if (state.pickerOn) renderPicker();
+				});
+			});
+			headerBtn.addEventListener("click", () => {
+				if (!state.tableStat) return;
+				renderPicker();
+			});
+			rangeAdd.addEventListener("click", submitRange);
+			rangeInput.addEventListener("keydown", (e) => {
+				if (e.key !== "Enter") return;
+				e.preventDefault();
+				submitRange();
+			});
+			pickerBack.addEventListener("click", closePicker);
+			tabs.floors.addEventListener("click", () => showPage("floors"));
+			tabs.table.addEventListener("click", () => showPage("table"));
+			tabs.player.addEventListener("click", () => showPage("player"));
+			quit.addEventListener("click", () => close(false));
+			["pointerdown", "mousedown", "mouseup", "click", "touchstart", "touchend", "wheel"].forEach((type) => {
+				root.addEventListener(type, (e) => e.stopPropagation());
+			});
+			root.addEventListener("keydown", stopPanelKeys);
+			root.addEventListener("keyup", stopPanelKeys);
+			window.addEventListener("keydown", onEsc, true);
+			window.addEventListener("keyup", onEsc, true);
+
+			api = {
+				opened: true,
+				layout: function () {
+					if (!api.opened) return;
+					root.style.setProperty("--st-scale", String(core.domStyle.scale || 1));
+					paintThumbs();
+				},
+				close: close,
+			};
+			core.plugin.domStatistics = api;
+			parent.appendChild(root);
+			api.layout();
+			tabs.floors.classList.add("on");
+			paintFloorPage();
 		}
 
 		function _drawStatistics() {
-			core.ui.closePanel();
-			core.control.lockControl();
-			const staticsMenu = statisticsMenuFactory();
-			staticsMenu.init();
-			staticsMenu.initOnePage(0);
+			if (main.replayChecking) return;
+			openDomStatistics();
 		}
 		core.ui._drawStatistics = _drawStatistics;
+		core.plugin._statisticsLayout = function () {
+			if (api && api.opened) api.layout();
+		};
+
 	}
 }
