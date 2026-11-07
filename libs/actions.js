@@ -1395,6 +1395,7 @@ function ignoreItemsOnMap(floorId) {
     }, 120);
     drawIgnoreItems();
 }
+actions.prototype._ignoreItemsOnMap = ignoreItemsOnMap;
 
 ////// 楼层传送器/楼传界面界面时，按下某个键的操作 //////
 actions.prototype._keyDownFly = function (keycode) {

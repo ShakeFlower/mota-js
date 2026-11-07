@@ -2564,11 +2564,12 @@ ui.prototype._drawBookDetail_drawContent = function (enemy, content, pos) {
     });
 }
 
-/** 将":before"":next"转换为真实楼层ID。相应处理见events.prototype._changeFloor_getInfo 
+/** 将":before"":next"转换为真实楼层ID。相应处理见events.prototype._changeFloor_getInfo
+ * :next 在未到最后一层时取上一层，与换层函数不一致，楼传自动隐藏依赖这个结果。
  * @param {string} floorId 待转换的floorId
  * @param {string} currFloor ":before"":next"的基准floorId
  */
-function getRealFloorId(floorId, currFloor) {
+ui.prototype.getRealFloorId = function (floorId, currFloor) {
     const index = core.floorIds.indexOf(currFloor);
     if (index === -1) return floorId;
     if (floorId === ":before" && index > 0) {
@@ -2578,17 +2579,18 @@ function getRealFloorId(floorId, currFloor) {
         return core.floorIds[index - 1];
     }
     else return floorId;
-}
+};
 
 // 查找嵌套JSON中是否有{type:changeFloor, floorId:xxx的格式}
-function findFloorIds(obj, currFloorId) {
+ui.prototype.findFloorIds = function (obj, currFloorId) {
     const result = [];
+    const getId = this.getRealFloorId.bind(this);
 
     function traverse(current) {
         if (current && typeof current === 'object') {
             // 判断当前对象是否满足条件
             if (current.type === 'changeFloor' && 'floorId' in current) {
-                result.push(getRealFloorId(current.floorId, currFloorId));
+                result.push(getId(current.floorId, currFloorId));
             }
             // 递归处理对象或数组中的每个元素
             if (Array.isArray(current)) {
@@ -2605,14 +2607,14 @@ function findFloorIds(obj, currFloorId) {
 
     traverse(obj);
     return result;
-}
+};
 
 /**
  * @returns {{
  * enemy:number,npc:number,item:number
  * }}
  */
-function getFloorBlockCounts(floorId) {
+ui.prototype.getFloorBlockCounts = function (floorId) {
     const blockCounts = {
         enemy: 0,
         npc: 0,
@@ -2641,7 +2643,44 @@ function getFloorBlockCounts(floorId) {
         }
     });
     return blockCounts;
-}
+};
+
+/** 当前层被画出来时检查自动隐藏。触发时返回 true，这一帧按已隐藏来画。 */
+ui.prototype._applyFlyAutoHide = function (floorId) {
+    if (!core.getFlag('autoHideFloor', false)) return false;
+    const autoHiddenFloorList = core.getFlag('autoHiddenFloorList', []);
+    if (autoHiddenFloorList.includes(floorId)) return false;
+    const blockCounts = this.getFloorBlockCounts(floorId);
+    const ignoreItems = core.getFlag('ignoreItems', {});
+    const currIgnoreItems = new Set(ignoreItems[floorId]);
+    const aimFloor = [];
+    const addFloorIdsFromEvents = (event) => {
+        for (let pos in event) {
+            if (currIgnoreItems.has(pos)) continue;
+            aimFloor.push(...this.findFloorIds(event[pos], floorId));
+        }
+    };
+    const currFloorInfo = core.floors[floorId];
+    addFloorIdsFromEvents(currFloorInfo.afterBattle);
+    addFloorIdsFromEvents(currFloorInfo.beforeBattle);
+    addFloorIdsFromEvents(currFloorInfo.afterGetItem);
+    addFloorIdsFromEvents(currFloorInfo.afterOpenDoor);
+    addFloorIdsFromEvents(currFloorInfo.autoEvent);
+    addFloorIdsFromEvents(currFloorInfo.events);
+    for (let pos in currFloorInfo.changeFloor) {
+        aimFloor.push(this.getRealFloorId(currFloorInfo.changeFloor[pos].floorId, floorId));
+    }
+    const aimFloorSet = new Set(aimFloor.filter(id => core.floorIds.includes(id)));
+    const isAllFloorVisited = [...aimFloorSet].every(id => core.hasVisitedFloor(id));
+    if (blockCounts.enemy === 0 && blockCounts.npc === 0 &&
+        blockCounts.item === 0 && isAllFloorVisited) {
+        core.setFlag("autoHiddenFloorList", autoHiddenFloorList);
+        core.actions._hideFly(floorId);
+        core.drawTip("满足条件，已自动隐藏该层。");
+        return true;
+    }
+    return false;
+};
 
 ////// 绘制楼传/楼层传送器 //////
 ui.prototype.drawFly = function (page) {
@@ -2702,7 +2741,7 @@ ui.prototype.drawFly = function (page) {
     });
 
     const hideMapCount = core.getFlag('hideMapCount', false);
-    const blockCounts = getFloorBlockCounts(floorId);
+    const blockCounts = this.getFloorBlockCounts(floorId);
     if (!hideMapCount) {
         if (blockCounts.enemy > 0) {
             core.drawIcon('ui', 'greenSlime', this.PIXEL - 90, 35, 16, 16);
@@ -2721,45 +2760,7 @@ ui.prototype.drawFly = function (page) {
             core.fillText('ui', '× ' + blockCounts.npc, this.PIXEL - 50, 112, 'white', '12px Verdana');
         }
     }
-    // 判断是否触发自动隐藏楼层，否则不检查相关信息
-    const autoHideFloor = core.getFlag('autoHideFloor', false);
-    /** 已经触发过自动隐藏的楼层的列表 该数组在手动隐藏/首次自动隐藏时触发，且只增不减 */
-    const autoHiddenFloorList = core.getFlag('autoHiddenFloorList', []);
-
-    if (autoHideFloor && !autoHiddenFloorList.includes(floorId)) {
-        // 该楼层可达的楼层
-        const aimFloor = [];
-        const addFloorIdsFromEvents = function (event) {
-            for (let pos in event) {
-                if (currIgnoreItems.has(pos)) continue;
-                aimFloor.push(...findFloorIds(event[pos], floorId));
-            }
-        }
-
-        const currFloorInfo = core.floors[floorId];
-        addFloorIdsFromEvents(currFloorInfo.afterBattle);
-        addFloorIdsFromEvents(currFloorInfo.beforeBattle);
-        addFloorIdsFromEvents(currFloorInfo.afterGetItem);
-        addFloorIdsFromEvents(currFloorInfo.afterOpenDoor);
-        addFloorIdsFromEvents(currFloorInfo.autoEvent);
-        addFloorIdsFromEvents(currFloorInfo.events);
-        for (let pos in currFloorInfo.changeFloor) {
-            aimFloor.push(getRealFloorId(currFloorInfo.changeFloor[pos].floorId, floorId));
-        }
-        // 该楼层可达的楼层集合
-        const aimFloorSet = new Set(aimFloor.filter(floorId => core.floorIds.includes(floorId)));
-        const isAllFloorVisited = [...aimFloorSet].every(floorId => core.hasVisitedFloor(floorId));
-
-        if (blockCounts.enemy === 0 && blockCounts.npc === 0 &&
-            blockCounts.item === 0 && isAllFloorVisited) {
-            {
-                core.setFlag("autoHiddenFloorList", autoHiddenFloorList);
-                core.actions._hideFly(floorId);
-                isHide = true;
-                core.drawTip("满足条件，已自动隐藏该层。");
-            }
-        }
-    }
+    if (this._applyFlyAutoHide(floorId)) isHide = true;
 
     if (isHide) core.setAlpha('ui', 0.6);
     core.drawThumbnail(floorId, null, { ctx: 'ui', x: 20, y: 100, size: size, damage: true });

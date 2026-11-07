@@ -9364,6 +9364,1135 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		if (core.getLocalStorage('freeReplay', false)) setEnabled(true);
 	},
+    "domFly": function () {
+		// 楼传 DOM。录像验证不替换画布版，自动隐藏仍由 libs/ui.js 的 drawFly 执行。
+		if (main.replayChecking) return;
+
+		const originDrawFly = core.ui.drawFly;
+		let root = null;
+		let ui = null;
+		let opened = false;
+		let delayUnlock = false;
+		let unlockTimer = 0;
+		let tipTimer = 0;
+		const holdStops = [];
+
+		let settingsOn = false;
+		let viewDim = false;
+		let look = '';
+		let pointMode = 'fly';
+		const checked = new Set();
+		const GRID_COLS = 4;
+
+		const DOM_FLY_CSS = [
+			'#dom-fly{position:absolute;left:0;top:0;width:100%;height:100%;z-index:208;box-sizing:border-box;',
+			'background:rgba(28,28,28,.94);color:#f2f2f2;',
+			'font:calc(14px * var(--fly-scale))/1.35 Verdana,sans-serif;--fly-scale:1;',
+			'--fly-gold:#e6c35c;--fly-line:#5c5c5c;--fly-note:#c4b496;--fly-btn:#3e3e3e;}',
+			'#dom-fly *{box-sizing:border-box;}',
+			'#dom-fly [hidden]{display:none !important;}',
+			'#dom-fly button{font:inherit;color:inherit;background:var(--fly-btn);border:1px solid var(--fly-line);',
+			'border-radius:3px;padding:calc(3px * var(--fly-scale)) calc(8px * var(--fly-scale));cursor:pointer;}',
+			'#dom-fly button:focus{outline:1px solid var(--fly-gold);outline-offset:1px;}',
+			'#dom-fly button.off{opacity:.35;}',
+			'#dom-fly .fly-title{position:absolute;left:0;right:28%;top:calc(6px * var(--fly-scale));text-align:center;',
+			'color:#ffe4b5;font-weight:bold;font-size:calc(22px * var(--fly-scale));pointer-events:none;}',
+			'#dom-fly .fly-row{position:absolute;left:calc(10px * var(--fly-scale));top:calc(40px * var(--fly-scale));',
+			'display:flex;gap:calc(8px * var(--fly-scale));align-items:center;}',
+			'#dom-fly .fly-tools{position:absolute;right:calc(8px * var(--fly-scale));top:calc(6px * var(--fly-scale));',
+			'display:flex;gap:calc(6px * var(--fly-scale));align-items:center;}',
+			'#dom-fly .fly-gear{width:calc(22px * var(--fly-scale));height:calc(22px * var(--fly-scale));min-height:0;padding:0;',
+			'border-radius:50%;border:2px solid #8B4513;background:linear-gradient(#f3dc9a,#c9a24a);color:#2a2112;',
+			'font-size:calc(13px * var(--fly-scale));line-height:1;}',
+			'#dom-fly .fly-map{position:absolute;left:3%;top:16%;width:64%;height:68%;',
+			'display:flex;align-items:center;justify-content:center;}',
+			'#dom-fly .fly-frame{position:relative;background:#000;}',
+			'#dom-fly .fly-frame canvas{width:100%;height:100%;display:block;image-rendering:pixelated;}',
+			'#dom-fly .fly-dim{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;',
+			'padding:calc(4px * var(--fly-scale)) calc(8px * var(--fly-scale));background:rgba(0,0,0,.55);color:#ffe4b5;}',
+			'#dom-fly .fly-side{position:absolute;right:1%;top:14%;bottom:12%;width:30%;',
+			'display:flex;flex-direction:column;align-items:center;}',
+			'#dom-fly .fly-counts{display:flex;flex-direction:column;align-items:flex-start;gap:calc(2px * var(--fly-scale));',
+			'width:100%;margin-top:calc(-12px * var(--fly-scale));padding-left:calc(18px * var(--fly-scale));',
+			'font-size:calc(12px * var(--fly-scale));line-height:1.25;pointer-events:none;}',
+			'#dom-fly .fly-count{white-space:nowrap;}',
+			'#dom-fly .fly-count-enemy{color:#ff9a9a;}',
+			'#dom-fly .fly-count-item{color:#f0d080;}',
+			'#dom-fly .fly-count-npc{color:#8fd4ff;}',
+			'#dom-fly .fly-mid{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;',
+			'gap:calc(10px * var(--fly-scale));width:100%;}',
+			'#dom-fly .fly-name{text-align:center;white-space:pre-wrap;word-break:break-word;max-width:100%;',
+			'font-size:calc(16px * var(--fly-scale));font-weight:bold;padding:0;}',
+			'#dom-fly .fly-arrow{background:transparent;border-color:transparent;min-height:0;min-width:calc(32px * var(--fly-scale));',
+			'padding:0;font-size:calc(15px * var(--fly-scale));line-height:1;',
+			'display:inline-flex;flex-direction:column;align-items:center;justify-content:center;}',
+			'#dom-fly .fly-arrow-stack span{display:block;line-height:.55;}',
+			'#dom-fly .fly-back{position:absolute;left:0;right:28%;bottom:calc(6px * var(--fly-scale));text-align:center;',
+			'background:transparent;border-color:transparent;font-weight:bold;}',
+			'#dom-fly .fly-hint{position:absolute;right:calc(8px * var(--fly-scale));bottom:calc(4px * var(--fly-scale));',
+			'text-align:right;color:#aaa;font-size:calc(11px * var(--fly-scale));line-height:1.25;pointer-events:none;}',
+			'#dom-fly .fly-tip{display:none;position:absolute;left:calc(8px * var(--fly-scale));right:calc(8px * var(--fly-scale));',
+			'top:calc(36px * var(--fly-scale));z-index:6;pointer-events:none;text-align:center;',
+			'padding:calc(4px * var(--fly-scale)) calc(8px * var(--fly-scale));background:rgba(0,0,0,.82);color:#fff;}',
+			'#dom-fly .fly-tip.on{display:block;}',
+			'#dom-fly .fly-layer{position:absolute;inset:0;z-index:7;background:rgba(0,0,0,.55);',
+			'display:flex;align-items:center;justify-content:center;padding:calc(12px * var(--fly-scale));}',
+			'#dom-fly .fly-box{width:min(100%,calc(300px * var(--fly-scale)));background:#242424;border:1px solid var(--fly-line);',
+			'border-radius:3px;padding:calc(8px * var(--fly-scale));display:flex;flex-direction:column;',
+			'gap:calc(2px * var(--fly-scale));align-items:flex-start;font-size:calc(12px * var(--fly-scale));}',
+			'#dom-fly .fly-box button{padding:calc(1px * var(--fly-scale)) calc(6px * var(--fly-scale));',
+			'font-size:calc(12px * var(--fly-scale));margin-top:calc(8px * var(--fly-scale));}',
+			'#dom-fly .fly-box p{margin:0;}',
+			'#dom-fly .fly-box-title{color:#ffe4b5;font-weight:bold;font-size:calc(13px * var(--fly-scale));}',
+			'#dom-fly .fly-note{color:var(--fly-note);font-size:calc(10px * var(--fly-scale));line-height:1.35;}',
+			'#dom-fly.fly-grid{display:flex;flex-direction:column;padding:calc(4px * var(--fly-scale)) calc(8px * var(--fly-scale)) calc(28px * var(--fly-scale));overscroll-behavior:contain;}',
+			'#dom-fly.fly-grid .fly-title{position:static;right:auto;flex:0 0 auto;font-size:calc(18px * var(--fly-scale));}',
+			'#dom-fly.fly-grid .fly-modes{display:flex;flex-wrap:wrap;gap:calc(6px * var(--fly-scale));align-items:center;margin:calc(4px * var(--fly-scale)) 0;}',
+			'#dom-fly.fly-grid .fly-mode-hint{color:var(--fly-note);font-size:calc(11px * var(--fly-scale));}',
+			'#dom-fly.fly-grid .fly-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;',
+			'display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:calc(10px * var(--fly-scale));align-content:start;align-items:start;}',
+			'#dom-fly.fly-grid .fly-card{min-width:0;background:#141414;border:1px solid #8a8a8a;cursor:pointer;display:flex;flex-direction:column;}',
+			'#dom-fly.fly-grid .fly-card.on{border-color:var(--fly-gold);}',
+			'#dom-fly.fly-grid .fly-card .fly-frame{position:relative;width:100%;aspect-ratio:1/1;flex:0 0 auto;}',
+			'#dom-fly.fly-grid .fly-card canvas{width:100%;height:100%;display:block;background:#000;}',
+			'#dom-fly.fly-grid .fly-here{position:absolute;left:calc(2px * var(--fly-scale));top:calc(2px * var(--fly-scale));z-index:1;',
+			'pointer-events:none;color:var(--fly-gold);font-size:calc(10px * var(--fly-scale));background:rgba(0,0,0,.55);',
+			'padding:0 calc(3px * var(--fly-scale));}',
+			'#dom-fly.fly-grid .fly-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(12px * var(--fly-scale));',
+			'font-weight:bold;text-align:center;padding:0 calc(2px * var(--fly-scale));}',
+			'#dom-fly.fly-grid .fly-marks{display:flex;justify-content:center;gap:calc(6px * var(--fly-scale));',
+			'font-size:calc(11px * var(--fly-scale));line-height:1.2;}',
+			'#dom-fly.fly-grid .fly-marks .enemy{color:#ff9a9a;}',
+			'#dom-fly.fly-grid .fly-marks .item{color:#f0d080;}',
+			'#dom-fly.fly-grid .fly-marks .npc{color:#8fd4ff;}',
+			'#dom-fly.fly-grid .fly-empty{grid-column:1/-1;text-align:center;color:#aaa;padding:calc(12px * var(--fly-scale));}',
+			'#dom-fly.fly-grid .fly-back{position:static;flex:0 0 auto;margin-top:calc(4px * var(--fly-scale));}',
+			'#dom-fly.fly-grid button.pressed{border-color:var(--fly-gold);background:#5a4a28;}',
+		].join('');
+
+		function button(text, className) {
+			const node = document.createElement('button');
+			node.type = 'button';
+			node.textContent = text;
+			if (className) node.className = className;
+			return node;
+		}
+
+		function showTip(text) {
+			if (!ui) return;
+			clearTimeout(tipTimer);
+			ui.tip.textContent = text || '';
+			ui.tip.classList.toggle('on', !!text);
+			if (!text) return;
+			tipTimer = setTimeout(() => {
+				if (!ui) return;
+				ui.tip.classList.remove('on');
+				ui.tip.textContent = '';
+			}, 1600);
+		}
+
+		function stopHolds() {
+			holdStops.splice(0).forEach((stop) => stop());
+		}
+
+		function removeDom() {
+			stopHolds();
+			clearTimeout(tipTimer);
+			window.removeEventListener('keydown', onSettingsKey, true);
+			window.removeEventListener('keyup', onSettingsKey, true);
+			settingsOn = false;
+			pointMode = 'fly';
+			look = '';
+			checked.clear();
+			if (root && root.parentNode) root.remove();
+			root = null;
+			ui = null;
+			opened = false;
+			const style = document.getElementById('dom-fly-style');
+			if (style) style.remove();
+			if (core.plugin.domFly) core.plugin.domFly.opened = false;
+		}
+
+		function turn(delta, sound) {
+			if (core.isReplaying() || settingsOn) return;
+			if (sound) core.playSound('光标移动');
+			core.ui.drawFly(core.actions._getNextFlyFloor(delta));
+		}
+
+		function onSettingsKey(e) {
+			if (!settingsOn) return;
+			e.preventDefault();
+			e.stopPropagation();
+			if (e.type === 'keyup' && (e.key === 'Escape' || e.keyCode === 27)) {
+				settingsOn = false;
+				if (ui) ui.layer.hidden = true;
+			}
+		}
+
+		function bindHold(btn, delta) {
+			let timer = 0;
+			let interval = 0;
+			function stop() {
+				clearTimeout(timer);
+				clearInterval(interval);
+				timer = 0;
+				interval = 0;
+				window.removeEventListener('pointerup', stop);
+				window.removeEventListener('pointercancel', stop);
+			}
+			holdStops.push(stop);
+			btn.addEventListener('pointerdown', (e) => {
+				if (e.button !== 0) return;
+				e.preventDefault();
+				stop();
+				turn(delta, true);
+				timer = setTimeout(() => {
+					interval = setInterval(() => turn(delta, true), 40);
+				}, 500);
+				window.addEventListener('pointerup', stop);
+				window.addEventListener('pointercancel', stop);
+			});
+			btn.addEventListener('contextmenu', (e) => e.preventDefault());
+		}
+
+		function visibleOffset(floorId) {
+			const width = core.floors[floorId].width;
+			const height = core.floors[floorId].height;
+			const centerX = Math.floor(width / 2);
+			const centerY = Math.floor(height / 2);
+			return {
+				x: core.clamp(centerX - core.__HALF_SIZE__, 0, width - core.__SIZE__),
+				y: core.clamp(centerY - core.__HALF_SIZE__, 0, height - core.__SIZE__),
+			};
+		}
+
+		function drawMarks(canvas, floorId, bitmap) {
+			const offset = visibleOffset(floorId);
+			const size = core.__SIZE__;
+			const cell = bitmap / size;
+			const list = core.getFlag('ignoreItems', {})[floorId] || [];
+			const width = Math.max(1, bitmap / 180);
+			list.forEach((pos) => {
+				const parts = String(pos).split(',');
+				const x = parseInt(parts[0], 10) - offset.x;
+				const y = parseInt(parts[1], 10) - offset.y;
+				if (x < 0 || y < 0 || x >= size || y >= size) return;
+				const pad = Math.max(1, cell * 0.06);
+				core.drawCrossLine(canvas, cell * x + pad, cell * y + pad, cell * (x + 1) - pad, cell * (y + 1) - pad, 'red', width);
+			});
+		}
+
+		function paintMap(retry) {
+			if (!opened || !ui) return;
+			const canvas = ui.canvas;
+			const stage = canvas.parentNode && canvas.parentNode.parentNode;
+			const side = stage ? Math.floor(Math.min(stage.clientWidth, stage.clientHeight)) : 0;
+			if (side < 2) {
+				if ((retry || 0) < 8) requestAnimationFrame(() => paintMap((retry || 0) + 1));
+				return;
+			}
+			canvas.parentNode.style.width = side + 'px';
+			canvas.parentNode.style.height = side + 'px';
+			const dpr = window.devicePixelRatio || 1;
+			const bitmap = Math.max(1, Math.round(side * dpr));
+			if (canvas.width !== bitmap || canvas.height !== bitmap) {
+				canvas.width = bitmap;
+				canvas.height = bitmap;
+			}
+			const ctx = canvas.getContext('2d');
+			ctx.setTransform(1, 0, 0, 1, 0, 0);
+			ctx.imageSmoothingEnabled = false;
+			ctx.clearRect(0, 0, bitmap, bitmap);
+			const floorId = core.floorIds[core.status.event.data];
+			if (!floorId) return;
+			try {
+				core.maps.drawThumbnail(floorId, null, {
+					ctx: canvas,
+					x: 0,
+					y: 0,
+					damage: true,
+					noHD: true,
+					size: bitmap,
+				});
+			} catch (e) {
+				console.error(e);
+			}
+			const markCtx = canvas.getContext('2d');
+			markCtx.setTransform(1, 0, 0, 1, 0, 0);
+			drawMarks(canvas, floorId, bitmap);
+		}
+
+		function isGridLook() {
+			return !core.isReplaying() && core.getLocalStorage('flyLook', 'single') === 'grid';
+		}
+
+		function lookText() {
+			return '外观:' + (core.getLocalStorage('flyLook', 'single') === 'grid' ? '多楼层' : '单层');
+		}
+
+		function syncSettingsText() {
+			if (!ui) return;
+			if (ui.setLook) ui.setLook.textContent = lookText();
+			if (ui.setAuto) ui.setAuto.textContent = '自动隐藏楼层:' + (core.hasFlag('autoHideFloor') ? '开' : '关');
+			if (ui.setHidden) ui.setHidden.textContent = '显示隐藏层:' + (core.hasFlag('noHideFly') ? '开' : '关');
+			if (ui.setCount) ui.setCount.textContent = '楼层计数:' + (core.hasFlag('hideMapCount') ? '关' : '开');
+		}
+
+		function floorListed(floorId, revealHidden) {
+			const map = core.status.maps[floorId];
+			const stand = floorId === core.status.floorId;
+			const flyable = !!(map && map.canFlyTo && core.hasVisitedFloor(floorId));
+			if (revealHidden) return flyable || stand;
+			if (!flyable) return false;
+			if (stand || core.hasFlag('noHideFly')) return true;
+			return !core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+		}
+
+		function listEntries() {
+			const reveal = pointMode === 'hide';
+			const entries = [];
+			core.floorIds.forEach((floorId, index) => {
+				if (floorListed(floorId, reveal)) entries.push({ floorId, index });
+			});
+			return entries;
+		}
+
+		function settleSelection(entries) {
+			if (!entries.length) return core.status.event.data;
+			if (entries.some((entry) => entry.index === core.status.event.data)) return core.status.event.data;
+			const page = core.status.event.data;
+			const next = entries.find((entry) => entry.index > page);
+			const prev = entries.filter((entry) => entry.index < page).pop();
+			const pick = next || prev;
+			if (pick) core.status.event.data = pick.index;
+			return core.status.event.data;
+		}
+
+		function markSelection() {
+			if (!ui || !ui.list) return;
+			const page = core.status.event.data;
+			[...ui.list.children].forEach((card) => {
+				if (!card.dataset.floor) return;
+				card.classList.toggle('on', Number(card.dataset.index) === page);
+			});
+		}
+
+		function selectedCard() {
+			if (!ui || !ui.list) return null;
+			return [...ui.list.children].find((card) => card.dataset.floor && Number(card.dataset.index) === core.status.event.data) || null;
+		}
+
+		function ensureVisible(card) {
+			const list = ui.list;
+			const listRect = list.getBoundingClientRect();
+			const cardRect = card.getBoundingClientRect();
+			if (cardRect.height < 2) return;
+			if (cardRect.top < listRect.top) list.scrollTop -= listRect.top - cardRect.top;
+			else if (cardRect.bottom > listRect.bottom) list.scrollTop += cardRect.bottom - listRect.bottom;
+		}
+
+		function centerCard(card) {
+			const list = ui.list;
+			const listRect = list.getBoundingClientRect();
+			const cardRect = card.getBoundingClientRect();
+			if (cardRect.height < 2 || listRect.height < 2) return false;
+			const delta = (cardRect.top + cardRect.height / 2) - (listRect.top + listRect.height / 2);
+			list.scrollTop += delta;
+			return true;
+		}
+
+		function cardInView(card) {
+			const listRect = ui.list.getBoundingClientRect();
+			const cardRect = card.getBoundingClientRect();
+			if (cardRect.height < 2 || listRect.height < 2) return false;
+			return cardRect.bottom > listRect.top - 4 && cardRect.top < listRect.bottom + 4;
+		}
+
+		function applyHiddenLook(card, floorId) {
+			const hidden = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+			const canvas = card.querySelector('canvas');
+			const dim = card.querySelector('.fly-dim');
+			if (canvas) canvas.style.opacity = hidden ? '0.6' : '1';
+			if (dim) dim.hidden = !hidden;
+		}
+
+		function makeCard(entry) {
+			const floorId = entry.floorId;
+			const map = core.status.maps[floorId] || {};
+			const title = map.title || floorId;
+			const card = document.createElement('div');
+			card.className = 'fly-card';
+			card.dataset.floor = floorId;
+			card.dataset.index = String(entry.index);
+			if (entry.index === core.status.event.data) card.classList.add('on');
+			const frame = document.createElement('div');
+			frame.className = 'fly-frame';
+			const canvas = document.createElement('canvas');
+			const dim = document.createElement('div');
+			dim.className = 'fly-dim';
+			dim.textContent = '已隐藏';
+			const here = document.createElement('div');
+			here.className = 'fly-here';
+			here.textContent = '当前';
+			here.hidden = floorId !== core.status.floorId;
+			frame.appendChild(canvas);
+			frame.appendChild(dim);
+			frame.appendChild(here);
+			const name = document.createElement('div');
+			name.className = 'fly-name';
+			name.textContent = title;
+			name.title = title;
+			const marks = document.createElement('div');
+			marks.className = 'fly-marks';
+			if (!core.hasFlag('hideMapCount')) {
+				const counts = core.ui.getFloorBlockCounts(floorId);
+				[['怪', 'enemy', counts.enemy], ['物', 'item', counts.item], ['NPC', 'npc', counts.npc]].forEach((pair) => {
+					if (!(pair[2] > 0)) return;
+					const span = document.createElement('span');
+					span.className = pair[1];
+					span.textContent = pair[0];
+					marks.appendChild(span);
+				});
+			}
+			if (!marks.childElementCount) marks.hidden = true;
+			card.appendChild(frame);
+			card.appendChild(name);
+			card.appendChild(marks);
+			applyHiddenLook(card, floorId);
+			card.addEventListener('click', () => onCard(entry.index));
+			return card;
+		}
+
+		function paintCard(card) {
+			const floorId = card.dataset.floor;
+			const canvas = card.querySelector('canvas');
+			const side = canvas ? Math.floor(canvas.clientWidth) : 0;
+			if (!canvas || side < 2) return { pending: true };
+			const dpr = window.devicePixelRatio || 1;
+			const bitmap = Math.max(1, Math.round(side * dpr));
+			let hiddenName = '';
+			if (!checked.has(floorId) && core.getFlag('autoHideFloor', false)) {
+				checked.add(floorId);
+				if (core.ui._applyFlyAutoHide(floorId)) {
+					const map = core.status.maps[floorId] || {};
+					hiddenName = map.title || floorId;
+				}
+			}
+			if (!floorListed(floorId, pointMode === 'hide')) {
+				card.remove();
+				return { hiddenName: hiddenName, removed: true };
+			}
+			const ignoreKey = (core.getFlag('ignoreItems', {})[floorId] || []).join('|');
+			const hidden = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+			const sig = bitmap + '|' + ignoreKey + '|' + (hidden ? 1 : 0);
+			if (card.dataset.sig === sig) {
+				applyHiddenLook(card, floorId);
+				return hiddenName ? { hiddenName: hiddenName } : null;
+			}
+			if (canvas.width !== bitmap || canvas.height !== bitmap) {
+				canvas.width = bitmap;
+				canvas.height = bitmap;
+			}
+			const ctx = canvas.getContext('2d');
+			ctx.setTransform(1, 0, 0, 1, 0, 0);
+			ctx.imageSmoothingEnabled = false;
+			ctx.clearRect(0, 0, bitmap, bitmap);
+			try {
+				core.maps.drawThumbnail(floorId, null, {
+					ctx: canvas,
+					x: 0,
+					y: 0,
+					damage: false,
+					noHD: true,
+					size: bitmap,
+				});
+			} catch (e) {
+				console.error(e);
+			}
+			const markCtx = canvas.getContext('2d');
+			markCtx.setTransform(1, 0, 0, 1, 0, 0);
+			drawMarks(canvas, floorId, bitmap);
+			applyHiddenLook(card, floorId);
+			card.dataset.sig = sig;
+			return hiddenName ? { hiddenName: hiddenName } : null;
+		}
+
+		function paintVisible(retry) {
+			if (look !== 'grid' || !ui || !ui.list) return;
+			const names = [];
+			let pending = false;
+			let anySized = false;
+			let guard = 0;
+			let removed = false;
+			do {
+				removed = false;
+				const cards = [...ui.list.children];
+				for (let i = 0; i < cards.length; i++) {
+					const card = cards[i];
+					if (!card.dataset.floor || !card.isConnected) continue;
+					if (card.getBoundingClientRect().height >= 2) anySized = true;
+					if (!cardInView(card)) continue;
+					const result = paintCard(card);
+					if (!result) continue;
+					if (result.pending) pending = true;
+					if (result.hiddenName) names.push(result.hiddenName);
+					if (result.removed) removed = true;
+				}
+				if (removed) {
+					settleSelection(listEntries());
+					markSelection();
+				}
+				guard++;
+			} while (removed && guard < 6);
+			if (ui.list.getBoundingClientRect().height < 2) pending = true;
+			if ((!anySized || pending) && (retry || 0) < 8) {
+				requestAnimationFrame(() => paintVisible((retry || 0) + 1));
+			}
+			if (names.length === 1) showTip('满足条件，已自动隐藏该层。');
+			else if (names.length > 1) showTip('满足条件，已自动隐藏：' + names.join('、') + '。');
+		}
+
+		function syncModeChrome() {
+			if (!ui || look !== 'grid') return;
+			ui.hideMode.classList.toggle('pressed', pointMode === 'hide');
+			ui.ignoreMode.classList.toggle('pressed', pointMode === 'ignore');
+			if (pointMode === 'hide') {
+				ui.modeHint.hidden = false;
+				ui.modeHint.textContent = '点击楼层以隐藏或显示';
+			} else if (pointMode === 'ignore') {
+				ui.modeHint.hidden = false;
+				ui.modeHint.textContent = '点击楼层以忽略图块';
+			} else {
+				ui.modeHint.hidden = true;
+				ui.modeHint.textContent = '';
+			}
+			syncSettingsText();
+			if (ui.layer) ui.layer.hidden = !settingsOn;
+			root.style.setProperty('--fly-scale', String(core.domStyle.scale || 1));
+		}
+
+		function rebuildList(scrollToSelection) {
+			if (!ui || !ui.list) return;
+			const saved = ui.list.scrollTop;
+			const entries = listEntries();
+			settleSelection(entries);
+			ui.list.textContent = '';
+			if (!entries.length) {
+				const empty = document.createElement('div');
+				empty.className = 'fly-empty';
+				empty.textContent = '没有可传送的楼层';
+				ui.list.appendChild(empty);
+			} else {
+				entries.forEach((entry) => ui.list.appendChild(makeCard(entry)));
+			}
+			syncModeChrome();
+			const run = (retry) => {
+				if (look !== 'grid' || !ui || !ui.list) return;
+				const card = selectedCard();
+				const sized = card && card.getBoundingClientRect().height >= 2;
+				const listSized = ui.list.getBoundingClientRect().height >= 2;
+				if (scrollToSelection && card && (!sized || !listSized) && (retry || 0) < 8) {
+					requestAnimationFrame(() => run((retry || 0) + 1));
+					return;
+				}
+				if (scrollToSelection && card) centerCard(card);
+				else ui.list.scrollTop = saved;
+				paintVisible();
+			};
+			requestAnimationFrame(() => run(0));
+		}
+
+		function setPointMode(mode) {
+			if (settingsOn || core.isReplaying() || look !== 'grid') return;
+			pointMode = mode;
+			rebuildList(false);
+		}
+
+		function onCard(index) {
+			if (look !== 'grid' || settingsOn || core.isReplaying()) return;
+			const floorId = core.floorIds[index];
+			if (!floorId) return;
+			core.status.event.data = index;
+			markSelection();
+			if (pointMode === 'hide') {
+				core.actions._hideFly(floorId);
+				const card = selectedCard();
+				if (card) applyHiddenLook(card, floorId);
+				return;
+			}
+			if (pointMode === 'ignore') {
+				core.ui.closePanel();
+				core.actions._ignoreItemsOnMap(floorId);
+				return;
+			}
+			core.flyTo(floorId);
+		}
+
+		function moveSelection(delta) {
+			if (!ui || !ui.list) return;
+			const entries = [...ui.list.children].filter((card) => card.dataset.floor).map((card) => Number(card.dataset.index));
+			core.playSound('光标移动');
+			if (!entries.length) return;
+			let pos = entries.indexOf(core.status.event.data);
+			if (pos < 0) pos = 0;
+			let next = pos + delta;
+			if (next < 0) next = 0;
+			if (next > entries.length - 1) next = entries.length - 1;
+			if (next === pos) return;
+			core.status.event.data = entries[next];
+			markSelection();
+			const card = [...ui.list.children].find((node) => Number(node.dataset.index) === entries[next]);
+			if (card) ensureVisible(card);
+		}
+
+		function activateSelected() {
+			const page = core.status.event.data;
+			if (page == null) return;
+			onCard(page);
+		}
+
+		function onGridKey(e) {
+			if (!opened || core.isReplaying() || settingsOn) return;
+			const key = e.key;
+			const code = e.keyCode;
+			const ignoreKey = key === 'i' || key === 'I' || code === 73;
+			if (ignoreKey) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.type !== 'keyup') return;
+				if (look === 'grid') setPointMode(pointMode === 'ignore' ? 'fly' : 'ignore');
+				else if (look === 'single') {
+					const floorId = core.floorIds[core.status.event.data];
+					if (!floorId) return;
+					core.ui.closePanel();
+					core.actions._ignoreItemsOnMap(floorId);
+				}
+				return;
+			}
+			if (look !== 'grid') return;
+			const arrow = key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight'
+				|| code === 37 || code === 38 || code === 39 || code === 40;
+			const hideKey = key === 'h' || key === 'H' || code === 72;
+			const esc = key === 'Escape' || code === 27;
+			const confirm = key === 'Enter' || key === ' ' || key === 'c' || key === 'C'
+				|| code === 13 || code === 32 || code === 67;
+			if (arrow) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.type === 'keydown') {
+					let delta = 0;
+					if (key === 'ArrowLeft' || code === 37) delta = -1;
+					else if (key === 'ArrowRight' || code === 39) delta = 1;
+					else if (key === 'ArrowUp' || code === 38) delta = -GRID_COLS;
+					else if (key === 'ArrowDown' || code === 40) delta = GRID_COLS;
+					if (delta) moveSelection(delta);
+				}
+				return;
+			}
+			if (hideKey) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.type === 'keyup') setPointMode(pointMode === 'hide' ? 'fly' : 'hide');
+				return;
+			}
+			if (pointMode !== 'fly' && (esc || confirm)) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.type !== 'keyup') return;
+				if (esc) setPointMode('fly');
+				else activateSelected();
+			}
+		}
+
+		function makeLayer() {
+			const layer = document.createElement('div');
+			layer.className = 'fly-layer';
+			layer.hidden = true;
+			const box = document.createElement('div');
+			box.className = 'fly-box';
+			const boxTitle = document.createElement('p');
+			boxTitle.className = 'fly-box-title';
+			boxTitle.textContent = '楼传';
+			const setLook = button(lookText());
+			const lookNote = document.createElement('p');
+			lookNote.className = 'fly-note';
+			lookNote.textContent = '一次看一层，或一页看多个楼层。没改过时是单层。';
+			const setAuto = button('自动隐藏楼层:关');
+			const autoNote = document.createElement('p');
+			autoNote.className = 'fly-note';
+			autoNote.textContent = '一个楼层已无物品、敌人、NPC(不含已忽略图块)，且无未到达楼层传送口时可被自动隐藏，仅在首次进入此状态时在楼传界面触发。';
+			const setHidden = button('显示隐藏层:关');
+			const hiddenNote = document.createElement('p');
+			hiddenNote.className = 'fly-note';
+			hiddenNote.textContent = '在楼传界面显示已隐藏的楼层';
+			const setCount = button('楼层计数:开');
+			const countNote = document.createElement('p');
+			countNote.className = 'fly-note';
+			countNote.textContent = '单层时在右侧显示这一层的敌人、物品和 NPC 数量。多楼层时在每张图上显示有没有怪、物、NPC，不显示数量。';
+			const setBack = button('返回');
+			box.appendChild(boxTitle);
+			box.appendChild(setLook);
+			box.appendChild(lookNote);
+			box.appendChild(setAuto);
+			box.appendChild(autoNote);
+			box.appendChild(setHidden);
+			box.appendChild(hiddenNote);
+			box.appendChild(setCount);
+			box.appendChild(countNote);
+			box.appendChild(setBack);
+			layer.appendChild(box);
+			setLook.addEventListener('click', () => {
+				if (core.isReplaying()) return;
+				const next = core.getLocalStorage('flyLook', 'single') === 'grid' ? 'single' : 'grid';
+				core.setLocalStorage('flyLook', next);
+				settingsOn = false;
+				pointMode = 'fly';
+				if (core.plugin._flyLayout) core.plugin._flyLayout();
+			});
+			setAuto.addEventListener('click', () => {
+				if (core.isReplaying()) return;
+				core.setFlag('autoHideFloor', !core.hasFlag('autoHideFloor'));
+				if (core.status.route) core.status.route.push('cSet:autoHideFloor');
+				checked.clear();
+				core.ui.drawFly(core.status.event.data);
+			});
+			setHidden.addEventListener('click', () => {
+				if (core.isReplaying()) return;
+				core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
+				core.ui.drawFly(core.status.event.data);
+			});
+			setCount.addEventListener('click', () => {
+				if (core.isReplaying()) return;
+				core.setFlag('hideMapCount', !core.hasFlag('hideMapCount'));
+				core.ui.drawFly(core.status.event.data);
+			});
+			setBack.addEventListener('click', () => {
+				settingsOn = false;
+				if (ui) ui.layer.hidden = true;
+			});
+			return { layer, setLook, setAuto, setHidden, setCount };
+		}
+
+		function onRootWheel(e) {
+			e.stopPropagation();
+			const onList = look === 'grid' && ui && ui.list && (e.target === ui.list || ui.list.contains(e.target));
+			if (onList && !core.isReplaying()) return;
+			e.preventDefault();
+			if (!e.deltaY) return;
+			if (core.isReplaying()) {
+				if (e.deltaY < 0) core.speedUpReplay();
+				else core.speedDownReplay();
+				return;
+			}
+			if (look === 'grid') return;
+			turn(e.deltaY > 0 ? -1 : 1, false);
+		}
+
+		function bindRoot(node) {
+			function swallowButtonKeys(e) {
+				if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.closest && e.target.closest('button')) {
+					e.preventDefault();
+				}
+			}
+			node.addEventListener('keydown', swallowButtonKeys);
+			node.addEventListener('keyup', swallowButtonKeys);
+			node.addEventListener('selectstart', (e) => e.preventDefault());
+			window.addEventListener('keydown', onSettingsKey, true);
+			window.addEventListener('keyup', onSettingsKey, true);
+			['pointerdown', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'contextmenu'].forEach((type) => {
+				node.addEventListener(type, (e) => e.stopPropagation());
+			});
+			node.addEventListener('wheel', onRootWheel, { passive: false });
+		}
+
+		function setCount(el, count) {
+			el.hidden = !(count > 0);
+			el.textContent = el.dataset.label + ' x ' + count;
+		}
+
+		function refresh(dim) {
+			if (look === 'grid') {
+				rebuildList(false);
+				return;
+			}
+			if (!ui || !ui.canvas) return;
+			const page = core.status.event.data;
+			const floorId = core.floorIds[page];
+			if (!floorId) return;
+			const map = core.status.maps[floorId] || {};
+			const hiddenFlag = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+			if (dim != null) viewDim = dim;
+			ui.name.textContent = map.title || floorId;
+			ui.canvas.style.opacity = viewDim ? '0.6' : '1';
+			ui.dim.hidden = !viewDim;
+			const hideCount = core.hasFlag('hideMapCount');
+			ui.counts.hidden = hideCount;
+			if (!hideCount) {
+				const counts = core.ui.getFloorBlockCounts(floorId);
+				setCount(ui.enemy, counts.enemy);
+				setCount(ui.item, counts.item);
+				setCount(ui.npc, counts.npc);
+			}
+			ui.hide.textContent = (hiddenFlag ? '显示本层' : '隐藏本层') + '(H)';
+			syncSettingsText();
+			ui.layer.hidden = !settingsOn;
+			ui.up.classList.toggle('off', core.actions._getNextFlyFloor(1) === page);
+			ui.down.classList.toggle('off', core.actions._getNextFlyFloor(-1) === page);
+			ui.up10.classList.toggle('off', core.actions._getNextFlyFloor(10) === page);
+			ui.down10.classList.toggle('off', core.actions._getNextFlyFloor(-10) === page);
+			root.style.setProperty('--fly-scale', String(core.domStyle.scale || 1));
+			paintMap();
+		}
+
+		function mount() {
+			const parent = core.dom && core.dom.gameDraw;
+			if (!parent) {
+				if (!core.isReplaying()) {
+					core.unlockControl();
+					core.status.event.id = null;
+					core.status.event.data = null;
+				}
+				return false;
+			}
+			let style = document.getElementById('dom-fly-style');
+			if (!style) {
+				style = document.createElement('style');
+				style.id = 'dom-fly-style';
+				document.head.appendChild(style);
+			}
+			style.textContent = DOM_FLY_CSS;
+
+			root = document.createElement('div');
+			root.id = 'dom-fly';
+			const title = document.createElement('div');
+			title.className = 'fly-title';
+			title.textContent = '楼层跳跃';
+			const row = document.createElement('div');
+			row.className = 'fly-row';
+			const hide = button('隐藏本层(H)');
+			const ignore = button('忽略图块(I)');
+			row.appendChild(hide);
+			row.appendChild(ignore);
+			const tools = document.createElement('div');
+			tools.className = 'fly-tools';
+			const gear = button('⚙', 'fly-gear');
+			gear.title = '设置';
+			gear.setAttribute('aria-label', '设置');
+			tools.appendChild(gear);
+
+			const mapBox = document.createElement('div');
+			mapBox.className = 'fly-map';
+			const frame = document.createElement('div');
+			frame.className = 'fly-frame';
+			const canvas = document.createElement('canvas');
+			const dim = document.createElement('div');
+			dim.className = 'fly-dim';
+			dim.textContent = '已隐藏';
+			frame.appendChild(canvas);
+			frame.appendChild(dim);
+			mapBox.appendChild(frame);
+
+			const side = document.createElement('div');
+			side.className = 'fly-side';
+			const counts = document.createElement('div');
+			counts.className = 'fly-counts';
+			function countLine(label, kind) {
+				const el = document.createElement('div');
+				el.className = 'fly-count fly-count-' + kind;
+				el.dataset.label = label;
+				return el;
+			}
+			const enemy = countLine('怪物', 'enemy');
+			const item = countLine('物品', 'item');
+			const npc = countLine('NPC', 'npc');
+			counts.appendChild(enemy);
+			counts.appendChild(item);
+			counts.appendChild(npc);
+			const mid = document.createElement('div');
+			mid.className = 'fly-mid';
+			function arrowButton(glyph, count, title) {
+				const node = button('', count > 1 ? 'fly-arrow fly-arrow-stack' : 'fly-arrow');
+				node.title = title;
+				node.setAttribute('aria-label', title);
+				for (let i = 0; i < count; i++) {
+					const mark = document.createElement('span');
+					mark.textContent = glyph;
+					node.appendChild(mark);
+				}
+				return node;
+			}
+			const up10 = arrowButton('▲', 2, '上十层');
+			const up = arrowButton('▲', 1, '上一层');
+			const name = document.createElement('div');
+			name.className = 'fly-name';
+			const down = arrowButton('▼', 1, '下一层');
+			const down10 = arrowButton('▼', 2, '下十层');
+			mid.appendChild(up10);
+			mid.appendChild(up);
+			mid.appendChild(name);
+			mid.appendChild(down);
+			mid.appendChild(down10);
+			side.appendChild(counts);
+			side.appendChild(mid);
+
+			const back = button('返回游戏', 'fly-back');
+			const hint = document.createElement('div');
+			hint.className = 'fly-hint';
+			hint.appendChild(document.createTextNode('浏览地图时也'));
+			hint.appendChild(document.createElement('br'));
+			hint.appendChild(document.createTextNode('可楼层跳跃！'));
+			const tip = document.createElement('div');
+			tip.className = 'fly-tip';
+
+			const settings = makeLayer();
+
+			root.appendChild(title);
+			root.appendChild(row);
+			root.appendChild(tools);
+			root.appendChild(mapBox);
+			root.appendChild(side);
+			root.appendChild(back);
+			root.appendChild(hint);
+			root.appendChild(tip);
+			root.appendChild(settings.layer);
+			ui = {
+				name, counts, enemy, item, npc, canvas, dim, hide, up, down, up10, down10, tip,
+				layer: settings.layer, setHidden: settings.setHidden, setCount: settings.setCount,
+				setAuto: settings.setAuto, setLook: settings.setLook,
+			};
+
+			up10.addEventListener('click', () => turn(10, true));
+			down10.addEventListener('click', () => turn(-10, true));
+			bindHold(up, 1);
+			bindHold(down, -1);
+			hide.addEventListener('click', () => {
+				if (core.isReplaying() || settingsOn) return;
+				const floorId = core.floorIds[core.status.event.data];
+				if (!floorId) return;
+				core.actions._hideFly(floorId);
+				core.ui.drawFly(core.status.event.data);
+			});
+			gear.addEventListener('click', () => {
+				if (core.isReplaying()) return;
+				settingsOn = true;
+				if (ui) ui.layer.hidden = false;
+			});
+			ignore.addEventListener('click', () => {
+				if (core.isReplaying() || settingsOn) return;
+				const floorId = core.floorIds[core.status.event.data];
+				if (!floorId) return;
+				core.ui.closePanel();
+				core.actions._ignoreItemsOnMap(floorId);
+			});
+			canvas.addEventListener('click', () => {
+				if (core.isReplaying() || settingsOn) return;
+				const floorId = core.floorIds[core.status.event.data];
+				if (floorId) core.flyTo(floorId);
+			});
+			back.addEventListener('click', () => {
+				if (core.isReplaying() || settingsOn) return;
+				delayUnlock = true;
+				core.playSound('取消');
+				core.ui.closePanel();
+			});
+			bindRoot(root);
+
+			parent.appendChild(root);
+			look = 'single';
+			opened = true;
+			core.plugin.domFly.opened = true;
+			core.clearMap('ui');
+			core.setAlpha('ui', 1);
+			return true;
+		}
+
+		function mountGrid() {
+			const parent = core.dom && core.dom.gameDraw;
+			if (!parent) {
+				if (!core.isReplaying()) {
+					core.unlockControl();
+					core.status.event.id = null;
+					core.status.event.data = null;
+				}
+				return false;
+			}
+			let style = document.getElementById('dom-fly-style');
+			if (!style) {
+				style = document.createElement('style');
+				style.id = 'dom-fly-style';
+				document.head.appendChild(style);
+			}
+			style.textContent = DOM_FLY_CSS;
+
+			root = document.createElement('div');
+			root.id = 'dom-fly';
+			root.className = 'fly-grid';
+			const title = document.createElement('div');
+			title.className = 'fly-title';
+			title.textContent = '楼层跳跃';
+			const tools = document.createElement('div');
+			tools.className = 'fly-tools';
+			const gear = button('⚙', 'fly-gear');
+			gear.title = '设置';
+			gear.setAttribute('aria-label', '设置');
+			tools.appendChild(gear);
+			const modes = document.createElement('div');
+			modes.className = 'fly-modes';
+			const hideMode = button('隐藏楼层(H)');
+			const ignoreMode = button('忽略图块(I)');
+			const modeHint = document.createElement('span');
+			modeHint.className = 'fly-mode-hint';
+			modeHint.hidden = true;
+			modes.appendChild(hideMode);
+			modes.appendChild(ignoreMode);
+			modes.appendChild(modeHint);
+			const list = document.createElement('div');
+			list.className = 'fly-list';
+			const back = button('返回游戏', 'fly-back');
+			const hint = document.createElement('div');
+			hint.className = 'fly-hint';
+			hint.appendChild(document.createTextNode('浏览地图时也'));
+			hint.appendChild(document.createElement('br'));
+			hint.appendChild(document.createTextNode('可楼层跳跃！'));
+			const tip = document.createElement('div');
+			tip.className = 'fly-tip';
+			const settings = makeLayer();
+
+			root.appendChild(title);
+			root.appendChild(tools);
+			root.appendChild(modes);
+			root.appendChild(list);
+			root.appendChild(back);
+			root.appendChild(hint);
+			root.appendChild(tip);
+			root.appendChild(settings.layer);
+			ui = {
+				tip, list, hideMode, ignoreMode, modeHint,
+				layer: settings.layer, setHidden: settings.setHidden, setCount: settings.setCount,
+				setAuto: settings.setAuto, setLook: settings.setLook,
+			};
+
+			gear.addEventListener('click', () => {
+				if (core.isReplaying()) return;
+				settingsOn = true;
+				if (ui) ui.layer.hidden = false;
+				syncSettingsText();
+			});
+			hideMode.addEventListener('click', () => {
+				setPointMode(pointMode === 'hide' ? 'fly' : 'hide');
+			});
+			ignoreMode.addEventListener('click', () => {
+				setPointMode(pointMode === 'ignore' ? 'fly' : 'ignore');
+			});
+			back.addEventListener('click', () => {
+				if (core.isReplaying() || settingsOn) return;
+				delayUnlock = true;
+				core.playSound('取消');
+				core.ui.closePanel();
+			});
+			let paintQueued = false;
+			list.addEventListener('scroll', () => {
+				if (paintQueued || look !== 'grid') return;
+				paintQueued = true;
+				requestAnimationFrame(() => {
+					paintQueued = false;
+					paintVisible();
+				});
+			});
+			bindRoot(root);
+
+			parent.appendChild(root);
+			look = 'grid';
+			opened = true;
+			core.plugin.domFly.opened = true;
+			core.clearMap('ui');
+			core.setAlpha('ui', 1);
+			return true;
+		}
+
+		function openGrid() {
+			const fresh = look !== 'grid' || !root;
+			if (fresh) {
+				if (root) removeDom();
+				checked.clear();
+				pointMode = 'fly';
+				if (!mountGrid()) return;
+			}
+			rebuildList(fresh);
+		}
+
+		function openFly(dim) {
+			if (!root && !mount()) return;
+			refresh(dim);
+		}
+
+		const api = {
+			opened: false,
+			layout: function () {
+				if (!api.opened || !root) return;
+				const wantGrid = isGridLook();
+				if (wantGrid !== (look === 'grid')) {
+					const page = core.status.event.data;
+					settingsOn = false;
+					pointMode = 'fly';
+					removeDom();
+					if (wantGrid) openGrid();
+					else core.ui.drawFly(page);
+					return;
+				}
+				refresh();
+			},
+		};
+		core.plugin.domFly = api;
+		core.plugin._flyLayout = function () {
+			if (api.opened) api.layout();
+		};
+
+		const originClosePanel = core.ui.closePanel;
+		core.ui.closePanel = function () {
+			const delay = delayUnlock;
+			delayUnlock = false;
+			if (opened) removeDom();
+			originClosePanel.apply(core.ui, arguments);
+			if (delay) {
+				core.lockControl();
+				clearTimeout(unlockTimer);
+				unlockTimer = setTimeout(() => core.unlockControl(), 0);
+			}
+		};
+
+		const originFlyTo = core.flyTo;
+		core.flyTo = function (toId, callback) {
+			const ok = originFlyTo.apply(this, arguments);
+			if (ok === false && opened && ui) {
+				const map = core.status.maps[toId];
+				showTip('无法飞往' + ((map && map.title) || toId) + '！');
+			}
+			return ok;
+		};
+
+		core.ui.drawFly = function (page) {
+			if (core.hasFlag('usePlatFly')) return originDrawFly.call(core.ui, page);
+			const floorId = core.floorIds[page];
+			if (!floorId) return;
+			if (isGridLook()) {
+				core.status.event.data = page;
+				openGrid();
+				return;
+			}
+			if (look === 'grid') removeDom();
+			core.status.event.data = page;
+			const justHidden = !!core.ui._applyFlyAutoHide(floorId);
+			const replay = core.isReplaying();
+			if (replay && core.status.replay && core.status.replay.speed == 24) return;
+			const hiddenFlag = core.getFlag('hideFloors', {}).hasOwnProperty(floorId);
+			openFly(justHidden || hiddenFlag);
+			if (justHidden) showTip('满足条件，已自动隐藏该层。');
+		};
+
+		window.addEventListener('keydown', onGridKey, true);
+		window.addEventListener('keyup', onGridKey, true);
+	},
     "setting": function () {
 		// DOM 设置界面
 		// 请保持本插件在所有插件的最下方
@@ -9377,6 +10506,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (core.plugin._freeReplayLayout) core.plugin._freeReplayLayout();
 			if (core.plugin._statisticsLayout) core.plugin._statisticsLayout();
 			if (core.plugin._backpackLayout) core.plugin._backpackLayout();
+			if (core.plugin._flyLayout) core.plugin._flyLayout();
 		}
 		// #endregion
 
@@ -9566,13 +10696,42 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				text: '在地图上显示玩家的在线留言。',
 				replay: true,
 			},
+			flyLook: {
+				getName: () => '外观:' + (core.getLocalStorage('flyLook', 'single') === 'grid' ? '多楼层' : '单层'),
+				effect: () => {
+					const next = core.getLocalStorage('flyLook', 'single') === 'grid' ? 'single' : 'grid';
+					core.setLocalStorage('flyLook', next);
+					if (core.plugin._flyLayout) core.plugin._flyLayout();
+				},
+				text: '楼传一次看一层，或一页看多个楼层。没改过时是单层。',
+				replay: false,
+			},
 			autoHideFloor: {
 				getName: () => '自动隐藏楼层:' + (core.hasFlag('autoHideFloor') ? '开' : '关'),
 				effect: () => {
 					invertFlag('autoHideFloor');
+					if (core.plugin._flyLayout) core.plugin._flyLayout();
 				},
 				text: '一个楼层已无物品、敌人、NPC(不含已忽略图块)，且无未到达楼层传送口时可被自动隐藏，仅在首次进入此状态时在楼传界面触发。',
 				replay: true,
+			},
+			noHideFly: {
+				getName: () => '显示隐藏层:' + (core.hasFlag('noHideFly') ? '开' : '关'),
+				effect: () => {
+					core.setFlag('noHideFly', !core.hasFlag('noHideFly'));
+					if (core.plugin._flyLayout) core.plugin._flyLayout();
+				},
+				text: '在楼传界面显示已隐藏的楼层',
+				replay: false,
+			},
+			hideMapCount: {
+				getName: () => '楼层计数:' + (core.hasFlag('hideMapCount') ? '关' : '开'),
+				effect: () => {
+					core.setFlag('hideMapCount', !core.hasFlag('hideMapCount'));
+					if (core.plugin._flyLayout) core.plugin._flyLayout();
+				},
+				text: '单层时在右侧显示这一层的敌人、物品和 NPC 数量。多楼层时在每张图上显示有没有怪、物、NPC，不显示数量。',
+				replay: false,
 			},
 			autoSaveBeforeUseItem: {
 				getName: () => '使用物品自动保存:' + (core.getLocalStorage('autoSaveBeforeUseItem') ? '开' : '关'),
@@ -11146,10 +12305,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				toggle(line, 'skipPerform');
 				line = row(panel);
 				toggle(line, 'comment');
-				toggle(line, 'autoHideFloor');
 				line = row(panel);
 				toggle(line, 'autoSaveBeforeUseItem');
 				toggle(line, 'autoSaveBeforePickItem');
+				heading(panel, '楼传');
+				line = row(panel);
+				toggle(line, 'flyLook');
+				toggle(line, 'autoHideFloor');
+				toggle(line, 'noHideFly');
+				toggle(line, 'hideMapCount');
 				heading(panel, '背包');
 				line = row(panel);
 				toggle(line, 'backpackList');
@@ -11686,6 +12850,28 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		// 因为core.status.hero是进存档的，必定可序列化
 		const clone = (typeof structuredClone === 'function') ? structuredClone : (ele) => JSON.parse(JSON.stringify(ele));
 
+		// 楼传忽略名单。没有这个 flag、某一层没有记录、或记录不是字符串数组时，按没有忽略处理。
+		function readIgnoreList(floorId) {
+			let all;
+			try {
+				all = core.getFlag('ignoreItems', null);
+			} catch (e) {
+				return [];
+			}
+			if (!all || typeof all !== 'object') return [];
+			const list = all[floorId];
+			if (!Array.isArray(list)) return [];
+			const out = [];
+			for (let i = 0; i < list.length; i++) {
+				if (typeof list[i] === 'string') out.push(list[i]);
+			}
+			return out;
+		}
+
+		function ignoreKey(floorId) {
+			return readIgnoreList(floorId).slice().sort().join('\n');
+		}
+
 		function getFloorStat(floorId) {
 			const stat = {
 				toolsCount: { total: 0, },
@@ -11697,6 +12883,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			};
 			core.maps.extractBlocks(floorId);
 			const blocks = core.status.maps[floorId].blocks;
+			const ignored = new Set(readIgnoreList(floorId));
 			const temp = clone(core.status.hero);
 			const ratio = core.status.thisMap.ratio;
 			core.setFlag("__statistics__", true);
@@ -11705,6 +12892,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			for (let i = 0, l = blocks.length; i < l; i++) {
 				const block = blocks[i];
+				if (ignored.has(block.x + ',' + block.y)) continue;
 				const cls = block.event.cls,
 					id = block.event.id;
 				if (cls === "enemys" || cls === "enemy48") {
@@ -11807,7 +12995,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				vampireExtraLoss: { total: statistics.vampireExtraLoss },
 			};
 			floorList.forEach(floorId => {
-				if (!statistics[floorId]) statistics[floorId] = getFloorStat(floorId);
+				const key = ignoreKey(floorId);
+				const cached = statistics[floorId];
+				if (!cached || typeof cached !== 'object' || cached.ignoreKey !== key) {
+					statistics[floorId] = getFloorStat(floorId);
+					statistics[floorId].ignoreKey = key;
+				}
 				addToFormer(stat.enemys, statistics[floorId].enemys);
 				addToFormer(stat.items, statistics[floorId].items);
 				addCountToFormer(stat.toolsCount, statistics[floorId].toolsCount, floorId);
