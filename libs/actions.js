@@ -1354,25 +1354,48 @@ actions.prototype._clickFly = function (x, y, px, py) {
     return;
 }
 
-function ignoreItemsOnMap(floorId) {
-    // 选定要忽略的物品
+function ignoreItemsOnMap(floorId, returnTo) {
+    // 选定要忽略的物品。returnTo 只记在这次界面上，不进存档。
     const ignoreItems = core.getFlag('ignoreItems', {});
     const currIgnoreItems = new Set(ignoreItems[floorId]);
+    const exitEdge = 16;
+    core.plugin._ignoreItemsReturn = returnTo || null;
     core.control.lockControl();
     core.setFlag('pickingIgnoreItems', true);
     const ctx = core.createCanvas('ignoreItems', 0, 0, core.__PIXELS__, core.__PIXELS__, 141);
     ctx.lineJoin = 'round';
     core.drawThumbnail(floorId, null, { damage: false, x: 0, y: 0, size: core.__PIXELS__, ctx: ctx });
-    core.fillBoldText('ignoreItems', '选择有物品的图块，在统计数据时将忽略该位置。点楼传退出。', 35, 12, 'red', 'white', '12px Verdana');
+    core.fillBoldText('ignoreItems', '选择有物品的图块，在统计数据时将忽略该位置。', 35, 12, 'red', 'white', '12px Verdana');
+    const paintExit = (target) => {
+        const x0 = core.__PIXELS__ - exitEdge;
+        target.save();
+        target.fillStyle = 'rgba(0,0,0,0.72)';
+        target.fillRect(x0, 0, exitEdge, exitEdge);
+        target.strokeStyle = '#ffffff';
+        target.lineWidth = 2;
+        target.beginPath();
+        target.moveTo(x0 + 4, 4);
+        target.lineTo(x0 + exitEdge - 4, exitEdge - 4);
+        target.moveTo(x0 + exitEdge - 4, 4);
+        target.lineTo(x0 + 4, exitEdge - 4);
+        target.stroke();
+        target.restore();
+    };
     const drawIgnoreItems = () => {
-        const ctx = core.createCanvas('ignoreItemsMark', 0, 0, core.__PIXELS__, core.__PIXELS__, 142);
+        const mark = core.createCanvas('ignoreItemsMark', 0, 0, core.__PIXELS__, core.__PIXELS__, 142);
         currIgnoreItems.forEach(pos => {
             const [x, y] = pos.split(',').map(char => parseInt(char));
-            core.drawCrossLine(ctx, 32 * x + 2, 32 * y + 2, 32 * (x + 1) - 2, 32 * (y + 1) - 2, 'red', 2);
+            core.drawCrossLine(mark, 32 * x + 2, 32 * y + 2, 32 * (x + 1) - 2, 32 * (y + 1) - 2, 'red', 2);
         });
+        paintExit(mark);
     }
-    core.registerAction('ondown', 'ignoreItem', (x, y) => {
-        if (!["items", "enemys", "enemy48", "npcs", "npc48"].includes(core.getBlockCls(x, y, floorId))) return;
+    core.registerAction('ondown', 'ignoreItem', (x, y, px, py) => {
+        if (px >= core.__PIXELS__ - exitEdge && py >= 0 && py < exitEdge) {
+            core.events.quitIgnoreItems();
+            return true;
+        }
+        if (x < 0 || y < 0 || x >= core.__SIZE__ || y >= core.__SIZE__) return true;
+        if (!["items", "enemys", "enemy48", "npcs", "npc48"].includes(core.getBlockCls(x, y, floorId))) return true;
         const posStr = x + ',' + y;
         if (currIgnoreItems.has(posStr)) {
             currIgnoreItems.delete(posStr);
@@ -1383,15 +1406,12 @@ function ignoreItemsOnMap(floorId) {
         ignoreItems[floorId] = [...currIgnoreItems];
         core.setFlag('ignoreItems', ignoreItems);
         drawIgnoreItems();
+        return true;
     }, 120);
     core.registerAction('keyUp', 'ignoreItem', (keyCode) => {
-        switch (keyCode) {
-            case 8: //BackSpace
-            case 27: //Esc
-            case 71: //G
-                core.events.quitIgnoreItems();
-                break;
-        }
+        if (keyCode !== 27) return;
+        core.events.quitIgnoreItems();
+        return true;
     }, 120);
     drawIgnoreItems();
 }

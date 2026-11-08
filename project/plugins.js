@@ -9922,7 +9922,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 			if (pointMode === 'ignore') {
 				core.ui.closePanel();
-				core.actions._ignoreItemsOnMap(floorId);
+				core.actions._ignoreItemsOnMap(floorId, 'fly');
 				return;
 			}
 			core.flyTo(floorId);
@@ -9965,7 +9965,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					const floorId = core.floorIds[core.status.event.data];
 					if (!floorId) return;
 					core.ui.closePanel();
-					core.actions._ignoreItemsOnMap(floorId);
+					core.actions._ignoreItemsOnMap(floorId, 'fly');
 				}
 				return;
 			}
@@ -10282,7 +10282,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				const floorId = core.floorIds[core.status.event.data];
 				if (!floorId) return;
 				core.ui.closePanel();
-				core.actions._ignoreItemsOnMap(floorId);
+				core.actions._ignoreItemsOnMap(floorId, 'fly');
 			});
 			canvas.addEventListener('click', () => {
 				if (core.isReplaying() || settingsOn) return;
@@ -13245,6 +13245,20 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			"font-size:calc(11px * var(--st-scale));line-height:1.15;}",
 			"#dom-statistics .st-row{display:flex;flex-wrap:wrap;gap:calc(4px * var(--st-scale));align-items:center;",
 			"margin-top:calc(4px * var(--st-scale));flex:0 0 auto;}",
+			"#dom-statistics .st-floor-foot{margin-top:calc(8px * var(--st-scale));flex:0 0 auto;width:100%;",
+			"display:flex;flex-direction:column;align-items:stretch;gap:calc(10px * var(--st-scale));}",
+			"#dom-statistics .st-zone-line{display:flex;align-items:center;gap:calc(14px * var(--st-scale));width:100%;}",
+			"#dom-statistics .st-zone{display:flex;flex-wrap:wrap;align-items:center;gap:calc(4px * var(--st-scale));}",
+			"#dom-statistics .st-marked,#dom-statistics .st-zone-select{margin-left:auto;}",
+			"#dom-statistics .st-page-btn{font-size:calc(11px * var(--st-scale));min-height:calc(18px * var(--st-scale));",
+			"padding:calc(1px * var(--st-scale)) calc(5px * var(--st-scale));background:transparent;border-color:#6a6458;",
+			"color:var(--st-note);border-radius:2px;}",
+			"#dom-statistics .st-select-btn{background:#2a3140;border-color:#6d7c99;color:#d5e2f5;}",
+			"#dom-statistics .st-select-btn.on{outline:none;background:#243044;border-color:#9eb6de;color:#fff;}",
+			"#dom-statistics .st-ignore-btn{background:#3a2a24;border-color:#a67a62;color:#f0d2c4;}",
+			"#dom-statistics .st-ignore-btn.on{outline:none;background:#5a3a2c;border-color:#e6a07a;color:#ffe8dc;}",
+			"#dom-statistics .st-go{background:var(--st-gold);border-color:#f3df9a;color:#2a2416;font-weight:bold;",
+			"min-height:calc(28px * var(--st-scale));padding:calc(4px * var(--st-scale)) calc(14px * var(--st-scale));}",
 			"#dom-statistics .st-count{color:var(--st-note);}",
 			"#dom-statistics .st-summary,#dom-statistics .st-player{margin:0;white-space:pre-wrap;}",
 			"#dom-statistics .st-player{overflow:auto;}",
@@ -13266,6 +13280,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			"#dom-statistics .st-pick-grid{display:flex;flex-wrap:wrap;gap:calc(6px * var(--st-scale));align-content:flex-start;}",
 			"#dom-statistics .st-pick-grid button{display:inline-flex;align-items:center;gap:calc(4px * var(--st-scale));max-width:100%;}",
 			"#dom-statistics .st-pick-grid button.st-off{text-decoration:line-through;color:#e7a0a0;}",
+			"#dom-statistics .st-picker-back{margin-top:calc(12px * var(--st-scale));}",
 			"#dom-statistics .st-hint{margin:calc(6px * var(--st-scale)) 0 0;color:var(--st-note);font-size:calc(12px * var(--st-scale));}",
 			"#dom-statistics input{background:#141414;min-width:8em;user-select:text;}",
 			"#dom-statistics .st-empty{margin:0;color:var(--st-note);}",
@@ -13336,6 +13351,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 				floorPage: 0,
 				areaSelectOn: false,
 				areaBorder: "",
+				ignoreFloorOn: false,
 				mode: "tools",
 				colPage: 0,
 				tableFloors: null,
@@ -13375,28 +13391,42 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			const pageTable = node("div", "st-page off");
 			const pagePlayer = node("div", "st-page off");
 			const grid = node("div", "st-grid");
-			const floorActions = node("div", "st-row");
+			const floorActions = node("div", "st-floor-foot");
+			const toolLine = node("div", "st-zone-line");
+			const actionLine = node("div", "st-zone-line");
+			const pageZone = node("div", "st-zone");
+			const selectZone = node("div", "st-zone st-zone-select");
+			const ignoreZone = node("div", "st-zone");
+			const goZone = node("div", "st-zone");
 			const pageInd = node("span", "st-count", "");
-			const markedInd = node("span", "st-count", "");
-			const prevFloor = node("button", "", "上一页");
-			const nextFloor = node("button", "", "下一页");
-			const checkAll = node("button", "", "全选");
-			const inverse = node("button", "", "反选");
-			const clearSelect = node("button", "", "全不选");
-			const areaBtn = node("button", "", "区域选择");
-			const outcome = node("button", "", "统计所选");
-			[prevFloor, nextFloor, checkAll, inverse, clearSelect, areaBtn, outcome].forEach((b) => {
+			const markedInd = node("span", "st-count st-marked", "");
+			const prevFloor = node("button", "st-page-btn", "上一页");
+			const nextFloor = node("button", "st-page-btn", "下一页");
+			const checkAll = node("button", "st-select-btn", "全选");
+			const inverse = node("button", "st-select-btn", "反选");
+			const clearSelect = node("button", "st-select-btn", "全不选");
+			const areaBtn = node("button", "st-select-btn", "区域选择");
+			const ignoreFloorBtn = node("button", "st-ignore-btn", "忽略楼层图块");
+			const outcome = node("button", "st-go", "统计所选");
+			[prevFloor, nextFloor, checkAll, inverse, clearSelect, areaBtn, ignoreFloorBtn, outcome].forEach((b) => {
 				b.type = "button";
 			});
-			floorActions.appendChild(prevFloor);
-			floorActions.appendChild(pageInd);
-			floorActions.appendChild(nextFloor);
-			floorActions.appendChild(checkAll);
-			floorActions.appendChild(inverse);
-			floorActions.appendChild(clearSelect);
-			floorActions.appendChild(areaBtn);
-			floorActions.appendChild(outcome);
-			floorActions.appendChild(markedInd);
+			pageZone.appendChild(prevFloor);
+			pageZone.appendChild(pageInd);
+			pageZone.appendChild(nextFloor);
+			selectZone.appendChild(checkAll);
+			selectZone.appendChild(inverse);
+			selectZone.appendChild(clearSelect);
+			selectZone.appendChild(areaBtn);
+			ignoreZone.appendChild(ignoreFloorBtn);
+			goZone.appendChild(outcome);
+			toolLine.appendChild(pageZone);
+			toolLine.appendChild(selectZone);
+			actionLine.appendChild(ignoreZone);
+			actionLine.appendChild(markedInd);
+			actionLine.appendChild(goZone);
+			floorActions.appendChild(toolLine);
+			floorActions.appendChild(actionLine);
 			pageFloors.appendChild(grid);
 			pageFloors.appendChild(floorActions);
 
@@ -13428,8 +13458,8 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			tableWrap.appendChild(table);
 			tableWrap.hidden = true;
 			const colPager = node("div", "st-row");
-			const prevCol = node("button", "", "上一组");
-			const nextCol = node("button", "", "下一组");
+			const prevCol = node("button", "st-page-btn", "上一组");
+			const nextCol = node("button", "st-page-btn", "下一组");
 			const colInd = node("span", "st-count", "");
 			prevCol.type = nextCol.type = "button";
 			colPager.appendChild(prevCol);
@@ -13449,7 +13479,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			rangeRow.appendChild(rangeInput);
 			rangeRow.appendChild(rangeAdd);
 			const rangeHint = node("p", "st-hint", "格式：0,100 表示含 0、不含 100。第二个数空着表示无限大。");
-			const pickerBack = node("button", "", "返回");
+			const pickerBack = node("button", "st-picker-back", "返回");
 			pickerBack.type = "button";
 			picker.appendChild(pickerTitle);
 			picker.appendChild(pickGrid);
@@ -13508,6 +13538,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 					btn.classList.toggle("area", floorId === state.areaBorder && !!state.areaBorder);
 				});
 				areaBtn.classList.toggle("on", state.areaSelectOn);
+				ignoreFloorBtn.classList.toggle("on", state.ignoreFloorOn);
 				markedInd.textContent = "已标 " + markedCount() + " 层";
 			}
 
@@ -13538,7 +13569,26 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 				paintThumbs();
 			}
 
+			function enterIgnoreFloor(floorId) {
+				close(true);
+				core.actions._ignoreItemsOnMap(floorId, 'statistics');
+			}
+
+			function toggleIgnoreFloor() {
+				state.ignoreFloorOn = !state.ignoreFloorOn;
+				if (state.ignoreFloorOn) {
+					state.areaSelectOn = false;
+					state.areaBorder = "";
+					showTip("点击楼层以忽略图块");
+				}
+				updateFloorMarks();
+			}
+
 			function onFloor(floorId) {
+				if (state.ignoreFloorOn) {
+					enterIgnoreFloor(floorId);
+					return;
+				}
 				if (state.areaSelectOn) {
 					if (!state.areaBorder) {
 						state.areaBorder = floorId;
@@ -13561,6 +13611,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 
 			function toggleArea() {
 				if (!state.areaSelectOn) {
+					state.ignoreFloorOn = false;
 					state.areaSelectOn = true;
 					state.areaBorder = "";
 					showTip("请依次选择目标区域的起始楼层和终点楼层");
@@ -13737,6 +13788,10 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 
 			function showPage(name) {
 				if (state.pickerOn && name !== state.page) closePicker();
+				if (name !== "floors" && state.ignoreFloorOn) {
+					state.ignoreFloorOn = false;
+					ignoreFloorBtn.classList.remove("on");
+				}
 				state.page = name;
 				pageFloors.classList.toggle("off", name !== "floors");
 				pageTable.classList.toggle("off", name !== "table");
@@ -13795,12 +13850,17 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 						escHold = "input";
 						rangeInput.blur();
 					} else if (state.pickerOn) escHold = "picker";
+					else if (state.ignoreFloorOn) escHold = "ignore";
 					else escHold = "close";
 					return;
 				}
 				const act = escHold;
 				escHold = "";
 				if (act === "picker") closePicker();
+				else if (act === "ignore") {
+					state.ignoreFloorOn = false;
+					updateFloorMarks();
+				}
 				else if (act === "close") close(false);
 			}
 
@@ -13840,6 +13900,7 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 				updateFloorMarks();
 			});
 			areaBtn.addEventListener("click", toggleArea);
+			ignoreFloorBtn.addEventListener("click", toggleIgnoreFloor);
 			outcome.addEventListener("click", computeSelected);
 			Object.keys(modeBtns).forEach((id) => {
 				modeBtns[id].addEventListener("click", () => {

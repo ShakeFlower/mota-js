@@ -2777,17 +2777,31 @@ events.prototype.openBook = function (fromUserAction) {
 
 ////// 退出屏蔽物品界面 //////
 events.prototype.quitIgnoreItems = function () {
+    const back = core.plugin._ignoreItemsReturn || null;
+    core.plugin._ignoreItemsReturn = null;
     core.setFlag('pickingIgnoreItems', false);
     core.deleteCanvas('ignoreItems');
     core.deleteCanvas('ignoreItemsMark');
     core.unregisterAction('ondown', 'ignoreItem');
     core.unregisterAction('keyUp', 'ignoreItem');
+    if (back === 'statistics' && core.ui._drawStatistics) {
+        core.ui._drawStatistics();
+        if (!(core.plugin.domStatistics && core.plugin.domStatistics.opened)) core.unlockControl();
+        return;
+    }
+    if (back === 'fly') {
+        core.lockControl();
+        core.status.event.id = 'fly';
+        core.ui.drawFly(core.floorIds.indexOf(core.status.floorId));
+        return;
+    }
     core.unlockControl();
 }
 
 ////// 点击楼层传送器时的打开操作 //////
 events.prototype.useFly = function (fromUserAction) {
     if (core.isReplaying()) return;
+    if (core.hasFlag('pickingIgnoreItems')) return;
     // 从“浏览地图”页面：尝试直接传送到该层
     if (core.status.event.id == 'viewMaps') {
         if (!core.hasItem('fly')) {
@@ -2800,11 +2814,6 @@ events.prototype.useFly = function (fromUserAction) {
             core.flyTo(core.status.event.data.floorId);
         }
         return;
-    }
-
-    // 退出隐藏物品模式
-    if (core.hasFlag('pickingIgnoreItems')) {
-        this.quitIgnoreItems();
     }
 
     if (!this._checkStatus('fly', fromUserAction, true)) return;
