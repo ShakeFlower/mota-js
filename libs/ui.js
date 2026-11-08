@@ -681,6 +681,7 @@ ui.prototype._uievent_drawIcon = function (data) {
 
 ////// 结束一切事件和绘制，关闭UI窗口，返回游戏进程 //////
 ui.prototype.closePanel = function () {
+    if (this._slRemove) this._slRemove();
     if (core.status.hero && core.status.hero.flags) {
         // 清除全部临时变量
         Object.keys(core.status.hero.flags).forEach(function (name) {
@@ -3197,166 +3198,967 @@ ui.prototype._drawEquipbox_drawEquiped = function (info, line) {
 }
 
 ////// 绘制存档/读档界面 //////
-ui.prototype._drawSLPanel = function (index, refresh) {
-    core.control._loadFavoriteSaves();
+ui.prototype._slState = function () {
+    if (!this.sl) {
+        this.sl = {
+            root: null, view: 'slots', deleteMode: false, folderDelete: false,
+            multi: false, selected: [], stage: null, op: null, sourceFolder: null,
+            records: [], loadedPage: -1, loadedFolder: null, token: 0,
+            folderIndex: 0, busy: false, tipTimer: null, canvases: []
+        };
+    }
+    return this.sl;
+}
+
+ui.prototype._slClamp = function (index) {
     if (index == null) index = 1;
     if (index < 0) index = 0;
-
-    var page = parseInt(index / 10), offset = index % 10;
-    var max_page = main.savePages || 30;
-    if (core.status.event.data && core.status.event.data.mode == 'fav')
-        max_page = Math.ceil((core.saves.favorite || []).length / 5);
-    if (page >= max_page) page = max_page - 1;
+    var page = Math.floor(index / 10), offset = index % 10;
+    var maxPage = main.savePages || 30;
+    if (page >= maxPage) page = maxPage - 1;
+    if (page < 0) page = 0;
     if (offset > 5) offset = 5;
-    if (core.status.event.data && core.status.event.data.mode == 'fav' && page == max_page - 1) {
-        offset = Math.min(offset, (core.saves.favorite || []).length - 5 * page);
-    }
-
-    var last_page = -1;
-    var mode = 'all';
-    if (core.status.event.data) {
-        last_page = core.status.event.data.page;
-        mode = core.status.event.data.mode;
-    }
-    core.status.event.data = { 'page': page, 'offset': offset, 'mode': mode };
-    core.status.event.ui = core.status.event.ui || [];
-    if (refresh || page != last_page) {
-        core.status.event.ui = [];
-        this._drawSLPanel_loadSave(page, function () {
-            core.ui._drawSLPanel_draw(page, max_page);
-        });
-    }
-    else this._drawSLPanel_draw(page, max_page);
+    if (offset < 0) offset = 0;
+    return { page: page, offset: offset, maxPage: maxPage };
 }
 
-ui.prototype._drawSLPanel_draw = function (page, max_page) {
-    // --- 绘制背景
-    this._drawSLPanel_drawBackground();
-    // --- 绘制文字
-    core.ui.drawPagination(page + 1, max_page);
-    core.setTextAlign('ui', 'center');
-    var bottom = this.PIXEL - 13;
-    core.fillText('ui', '返回游戏', this.PIXEL - 48, bottom, '#DDDDDD', this._buildFont(15, true));
-
-    if (core.status.event.selection)
-        core.setFillStyle('ui', '#FF6A6A');
-    if (core.status.event.id == 'save')
-        core.fillText('ui', '删除模式', 48, bottom);
-    else {
-        if (core.status.event.data.mode == 'all') {
-            core.fillText('ui', '[E]显示收藏', 52, bottom);
-        } else {
-            core.fillText('ui', '[E]显示全部', 52, bottom);
-        }
-    }
-    // --- 绘制记录
-    this._drawSLPanel_drawRecords();
+ui.prototype._slCanManage = function () {
+    var id = core.status.event && core.status.event.id;
+    return id === 'save' || id === 'load';
 }
 
-ui.prototype._drawSLPanel_drawBackground = function () {
-    let backGroundStyle = 'black';
-    if (core.status.event.id === 'save') backGroundStyle = 'rgb(85, 0, 140)';
+ui.prototype._slRemove = function () {
+    var sl = this.sl;
+    if (!sl || !sl.root) return;
+    if (sl.tipTimer) clearTimeout(sl.tipTimer);
+    if (sl.root.parentNode) sl.root.parentNode.removeChild(sl.root);
+    sl.root = null;
+    sl.canvases = [];
+}
+
+ui.prototype._slLayout = function () {
+    var sl = this.sl;
+    if (!sl || !sl.root) return;
+    sl.root.style.fontSize = (14 * (core.domStyle.scale || 1)) + 'px';
+    var select = (core.status.globalAttribute || core.initStatus.globalAttribute || {}).selectColor || '#FFD700';
+    sl.root.style.setProperty('--sl-select', select);
+    this._slPaintThumbs();
+}
+
+ui.prototype._slMount = function () {
+    var sl = this._slState();
+    if (sl.root) return;
+    sl.view = 'slots';
+    sl.deleteMode = false;
+    sl.folderDelete = false;
+    sl.multi = false;
+    sl.selected = [];
+    sl.stage = null;
+    sl.op = null;
+    sl.sourceFolder = null;
+    sl.folderIndex = 0;
+    sl.settings = false;
     core.clearMap('ui');
-    core.setAlpha('ui', 0.85);
-    core.fillRect('ui', 0, 0, this.PIXEL, this.PIXEL, backGroundStyle); //可改成背景图
-    core.setAlpha('ui', 1);
+    var root = document.createElement('div');
+    root.className = 'sl-root';
+    root.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    root.addEventListener('click', function (e) { e.stopPropagation(); });
+    root.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    var top = document.createElement('div');
+    top.className = 'sl-top';
+    var folderBtn = document.createElement('div');
+    folderBtn.className = 'sl-folder';
+    var multiBtn = document.createElement('div');
+    multiBtn.className = 'sl-multi';
+    top.appendChild(folderBtn);
+    top.appendChild(multiBtn);
+    var banner = document.createElement('div');
+    banner.className = 'sl-banner';
+    var bannerText = document.createElement('span');
+    var cancelStart = document.createElement('div');
+    cancelStart.className = 'sl-cancel';
+    cancelStart.textContent = '取消操作';
+    banner.appendChild(bannerText);
+    banner.appendChild(cancelStart);
+    var body = document.createElement('div');
+    body.className = 'sl-body';
+    var bottom = document.createElement('div');
+    bottom.className = 'sl-bottom';
+    function btn(cls, text) {
+        var b = document.createElement('div');
+        b.className = cls;
+        b.textContent = text;
+        return b;
+    }
+    var deleteBtn = btn('sl-delete', '删除模式');
+    var prevBtn = btn('sl-prev', '上一页');
+    var pageLabel = document.createElement('span');
+    pageLabel.className = 'sl-page';
+    var nextBtn = btn('sl-next', '下一页');
+    var undoBtn = btn('sl-undo', '撤回');
+    var backBtn = btn('sl-back', '返回');
+    var pager = document.createElement('div');
+    pager.className = 'sl-pager';
+    pager.appendChild(prevBtn);
+    pager.appendChild(pageLabel);
+    pager.appendChild(nextBtn);
+    bottom.appendChild(deleteBtn);
+    bottom.appendChild(pager);
+    bottom.appendChild(undoBtn);
+    bottom.appendChild(backBtn);
+    var tip = document.createElement('div');
+    tip.className = 'sl-tip';
+    root.appendChild(top);
+    root.appendChild(banner);
+    root.appendChild(body);
+    root.appendChild(bottom);
+    var gear = document.createElement('div');
+    gear.className = 'sl-gear';
+    gear.textContent = '⚙';
+    gear.title = '设置';
+    gear.setAttribute('aria-label', '设置');
+    var setLayer = document.createElement('div');
+    setLayer.className = 'sl-set';
+    setLayer.style.display = 'none';
+    var setBox = document.createElement('div');
+    setBox.className = 'sl-set-box';
+    var setTitle = document.createElement('div');
+    setTitle.className = 'sl-set-title';
+    setTitle.textContent = '自动存档回退';
+    var setNote = document.createElement('div');
+    setNote.className = 'sl-set-note';
+    setNote.textContent = '调整自动存档的最大回退次数。';
+    var setChoices = document.createElement('div');
+    setChoices.className = 'sl-set-choices';
+    var setNow = document.createElement('div');
+    setNow.className = 'sl-set-now';
+    var setBack = btn('sl-back', '返回');
+    setBox.appendChild(setTitle);
+    setBox.appendChild(setNote);
+    setBox.appendChild(setChoices);
+    setBox.appendChild(setNow);
+    setBox.appendChild(setBack);
+    setLayer.appendChild(setBox);
+    root.appendChild(tip);
+    root.appendChild(gear);
+    root.appendChild(setLayer);
+    var self = this;
+    folderBtn.onclick = function () { self._slFolderButton(); };
+    multiBtn.onclick = function () { self._slMultiButton(); };
+    deleteBtn.onclick = function () { self._slDeleteButton(); };
+    prevBtn.onclick = function () { self._slPage(-1); };
+    nextBtn.onclick = function () { self._slPage(1); };
+    undoBtn.onclick = function () { self._slUndo(); };
+    backBtn.onclick = function () { self._slBackLayer(); };
+    cancelStart.onclick = function () { self._slBackLayer(); };
+    gear.onclick = function () {
+        if (sl.settings) self._slCloseAutoSet();
+        else self._slOpenAutoSet();
+    };
+    setLayer.onclick = function (e) {
+        if (e.target === setLayer) self._slCloseAutoSet();
+    };
+    setBack.onclick = function () { self._slCloseAutoSet(); };
+    core.control.AUTO_SAVE_LIMITS.forEach(function (n) {
+        var choice = document.createElement('div');
+        choice.className = 'sl-set-choice';
+        choice.setAttribute('data-n', String(n));
+        choice.textContent = String(n);
+        choice.onclick = function () {
+            core.playSound('确定');
+            core.control.applyAutoSaveLimit(n);
+            self._slRefreshAutoSet();
+        };
+        setChoices.appendChild(choice);
+    });
+    sl.root = root;
+    sl.folderBtn = folderBtn;
+    sl.multiBtn = multiBtn;
+    sl.deleteBtn = deleteBtn;
+    sl.prevBtn = prevBtn;
+    sl.nextBtn = nextBtn;
+    sl.pager = pager;
+    sl.pageLabel = pageLabel;
+    sl.undoBtn = undoBtn;
+    sl.backBtn = backBtn;
+    sl.banner = banner;
+    sl.bannerText = bannerText;
+    sl.body = body;
+    sl.tip = tip;
+    sl.gear = gear;
+    sl.setLayer = setLayer;
+    sl.setNow = setNow;
+    core.dom.gameDraw.appendChild(root);
+    this._slLayout();
 }
 
-ui.prototype._drawSLPanel_loadSave = function (page, callback) {
-    var ids = [0];
-    for (var i = 1; i <= 5; ++i) {
-        var id = 5 * page + i;
-        if (core.status.event.data.mode == 'fav')
-            id = core.saves.favorite[id - 1]; // 因为favorite第一个不是自动存档 所以要偏移1
-        ids.push(id);
+ui.prototype._slTip = function (text) {
+    var sl = this.sl;
+    if (!sl || !sl.tip) {
+        core.drawTip(text);
+        return;
     }
+    sl.tip.textContent = text || '';
+    sl.tip.style.display = text ? 'block' : 'none';
+    if (sl.tipTimer) clearTimeout(sl.tipTimer);
+    if (text) sl.tipTimer = setTimeout(function () {
+        if (sl.tip) sl.tip.style.display = 'none';
+    }, 2500);
+}
+
+ui.prototype._drawSLPanel = function (index, refresh) {
+    if (main.replayChecking) return;
+    if (!core.dom || !core.dom.gameDraw) return;
+    core.control._ensureSaveFolders();
+    if (core.control.applyAutoSaveLimit) core.control.applyAutoSaveLimit();
+    var loc = this._slClamp(index);
+    var sl = this._slState();
+    var folder = core.control._currentFolder();
+    var same = sl.root && sl.view === 'slots' && !refresh && sl.loadedPage === loc.page && sl.loadedFolder === folder;
+    core.status.event.data = core.status.event.data || {};
+    core.status.event.data.page = loc.page;
+    core.status.event.data.offset = loc.offset;
+    this._slMount();
+    core.status.event.data.mode = sl.view === 'folders' ? 'folder' : 'all';
+    this._slChrome();
+    if (sl.view === 'folders') {
+        this._slRenderFolders();
+        return;
+    }
+    if (same) {
+        this._slMarkSelection();
+        return;
+    }
+    this._slLoadPage(loc.page);
+}
+
+ui.prototype._slChrome = function () {
+    var sl = this.sl;
+    if (!sl || !sl.root) return;
+    var manage = this._slCanManage();
+    var id = core.status.event && core.status.event.id;
+    if (id !== 'save') {
+        sl.deleteMode = false;
+        sl.folderDelete = false;
+    }
+    sl.root.classList.toggle('sl-saving', id === 'save');
+    sl.root.classList.toggle('sl-deleting', !!sl.deleteMode && sl.view === 'slots');
+    var picking = sl.stage === 'pick-start';
+    sl.folderBtn.style.display = manage && !picking ? '' : (manage ? 'none' : '');
+    sl.multiBtn.style.display = manage && !picking ? '' : 'none';
+    sl.deleteBtn.style.display = id === 'save' ? '' : 'none';
+    if (!manage) sl.folderBtn.style.display = '';
+    var undoCount = (core.saves.undo && core.saves.undo.length) || 0;
+    sl.undoBtn.style.display = (id === 'save' && undoCount) ? '' : 'none';
+    sl.undoBtn.classList.remove('sl-disabled');
+    sl.undoBtn.textContent = undoCount ? ('撤回(' + undoCount + ')') : '撤回';
+    if (sl.view === 'folders') {
+        sl.deleteBtn.textContent = sl.folderDelete ? '退出删除' : '删除文件夹';
+        sl.folderBtn.textContent = '文件夹';
+        sl.multiBtn.style.display = 'none';
+    } else if (sl.multi) {
+        var ready = sl.selected.length > 0;
+        sl.folderBtn.textContent = '移动到';
+        sl.multiBtn.textContent = '复制到';
+        sl.folderBtn.classList.toggle('sl-disabled', !ready);
+        sl.multiBtn.classList.toggle('sl-disabled', !ready);
+        sl.deleteBtn.textContent = sl.deleteMode ? '退出删除' : '删除模式';
+    } else {
+        sl.folderBtn.classList.remove('sl-disabled');
+        sl.multiBtn.classList.remove('sl-disabled');
+        sl.folderBtn.textContent = core.control._currentFolder();
+        sl.multiBtn.textContent = '多选';
+        sl.deleteBtn.textContent = sl.deleteMode ? '退出删除' : '删除模式';
+    }
+    var loc = this._slClamp((core.status.event.data.page || 0) * 10 + (core.status.event.data.offset || 0));
+    sl.pageLabel.textContent = (loc.page + 1) + ' / ' + loc.maxPage;
+    var showPage = sl.view === 'slots';
+    sl.pager.style.display = showPage ? '' : 'none';
+    if (sl.op) sl.deleteBtn.style.display = 'none';
+    var choosing = sl.view === 'folders' && (sl.op === 'move' || sl.op === 'copy');
+    sl.banner.style.display = (picking || choosing) ? 'flex' : 'none';
+    if (picking) {
+        var verb = sl.op === 'copy' ? '复制' : '移动';
+        sl.bannerText.textContent = '请选择一个手动位作为起点，将 ' + sl.selected.length + ' 个存档' + verb + '到此';
+    } else if (choosing) {
+        sl.bannerText.textContent = (sl.op === 'copy' ? '复制' : '移动') + '到哪个文件夹';
+    }
+}
+
+ui.prototype._slLoadPage = function (page) {
+    var sl = this.sl;
+    var ids = [0];
+    for (var i = 1; i <= 5; i++) ids.push(5 * page + i);
+    var folder = core.control._currentFolder();
+    var token = ++sl.token;
+    var self = this;
     core.getSaves(ids, function (data) {
-        for (var i = 1; i < ids.length; ++i)
-            core.status.event.ui[i] = data[i];
-        core.status.event.ui[0] = data[0] == null ? null : data[0][core.saves.autosave.now - 1];
-        callback();
+        if (!sl.root || token !== sl.token) return;
+        if (core.control._currentFolder() !== folder) return;
+        var auto = data[0];
+        var now = core.saves.autosave.now || 0;
+        sl.records = [];
+        sl.records[0] = auto == null ? null : (Array.isArray(auto) ? (now > 0 ? auto[now - 1] : null) : auto);
+        for (var n = 1; n <= 5; n++) sl.records[n] = data[n] || null;
+        sl.loadedPage = page;
+        sl.loadedFolder = folder;
+        self._slRenderSlots();
+    }, folder);
+}
+
+ui.prototype._slRenderSlots = function () {
+    var sl = this.sl;
+    var body = sl.body;
+    body.textContent = '';
+    var grid = document.createElement('div');
+    grid.className = 'sl-grid';
+    sl.canvases = [];
+    var page = core.status.event.data.page || 0;
+    var kind = core.status.event.id == 'save' ? '存档' : core.status.event.id == 'load' ? '读档' : '回放';
+    var self = this;
+    for (var i = 0; i < 6; i++) {
+        (function (i) {
+            var id = i === 0 ? 'autoSave' : (5 * page + i);
+            var data = sl.records[i];
+            var slot = document.createElement('div');
+            slot.className = 'sl-slot';
+            slot.setAttribute('data-offset', String(i));
+            var title = document.createElement('div');
+            title.className = 'sl-title';
+            var titleText = i === 0 ? '自动存档' : (kind + id);
+            if (data && data.__toReplay__) titleText = '[R]' + titleText;
+            title.textContent = titleText;
+            var shot = document.createElement('div');
+            shot.className = 'sl-shot';
+            var canvas = document.createElement('canvas');
+            var notes = document.createElement('div');
+            notes.className = 'sl-notes';
+            var hard = document.createElement('div');
+            hard.className = 'sl-hard';
+            var empty = document.createElement('div');
+            empty.className = 'sl-empty';
+            empty.textContent = '空';
+            shot.appendChild(canvas);
+            shot.appendChild(notes);
+            shot.appendChild(hard);
+            shot.appendChild(empty);
+            var stats = document.createElement('div');
+            stats.className = 'sl-stats';
+            var date = document.createElement('div');
+            date.className = 'sl-date';
+            var mark = document.createElement('div');
+            mark.className = 'sl-mark';
+            mark.textContent = '✓';
+            if (data && data.floorId && data.hero) {
+                empty.style.display = 'none';
+                var lines = [];
+                var list = data.hero.notes || [];
+                if (list.length >= 2)
+                    lines.push((list.length - 1) + '. ' + String(list[list.length - 2]).substring(0, 10));
+                if (list.length >= 1)
+                    lines.push(list.length + '. ' + String(list[list.length - 1]).substring(0, 10));
+                notes.textContent = lines.join('\n');
+                notes.style.display = lines.length ? 'block' : 'none';
+                if (core.isPlaying() && data.hero.flags && core.getFlag('hard') != data.hero.flags.hard) {
+                    hard.textContent = data.hard || '';
+                    hard.style.color = data.hero.flags.__hardColor__ || 'red';
+                    hard.style.display = 'flex';
+                }
+                var v = core.formatBigNumber(data.hero.hp, true) + '/' + core.formatBigNumber(data.hero.atk, true) + '/' + core.formatBigNumber(data.hero.def, true);
+                var v2 = '/' + core.formatBigNumber(data.hero.mdef, true);
+                if ((v + v2).length <= 24) v += v2;
+                stats.textContent = v;
+                var select = (core.status.globalAttribute || core.initStatus.globalAttribute || {}).selectColor || '#FFD700';
+                stats.style.color = select;
+                date.textContent = core.formatDate(new Date(data.time));
+                if (data.hero.flags && data.hero.flags.debug) date.classList.add('sl-debug');
+            } else {
+                notes.style.display = 'none';
+                hard.style.display = 'none';
+                stats.textContent = '';
+                date.textContent = '';
+            }
+            slot.appendChild(mark);
+            slot.appendChild(title);
+            slot.appendChild(shot);
+            slot.appendChild(stats);
+            slot.appendChild(date);
+            slot.onclick = function () { self._slActivate(i); };
+            grid.appendChild(slot);
+            sl.canvases[i] = canvas;
+        })(i);
+    }
+    body.appendChild(grid);
+    this._slMarkSelection();
+    var paint = this._slPaintThumbs.bind(this);
+    requestAnimationFrame(function () {
+        paint();
+        requestAnimationFrame(paint);
     });
 }
 
-// 在以x为中心轴 y为顶坐标 的位置绘制一条宽为size的记录 cho表示是否被选中 选中会加粗 highlight表示高亮标题 ✐
-ui.prototype._drawSLPanel_drawRecord = function (title, data, x, y, size, cho, highLight) {
-    var globalAttribute = core.status.globalAttribute || core.initStatus.globalAttribute;
-    var strokeColor = globalAttribute.selectColor;
-    if (core.status.event.selection) strokeColor = '#FF6A6A';
-    if (!data || !data.floorId) highLight = false;
-    if (data && data.__toReplay__) title = '[R]' + title;
-
-    core.fillText('ui', title, x, y, highLight ? globalAttribute.selectColor : '#FFFFFF', this._buildFont(17, true));
-    core.strokeRect('ui', x - size / 2, y + 15, size, size, cho ? strokeColor : '#FFFFFF', cho ? 6 : 2);
-    if (data && data.floorId) {
-        core.setTextAlign('ui', "center");
-        var map = core.maps.loadMap(data.maps, data.floorId);
-        core.extractBlocksForUI(map, data.hero.flags);
-        core.drawThumbnail(data.floorId, map.blocks, {
-            heroLoc: data.hero.loc, heroIcon: data.hero.image, flags: data.hero.flags,
-            ctx: 'ui', x: x - size / 2, y: y + 15, size: size, centerX: data.hero.loc.x, centerY: data.hero.loc.y, noHD: true,
-        });
-        if (core.isPlaying() && core.getFlag("hard") != data.hero.flags.hard) {
-            core.fillRect('ui', x - size / 2, y + 15, size, size, [0, 0, 0, 0.4]);
-            core.fillText('ui', data.hard, x, parseInt(y + 22 + size / 2), data.hero.flags.__hardColor__ || 'red', this._buildFont(30, true));
-        } // 存档界面_绘制难度比较
-        // 存档界面_绘制存档笔记
-        if (data.hero.notes && data.hero.notes.length > 0) {
-            core.setTextAlign('ui', 'left');
-            if (data.hero.notes.length >= 2) {
-                core.fillRect('ui', x - size / 2, y + 15, size, 28, [0, 0, 0, 0.3]);
-                core.fillBoldText('ui', data.hero.notes.length - 1 + ". " + data.hero.notes[data.hero.notes.length - 2].substring(0, 10),
-                    x - size / 2 + 2, y + 15 + 12, '#FFFFFF', null, this._buildFont(10, false));
-                core.fillBoldText('ui', data.hero.notes.length + ". " + data.hero.notes[data.hero.notes.length - 1].substring(0, 10),
-                    x - size / 2 + 2, y + 15 + 24);
-            } else {
-                core.fillRect('ui', x - size / 2, y + 15, size, 16, [0, 0, 0, 0.3]);
-                core.fillBoldText('ui', data.hero.notes.length + ". " + data.hero.notes[data.hero.notes.length - 1].substring(0, 10),
-                    x - size / 2 + 2, y + 15 + 12, '#FFFFFF', null, this._buildFont(10, false));
-            }
-        }
-        core.setTextAlign('ui', "center");
-        var v = core.formatBigNumber(data.hero.hp, true) + "/" + core.formatBigNumber(data.hero.atk, true) + "/" + core.formatBigNumber(data.hero.def, true);
-        var v2 = "/" + core.formatBigNumber(data.hero.mdef, true);
-        if (core.calWidth('ui', v + v2, this._buildFont(10, false)) <= size) v += v2;
-        core.fillText('ui', v, x, y + 30 + size, globalAttribute.selectColor);
-        core.fillText('ui', core.formatDate(new Date(data.time)), x, y + 43 + size, data.hero.flags.debug ? '#FF6A6A' : '#FFFFFF');
-    }
-    else {
-        core.fillRect('ui', x - size / 2, y + 15, size, size, '#333333');
-        core.fillText('ui', '空', x, parseInt(y + 22 + size / 2), '#FFFFFF', this._buildFont(30, true));
+ui.prototype._slMarkSelection = function () {
+    var sl = this.sl;
+    if (!sl || !sl.root || sl.view !== 'slots') return;
+    var offset = core.status.event.data.offset || 0;
+    var page = core.status.event.data.page || 0;
+    var nodes = sl.root.querySelectorAll('.sl-slot');
+    for (var i = 0; i < nodes.length; i++) {
+        var id = i === 0 ? null : (5 * page + i);
+        nodes[i].classList.toggle('sl-on', i === offset);
+        nodes[i].classList.toggle('sl-picked', id != null && sl.selected.indexOf(id) >= 0);
     }
 }
 
-ui.prototype._drawSLPanel_drawRecords = function (n) {
-    var page = core.status.event.data.page;
-    var offset = core.status.event.data.offset;
-    var u = Math.floor(this.PIXEL / 6), size = Math.floor(this.PIXEL / 3 - 20);
-    var name = core.status.event.id == 'save' ? "存档" : core.status.event.id == 'load' ? "读档" : "回放";
+ui.prototype._slPaintThumbs = function () {
+    var sl = this.sl;
+    if (!sl || !sl.canvases || sl.view !== 'slots') return;
+    sl.canvases.forEach(function (canvas, i) {
+        if (!canvas || !canvas.isConnected) return;
+        var css = canvas.clientWidth;
+        if (!css) return;
+        var bitmap = Math.max(1, Math.round(css * (window.devicePixelRatio || 1)));
+        if (canvas.width !== bitmap || canvas.height !== bitmap) {
+            canvas.width = bitmap;
+            canvas.height = bitmap;
+        }
+        var ctx = canvas.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, bitmap, bitmap);
+        var data = sl.records[i];
+        if (!data || !data.floorId || !data.hero || !data.hero.loc) {
+            ctx.fillStyle = '#333333';
+            ctx.fillRect(0, 0, bitmap, bitmap);
+            return;
+        }
+        try {
+            var map = core.maps.loadMap(data.maps, data.floorId);
+            core.extractBlocksForUI(map, data.hero.flags);
+            core.drawThumbnail(data.floorId, map.blocks, {
+                heroLoc: data.hero.loc,
+                heroIcon: data.hero.image,
+                flags: data.hero.flags,
+                ctx: canvas,
+                x: 0, y: 0, size: bitmap, noHD: true,
+                centerX: data.hero.loc.x,
+                centerY: data.hero.loc.y
+            });
+            canvas.getContext('2d').imageSmoothingEnabled = false;
+        } catch (e) {
+            console.error(e);
+        }
+    });
+}
 
-    for (var i = 0; i < (n || 6); i++) {
-        var data = core.status.event.ui[i];
-        var id = 5 * page + i;
-        var highLight = (i > 0 && core.saves.favorite.indexOf(id) >= 0) || core.status.event.data.mode == 'fav';
-        var title = (highLight ? '★ ' : '☆ ') + (core.saves.favoriteName[id] || (name + id));
-        if (i != 0 && core.status.event.data.mode == 'fav') {
-            if (!data) break;
-            var real_id = core.saves.favorite[id - 1];
-            title = (core.saves.favoriteName[real_id] || (name + real_id)) + ' ✐';
-        }
-
-        var charSize = 32;// 字体占用像素范围
-        var topSpan = parseInt((this.PIXEL - charSize - 2 * (charSize * 2 + size)) / 3);// Margin
-        var yTop1 = topSpan + parseInt(charSize / 2) + 8;//文字的中心
-        var yTop2 = yTop1 + charSize * 2 + size + topSpan;
-        if (i < 3) {
-            this._drawSLPanel_drawRecord(i == 0 ? "自动存档" : title, data, (2 * i + 1) * u, yTop1, size, i == offset, highLight);
-        }
-        else {
-            this._drawSLPanel_drawRecord(title, data, (2 * i - 5) * u, yTop2, size, i == offset, highLight);
-        }
+ui.prototype._slRenderFolders = function () {
+    var sl = this.sl;
+    var body = sl.body;
+    body.textContent = '';
+    sl.canvases = [];
+    var wrap = document.createElement('div');
+    wrap.className = 'sl-folders';
+    var self = this;
+    if (!(sl.op && (sl.op === 'move' || sl.op === 'copy'))) {
+        var create = document.createElement('div');
+        create.className = 'sl-new';
+        create.textContent = '新建文件夹';
+        create.onclick = function () { self._slCreateFolder(); };
+        wrap.appendChild(create);
     }
-};
+    var list = document.createElement('div');
+    list.className = 'sl-folder-list';
+    var folders = core.saves.folders || [core.control.DEFAULT_SAVE_FOLDER];
+    if (sl.folderIndex >= folders.length) sl.folderIndex = Math.max(0, folders.length - 1);
+    folders.forEach(function (name, i) {
+        var row = document.createElement('div');
+        row.className = 'sl-folder-row';
+        if (i === sl.folderIndex) row.classList.add('sl-on');
+        var label = document.createElement('span');
+        label.textContent = name;
+        var hint = document.createElement('span');
+        hint.className = 'sl-folder-hint';
+        if (sl.op) hint.textContent = '选择';
+        else if (sl.folderDelete && name === core.control.DEFAULT_SAVE_FOLDER) hint.textContent = '不可删除';
+        else if (sl.folderDelete) hint.textContent = '点击删除';
+        else if (name === core.control._currentFolder()) hint.textContent = '当前';
+        row.appendChild(label);
+        row.appendChild(hint);
+        row.onclick = function () {
+            sl.folderIndex = i;
+            self._slOpenFolder(name);
+        };
+        list.appendChild(row);
+    });
+    wrap.appendChild(list);
+    body.appendChild(wrap);
+    var current = list.querySelector('.sl-on');
+    if (current && current.scrollIntoView) current.scrollIntoView({ block: 'nearest' });
+}
+
+ui.prototype._slActivate = function (offset) {
+    if (this.sl && this.sl.busy) return;
+    var page = core.status.event.data.page || 0;
+    core.status.event.data.offset = offset;
+    this._slMarkSelection();
+    var id = offset === 0 ? 'autoSave' : (5 * page + offset);
+    var sl = this.sl;
+    if (!this._slCanManage()) {
+        core.doSL(id, core.status.event.id);
+        return;
+    }
+    if (sl.stage === 'pick-start') {
+        if (id === 'autoSave') {
+            core.playSound('操作失败');
+            this._slTip('请选择一个手动位');
+            return;
+        }
+        this._slRunMoveCopy(id);
+        return;
+    }
+    if (sl.deleteMode) {
+        this._slDeleteId(id);
+        return;
+    }
+    if (sl.multi) {
+        if (id === 'autoSave') {
+            core.playSound('操作失败');
+            this._slTip('无法选择自动存档！');
+            return;
+        }
+        var at = sl.selected.indexOf(id);
+        if (at >= 0) sl.selected.splice(at, 1);
+        else if (!sl.records[offset]) {
+            core.playSound('操作失败');
+            this._slTip('这个位置是空的');
+            return;
+        } else sl.selected.push(id);
+        sl.selected.sort(function (a, b) { return a - b; });
+        core.playSound('确定');
+        this._slChrome();
+        this._slMarkSelection();
+        return;
+    }
+    core.doSL(id, core.status.event.id);
+}
+
+ui.prototype._slDeleteId = function (id) {
+    if (!core.status.event || core.status.event.id !== 'save') return;
+    if (id === 'autoSave' || id === 0) {
+        core.playSound('操作失败');
+        this._slTip('无法删除自动存档！');
+        return;
+    }
+    var self = this;
+    var folder = core.control._currentFolder();
+    var index = core.status.event.data.page * 10 + core.status.event.data.offset;
+    core.getSave(id, function (previous) {
+        if (!previous) {
+            core.playSound('操作失败');
+            self._slTip('这个位置是空的');
+            return;
+        }
+        core.control._pushSaveUndo({
+            folder: folder,
+            id: id,
+            previous: core.clone(previous),
+            kind: 'delete',
+            saveIndex: core.saves.saveIndex,
+            actionCount: core.saves.actionCount
+        });
+        core.removeLocalForage('save' + id, function () {
+            self._slTip('已删除，刷新前可以撤回。');
+            self._drawSLPanel(index, true);
+        }, function (err) {
+            if (core.saves.undo && core.saves.undo.length) core.saves.undo.pop();
+            console.error(err);
+            core.playSound('操作失败');
+            self._slTip('无法删除存档！');
+        }, folder);
+    }, folder);
+}
+
+ui.prototype._slUndo = function () {
+    if (!this._slCanManage()) return;
+    if (this.sl && this.sl.busy) return;
+    var self = this;
+    core.control.undoManualSave(function (step) {
+        if (!step) {
+            self._slTip('没有可撤回的存档');
+            self._slChrome();
+            return;
+        }
+        var where = (step.folder && step.folder !== core.control.DEFAULT_SAVE_FOLDER ? step.folder + ' ' : '') + step.id + ' 号';
+        self._slTip(step.previous ? ('已撤回，' + where + '已恢复') : ('已撤回，' + where + '已重新变为空'));
+        core.playSound('确定');
+        if (core.control._currentFolder() === (step.folder || core.control.DEFAULT_SAVE_FOLDER) && self.sl && self.sl.root)
+            self._drawSLPanel(core.status.event.data.page * 10 + core.status.event.data.offset, true);
+        else self._slChrome();
+    });
+}
+
+ui.prototype._slPage = function (delta) {
+    if (!core.status.event.data) return;
+    core.playSound('光标移动');
+    var page = core.status.event.data.page || 0;
+    var offset = core.status.event.data.offset || 0;
+    this._drawSLPanel(10 * (page + delta) + offset);
+}
+
+ui.prototype._slFolderButton = function () {
+    var sl = this.sl;
+    if (!this._slCanManage()) {
+        sl.view = 'folders';
+        sl.op = null;
+        this._drawSLPanel(core.status.event.data.page * 10 + core.status.event.data.offset, true);
+        return;
+    }
+    if (sl.multi) {
+        this._slBeginOp('move');
+        return;
+    }
+    sl.view = 'folders';
+    sl.folderDelete = false;
+    core.playSound('确定');
+    this._drawSLPanel(core.status.event.data.page * 10 + core.status.event.data.offset, true);
+}
+
+ui.prototype._slMultiButton = function () {
+    var sl = this.sl;
+    if (!this._slCanManage()) return;
+    if (sl.multi) {
+        this._slBeginOp('copy');
+        return;
+    }
+    sl.multi = true;
+    sl.deleteMode = false;
+    sl.selected = [];
+    sl.stage = null;
+    sl.op = null;
+    core.playSound('确定');
+    this._slChrome();
+    this._slMarkSelection();
+}
+
+ui.prototype._slBeginOp = function (op) {
+    var sl = this.sl;
+    if (!sl.selected.length) {
+        core.playSound('操作失败');
+        this._slTip(op === 'move' ? '请先选择要移动的存档！' : '请先选择要复制的存档！');
+        return;
+    }
+    sl.op = op;
+    sl.sourceFolder = core.control._currentFolder();
+    sl.view = 'folders';
+    sl.stage = null;
+    core.playSound('确定');
+    this._drawSLPanel(core.status.event.data.page * 10 + core.status.event.data.offset, true);
+}
+
+ui.prototype._slDeleteButton = function () {
+    var sl = this.sl;
+    if (!core.status.event || core.status.event.id !== 'save') return;
+    core.playSound('光标移动');
+    if (sl.view === 'folders') {
+        sl.folderDelete = !sl.folderDelete;
+        this._slRenderFolders();
+        this._slChrome();
+        return;
+    }
+    sl.deleteMode = !sl.deleteMode;
+    if (sl.deleteMode) {
+        sl.multi = false;
+        sl.selected = [];
+        sl.stage = null;
+        sl.op = null;
+    }
+    this._slChrome();
+    this._slMarkSelection();
+}
+
+ui.prototype._slOpenFolder = function (name) {
+    var sl = this.sl;
+    var self = this;
+    if (sl.op === 'move' || sl.op === 'copy') {
+        sl.targetFolder = name;
+        sl.stage = 'pick-start';
+        sl.view = 'slots';
+        core.playSound('确定');
+        core.control.setCurrentFolder(name, function () {
+            self._drawSLPanel(1, true);
+        });
+        return;
+    }
+    if (sl.folderDelete) {
+        if (name === core.control.DEFAULT_SAVE_FOLDER) {
+            core.playSound('操作失败');
+            this._slTip('无法删除默认文件夹！');
+            return;
+        }
+        core.playSound('确定');
+        core.myconfirm('确定删除文件夹「' + name + '」和其中的全部存档？', function () {
+            core.control.deleteSaveFolder(name, function () {
+                sl.folderDelete = false;
+                self._slTip('已删除文件夹');
+                self._drawSLPanel(1, true);
+            });
+        });
+        return;
+    }
+    core.playSound('确定');
+    sl.view = 'slots';
+    core.control.setCurrentFolder(name, function () {
+        self._drawSLPanel(1, true);
+    });
+}
+
+ui.prototype._slCreateFolder = function () {
+    var self = this;
+    core.myprompt('请输入文件夹名称', '', function (name) {
+        if (name == null) return;
+        name = String(name).replace(/^\s+|\s+$/g, '');
+        if (!core.control._validFolderName(name)) {
+            core.playSound('操作失败');
+            self._slTip('文件夹名称不能包含特殊字符');
+            return;
+        }
+        if ((core.saves.folders || []).indexOf(name) >= 0) {
+            core.playSound('操作失败');
+            self._slTip('文件夹已存在');
+            return;
+        }
+        core.control._addFolderName(name);
+        core.playSound('确定');
+        self.sl.view = 'slots';
+        core.control.setCurrentFolder(name, function () {
+            self._slTip('已建立文件夹');
+            self._drawSLPanel(1, true);
+        });
+    });
+}
+
+ui.prototype._slCancelStart = function () {
+    var sl = this.sl;
+    if (!sl) return;
+    var back = sl.sourceFolder || core.control.DEFAULT_SAVE_FOLDER;
+    sl.stage = null;
+    sl.targetFolder = null;
+    sl.view = 'slots';
+    var self = this;
+    core.playSound('取消');
+    core.control.setCurrentFolder(back, function () {
+        var page = core.status.event.data.page || 0;
+        var offset = core.status.event.data.offset || 0;
+        self._drawSLPanel(page * 10 + offset, true);
+    });
+}
+
+ui.prototype._slRunMoveCopy = function (startId) {
+    var sl = this.sl;
+    var op = sl.op;
+    var source = sl.sourceFolder || core.control._currentFolder();
+    var target = core.control._currentFolder();
+    var ids = sl.selected.slice();
+    var self = this;
+    sl.busy = true;
+    core.control.applySaveMoveCopy(op, source, ids, target, startId, function (err) {
+        sl.busy = false;
+        if (!sl.root) return;
+        if (err === 'cancel') return;
+        if (err) {
+            core.playSound('操作失败');
+            self._slTip(err);
+            return;
+        }
+        sl.multi = false;
+        sl.selected = [];
+        sl.stage = null;
+        sl.op = null;
+        sl.sourceFolder = null;
+        core.playSound('确定');
+        var page = Math.floor((startId - 1) / 5);
+        var offset = startId - 5 * page;
+        self._drawSLPanel(page * 10 + offset, true);
+        self._slTip((op === 'move' ? '移动' : '复制') + '完成');
+    });
+}
+
+ui.prototype._slOpenAutoSet = function () {
+    var sl = this.sl;
+    if (!sl || !sl.setLayer) return;
+    sl.settings = true;
+    sl.setLayer.style.display = 'flex';
+    this._slRefreshAutoSet();
+    core.playSound('确定');
+}
+
+ui.prototype._slCloseAutoSet = function () {
+    var sl = this.sl;
+    if (!sl || !sl.settings) return;
+    sl.settings = false;
+    if (sl.setLayer) sl.setLayer.style.display = 'none';
+    core.playSound('取消');
+}
+
+ui.prototype._slRefreshAutoSet = function () {
+    var sl = this.sl;
+    if (!sl || !sl.setLayer) return;
+    var n = core.control.getAutoSaveLimit();
+    var nodes = sl.setLayer.querySelectorAll('.sl-set-choice');
+    for (var i = 0; i < nodes.length; i++)
+        nodes[i].classList.toggle('sl-on', parseInt(nodes[i].getAttribute('data-n'), 10) === n);
+    if (sl.setNow) sl.setNow.textContent = '当前 ' + n + ' 步';
+    var domSetting = core.plugin && core.plugin.domSetting;
+    if (domSetting && domSetting.opened && domSetting.layout) domSetting.layout();
+}
+
+ui.prototype._slBackLayer = function () {
+    var sl = this.sl;
+    if (!sl || !sl.root) return this._slExit();
+    if (sl.settings) {
+        this._slCloseAutoSet();
+        return;
+    }
+    if (sl.view === 'folders') {
+        core.playSound('取消');
+        sl.view = 'slots';
+        sl.folderDelete = false;
+        sl.op = null;
+        this._drawSLPanel(core.status.event.data.page * 10 + core.status.event.data.offset, true);
+        return;
+    }
+    if (sl.stage === 'pick-start') {
+        this._slCancelStart();
+        return;
+    }
+    if (sl.multi) {
+        core.playSound('取消');
+        sl.multi = false;
+        sl.selected = [];
+        sl.op = null;
+        sl.stage = null;
+        this._slChrome();
+        this._slMarkSelection();
+        return;
+    }
+    this._slExit();
+}
+
+ui.prototype._slExit = function () {
+    core.playSound('取消');
+    if (core.events.recoverEvents(core.status.event.interval))
+        return;
+    core.ui.closePanel();
+    delete core.status.tempRoute;
+    if (!core.isPlaying())
+        core.showStartAnimate(true);
+    core.lockControl();
+    setTimeout(function () {
+        if (!core.status.event || !core.status.event.id) core.unlockControl();
+    }, 30);
+}
+
+ui.prototype._slKeyDown = function (keycode) {
+    var sl = this.sl;
+    if (!sl || !sl.root || !core.status.event.data) return;
+    if (sl.settings) {
+        var limits = core.control.AUTO_SAVE_LIMITS;
+        var at = limits.indexOf(core.control.getAutoSaveLimit());
+        if (at < 0) at = 0;
+        if (keycode == 37 || keycode == 38 || keycode == 39 || keycode == 40) {
+            core.playSound('光标移动');
+            var step = (keycode == 37 || keycode == 38) ? -1 : 1;
+            core.control.applyAutoSaveLimit(limits[(at + step + limits.length) % limits.length]);
+            this._slRefreshAutoSet();
+        }
+        return;
+    }
+    if (sl.view === 'folders') {
+        var folders = core.saves.folders || [];
+        if (keycode == 38 || keycode == 40) {
+            core.playSound('光标移动');
+            var step = keycode == 38 ? -1 : 1;
+            sl.folderIndex = Math.max(0, Math.min(folders.length - 1, (sl.folderIndex || 0) + step));
+            this._slRenderFolders();
+        }
+        return;
+    }
+    var page = core.status.event.data.page, offset = core.status.event.data.offset;
+    var index = page * 10 + offset;
+    if (keycode == 37) {
+        core.playSound('光标移动');
+        this._drawSLPanel(offset == 0 ? (10 * (page - 1) + 5) : (index - 1));
+        return;
+    }
+    if (keycode == 38) {
+        core.playSound('光标移动');
+        this._drawSLPanel(offset < 3 ? (10 * (page - 1) + offset + 3) : (index - 3));
+        return;
+    }
+    if (keycode == 39) {
+        core.playSound('光标移动');
+        this._drawSLPanel(offset == 5 ? (10 * (page + 1) + 1) : (index + 1));
+        return;
+    }
+    if (keycode == 40) {
+        core.playSound('光标移动');
+        this._drawSLPanel(offset >= 3 ? (10 * (page + 1) + offset - 3) : (index + 3));
+        return;
+    }
+    if (keycode == 33) {
+        core.playSound('光标移动');
+        this._drawSLPanel(10 * (page - 1) + offset);
+        return;
+    }
+    if (keycode == 34) {
+        core.playSound('光标移动');
+        this._drawSLPanel(10 * (page + 1) + offset);
+    }
+}
+
+ui.prototype._slKeyUp = function (keycode) {
+    var sl = this.sl;
+    if (!sl || !sl.root || !core.status.event.data) return;
+    var id = core.status.event.id;
+    if (sl.settings) {
+        if (keycode == 27 || keycode == 88 || keycode == 13 || keycode == 32
+            || (id == 'save' && keycode == 83) || (id == 'load' && keycode == 68))
+            this._slBackLayer();
+        return;
+    }
+    if (keycode == 27 || keycode == 88 || (id == 'save' && keycode == 83) || (id == 'load' && keycode == 68)) {
+        this._slBackLayer();
+        return;
+    }
+    if (sl.view === 'folders') {
+        if (keycode == 13 || keycode == 32 || keycode == 67) {
+            var folders = core.saves.folders || [];
+            var name = folders[sl.folderIndex || 0];
+            if (name) this._slOpenFolder(name);
+        }
+        return;
+    }
+    if (keycode >= 48 && keycode <= 57) {
+        if (keycode == 48) keycode = 58;
+        this._drawSLPanel((keycode - 49) * 1000 + 1);
+        return;
+    }
+    if (keycode == 13 || keycode == 32 || keycode == 67) {
+        this._slActivate(core.status.event.data.offset || 0);
+        return;
+    }
+    if (keycode == 46 && core.status.event.id === 'save' && sl.view === 'slots' && !sl.multi && sl.stage !== 'pick-start') {
+        var offset = core.status.event.data.offset || 0;
+        var page = core.status.event.data.page || 0;
+        this._slDeleteId(offset === 0 ? 'autoSave' : (5 * page + offset));
+    }
+}
+
+ui.prototype._drawSLPanel_draw = function () { }
+ui.prototype._drawSLPanel_drawBackground = function () { }
+ui.prototype._drawSLPanel_loadSave = function () { }
+ui.prototype._drawSLPanel_drawRecord = function () { }
+ui.prototype._drawSLPanel_drawRecords = function () { }
 
 ui.prototype._drawKeyBoard = function () {
     core.lockControl();

@@ -7974,7 +7974,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const setBtn = button('列表:翻页');
 			const setNote = document.createElement('p');
 			setNote.className = 'bp-note';
-			setNote.textContent = '道具、持有装备和装备孔用翻页还是整列滚动。默认翻页。';
+			setNote.textContent = '调整物品列表的显示模式，是翻页还是在一页中上下滚动。';
 			const alphaRow = document.createElement('div');
 			alphaRow.className = 'bp-alpha';
 			const alphaName = document.createElement('span');
@@ -10016,7 +10016,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const setLook = button(lookText());
 			const lookNote = document.createElement('p');
 			lookNote.className = 'fly-note';
-			lookNote.textContent = '一次看一层，或一页看多个楼层。没改过时是单层。';
+			lookNote.textContent = '调整楼传的显示模式。';
 			const setAuto = button('自动隐藏楼层:关');
 			const autoNote = document.createElement('p');
 			autoNote.className = 'fly-note';
@@ -10028,7 +10028,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			const setCount = button('楼层计数:开');
 			const countNote = document.createElement('p');
 			countNote.className = 'fly-note';
-			countNote.textContent = '单层时在右侧显示这一层的敌人、物品和 NPC 数量。多楼层时在每张图上显示有没有怪、物、NPC，不显示数量。';
+			countNote.textContent = '显示每层的怪物、物品、NPC数量。';
 			const setBack = button('返回');
 			box.appendChild(boxTitle);
 			box.appendChild(setLook);
@@ -10527,6 +10527,14 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setLocalStorage(name, !value);
 		}
 
+		function shiftAutoSaveLimit(step) {
+			const limits = (core.control && core.control.AUTO_SAVE_LIMITS) || [20, 50, 100];
+			let at = limits.indexOf(core.control.getAutoSaveLimit());
+			if (at < 0) at = 0;
+			core.control.applyAutoSaveLimit(limits[(at + step + limits.length) % limits.length]);
+			if (core.ui && core.ui._slRefreshAutoSet) core.ui._slRefreshAutoSet();
+		}
+
 		// #region 功能菜单
 		function checkSkipFuncs() {
 			const skipText = core.getLocalStorage('skipText');
@@ -10703,7 +10711,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.setLocalStorage('flyLook', next);
 					if (core.plugin._flyLayout) core.plugin._flyLayout();
 				},
-				text: '楼传一次看一层，或一页看多个楼层。没改过时是单层。',
+				text: '调整楼传的显示模式。',
 				replay: false,
 			},
 			autoHideFloor: {
@@ -10730,7 +10738,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.setFlag('hideMapCount', !core.hasFlag('hideMapCount'));
 					if (core.plugin._flyLayout) core.plugin._flyLayout();
 				},
-				text: '单层时在右侧显示这一层的敌人、物品和 NPC 数量。多楼层时在每张图上显示有没有怪、物、NPC，不显示数量。',
+				text: '显示每层的怪物、物品、NPC数量。',
 				replay: false,
 			},
 			autoSaveBeforeUseItem: {
@@ -10756,7 +10764,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					core.setLocalStorage('backpackList', next);
 					if (core.plugin._backpackLayout) core.plugin._backpackLayout();
 				},
-				text: '道具、持有装备和装备孔用翻页还是整列滚动。默认翻页。',
+				text: '调整物品列表的显示模式，是翻页还是在一页中上下滚动。',
 				replay: false,
 			},
 			backpackAlphaDown: {
@@ -10775,6 +10783,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (core.plugin._backpackLayout) core.plugin._backpackLayout();
 				},
 				text: '提高背包菜单的不透明度。最高 100%，默认完全不透明。',
+				replay: false,
+			},
+			autoSaveLimitDown: {
+				getName: () => ' < 回退:' + core.control.getAutoSaveLimit(),
+				effect: () => shiftAutoSaveLimit(-1),
+				text: '调整自动存档的最大回退次数。',
+				replay: false,
+			},
+			autoSaveLimitUp: {
+				getName: () => ' > ',
+				effect: () => shiftAutoSaveLimit(1),
+				text: '调整自动存档的最大回退次数。',
 				replay: false,
 			},
 			freeReplay: {
@@ -11564,6 +11584,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				},
 				decreaseVolume: () => String(Math.round(Math.sqrt(100 * core.musicStatus.userVolume))),
 				backpackAlphaDown: () => backpackAlphaPercent() + '%',
+				autoSaveLimitDown: () => String(core.control.getAutoSaveLimit()),
 			};
 
 			function stepper(parent, label, downKey, upKey) {
@@ -12308,6 +12329,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				line = row(panel);
 				toggle(line, 'autoSaveBeforeUseItem');
 				toggle(line, 'autoSaveBeforePickItem');
+				heading(panel, '存档');
+				line = row(panel);
+				stepper(line, '回退', 'autoSaveLimitDown', 'autoSaveLimitUp');
 				heading(panel, '楼传');
 				line = row(panel);
 				toggle(line, 'flyLook');

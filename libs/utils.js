@@ -245,13 +245,29 @@ utils.prototype.removeLocalStorage = function (key) {
     else if (/^save\d+$/.test(key)) delete core.saves.ids[parseInt(key.substring(4))];
 }
 
-utils.prototype.setLocalForage = function (key, value, successCallback, errorCallback) {
+utils.prototype._saveFolderSuffix = function (folder) {
+    if (folder == null || folder === '' || folder === '默认文件夹' || folder === 'autoSave') return '';
+    return '@@' + folder;
+}
+
+utils.prototype._saveStorageName = function (key, folder) {
+    if (key === 'autoSave') folder = null;
+    return core.firstData.name + '_' + key + this._saveFolderSuffix(folder);
+}
+
+utils.prototype._saveFolderIsCurrent = function (folder) {
+    var current = (core.saves && core.saves.currentFolder) || '默认文件夹';
+    var name = (folder == null || folder === '' || folder === '默认文件夹') ? '默认文件夹' : folder;
+    return name === current;
+}
+
+utils.prototype.setLocalForage = function (key, value, successCallback, errorCallback, folder) {
     if (value == null) {
-        this.removeLocalForage(key);
+        this.removeLocalForage(key, successCallback, errorCallback, folder);
         return;
     }
 
-    var name = core.firstData.name + "_" + key;
+    var name = this._saveStorageName(key, folder);
     var str = JSON.stringify(value).replace(/[\u007F-\uFFFF]/g, function (chr) {
         return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).substr(-4)
     });
@@ -261,7 +277,8 @@ utils.prototype.setLocalForage = function (key, value, successCallback, errorCal
         }
         else {
             if (key == 'autoSave') core.saves.ids[0] = true;
-            else if (/^save\d+$/.test(key)) core.saves.ids[parseInt(key.substring(4))] = true;
+            else if (core.utils._saveFolderIsCurrent(folder) && /^save\d+$/.test(key))
+                core.saves.ids[parseInt(key.substring(4))] = true;
             if (successCallback) successCallback();
         }
     }
@@ -281,8 +298,8 @@ utils.prototype._setLocalForage_set = function (name, str, callback) {
     }
 }
 
-utils.prototype.getLocalForage = function (key, defaultValue, successCallback, errorCallback) {
-    var name = core.firstData.name + "_" + key;
+utils.prototype.getLocalForage = function (key, defaultValue, successCallback, errorCallback, folder) {
+    var name = this._saveStorageName(key, folder);
     var callback = function (err, value) {
         if (err) {
             if (errorCallback) errorCallback(err);
@@ -314,15 +331,16 @@ utils.prototype._getLocalForage_get = function (name, callback) {
     }
 }
 
-utils.prototype.removeLocalForage = function (key, successCallback, errorCallback) {
-    var name = core.firstData.name + "_" + key;
+utils.prototype.removeLocalForage = function (key, successCallback, errorCallback, folder) {
+    var name = this._saveStorageName(key, folder);
     var callback = function (err) {
         if (err) {
             if (errorCallback) errorCallback(err);
         }
         else {
             if (key == 'autoSave') delete core.saves.ids[0];
-            else if (/^save\d+$/.test(key)) delete core.saves.ids[parseInt(key.substring(4))];
+            else if (core.utils._saveFolderIsCurrent(folder) && /^save\d+$/.test(key))
+                delete core.saves.ids[parseInt(key.substring(4))];
             if (successCallback) successCallback();
         }
     }

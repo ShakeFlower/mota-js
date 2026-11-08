@@ -2196,8 +2196,45 @@ control.prototype._replayAction_no = function (action) {
 
 // ------ 存读档相关 ------ //
 
+control.prototype.AUTO_SAVE_LIMITS = [20, 50, 100];
+
+control.prototype.getAutoSaveLimit = function () {
+    var n = parseInt(core.getLocalStorage('autoSaveMax', 20), 10);
+    if (this.AUTO_SAVE_LIMITS.indexOf(n) < 0) n = 20;
+    return n;
+}
+
+control.prototype.applyAutoSaveLimit = function (n) {
+    if (n == null) n = this.getAutoSaveLimit();
+    else {
+        n = parseInt(n, 10);
+        if (this.AUTO_SAVE_LIMITS.indexOf(n) < 0) n = 20;
+        core.setLocalStorage('autoSaveMax', n);
+    }
+    if (core.saves.autosave) core.saves.autosave.max = n;
+    this._trimAutoSave();
+    return n;
+}
+
+control.prototype._trimAutoSave = function () {
+    var auto = core.saves.autosave;
+    if (!auto || !(auto.data instanceof Array) || !auto.max) return;
+    var guard = 0;
+    while (auto.data.length > auto.max && guard++ < 10000) {
+        if (auto.now < auto.max / 2)
+            auto.data.pop();
+        else {
+            auto.data.shift();
+            auto.now = auto.now - 1;
+        }
+    }
+    if (auto.now < 0) auto.now = 0;
+    if (auto.now > auto.data.length) auto.now = auto.data.length;
+}
+
 ////// 自动存档 //////
 control.prototype.autosave = function (removeLast) {
+    this.applyAutoSaveLimit();
     if (core.hasFlag('__forbidSave__')) return;
     core.saves.actionCount++;
     var x = null;
@@ -2265,20 +2302,36 @@ control.prototype._doSL_save = function (id) {
     if (core.isReplaying() && core.status.replay.toReplay.length > 0) {
         data.__toReplay__ = core.encodeRoute(core.status.replay.toReplay);
     }
-    core.setLocalForage("save" + id, data, function () {
-        core.saves.saveIndex = id;
-        core.saves.actionCount = 0;
-        core.setLocalStorage('saveIndex', core.saves.saveIndex);
-        // 恢复事件
-        if (!core.events.recoverEvents(core.status.event.interval))
-            core.ui.closePanel();
-        core.playSound('存档');
-        core.drawTip('存档成功！');
-    }, function (err) {
-        console.error(err);
-        alert("存档失败，错误信息：\n" + err);
-    });
     core.removeFlag("__events__");
+    var folder = core.control._currentFolder();
+    var saveIndexBefore = core.saves.saveIndex;
+    var actionCountBefore = core.saves.actionCount;
+    core.getSave(id, function (previous) {
+        var pushed = false;
+        if (previous) {
+            core.control._pushSaveUndo({
+                folder: folder,
+                id: id,
+                previous: core.clone(previous),
+                saveIndex: saveIndexBefore,
+                actionCount: actionCountBefore
+            });
+            pushed = true;
+        }
+        core.setLocalForage("save" + id, data, function () {
+            core.saves.saveIndex = id;
+            core.saves.actionCount = 0;
+            core.setLocalStorage('saveIndex', core.saves.saveIndex);
+            if (!core.events.recoverEvents(core.status.event.interval))
+                core.ui.closePanel();
+            core.playSound('存档');
+            core.drawTip(pushed ? '存档成功！刷新前可以在存档页撤回。' : '存档成功！');
+        }, function (err) {
+            if (pushed && core.saves.undo && core.saves.undo.length) core.saves.undo.pop();
+            console.error(err);
+            alert("存档失败，错误信息：\n" + err);
+        }, folder);
+    }, folder);
     return;
 }
 
@@ -2312,7 +2365,7 @@ control.prototype._doSL_load = function (id, callback) {
         }, function (err) {
             console.error(err);
             alert("无效的存档");
-        })
+        }, id == 'autoSave' ? null : core.control._currentFolder())
     }
     return;
 }
@@ -2420,16 +2473,17 @@ control.prototype._doSL_replaySince_afterGet = function (id, data) {
 
 ////// 同步存档到服务器 //////
 control.prototype.syncSave = function (type) {
-    core.ui.drawWaiting("正在同步，请稍候...");
     if (type == 'all') {
-        const callback = function (saves) {
-            core.control._syncSave_http(type, saves);
-        };
-        core.ui.drawConfirmBox("您正在试图同步您的\r[Salmon]所有\r存档，\n这可能导致接收方已有的存档被\r[Salmon]覆盖\r。\n确定要这么做？", function () {
-            core.getAllSaves(callback);
-        }, () => { core.ui.closePanel(); });
+        core.ui.drawConfirmBox("接收方会按文件夹和编号写入对应位置，不会清掉对方没被这批点到的档。\n对方若仍是旧引擎，整包会落在对方的当前存档号。\n确定要同步全部存档？", function () {
+            core.ui.drawWaiting("正在同步，请稍候...");
+            core.getAllSaves(function (saves) {
+                core.control._syncSave_http(type, saves);
+            });
+        }, function () { core.ui.closePanel(); });
+        return;
     }
-    else { // 这里的检测逻辑：每存读档一次actionCount置0, 若读的自动档, actionCount置为1, 每autosave一次actionCount+1。若actionCount不为0就会触发检测。
+    core.ui.drawWaiting("正在同步，请稍候...");
+    { // 这里的检测逻辑：每存读档一次actionCount置0, 若读的自动档, actionCount置为1, 每autosave一次actionCount+1。若actionCount不为0就会触发检测。
         const index = core.saves.saveIndex;
         if (!index) return core.drawText("没有要同步的存档");
         const callback = function (save) {
@@ -2457,7 +2511,8 @@ control.prototype.syncSave = function (type) {
 }
 
 control.prototype._syncSave_http = function (type, saves) {
-    if (!saves) return core.drawText("没有要同步的存档");
+    if (!saves || (saves.format === 'sl-batch' && (!saves.slots || !saves.slots.length)))
+        return core.drawText("没有要同步的存档");
     var formData = new FormData();
     formData.append('type', 'save');
     formData.append('name', core.firstData.name);
@@ -2529,29 +2584,139 @@ control.prototype._syncLoad_http = function (id, password) {
     });
 }
 
+control.prototype._syncLoad_cancel = function () {
+    core.status.event.selection = 0;
+    core.ui._drawSyncSave();
+}
+
+control.prototype._isSaveBody = function (data) {
+    return !!data && typeof data === 'object' && !Array.isArray(data) && data.format !== 'sl-batch' && !!data.floorId && !!data.hero;
+}
+
+control.prototype._maxSaveId = function () {
+    return 5 * (main.savePages || 30);
+}
+
 control.prototype._syncLoad_write = function (data) {
-    if (data instanceof Array) {
+    if (data && data.format === 'sl-batch' && Array.isArray(data.slots))
+        return this._syncLoad_writeBatch(data);
+    if (data instanceof Array)
+        return this._syncLoad_writeLegacy(data);
+    if (this._isSaveBody(data))
+        return this._syncLoad_writeOne(data);
+    core.drawText("出错啦！\n存档解析失败！");
+}
+
+control.prototype._syncLoad_writeOne = function (data) {
+    var folder = this._currentFolder();
+    var id = core.saves.saveIndex;
+    var named = !!id;
+    if (!id) id = 1;
+    core.setLocalForage("save" + id, data, function () {
+        core.control.clearSaveUndo();
+        core.saves.saveIndex = id;
+        core.setLocalStorage('saveIndex', id);
+        core.drawText("同步成功！\n单存档已写入" + folder + "的 " + id + " 号。"
+            + (named ? "" : "\n原先没有当前存档号，所以写在 1 号。"));
+    }, null, folder);
+}
+
+control.prototype._syncLoad_writeLegacy = function (data) {
+    var self = this;
+    var max = this._maxSaveId();
+    var keep = Math.min(data.length, max);
+    var drop = data.length - keep;
+    if (keep <= 0) return core.drawText("没有要写入的存档");
+    var folder = this._uniqueSyncFolder();
+    var text = "将把 " + keep + " 个存档放进新文件夹「" + folder + "」，现有存档保留。";
+    if (drop > 0) text += "\n超出上限的 " + drop + " 个不会写入。";
+    core.status.event.selection = 1;
+    core.ui.drawConfirmBox(text, function () {
+        self._addFolderName(folder);
+        var left = keep;
+        var failed = false;
+        for (var i = 1; i <= keep; i++) {
+            (function (i) {
+                core.setLocalForage("save" + i, data[i - 1], function () {
+                    if (--left === 0 && !failed) self._syncLoad_finishFolder(folder, keep, drop);
+                }, function () {
+                    failed = true;
+                    core.drawText("写入新文件夹时出错。");
+                }, folder);
+            })(i);
+        }
+    }, function () { self._syncLoad_cancel(); });
+}
+
+control.prototype._syncLoad_writeBatch = function (data) {
+    var self = this;
+    var max = this._maxSaveId();
+    var pending = data.slots.length;
+    var valid = [];
+    var skipped = 0;
+    var conflicts = 0;
+    var finishScan = function () {
+        if (!valid.length) {
+            var only = "没有可写入的存档。";
+            if (skipped) only += "\n跳过了 " + skipped + " 条无法识别的记录。";
+            return core.drawText(only);
+        }
+        var text = "将写入 " + valid.length + " 个存档到对应的文件夹和编号。";
+        if (conflicts) text += "\n其中 " + conflicts + " 个位置已有存档，会覆盖这些位置。";
+        text += "\n不会删除这批里没有的存档。";
+        if (skipped) text += "\n另有 " + skipped + " 条无法识别，会跳过。";
+        var go = function () { self._syncLoad_commitBatch(valid, skipped); };
+        if (!conflicts) return go();
         core.status.event.selection = 1;
-        core.ui.drawConfirmBox("所有本地存档都将被覆盖，确认？", function () {
-            for (var i = 1; i <= 5 * (main.savePages || 30); i++) {
-                if (i <= data.length)
-                    core.setLocalForage("save" + i, data[i - 1]);
-                else if (core.saves.ids[i])
-                    core.removeLocalForage("save" + i);
+        core.ui.drawConfirmBox(text, go, function () { self._syncLoad_cancel(); });
+    };
+    if (!pending) return finishScan();
+    data.slots.forEach(function (slot) {
+        var folder = (slot && slot.folder) || self.DEFAULT_SAVE_FOLDER;
+        var id = slot && slot.id;
+        if (!slot || !self._validFolderName(folder) || id !== (id | 0) || id < 1 || id > max || !self._isSaveBody(slot.data)) {
+            skipped++;
+            if (--pending === 0) finishScan();
+            return;
+        }
+        core.getSave(id, function (existing) {
+            if (existing) conflicts++;
+            valid.push({ folder: folder, id: id, data: slot.data });
+            if (--pending === 0) finishScan();
+        }, folder);
+    });
+}
+
+control.prototype._syncLoad_commitBatch = function (valid, skipped) {
+    var self = this;
+    var left = valid.length;
+    var failed = false;
+    valid.forEach(function (slot) { self._addFolderName(slot.folder); });
+    valid.forEach(function (slot) {
+        core.setLocalForage("save" + slot.id, slot.data, function () {
+            if (--left === 0 && !failed) {
+                self.clearSaveUndo();
+                self.getSaveIndexes(function (indexes) { core.saves.ids = indexes; });
+                var text = "同步成功！\n已写入 " + valid.length + " 个存档，其余编号保持原样。";
+                if (skipped) text += "\n跳过了 " + skipped + " 条无法识别的记录。";
+                core.drawText(text);
             }
-            core.ui.closePanel();
-            core.drawText("同步成功！\n你的本地所有存档均已被覆盖。");
         }, function () {
-            core.status.event.selection = 0;
-            core.ui._drawSyncSave();
-        });
-    }
-    else {
-        // 只覆盖单存档
-        core.setLocalForage("save" + core.saves.saveIndex, data, function () {
-            core.drawText("同步成功！\n单存档已覆盖至存档" + core.saves.saveIndex);
-        });
-    }
+            failed = true;
+            core.drawText("写入存档时出错。");
+        }, slot.folder);
+    });
+}
+
+control.prototype._syncLoad_finishFolder = function (folder, keep, drop) {
+    var self = this;
+    this.clearSaveUndo();
+    this.setCurrentFolder(folder, function () {
+        var text = "同步成功！\n" + keep + " 个存档已放进文件夹「" + folder + "」。\n原有存档没有删除。";
+        if (drop > 0) text += "\n有 " + drop + " 个因超出上限没有写入。";
+        core.drawText(text);
+        if (core.ui.sl && core.ui.sl.root) core.ui._drawSLPanel(1, true);
+    });
 }
 
 ////// 存档到本地 //////
@@ -2564,9 +2729,128 @@ control.prototype.loadData = function (data, callback) {
     return this.controldata.loadData(data, callback);
 }
 
-control.prototype.getSave = function (index, callback) {
-    if (index == 0) {
-        // --- 自动存档先从缓存中获取
+control.prototype.DEFAULT_SAVE_FOLDER = '默认文件夹';
+
+control.prototype._currentFolder = function () {
+    if (!core.saves.currentFolder) {
+        var saved = core.getLocalStorage('currentFolder', this.DEFAULT_SAVE_FOLDER);
+        core.saves.currentFolder = saved || this.DEFAULT_SAVE_FOLDER;
+    }
+    if (!core.saves.folders || !core.saves.folders.length) this._loadFolderList();
+    return core.saves.currentFolder;
+}
+
+control.prototype._loadFolderList = function () {
+    var list = core.getLocalStorage('folders', null);
+    var def = this.DEFAULT_SAVE_FOLDER;
+    if (!list || !list.length) list = [def];
+    if (list.indexOf(def) < 0) list.unshift(def);
+    else if (list[0] !== def) {
+        list.splice(list.indexOf(def), 1);
+        list.unshift(def);
+    }
+    core.saves.folders = list;
+}
+
+control.prototype._saveFolderList = function () {
+    core.setLocalStorage('folders', core.saves.folders || [this.DEFAULT_SAVE_FOLDER]);
+}
+
+control.prototype._ensureSaveFolders = function () {
+    this._currentFolder();
+}
+
+control.prototype._addFolderName = function (name) {
+    this._loadFolderList();
+    if (core.saves.folders.indexOf(name) < 0) {
+        core.saves.folders.push(name);
+        this._saveFolderList();
+    }
+}
+
+control.prototype._validFolderName = function (name) {
+    return typeof name === 'string' && /^[a-zA-Z0-9_\u4e00-\u9fa5]+$/.test(name);
+}
+
+control.prototype._uniqueSyncFolder = function () {
+    this._ensureSaveFolders();
+    var base = '在线同步' + core.formatDate2(new Date());
+    var name = base;
+    var n = 2;
+    while (core.saves.folders.indexOf(name) >= 0) name = base + '_' + (n++);
+    return name;
+}
+
+control.prototype.setCurrentFolder = function (name, callback) {
+    core.saves.currentFolder = name || this.DEFAULT_SAVE_FOLDER;
+    core.setLocalStorage('currentFolder', core.saves.currentFolder);
+    this.getSaveIndexes(function (indexes) {
+        core.saves.ids = indexes;
+        if (callback) callback();
+    });
+}
+
+control.prototype._pushSaveUndo = function (step) {
+    if (!core.saves.undo) core.saves.undo = [];
+    core.saves.undo.push(step);
+    if (core.saves.undo.length > 10) core.saves.undo.shift();
+}
+
+control.prototype.clearSaveUndo = function () {
+    core.saves.undo = [];
+}
+
+control.prototype.undoManualSave = function (callback) {
+    var stack = core.saves.undo || [];
+    if (!stack.length) {
+        core.playSound('操作失败');
+        if (callback) callback(null);
+        return;
+    }
+    var step = stack.pop();
+    var finish = function () {
+        if (step.kind !== 'delete' && String(core.saves.saveIndex) === String(step.id)) {
+            var extra = core.saves.actionCount || 0;
+            core.saves.saveIndex = step.saveIndex;
+            core.saves.actionCount = (step.actionCount || 0) + extra;
+            if (step.saveIndex == null) core.removeLocalStorage('saveIndex');
+            else core.setLocalStorage('saveIndex', step.saveIndex);
+        }
+        core.control.getSaveIndexes(function (indexes) {
+            core.saves.ids = indexes;
+            if (callback) callback(step);
+        });
+    };
+    var fail = function (err) {
+        stack.push(step);
+        alert("撤回失败，错误信息：\n" + err);
+    };
+    if (step.previous)
+        core.setLocalForage('save' + step.id, step.previous, finish, fail, step.folder);
+    else
+        core.removeLocalForage('save' + step.id, finish, fail, step.folder);
+}
+
+control.prototype._parseSaveKey = function (name) {
+    var prefix = core.firstData.name + '_';
+    if (name.indexOf(prefix) !== 0) return null;
+    var rest = name.substring(prefix.length);
+    var folder = this.DEFAULT_SAVE_FOLDER;
+    var at = rest.indexOf('@@');
+    if (at >= 0) {
+        folder = rest.substring(at + 2);
+        rest = rest.substring(0, at);
+        if (!folder) return null;
+    }
+    if (rest === 'autoSave') return { auto: true, folder: this.DEFAULT_SAVE_FOLDER, id: 0 };
+    if (rest.indexOf('save') === 0 && /^\d+$/.test(rest.substring(4)))
+        return { auto: false, folder: folder, id: parseInt(rest.substring(4), 10) };
+    return null;
+}
+
+control.prototype.getSave = function (index, callback, folder) {
+    if (folder == null) folder = this._currentFolder();
+    if (index == 0 || index == 'autoSave') {
         if (core.saves.autosave.data != null)
             callback(core.saves.autosave.data);
         else {
@@ -2591,56 +2875,81 @@ control.prototype.getSave = function (index, callback) {
     }, function (err) {
         console.error(err);
         if (callback) callback(null);
-    });
+    }, folder);
 }
 
-control.prototype.getSaves = function (ids, callback) {
-    if (!(ids instanceof Array)) return this.getSave(ids, callback);
+control.prototype.getSaves = function (ids, callback, folder) {
+    if (!(ids instanceof Array)) return this.getSave(ids, callback, folder);
     var count = ids.length, data = {};
+    if (!count) return callback(data);
     for (var i = 0; i < ids.length; ++i) {
         (function (i) {
             core.getSave(ids[i], function (result) {
                 data[i] = result;
                 if (Object.keys(data).length == count)
                     callback(data);
-            })
+            }, folder);
         })(i);
     }
 }
 
 control.prototype.getAllSaves = function (callback) {
-    var ids = Object.keys(core.saves.ids).filter(function (x) { return x != 0; })
-        .sort(function (a, b) { return a - b; }), saves = [];
-    this.getSaves(ids, function (data) {
-        for (var i = 0; i < ids.length; ++i) {
-            if (data[i] != null)
-                saves.push(data[i]);
-        }
-        callback(saves);
+    var self = this;
+    core.keysLocalForage(function (err, keys) {
+        if (err || !keys) return callback({ format: 'sl-batch', slots: [] });
+        var found = [];
+        keys.forEach(function (key) {
+            var parsed = self._parseSaveKey(key);
+            if (parsed && !parsed.auto) found.push(parsed);
+        });
+        found.sort(function (a, b) {
+            if (a.folder !== b.folder) return a.folder < b.folder ? -1 : 1;
+            return a.id - b.id;
+        });
+        var slots = [];
+        var left = found.length;
+        if (!left) return callback({ format: 'sl-batch', slots: [] });
+        found.forEach(function (one, i) {
+            core.getSave(one.id, function (data) {
+                if (data) slots.push({ folder: one.folder, id: one.id, data: data });
+                if (--left === 0) {
+                    slots.sort(function (a, b) {
+                        if (a.folder !== b.folder) return a.folder < b.folder ? -1 : 1;
+                        return a.id - b.id;
+                    });
+                    callback({ format: 'sl-batch', slots: slots });
+                }
+            }, one.folder);
+        });
     });
 }
 
-////// 获得所有存在存档的存档位 //////
+////// 获得当前文件夹里存在存档的存档位 //////
 control.prototype.getSaveIndexes = function (callback) {
+    var self = this;
     var indexes = {};
+    this._ensureSaveFolders();
+    var current = this._currentFolder();
     core.keysLocalForage(function (err, keys) {
-        if (err) {
-            console.error(err);
-            return callback(indexes);
-        }
+        if (err || !keys) return callback(indexes);
         keys.forEach(function (key) {
-            core.control._getSaveIndexes_getIndex(indexes, key);
+            var parsed = self._parseSaveKey(key);
+            if (!parsed) return;
+            if (parsed.auto) indexes[0] = true;
+            else {
+                self._addFolderName(parsed.folder);
+                if (parsed.folder === current) indexes[parsed.id] = true;
+            }
         });
         callback(indexes);
     });
 }
 
 control.prototype._getSaveIndexes_getIndex = function (indexes, name) {
-    var e = new RegExp('^' + core.firstData.name + "_(save\\d+|autoSave)$").exec(name);
-    if (e) {
-        if (e[1] == 'autoSave') indexes[0] = true;
-        else indexes[parseInt(e[1].substring(4))] = true;
-    }
+    var parsed = this._parseSaveKey(name);
+    if (!parsed) return;
+    if (parsed.auto) indexes[0] = true;
+    else if (parsed.folder === this._currentFolder()) indexes[parsed.id] = true;
 }
 
 ////// 判断某个存档位是否存在存档 //////
@@ -2649,10 +2958,10 @@ control.prototype.hasSave = function (index) {
 }
 
 ////// 删除某个存档
-control.prototype.removeSave = function (index, callback) {
+control.prototype.removeSave = function (index, callback, folder) {
+    if (folder == null) folder = this._currentFolder();
     if (index == 0 || index == "autoSave") {
-        index = "autoSave";
-        core.removeLocalForage(index, function () {
+        core.removeLocalForage("autoSave", function () {
             core.saves.autosave.data = null;
             core.saves.autosave.updated = false;
             if (callback) callback();
@@ -2660,29 +2969,120 @@ control.prototype.removeSave = function (index, callback) {
         return;
     }
     core.removeLocalForage("save" + index, function () {
-        core.saves.favorite = core.saves.favorite.filter(function (i) { return core.hasSave(i); });
-        delete core.saves.favoriteName[index];
-        core.control._updateFavoriteSaves();
         if (callback) callback();
     }, function () {
         core.playSound('操作失败');
         core.drawTip("无法删除存档！");
         if (callback) callback();
+    }, folder);
+}
+
+control.prototype.deleteSaveFolder = function (name, callback) {
+    var self = this;
+    this.clearSaveUndo();
+    if (name === this.DEFAULT_SAVE_FOLDER) {
+        if (callback) callback('默认');
+        return;
+    }
+    core.keysLocalForage(function (err, keys) {
+        var ids = [];
+        (keys || []).forEach(function (key) {
+            var parsed = self._parseSaveKey(key);
+            if (parsed && !parsed.auto && parsed.folder === name) ids.push(parsed.id);
+        });
+        var left = ids.length;
+        var done = function () {
+            self._loadFolderList();
+            var at = core.saves.folders.indexOf(name);
+            if (at >= 0) core.saves.folders.splice(at, 1);
+            self._saveFolderList();
+            var next = self._currentFolder() === name ? self.DEFAULT_SAVE_FOLDER : self._currentFolder();
+            self.setCurrentFolder(next, function () { if (callback) callback(null); });
+        };
+        if (!left) return done();
+        ids.forEach(function (id) {
+            core.removeLocalForage('save' + id, function () {
+                if (--left === 0) done();
+            }, function () {
+                if (--left === 0) done();
+            }, name);
+        });
     });
 }
 
-////// 读取收藏信息
-control.prototype._loadFavoriteSaves = function () {
-    core.saves.favorite = core.getLocalStorage("favorite", []);
-    // --- 移除不存在的收藏
-    core.saves.favorite = core.saves.favorite.filter(function (i) { return core.hasSave(i); });
-    core.saves.favoriteName = core.getLocalStorage("favoriteName", {});
+control.prototype.applySaveMoveCopy = function (op, sourceFolder, ids, targetFolder, startId, callback) {
+    var self = this;
+    ids = (ids || []).slice().sort(function (a, b) { return a - b; });
+    var max = this._maxSaveId();
+    if (!ids.length) return callback('没有选中的存档');
+    if (!(startId > 0)) return callback('请选择一个手动位');
+    this.getSaves(ids, function (data) {
+        var packed = [];
+        ids.forEach(function (id, i) {
+            if (data[i]) packed.push({ id: id, data: data[i] });
+        });
+        if (!packed.length) return callback('选中的位置是空的');
+        if (startId + packed.length - 1 > max) {
+            return callback('从这个位置起只能放下 ' + Math.max(0, max - startId + 1) + ' 个，这次要放 ' + packed.length + ' 个');
+        }
+        packed.forEach(function (item, i) { item.target = startId + i; });
+        var same = sourceFolder === targetFolder && packed.every(function (item) { return item.id === item.target; });
+        if (same) return callback('不用搬');
+        var left = packed.length;
+        var conflicts = 0;
+        packed.forEach(function (item) {
+            core.getSave(item.target, function (existing) {
+                var identity = op === 'move' && sourceFolder === targetFolder && item.id === item.target;
+                if (existing && !identity) conflicts++;
+                if (--left === 0) {
+                    var go = function () { self._writeMoveCopy(op, sourceFolder, targetFolder, packed, callback); };
+                    if (!conflicts) return go();
+                    core.myconfirm('有 ' + conflicts + ' 个位置已有存档，要覆盖吗？', go, function () { callback('cancel'); });
+                }
+            }, targetFolder);
+        });
+    }, sourceFolder);
 }
 
-control.prototype._updateFavoriteSaves = function () {
-    core.setLocalStorage("favorite", core.saves.favorite);
-    core.setLocalStorage("favoriteName", core.saves.favoriteName);
+control.prototype._writeMoveCopy = function (op, sourceFolder, targetFolder, packed, callback) {
+    var left = packed.length;
+    var failed = false;
+    this.clearSaveUndo();
+    var afterWrite = function () {
+        if (op !== 'move') return callback(null);
+        var targetSet = {};
+        packed.forEach(function (item) { targetSet[item.target] = true; });
+        var remove = [];
+        packed.forEach(function (item) {
+            if (sourceFolder === targetFolder && targetSet[item.id]) return;
+            remove.push(item.id);
+        });
+        if (!remove.length) return callback(null);
+        var remain = remove.length;
+        remove.forEach(function (id) {
+            core.removeLocalForage('save' + id, function () {
+                if (--remain === 0) callback(null);
+            }, function () {
+                if (--remain === 0) callback(null);
+            }, sourceFolder);
+        });
+    };
+    packed.forEach(function (item) {
+        core.setLocalForage('save' + item.target, core.clone(item.data), function () {
+            if (failed) return;
+            if (--left === 0) afterWrite();
+        }, function (err) {
+            if (failed) return;
+            failed = true;
+            callback('存档失败：' + err);
+        }, targetFolder);
+    });
 }
+
+////// 收藏已取消，保留空函数以免旧调用写回 localStorage //////
+control.prototype._loadFavoriteSaves = function () { }
+
+control.prototype._updateFavoriteSaves = function () { }
 
 // ------ 属性，状态，位置，buff，变量，锁定控制等 ------ //
 
@@ -3634,6 +4034,7 @@ control.prototype.resize = function (type) {
     else this._doResize(obj);
     // this.setToolbarButton();
     core.updateStatusBar();
+    if (core.ui && core.ui._slLayout) core.ui._slLayout();
 }
 
 control.prototype._resize_gameGroup = function (obj) {

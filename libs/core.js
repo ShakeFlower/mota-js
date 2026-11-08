@@ -129,7 +129,10 @@ function core() {
         },
         "favorite": [],
         "favoriteName": {},
-        "cache": {}
+        "cache": {},
+        "folders": ["默认文件夹"],
+        "currentFolder": null,
+        "undo": []
     }
     this.initStatus = {
         'played': false,
