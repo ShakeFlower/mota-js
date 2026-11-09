@@ -14161,5 +14161,211 @@ ${statistics.hasOwnProperty("oneDefEffect") ? `1防御累计减伤为${core.form
 			if (api && api.opened) api.layout();
 		};
 
+	},
+	"critical": function () {
+		// 覆盖样板临界计算。防御超过安全整数时，原二分的 mid+1 不再前进，会卡死。
+		const enemys = core.enemys;
+		if (!enemys || typeof enemys.nextCriticals !== "function") return;
+
+		const STEP_LIMIT = 80;
+		const LOOP_SPAN = 100000;
+		const SAFE = Number.MAX_SAFE_INTEGER;
+		const READ_ABORT = {};
+
+		function finite(n) {
+			return typeof n === "number" && isFinite(n);
+		}
+
+		function precisionOf(upper) {
+			const scale = Math.abs(upper);
+			if (!(scale > SAFE)) return 1;
+			const width = scale / 1e15;
+			return width > 1 ? width : 1;
+		}
+
+		function readInfo(enemy, atk, x, y, floorId) {
+			try {
+				return core.enemys.getDamageInfo(enemy, { "atk": atk }, x, y, floorId);
+			} catch (e) {
+				return READ_ABORT;
+			}
+		}
+
+		// probe(atk) 返回 'hit' | 'miss' | 'abort'。找到 [lo, hi] 里最小的 hit。
+		function searchLowest(lo, hi, upper, probe) {
+			if (!finite(lo) || !finite(hi) || lo > hi) return null;
+			const precision = precisionOf(finite(upper) ? upper : hi);
+			let left = lo - 1;
+			if (!finite(left) || !(left < lo)) {
+				const first = probe(lo);
+				if (first === "abort") return null;
+				if (first === "hit") return lo;
+				left = lo;
+			}
+			let right = hi;
+			let steps = 0;
+			while (left < right && steps < STEP_LIMIT) {
+				const width = right - left;
+				if (!(width > precision)) break;
+				const mid = left + Math.floor(width / 2);
+				if (!(mid > left) || !(mid < right)) break;
+				steps++;
+				const verdict = probe(mid);
+				if (verdict === "abort") return null;
+				if (verdict === "hit") right = mid;
+				else left = mid;
+			}
+			const end = probe(right);
+			if (end === "abort" || end !== "hit") return null;
+			return right;
+		}
+
+		function finish(list) {
+			if (list.length === 0) list.push([0, 0]);
+			return list;
+		}
+
+		function stopped(info) {
+			return info === READ_ABORT || info == null || typeof info === "number";
+		}
+
+		enemys._nextCriticals_overAtk = function (enemy, x, y, floorId) {
+			const heroAtk = core.status.hero.atk;
+			const lo = heroAtk + 1;
+			const hi = core.getEnemyValue(enemy, "hp", x, y, floorId) + core.getEnemyValue(enemy, "def", x, y, floorId);
+			const atk = searchLowest(lo, hi, hi, function (mid) {
+				const info = readInfo(enemy, mid, x, y, floorId);
+				if (info === READ_ABORT) return "abort";
+				return info != null ? "hit" : "miss";
+			});
+			if (atk == null) return null;
+			const nextInfo = readInfo(enemy, atk, x, y, floorId);
+			if (nextInfo === READ_ABORT || nextInfo == null) return null;
+			return [atk - heroAtk, nextInfo];
+		};
+
+		enemys._nextCriticals_useBinarySearch = function (enemy, info, number, x, y, floorId) {
+			const hero_atk = core.status.hero.atk;
+			const upper = info.mon_hp + info.mon_def;
+			const list = [];
+			let start_atk = hero_atk;
+			let pre = info.damage;
+			if (info.__over__) {
+				start_atk += info.__overAtk__;
+				list.push([info.__overAtk__, -info.damage]);
+			}
+			const calNext = function (currAtk) {
+				const atk = searchLowest(currAtk, upper, upper, function (mid) {
+					const nextInfo = readInfo(enemy, mid, x, y, floorId);
+					if (stopped(nextInfo)) return "abort";
+					return pre > nextInfo.damage ? "hit" : "miss";
+				});
+				if (atk == null) return null;
+				const nextInfo = readInfo(enemy, atk, x, y, floorId);
+				if (stopped(nextInfo) || !(nextInfo.damage < pre)) return null;
+				return [atk, nextInfo.damage];
+			};
+			let currAtk = start_atk;
+			while (true) {
+				const next = calNext(currAtk + 1);
+				if (next == null) break;
+				currAtk = next[0];
+				pre = next[1];
+				list.push([currAtk - hero_atk, info.damage - pre]);
+				if (pre <= 0 && !core.flags.enableNegativeDamage) break;
+				if (list.length >= number) break;
+			}
+			return finish(list);
+		};
+
+		enemys._nextCriticals_useTurn = function (enemy, info, number, x, y, floorId) {
+			const mon_hp = info.mon_hp, hero_atk = core.status.hero.atk, mon_def = info.mon_def, turn = info.turn;
+			if (!(finite(turn) && turn > 0 && turn < 1e6)) {
+				return this._nextCriticals_useBinarySearch(enemy, info, number, x, y, floorId);
+			}
+			const list = [];
+			let pre = null;
+			let start_atk = hero_atk;
+			if (info.__over__) {
+				start_atk += info.__overAtk__;
+				list.push([info.__overAtk__, -info.damage]);
+			}
+			for (let t = turn - 1; t >= 1; t--) {
+				let nextAtk = Math.ceil(mon_hp / t) + mon_def;
+				nextAtk = Math.ceil(nextAtk / core.getBuff("atk"));
+				if (!finite(nextAtk)) break;
+				if (nextAtk <= start_atk) break;
+				if (nextAtk !== pre) {
+					const nextInfo = readInfo(enemy, nextAtk, x, y, floorId);
+					if (stopped(nextInfo)) break;
+					list.push([nextAtk - hero_atk, Math.floor(info.damage - nextInfo.damage)]);
+					if (nextInfo.damage <= 0 && !core.flags.enableNegativeDamage) break;
+					pre = nextAtk;
+				}
+				if (list.length >= number) break;
+			}
+			return finish(list);
+		};
+
+		enemys._nextCriticals_useLoop = function (enemy, info, number, x, y, floorId) {
+			const upper = info.mon_hp + info.mon_def;
+			let start_atk = core.status.hero.atk;
+			if (info.__over__) start_atk += info.__overAtk__;
+			const span = upper - start_atk;
+			const canStep = finite(span) && span >= 0 && span <= LOOP_SPAN
+				&& Number.isSafeInteger(start_atk) && Number.isSafeInteger(upper);
+			if (!canStep) {
+				return this._nextCriticals_useBinarySearch(enemy, info, number, x, y, floorId);
+			}
+			const list = [];
+			let pre = info.damage;
+			const hero_atk = core.status.hero.atk;
+			if (info.__over__) list.push([info.__overAtk__, -info.damage]);
+			for (let atk = start_atk + 1; atk <= upper; atk++) {
+				const nextInfo = readInfo(enemy, atk, x, y, floorId);
+				if (stopped(nextInfo)) break;
+				if (pre > nextInfo.damage) {
+					pre = nextInfo.damage;
+					list.push([atk - hero_atk, info.damage - nextInfo.damage]);
+					if (nextInfo.damage <= 0 && !core.flags.enableNegativeDamage) break;
+					if (list.length >= number) break;
+				}
+			}
+			return finish(list);
+		};
+
+		enemys.nextCriticals = function (enemy, number, x, y, floorId) {
+			try {
+				if (typeof enemy == "string") enemy = core.getEnemyValue(enemy, null, x, y, floorId);
+				number = number || 1;
+
+				const specialCriticals = this._nextCriticals_special(enemy, number, x, y, floorId);
+				if (specialCriticals != null) return specialCriticals;
+				let info = this.getDamageInfo(enemy, null, x, y, floorId);
+				if (info == null) {
+					const overAtk = this._nextCriticals_overAtk(enemy, x, y, floorId);
+					if (overAtk == null) return [];
+					if (typeof overAtk[1] == "number") return [[overAtk[0], -overAtk[1]]];
+					info = overAtk[1];
+					info.__over__ = true;
+					info.__overAtk__ = overAtk[0];
+				}
+
+				if (typeof info == "number") return [[0, 0]];
+				if (info.damage <= 0 && !core.flags.enableNegativeDamage) {
+					return [[info.__overAtk__ || 0, 0]];
+				}
+
+				if (core.flags.useLoop) {
+					if (core.status.hero.atk <= (main.criticalUseLoop || 1)) {
+						return this._nextCriticals_useLoop(enemy, info, number, x, y, floorId);
+					}
+					return this._nextCriticals_useBinarySearch(enemy, info, number, x, y, floorId);
+				}
+				return this._nextCriticals_useTurn(enemy, info, number, x, y, floorId);
+			} catch (e) {
+				return [];
+			}
+		};
 	}
 }
